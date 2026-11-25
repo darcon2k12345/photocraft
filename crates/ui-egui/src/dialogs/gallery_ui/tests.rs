@@ -1,7 +1,7 @@
 use super::*;
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.session.execute("file.new", json!({"width": 90, "height": 60, "depth": 16})).unwrap();
     app.session.execute("layer.new.layer", json!({})).unwrap();
     app.session
@@ -21,18 +21,18 @@ fn app() -> Box<PhotocraftApp> {
 }
 
 /// Sends one `ui` object to the open Filter Gallery, as `ui.menu.invoke {"ui": …}` does.
-fn ui(app: &mut PhotocraftApp, v: Value) -> Result<Value, String> {
+fn ui(app: &mut PatronusPhotoApp, v: Value) -> Result<Value, String> {
     let ctx = app.ctx().clone();
 
     crate::control::dialogs::workspace_ui(app, &ctx, KEY, &v)
 }
 
 /// The open gallery's stack as the workspace holds it.
-fn effects_of(app: &PhotocraftApp) -> Vec<EffectLayer> {
+fn effects_of(app: &PatronusPhotoApp) -> Vec<EffectLayer> {
     serde_json::from_value(describe(app).unwrap()["effects"].clone()).unwrap()
 }
 
-fn source_of(app: &PhotocraftApp) -> Arc<PcGallerySource> {
+fn source_of(app: &PatronusPhotoApp) -> Arc<PcGallerySource> {
     app.gallery.as_ref().unwrap().source.clone()
 }
 
@@ -84,8 +84,8 @@ fn smart_filter_double_click_edits_the_stored_gallery_stack() {
     app.run(KEY, stack).unwrap();
     app.run("filter.blur.gaussianBlur", json!({"radius": 2.0})).unwrap();
     let layer = app.session.active().unwrap().active_layer.unwrap();
-    let smart = |app: &PhotocraftApp| match &app.session.active().unwrap().doc.layer(layer).unwrap().content {
-        photocraft_doc::LayerContent::Smart(sm) => sm.clone(),
+    let smart = |app: &PatronusPhotoApp| match &app.session.active().unwrap().doc.layer(layer).unwrap().content {
+        patronusphoto_doc::LayerContent::Smart(sm) => sm.clone(),
         _ => panic!("not a smart object"),
     };
     let steps = app.session.active().unwrap().history.past_len();
@@ -100,7 +100,7 @@ fn smart_filter_double_click_edits_the_stored_gallery_stack() {
     assert_eq!(effects[0].filter, "chrome");
     assert_eq!(describe(&app).unwrap()["effects"][0]["params"]["detail"].as_f64(), Some(2.0));
     // The preview starts from the pixels below the filter (no blur, no chrome).
-    let below = photocraft_engine::smart_cmds::render_below_filter(&app.session.active().unwrap().doc, &sm, 0).unwrap().unwrap();
+    let below = patronusphoto_engine::smart_cmds::render_below_filter(&app.session.active().unwrap().doc, &sm, 0).unwrap().unwrap();
     let source = source_of(&app);
     assert_eq!(source.src.read_region(source.canvas), below.read_region(source.canvas));
 
@@ -180,9 +180,9 @@ fn native_component_gallery_previews_match_commit_and_capture_the_target() {
 
 /// A 240×160 layer with gradients, edges and fine detail, so every gallery filter has
 /// something to draw.
-fn photo_app() -> Box<PhotocraftApp> {
+fn photo_app() -> Box<PatronusPhotoApp> {
     let (w, h) = (240, 160);
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.session.execute("file.new", json!({"width": w, "height": h, "depth": 16})).unwrap();
     app.session.execute("layer.new.layer", json!({})).unwrap();
     app.session
@@ -204,8 +204,8 @@ fn photo_app() -> Box<PhotocraftApp> {
 }
 
 /// What OK applies: `filter.filterGallery` with `params` on a copy of the document.
-fn applied(app: &PhotocraftApp, layer: LayerId, params: &Value) -> Surface {
-    let mut s2 = photocraft_engine::Session::new();
+fn applied(app: &PatronusPhotoApp, layer: LayerId, params: &Value) -> Surface {
+    let mut s2 = patronusphoto_engine::Session::new();
     s2.add_document(app.session.active().unwrap().doc.as_ref().clone(), None);
     s2.select_layer(layer).unwrap();
     s2.execute(KEY, params.clone()).unwrap();
@@ -291,7 +291,7 @@ fn a_region_renders_the_same_pixels_as_the_full_result() {
 
 #[test]
 fn reduce_averages_blocks_weighted_by_alpha() {
-    let mut s = Surface::new(photocraft_color::PixelFormat::new(photocraft_color::ColorMode::Rgb, photocraft_color::SampleType::F32, true));
+    let mut s = Surface::new(patronusphoto_color::PixelFormat::new(patronusphoto_color::ColorMode::Rgb, patronusphoto_color::SampleType::F32, true));
     s.write_pixel(0, 0, &[1.0, 0.0, 0.0, 1.0]);
     s.write_pixel(1, 0, &[0.0, 1.0, 0.0, 0.0]); // transparent: its colour doesn't count
     s.write_pixel(2, 0, &[0.2, 0.4, 0.6, 1.0]); // a partial block at the edge
@@ -320,13 +320,13 @@ fn background_preview_renders_off_the_ui_thread() {
     assert_ne!(source.preview().revision(), before, "the landing bumps the preview raster's revision");
 }
 
-/// Preview cost on 24 MP: `cargo test -p photocraft-ui-egui --lib bench_gallery_preview -- --ignored --nocapture`.
+/// Preview cost on 24 MP: `cargo test -p patronusphoto-ui-egui --lib bench_gallery_preview -- --ignored --nocapture`.
 #[test]
 #[ignore]
 fn bench_gallery_preview() {
     let (w, h) = (6000, 4000);
     let canvas = Rect::new(0, 0, w, h);
-    let mut s = Surface::new(photocraft_color::PixelFormat::new(photocraft_color::ColorMode::Rgb, photocraft_color::SampleType::U8, true));
+    let mut s = Surface::new(patronusphoto_color::PixelFormat::new(patronusphoto_color::ColorMode::Rgb, patronusphoto_color::SampleType::U8, true));
     s.fill_rect(canvas, &[0.5, 0.4, 0.3, 1.0]);
     for y in (0..h).step_by(9) {
         s.fill_rect(Rect::new(0, y, w, y + 3), &[0.9, 0.8, 0.2, 1.0]);
@@ -361,13 +361,13 @@ fn glow_color_keeps_exact_floats_until_a_new_pick_and_stores_linear() {
     ui(&mut app, json!({"params": {"glowColor": [0.123456, 0.234567, 0.345678]}})).unwrap();
     let ctx = app.ctx().clone();
     let mut h = egui_kittest::Harness::builder().with_context(ctx.clone()).with_size(egui::vec2(1200.0, 800.0)).build_ui_state(
-        |ui, app: &mut Box<PhotocraftApp>| {
+        |ui, app: &mut Box<PatronusPhotoApp>| {
             app.framework.dialogs.run(ui);
             take(app, ui.ctx());
         },
         app,
     );
-    let glow = |app: &PhotocraftApp| -> Vec<f64> {
+    let glow = |app: &PatronusPhotoApp| -> Vec<f64> {
         describe(app).unwrap()["effects"][0]["params"]["glowColor"].as_array().unwrap().iter().filter_map(Value::as_f64).collect()
     };
     let exact = [0.123456, 0.234567, 0.345678];
@@ -377,7 +377,7 @@ fn glow_color_keeps_exact_floats_until_a_new_pick_and_stores_linear() {
     h.get_by_role_and_label(egui::accesskit::Role::ColorWell, "Glow Color").click();
     h.run_steps(3);
     assert_eq!(h.state().framework.dialogs.stack().ids().count(), 2, "the swatch opens the colour picker as a child");
-    let picker = |app: &PhotocraftApp| app.framework.dialogs.stack().top().expect("the colour picker is on top");
+    let picker = |app: &PatronusPhotoApp| app.framework.dialogs.stack().top().expect("the colour picker is on top");
     let id = picker(h.state());
     crate::dialogs::testing::confirm(h.state_mut(), id).unwrap();
     h.run_steps(3);
@@ -396,7 +396,7 @@ fn glow_color_keeps_exact_floats_until_a_new_pick_and_stores_linear() {
     crate::color_picker_ui::testing::set_color(h.state_mut(), id, "#8040ff");
     crate::dialogs::testing::confirm(h.state_mut(), id).unwrap();
     h.run_steps(3);
-    let recorded = |app: &PhotocraftApp| -> Vec<f64> {
+    let recorded = |app: &PatronusPhotoApp| -> Vec<f64> {
         let g = app.gallery.as_ref().expect("the gallery is open");
         let hosted = app.framework.dialogs.get_by_id::<Hosted>(g.id).expect("the gallery dialog");
         g.source.command_params(&hosted.workspace().session().effects)["effects"][0]["params"]["glowColor"]

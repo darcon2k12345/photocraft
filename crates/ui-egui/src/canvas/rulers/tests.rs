@@ -1,11 +1,11 @@
 use egui::{Modifiers, Pos2, pos2, vec2};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing;
 use crate::state::Tool;
 
-type AppHarness = egui_kittest::Harness<'static, Box<PhotocraftApp>>;
+type AppHarness = egui_kittest::Harness<'static, Box<PatronusPhotoApp>>;
 
 /// The real canvas on a `size` document at 100 %, rulers on, snapping off, with `tool`.
 fn canvas_harness(size: [u32; 2], tool: Tool) -> AppHarness {
@@ -14,14 +14,14 @@ fn canvas_harness(size: [u32; 2], tool: Tool) -> AppHarness {
 
 /// [`canvas_harness`]; with `second_pass`, every frame runs a second pass after the one that took the input.
 fn harness_with_passes(size: [u32; 2], tool: Tool, second_pass: bool) -> AppHarness {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": size[0], "height": size[1], "background": "transparent"})).unwrap();
     app.sync_views();
     app.ui.extras.rulers = true;
     app.ui.extras.snap = false;
     app.ui.tool = tool;
     let mut h = egui_kittest::Harness::builder().with_context(app.ctx().clone()).with_size(vec2(1000.0, 700.0)).build_ui_state(
-        move |ui, app: &mut Box<PhotocraftApp>| {
+        move |ui, app: &mut Box<PatronusPhotoApp>| {
             if !ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 return;
             }
@@ -32,7 +32,7 @@ fn harness_with_passes(size: [u32; 2], tool: Tool, second_pass: bool) -> AppHarn
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     h.run_steps(4);
     let v = &mut h.state_mut().ui.views[0];
     (v.zoom, v.center) = (1.0, [size[0] as f32 / 2.0, size[1] as f32 / 2.0]);
@@ -77,13 +77,13 @@ fn steps(a: Pos2, b: Pos2) -> Vec<Pos2> {
     (1..=4).map(|i| a + (b - a) * (i as f32 / 4.0)).collect()
 }
 
-fn guides(app: &PhotocraftApp) -> (Vec<f64>, Vec<f64>) {
+fn guides(app: &PatronusPhotoApp) -> (Vec<f64>, Vec<f64>) {
     let g = &app.session.active().unwrap().doc.guides;
     (g.vertical.clone(), g.horizontal.clone())
 }
 
 /// The Info panel's X and Y as it would word them now.
-fn info_position(app: &mut PhotocraftApp) -> [String; 2] {
+fn info_position(app: &mut PatronusPhotoApp) -> [String; 2] {
     let rows = crate::panels::info::sampler_rows(app);
     let readings = crate::panels::info::readings(app, &rows);
     readings.position.expect("a position").map(|label| label.as_str().to_owned())
@@ -92,7 +92,7 @@ fn info_position(app: &mut PhotocraftApp) -> [String; 2] {
 /// #2955: the Info panel's X/Y are measured from the rulers' zero point.
 #[test]
 fn info_panel_position_reads_from_the_zero_point() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
     app.run("view.setRulerOrigin", json!({"x": 20, "y": 5})).unwrap();
     app.hover_doc = Some([50.5, 20.5]);
@@ -127,11 +127,11 @@ fn info_panel_shows_guide_drag_position_outside_canvas() {
 fn rulers_open_as_last_set_after_a_restart() {
     use std::sync::Arc;
     let files = Arc::new(craft::settings::testing::MemoryFiles::new());
-    let scratch = std::env::temp_dir().join("photocraft-rulers-restart");
+    let scratch = std::env::temp_dir().join("patronusphoto-rulers-restart");
     let launch = |files: &Arc<craft::settings::testing::MemoryFiles>| {
         let options = craft::settings::OpenOptions::new(craft::settings::Location::Dir(scratch.clone())).files(files.clone());
-        PhotocraftApp::new(
-            photocraft_engine::Session::new(),
+        PatronusPhotoApp::new(
+            patronusphoto_engine::Session::new(),
             crate::Services { settings: Some(craft::settings::SettingsStore::open_with(options)), ..Default::default() },
         )
     };
@@ -223,7 +223,7 @@ fn command_drag_over_a_guide_moves_the_guide_with_any_tool() {
         let layer = app.session.active().unwrap().active_layer.unwrap();
         app.session
             .edit("paint", |doc, _| {
-                doc.layer_mut(layer).unwrap().surface_mut().unwrap().fill_rect(photocraft_geom::Rect::new(10, 10, 30, 30), &[1.0, 0.0, 0.0, 1.0]);
+                doc.layer_mut(layer).unwrap().surface_mut().unwrap().fill_rect(patronusphoto_geom::Rect::new(10, 10, 30, 30), &[1.0, 0.0, 0.0, 1.0]);
                 Ok(())
             })
             .unwrap();

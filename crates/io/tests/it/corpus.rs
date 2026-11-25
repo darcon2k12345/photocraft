@@ -34,7 +34,7 @@
 //! filters, knockout); the run asserts no crashes, and that the oracle pass count and the export
 //! round-trip count do not fall below the source's floors. Raise the floors when they improve;
 //! never lower them.
-//! Set `PHOTOCRAFT_CORPUS_STRICT=1` to also fail on import/export errors
+//! Set `PATRONUSPHOTO_CORPUS_STRICT=1` to also fail on import/export errors
 //! (files listed in `KNOWN_BAD` excepted).
 //!
 //! Every exported file must also pass `common::strict_block_errors` (#200): each tagged block
@@ -51,7 +51,7 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use craft_psd::PsdFile;
-use photocraft_io::*;
+use patronusphoto_io::*;
 
 fn collect(dir: &Path, out: &mut Vec<PathBuf>) {
     let Ok(rd) = std::fs::read_dir(dir) else { return };
@@ -81,13 +81,13 @@ const DISSOLVE_TOL: f32 = 0.1;
 /// as usual (≤ 2/255), and inside them the premultiplied colour averaged over 16 × 16 blocks
 /// (density and colour) must agree within 0.1 (binomial noise of a 50 % dissolve is about
 /// 0.044 per block difference).
-fn dissolve_matches(doc: &photocraft_doc::Document, ours: &[[f32; 4]], ps: &[[f32; 4]]) -> bool {
+fn dissolve_matches(doc: &patronusphoto_doc::Document, ours: &[[f32; 4]], ps: &[[f32; 4]]) -> bool {
     let canvas = doc.bounds();
     let regions: Vec<_> = doc
         .walk()
         .into_iter()
-        .filter(|(_, _, l)| l.visible && l.blend == photocraft_color::BlendMode::Dissolve)
-        .map(|(_, _, l)| photocraft_compose::layer_bounds(l, canvas).intersect(&canvas))
+        .filter(|(_, _, l)| l.visible && l.blend == patronusphoto_color::BlendMode::Dissolve)
+        .map(|(_, _, l)| patronusphoto_compose::layer_bounds(l, canvas).intersect(&canvas))
         .filter(|r| !r.is_empty())
         .collect();
     let (w, h) = (canvas.width() as i32, canvas.height() as i32);
@@ -196,7 +196,7 @@ fn thumbnail(file: &PsdFile) -> Option<(u32, u32, Vec<[f32; 3]>)> {
     if format != 1 {
         return None;
     }
-    let img = photocraft_codecs::decode(r.data.get(28..)?).ok()?;
+    let img = patronusphoto_codecs::decode(r.data.get(28..)?).ok()?;
     let rgba = img.to_rgba8();
     Some((img.width(), img.height(), rgba.as_chunks::<4>().0.iter().map(|p| [0, 1, 2].map(|c| f32::from(p[c]) / 255.0)).collect()))
 }
@@ -316,9 +316,9 @@ fn check_file(name: &str, bytes: &[u8]) -> (Outcome, Option<f32>) {
             return (Outcome::Error, None);
         }
     };
-    let ours = photocraft_compose::flatten(doc).into_px();
+    let ours = patronusphoto_compose::flatten(doc).into_px();
     // Our own export must not change how the document renders.
-    let again = photocraft_compose::flatten(&reimported).into_px();
+    let again = patronusphoto_compose::flatten(&reimported).into_px();
     let rt = if again.len() == ours.len() { common::max_diff(&ours, &again) } else { f32::INFINITY };
     let layers = doc.layer_count();
     // Oracle choice: the merged image (Photoshop's composite; for files without layers it is the
@@ -427,7 +427,7 @@ fn run_oracle(src: &Source) {
     eprintln!("{label}: export -> re-import renders the same for {rt_same} files; differs for {}: {}", rt_diff.len(), rt_diff.join(", "));
     let block_errors = BLOCK_ERRORS.with(|b| b.borrow().clone());
     eprintln!("{label}: exported files whose tagged blocks fail the strict re-parse: {}", block_errors.len());
-    if std::env::var_os("PHOTOCRAFT_CORPUS_STRICT").is_some() {
+    if std::env::var_os("PATRONUSPHOTO_CORPUS_STRICT").is_some() {
         assert_eq!(errors, 0);
     }
     assert!(crashes.is_empty(), "{label}: panics (Rule 9): {crashes:?}");
@@ -483,7 +483,7 @@ fn run_mutations(src: &Source) {
                 if let Ok(imp) = import(&name, &data) {
                     let b = imp.document.bounds();
                     if i64::from(b.width()) * i64::from(b.height()) <= 4_000_000 {
-                        let _ = photocraft_compose::flatten(&imp.document);
+                        let _ = patronusphoto_compose::flatten(&imp.document);
                     }
                 }
             }));

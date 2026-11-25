@@ -5,17 +5,17 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use photocraft_engine::Session;
-use photocraft_raster::headroom;
-use photocraft_ui_egui::{PhotocraftApp, Services};
+use patronusphoto_engine::Session;
+use patronusphoto_raster::headroom;
+use patronusphoto_ui_egui::{PatronusPhotoApp, Services};
 use serde_json::json;
 
-fn app(writes: Rc<RefCell<u32>>) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(
+fn app(writes: Rc<RefCell<u32>>) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(
         Session::new(),
         Services {
             export: Some(Box::new(|doc, path, _| {
-                photocraft_io::export(doc, path, &Default::default()).map(|r| (r.bytes, r.warnings)).map_err(|e| e.to_string())
+                patronusphoto_io::export(doc, path, &Default::default()).map(|r| (r.bytes, r.warnings)).map_err(|e| e.to_string())
             })),
             write: Some(Box::new(move |_, _| {
                 *writes.borrow_mut() += 1;
@@ -29,7 +29,7 @@ fn app(writes: Rc<RefCell<u32>>) -> Box<PhotocraftApp> {
     app
 }
 
-fn identity(app: &PhotocraftApp) -> (String, Option<String>, u64, u64) {
+fn identity(app: &PatronusPhotoApp) -> (String, Option<String>, u64, u64) {
     let st = app.session.active().unwrap();
     (st.doc.name.clone(), st.path.clone(), st.revision, st.saved_revision)
 }
@@ -55,8 +55,8 @@ fn a_save_that_does_not_fit_fails_and_leaves_the_document_unsaved() {
     assert_eq!(*writes.borrow(), 1);
 }
 
-fn warnings(app: &PhotocraftApp) -> usize {
-    app.ui.notices.iter().filter(|n| n.title == photocraft_ui_egui::memory_warning::TITLE).count()
+fn warnings(app: &PatronusPhotoApp) -> usize {
+    app.ui.notices.iter().filter(|n| n.title == patronusphoto_ui_egui::memory_warning::TITLE).count()
 }
 
 /// Going low posts one notice that stays; hovering low doesn't post again; recovering past the
@@ -64,10 +64,10 @@ fn warnings(app: &PhotocraftApp) -> usize {
 #[test]
 fn the_low_memory_warning_posts_once_and_rearms_with_hysteresis() {
     let _turn = crate::lock(&crate::HEADROOM);
-    use photocraft_ui_egui::memory_warning::{REARM_ABOVE, WARN_BELOW, tick};
+    use patronusphoto_ui_egui::memory_warning::{REARM_ABOVE, WARN_BELOW, tick};
     let mut app = app(Rc::new(RefCell::new(0)));
     let mut now = 0.0;
-    let mut look = |app: &mut PhotocraftApp, available: Option<u64>| {
+    let mut look = |app: &mut PatronusPhotoApp, available: Option<u64>| {
         headroom::simulate_available(available);
         now += 2.5;
         tick(app, now);
@@ -96,9 +96,9 @@ fn the_low_memory_warning_posts_once_and_rearms_with_hysteresis() {
 #[test]
 fn no_warning_without_a_document() {
     let _turn = crate::lock(&crate::HEADROOM);
-    let mut app = PhotocraftApp::new(Session::new(), Services::default());
+    let mut app = PatronusPhotoApp::new(Session::new(), Services::default());
     headroom::simulate_available(Some(0));
-    photocraft_ui_egui::memory_warning::tick(&mut app, 100.0);
+    patronusphoto_ui_egui::memory_warning::tick(&mut app, 100.0);
     headroom::simulate_available(None);
     assert_eq!(warnings(&app), 0);
 }

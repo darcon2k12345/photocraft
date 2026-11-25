@@ -11,7 +11,7 @@ use craft::ui::pickers::Select;
 use craft::ui::runtime::env::UnitKind;
 use craft::ui::text::NumberField;
 use egui::Ui;
-use photocraft_doc::{Color, Fill, ShapeStroke, StrokeAlign};
+use patronusphoto_doc::{Color, Fill, ShapeStroke, StrokeAlign};
 use serde_json::{Value, json};
 
 /// A pass in which a stroke cell changed the value.

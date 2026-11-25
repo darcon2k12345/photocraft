@@ -21,17 +21,17 @@ use craft::ui::canvas::canvas_space;
 use craft::ui::canvas_controls::SelectionOutline;
 use craft::ui::contract::{Bind, Props as _, Show as _};
 use craft::ui::runtime::env::{Env, Label};
-use photocraft_raster::Surface;
+use patronusphoto_raster::Surface;
 use serde_json::json;
 
 use super::editing::{cancel, commit_with, edit_home, end_if_left};
 use super::host::LayerHost;
 use super::layout::{doc_point, layout, path_warp};
-use super::{Affine, LayerId, PhotocraftApp, text_layer};
+use super::{Affine, LayerId, PatronusPhotoApp, text_layer};
 
 /// The document key of the text editor. One editing session is open at a time, so one key is enough; the session
 /// start paths request the editor's focus by it.
-pub(crate) const TYPE_EDITOR: DocKey = DocKey::new("photocraft.type-editor");
+pub(crate) const TYPE_EDITOR: DocKey = DocKey::new("patronusphoto.type-editor");
 
 /// How far past point text's laid-out bounds a press still belongs to the editor, in screen points: a click just
 /// beside the glyphs places the caret there.
@@ -56,7 +56,7 @@ impl MaskSource for GlyphMask<'_> {
     /// The allocated tiles: every glyph pixel lies in one, and the union of their rects is cheap where the exact
     /// bounds scan the pixels; the overlay asks every pass.
     fn content_bounds(&self) -> MaskRect {
-        let r = self.surface.map_or(photocraft_geom::Rect::EMPTY, Surface::tile_bounds);
+        let r = self.surface.map_or(patronusphoto_geom::Rect::EMPTY, Surface::tile_bounds);
         if r.is_empty() { MaskRect::default() } else { MaskRect::new(r.x0, r.y0, r.x1, r.y1) }
     }
 
@@ -68,7 +68,7 @@ impl MaskSource for GlyphMask<'_> {
         let step = step.max(1) as usize;
         let span = out.len().saturating_sub(1) * step + 1;
         let mut row = vec![[0.0f32; 4]; span];
-        surface.read_rgba_into(photocraft_geom::Rect { x0, y0: y, x1: x0 + i32::try_from(span).unwrap_or(i32::MAX), y1: y + 1 }, &mut row);
+        surface.read_rgba_into(patronusphoto_geom::Rect { x0, y0: y, x1: x0 + i32::try_from(span).unwrap_or(i32::MAX), y1: y + 1 }, &mut row);
         for (value, pixel) in out.iter_mut().zip(row.iter().step_by(step)) {
             *value = pixel[3];
         }
@@ -76,7 +76,7 @@ impl MaskSource for GlyphMask<'_> {
 }
 
 /// The controls of the open text edit, over the canvas `canvas`. Does nothing without an edit in this document.
-pub(crate) fn canvas_controls(app: &mut PhotocraftApp, ui: &mut egui::Ui, canvas: egui::Rect) {
+pub(crate) fn canvas_controls(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, canvas: egui::Rect) {
     app.ui.type_box_overflow = false;
     crate::type_transform::cancel_stale(app);
     // A window that lost the focus ends a transform drag whose release it will never see.
@@ -120,7 +120,7 @@ pub(crate) fn canvas_controls(app: &mut PhotocraftApp, ui: &mut egui::Ui, canvas
 
 /// The Type Mask tools while typing: Quick Mask's colour over the document with the glyphs clear, as Photoshop shows
 /// the selection-to-be. The glyphs are the hidden working layer's pixels.
-fn mask_tint(app: &PhotocraftApp, ui: &mut egui::Ui, canvas: egui::Rect, id: LayerId) {
+fn mask_tint(app: &PatronusPhotoApp, ui: &mut egui::Ui, canvas: egui::Rect, id: LayerId) {
     let Some(st) = app.session.active() else { return };
     let surface = text_layer(&st.doc, id).and_then(|t| t.cache.as_ref());
     let mask = GlyphMask { surface, revision: st.revision, size: [st.doc.size.width, st.doc.size.height] };
@@ -130,24 +130,24 @@ fn mask_tint(app: &PhotocraftApp, ui: &mut egui::Ui, canvas: egui::Rect, id: Lay
     SelectionOverlay::new(Label::from(&*tl!("Type mask")), &mask).visible(false).preview(PreviewMode::QuickMask).quick_mask(look).show_at(ui, canvas);
 }
 
-fn doc_pt(p: photocraft_geom::Point) -> kurbo::Point {
+fn doc_pt(p: patronusphoto_geom::Point) -> kurbo::Point {
     kurbo::Point::new(p.x, p.y)
 }
 
 /// The outline of what a text edit is laid out in, when it has no frame box: the shape an area wraps inside, or a
 /// line under each line of point or path text (the line bends with the path).
-fn outline(app: &mut PhotocraftApp, ui: &mut egui::Ui, canvas: egui::Rect, id: LayerId) {
+fn outline(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, canvas: egui::Rect, id: LayerId) {
     let Some(shape) = app.session.active().and_then(|st| text_layer(&st.doc, id).map(|t| t.shape.clone())) else { return };
     let Some((l, aff, _)) = layout(app, id) else { return };
     let mut paths: Vec<BezPath> = Vec::new();
     match shape {
         // A paragraph box shows its frame, with handles.
-        photocraft_doc::text::TextShape::Box { .. } => return,
-        photocraft_doc::text::TextShape::Area { path } => {
-            for poly in photocraft_vector::flatten::flatten_path(&path, 0.5) {
+        patronusphoto_doc::text::TextShape::Box { .. } => return,
+        patronusphoto_doc::text::TextShape::Area { path } => {
+            for poly in patronusphoto_vector::flatten::flatten_path(&path, 0.5) {
                 let mut line = BezPath::new();
                 for (i, &(x, y)) in poly.pts.iter().enumerate() {
-                    let p = doc_pt(aff.apply(photocraft_geom::Point::new(x, y)));
+                    let p = doc_pt(aff.apply(patronusphoto_geom::Point::new(x, y)));
                     if i == 0 { line.move_to(p) } else { line.line_to(p) }
                 }
                 if poly.pts.len() >= 2 {
@@ -180,7 +180,7 @@ fn outline(app: &mut PhotocraftApp, ui: &mut egui::Ui, canvas: egui::Rect, id: L
 
 /// The screen rect the editor takes presses in: a paragraph box's own rect, so a press inside it off the glyphs
 /// places the caret (#7606); for other text its laid-out bounds, grown by `EDITOR_SLOP_PT`.
-fn editor_rect(app: &mut PhotocraftApp, view: &craft::behavior::CanvasView, id: LayerId) -> Option<egui::Rect> {
+fn editor_rect(app: &mut PatronusPhotoApp, view: &craft::behavior::CanvasView, id: LayerId) -> Option<egui::Rect> {
     let (rect, aff) = crate::type_transform::source_rect(app, id)?;
     let quad = crate::type_transform::quad_of(rect, &aff)?;
     let mut bounds = egui::Rect::NOTHING;
@@ -193,7 +193,7 @@ fn editor_rect(app: &mut PhotocraftApp, view: &craft::behavior::CanvasView, id: 
 
 /// The text editor over the open edit: typing, the caret and selection, clicks and the input method. Its commit and
 /// cancel end the session; its selection is written back to `TextEdit` in the same pass.
-fn editor(app: &mut PhotocraftApp, ui: &mut egui::Ui, view: &craft::behavior::CanvasView, id: LayerId) {
+fn editor(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, view: &craft::behavior::CanvasView, id: LayerId) {
     let Some(ed) = app.ui.text_edit.as_ref() else { return };
     let mut selection = TextSelection::new(ed.anchor, ed.caret);
     let Some(rect) = editor_rect(app, view, id) else { return };
@@ -254,15 +254,15 @@ fn editor(app: &mut PhotocraftApp, ui: &mut egui::Ui, view: &craft::behavior::Ca
 fn box_of(state: &BoxState, aff: &Affine) -> Option<[f64; 4]> {
     let inverse = aff.inverse()?;
     let (top_left, bottom_right) = (
-        inverse.apply(photocraft_geom::Point::new(state.quad[0].x, state.quad[0].y)),
-        inverse.apply(photocraft_geom::Point::new(state.quad[2].x, state.quad[2].y)),
+        inverse.apply(patronusphoto_geom::Point::new(state.quad[0].x, state.quad[0].y)),
+        inverse.apply(patronusphoto_geom::Point::new(state.quad[2].x, state.quad[2].y)),
     );
     let boxed = [state.quad[0].x, state.quad[0].y, bottom_right.x - top_left.x, bottom_right.y - top_left.y];
     (boxed.iter().all(|v| v.is_finite()) && boxed[2] > 0.0 && boxed[3] > 0.0).then_some(boxed)
 }
 
 /// Applies the box a frame drag has reached: in the background render when one runs, else with `type.edit` at once.
-fn apply_box(app: &mut PhotocraftApp, id: LayerId, boxed: [f64; 4]) {
+fn apply_box(app: &mut PatronusPhotoApp, id: LayerId, boxed: [f64; 4]) {
     if crate::type_box_preview::want(app, id, boxed) {
         return;
     }
@@ -273,7 +273,7 @@ fn apply_box(app: &mut PhotocraftApp, id: LayerId, boxed: [f64; 4]) {
 /// The text frame of a paragraph box: its outline with handles, which resize the box. A drag is recorded by the
 /// preview (`begin`, `want`, `end_drag`, `discard`) and applies one `type.edit` per move, or one on release when the
 /// preview renders it in the background. A click on a handle with no drag changes nothing.
-fn frame_box(app: &mut PhotocraftApp, ui: &mut egui::Ui, canvas: egui::Rect, id: LayerId) {
+fn frame_box(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, canvas: egui::Rect, id: LayerId) {
     if super::box_shape(app, id).is_none() {
         return;
     }

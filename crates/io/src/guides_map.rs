@@ -16,7 +16,7 @@
 //! describes the document's guides and colours; otherwise it leaves both out, so the file
 //! carries 1032 alone, as Photoshop files before version 2 did (#5966).
 
-use photocraft_doc::{Document, Guides};
+use patronusphoto_doc::{Document, Guides};
 
 pub use craft_psd::guides::{GUIDE_IDS, GUIDES_V2, GuideV2, ids_count};
 /// Photoshop's default colour continues to follow the app preference.

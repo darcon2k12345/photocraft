@@ -8,22 +8,22 @@ use craft::ui::form::SliderField;
 use craft::ui::runtime::env::UnitKind;
 use craft::ui::sections::Section;
 use craft::ui::value_drag::SliderScale;
-use photocraft_doc::{Layer, LayerContent};
+use patronusphoto_doc::{Layer, LayerContent};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// Image › Adjustments › Invert, which inverts a targeted layer mask in place (#780).
 const INVERT: &str = "image.adjustments.invert";
 
 /// The Layers panel targets the active layer's pixel mask (not its vector mask) and Properties
 /// shows it: a just-created adjustment or fill layer shows its own settings instead (#3369).
-pub fn targeted(app: &PhotocraftApp, layer: &Layer) -> bool {
+pub fn targeted(app: &PatronusPhotoApp, layer: &Layer) -> bool {
     app.ui.mask_target && !app.ui.vector_mask_target && layer.mask.is_some() && app.ui.properties_layer != Some(layer.id.0)
 }
 
 /// The Layers panel targets the active layer's vector mask.
-pub fn vector_targeted(app: &PhotocraftApp, layer: &Layer) -> bool {
+pub fn vector_targeted(app: &PatronusPhotoApp, layer: &Layer) -> bool {
     app.ui.vector_mask_target && layer.vector_mask.is_some()
 }
 
@@ -38,14 +38,14 @@ struct MaskSection {
 
 /// The pixel-mask section: Density, Feather and the Refine row. Pixels stay intact; the two
 /// properties ride on the mask and are applied by the compositor.
-pub fn properties(app: &mut PhotocraftApp, ui: &mut egui::Ui, layer: &Layer) {
+pub fn properties(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, layer: &Layer) {
     let Some(mask) = &layer.mask else { return };
     let section = MaskSection { key: "pixel-mask", title: tl!("Layer Mask"), command: "layer.layerMask.edit", refine: true };
     mask_section(app, ui, layer, &section, mask.density, mask.feather);
 }
 
 /// The vector-mask section: Density and Feather, likewise non-destructive.
-pub fn vector_properties(app: &mut PhotocraftApp, ui: &mut egui::Ui, layer: &Layer) {
+pub fn vector_properties(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, layer: &Layer) {
     let Some(vm) = &layer.vector_mask else { return };
     let section = MaskSection { key: "vector-mask", title: tl!("Vector Mask"), command: "layer.vectorMask.edit", refine: false };
     mask_section(app, ui, layer, &section, vm.density, vm.feather);
@@ -53,7 +53,7 @@ pub fn vector_properties(app: &mut PhotocraftApp, ui: &mut egui::Ui, layer: &Lay
 
 /// A shape layer's path is its vector mask (Photoshop's Properties › Masks): its Density and
 /// Feather soften the fill through `layer.vectorMask.edit`, the shape staying editable.
-pub fn shape_properties(app: &mut PhotocraftApp, ui: &mut egui::Ui, layer: &Layer) {
+pub fn shape_properties(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, layer: &Layer) {
     let LayerContent::Shape(sh) = &layer.content else { return };
     if layer.vector_mask.is_some() {
         return;
@@ -64,7 +64,7 @@ pub fn shape_properties(app: &mut PhotocraftApp, ui: &mut egui::Ui, layer: &Laye
 
 /// A section of Density (%) and Feather (px) fields writing one undoable edit per gesture: the value lives on
 /// the mask, not in its pixels. The gesture's id keys the coalescing, so two drags are two undo steps.
-fn mask_section(app: &mut PhotocraftApp, ui: &mut egui::Ui, layer: &Layer, section: &MaskSection, density: f32, feather: f32) {
+fn mask_section(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, layer: &Layer, section: &MaskSection, density: f32, feather: f32) {
     let Some(document) = app.session.active().map(|s| s.doc.id.0) else { return };
     let layer_id = layer.id.0;
     let mut edits: Vec<Value> = Vec::new();

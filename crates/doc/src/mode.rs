@@ -5,9 +5,9 @@
 
 use std::sync::Arc;
 
-use photocraft_color::PixelFormat;
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use patronusphoto_color::PixelFormat;
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::Surface;
 use serde::{Deserialize, Serialize};
 
 use crate::LayerId;

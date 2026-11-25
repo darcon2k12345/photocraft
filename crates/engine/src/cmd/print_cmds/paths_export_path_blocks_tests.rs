@@ -2,8 +2,8 @@
 //! combine note per subpath, and no path name anywhere in the file.
 
 use super::*;
-use photocraft_doc::{Knot, NamedPath, Path, PathOp, Subpath};
-use photocraft_geom::Point;
+use patronusphoto_doc::{Knot, NamedPath, Path, PathOp, Subpath};
+use patronusphoto_geom::Point;
 
 const BEGIN: &str = "%Adobe_Photoshop_Path_Begin:<< /defaultFill false >>\n";
 const END: &str = "%Adobe_Photoshop_Path_End\n";

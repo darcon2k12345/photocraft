@@ -4,15 +4,15 @@
 mod gpu_tests {
     use std::fs;
 
-    use photocraft_codecs::decode;
-    use photocraft_color::{BlendMode, Color, ColorMode, SampleType};
-    use photocraft_doc::{Document, Layer, LayerContent};
-    use photocraft_geom::{Rect, Size};
-    use photocraft_io::BandRenderer;
-    use photocraft_raster::Surface;
+    use patronusphoto_codecs::decode;
+    use patronusphoto_color::{BlendMode, Color, ColorMode, SampleType};
+    use patronusphoto_doc::{Document, Layer, LayerContent};
+    use patronusphoto_geom::{Rect, Size};
+    use patronusphoto_io::BandRenderer;
+    use patronusphoto_raster::Surface;
 
-    use photocraft_automation::workspace::AuthorizedWorkspace;
-    use photocraft_automation::{GpuRenderer, Headless};
+    use patronusphoto_automation::workspace::AuthorizedWorkspace;
+    use patronusphoto_automation::{GpuRenderer, Headless};
 
     fn make_test_doc(w: u32, h: u32, depth: SampleType) -> Document {
         let mut doc = Document::with_background("test_doc", Size::new(w, h), ColorMode::Rgb, depth, Color::WHITE);
@@ -53,7 +53,7 @@ mod gpu_tests {
 
     #[test]
     fn capability_scoped_writes_preserved_with_gpu() {
-        let dir = std::env::temp_dir().join(format!("photocraft-cap-test-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("patronusphoto-cap-test-{}", std::process::id()));
         let _ = fs::create_dir_all(&dir);
         let workspace = AuthorizedWorkspace::new(Some(&dir), Some(&dir)).expect("authorized workspace");
 
@@ -149,7 +149,7 @@ mod gpu_tests {
 
             // Independent reference CPU compositor oracle
             let mut cpu_pixels = Vec::new();
-            photocraft_compose::render_bands(&doc, doc.bounds(), 16, |buf| {
+            patronusphoto_compose::render_bands(&doc, doc.bounds(), 16, |buf| {
                 cpu_pixels.extend_from_slice(&buf.px);
                 Ok::<(), std::convert::Infallible>(())
             })
@@ -158,9 +158,9 @@ mod gpu_tests {
             // Direct GPU renderer invocation (MUST NOT fall back to CPU)
             let mut gpu_pixels = Vec::new();
             gpu_renderer
-                .render_bands(&doc, doc.bounds(), 16, &photocraft_raster::Interrupt::NONE, &mut |band| {
+                .render_bands(&doc, doc.bounds(), 16, &patronusphoto_raster::Interrupt::NONE, &mut |band| {
                     gpu_pixels.extend_from_slice(&band.pixels);
-                    Ok::<(), photocraft_io::IoError>(())
+                    Ok::<(), patronusphoto_io::IoError>(())
                 })
                 .expect("direct GPU render_bands failed");
 
@@ -176,9 +176,10 @@ mod gpu_tests {
         // U16 and F32 need the CPU compositor: band readback would quantise them to half.
         for depth in [SampleType::U16, SampleType::F32] {
             let doc = make_test_doc(64, 64, depth);
-            let res = gpu_renderer.render_bands(&doc, doc.bounds(), 16, &photocraft_raster::Interrupt::NONE, &mut |_| Ok::<(), photocraft_io::IoError>(()));
+            let res =
+                gpu_renderer.render_bands(&doc, doc.bounds(), 16, &patronusphoto_raster::Interrupt::NONE, &mut |_| Ok::<(), patronusphoto_io::IoError>(()));
             assert!(
-                matches!(res, Err(photocraft_io::RenderError::Unsupported(_))),
+                matches!(res, Err(patronusphoto_io::RenderError::Unsupported(_))),
                 "{depth:?} documents must be rejected so the export falls back to CPU: {res:?}"
             );
         }
@@ -194,15 +195,15 @@ mod gpu_tests {
             }
         };
 
-        let opts = photocraft_io::ExportOptions::default();
+        let opts = patronusphoto_io::ExportOptions::default();
         for depth in [SampleType::U16, SampleType::F32] {
             let doc = make_test_doc(64, 64, depth);
-            let expected = photocraft_io::export_flat(&doc, photocraft_codecs::Format::Png, &opts).expect("CPU export");
-            let res = photocraft_io::export_flat_with_renderer(
+            let expected = patronusphoto_io::export_flat(&doc, patronusphoto_codecs::Format::Png, &opts).expect("CPU export");
+            let res = patronusphoto_io::export_flat_with_renderer(
                 &doc,
-                photocraft_codecs::Format::Png,
+                patronusphoto_codecs::Format::Png,
                 &opts,
-                &photocraft_raster::Interrupt::NONE,
+                &patronusphoto_raster::Interrupt::NONE,
                 Some(&mut gpu_renderer),
             )
             .expect("the export must retry on the CPU");
@@ -250,14 +251,14 @@ mod gpu_tests {
 
         // 1. Cancellation preservation
         let cancel_res =
-            gpu_renderer.render_bands(&doc, doc.bounds(), 16, &photocraft_raster::Interrupt::NONE, &mut |_| Err(photocraft_io::IoError::Cancelled));
-        assert!(matches!(cancel_res, Err(photocraft_io::RenderError::Cancelled)), "cancellation must be preserved: {cancel_res:?}");
+            gpu_renderer.render_bands(&doc, doc.bounds(), 16, &patronusphoto_raster::Interrupt::NONE, &mut |_| Err(patronusphoto_io::IoError::Cancelled));
+        assert!(matches!(cancel_res, Err(patronusphoto_io::RenderError::Cancelled)), "cancellation must be preserved: {cancel_res:?}");
 
         // 2. Sink I/O error preservation
-        let sink_res = gpu_renderer.render_bands(&doc, doc.bounds(), 16, &photocraft_raster::Interrupt::NONE, &mut |_| {
-            Err(photocraft_io::IoError::Read("simulated sink error".into()))
+        let sink_res = gpu_renderer.render_bands(&doc, doc.bounds(), 16, &patronusphoto_raster::Interrupt::NONE, &mut |_| {
+            Err(patronusphoto_io::IoError::Read("simulated sink error".into()))
         });
-        assert!(matches!(sink_res, Err(photocraft_io::RenderError::Sink(_))), "sink error must be preserved as RenderError::Sink: {sink_res:?}");
+        assert!(matches!(sink_res, Err(patronusphoto_io::RenderError::Sink(_))), "sink error must be preserved as RenderError::Sink: {sink_res:?}");
     }
 
     #[test]
@@ -274,7 +275,7 @@ mod gpu_tests {
         gpu_renderer.set_max_staging_bytes(32 * 1024);
 
         let mut received_rows = 0;
-        let res = gpu_renderer.render_bands(&doc, doc.bounds(), 0, &photocraft_raster::Interrupt::NONE, &mut |band| {
+        let res = gpu_renderer.render_bands(&doc, doc.bounds(), 0, &patronusphoto_raster::Interrupt::NONE, &mut |band| {
             received_rows += band.rect.height();
             Ok(())
         });

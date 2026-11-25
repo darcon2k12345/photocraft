@@ -3,13 +3,13 @@
 
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::{Tool, ToolOptions};
 
-fn app() -> Box<PhotocraftApp> {
-    let mut s = photocraft_engine::Session::new();
+fn app() -> Box<PatronusPhotoApp> {
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 16, "height": 16})).unwrap();
-    let mut app = PhotocraftApp::new(s, crate::Services::default());
+    let mut app = PatronusPhotoApp::new(s, crate::Services::default());
     app.ui.tool = Tool::Patch;
     app
 }
@@ -104,7 +104,7 @@ fn reset_tool_keeps_each_tools_kept_options_and_reset_all_keeps_none() {
 }
 
 /// A fresh app with `row`'s options customized.
-fn app_with(row: &Row) -> Box<PhotocraftApp> {
+fn app_with(row: &Row) -> Box<PatronusPhotoApp> {
     let mut app = app();
     app.ui.tool = row.tool;
     (row.customize)(&mut app.ui.tool_options);

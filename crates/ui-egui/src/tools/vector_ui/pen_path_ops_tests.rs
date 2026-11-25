@@ -4,33 +4,33 @@
 
 use egui::{Key, Modifiers, vec2};
 use egui_kittest::kittest::{NodeT, Queryable};
-use photocraft_doc::vector::PathOp;
-use photocraft_doc::{LayerContent, LayerId, Path};
+use patronusphoto_doc::vector::PathOp;
+use patronusphoto_doc::{LayerContent, LayerId, Path};
 use serde_json::json;
 
 use super::pen_path_op;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing;
 use crate::state::Tool;
 use craft::draw::ui::VectorMode;
 
-fn app() -> Box<PhotocraftApp> {
-    prepared(PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default()))
+fn app() -> Box<PatronusPhotoApp> {
+    prepared(PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default()))
 }
 
 /// The app on `ctx`, a harness's context that has the framework installed.
-fn app_on(ctx: egui::Context) -> Box<PhotocraftApp> {
-    prepared(PhotocraftApp::with_context(ctx, photocraft_engine::Session::new(), crate::Services::default()))
+fn app_on(ctx: egui::Context) -> Box<PatronusPhotoApp> {
+    prepared(PatronusPhotoApp::with_context(ctx, patronusphoto_engine::Session::new(), crate::Services::default()))
 }
 
-fn prepared(mut app: Box<PhotocraftApp>) -> Box<PhotocraftApp> {
+fn prepared(mut app: Box<PatronusPhotoApp>) -> Box<PatronusPhotoApp> {
     app.run("file.new", json!({"width": 200, "height": 200})).unwrap();
     app.ui.tool = Tool::Pen;
     app
 }
 
 /// Clicks a closed square with the Pen, from `(x, y)` with side `side`.
-fn square(app: &mut PhotocraftApp, x: f64, y: f64, side: f64) {
+fn square(app: &mut PatronusPhotoApp, x: f64, y: f64, side: f64) {
     for (dx, dy) in [(0.0, 0.0), (side, 0.0), (side, side), (0.0, side)] {
         testing::click(app, [x + dx, y + dy], Modifiers::NONE);
     }
@@ -38,21 +38,21 @@ fn square(app: &mut PhotocraftApp, x: f64, y: f64, side: f64) {
 }
 
 /// The options bar of the Pen in a harness `width` wide.
-fn options_harness(app: Box<PhotocraftApp>, width: f32) -> egui_kittest::Harness<'static, Box<PhotocraftApp>> {
+fn options_harness(app: Box<PatronusPhotoApp>, width: f32) -> egui_kittest::Harness<'static, Box<PatronusPhotoApp>> {
     let mut h = egui_kittest::Harness::builder().with_context(app.ctx().clone()).with_size(vec2(width, 400.0)).build_ui_state(
-        |ui, app: &mut Box<PhotocraftApp>| {
+        |ui, app: &mut Box<PatronusPhotoApp>| {
             if ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 ui.horizontal(|ui| super::options_bar(app, ui, Tool::Pen));
             }
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::studio());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::studio());
     h.run_steps(4);
     h
 }
 
-fn shape_path(app: &PhotocraftApp) -> (LayerId, Path) {
+fn shape_path(app: &PatronusPhotoApp) -> (LayerId, Path) {
     let st = app.session.active().unwrap();
     let id = st.active_layer.unwrap();
     match &st.doc.layer(id).unwrap().content {
@@ -61,16 +61,16 @@ fn shape_path(app: &PhotocraftApp) -> (LayerId, Path) {
     }
 }
 
-fn work(app: &PhotocraftApp) -> Path {
+fn work(app: &PatronusPhotoApp) -> Path {
     app.session.active().unwrap().doc.work_path.clone().expect("a work path")
 }
 
-fn layers(app: &PhotocraftApp) -> usize {
+fn layers(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().doc.layers.len()
 }
 
 fn covered(path: &Path, x: i32, y: i32) -> f32 {
-    photocraft_vector::fill_rasterizer(path, photocraft_vector::DEFAULT_TOLERANCE).render(photocraft_geom::Rect::from_xywh(x, y, 1, 1))[0]
+    patronusphoto_vector::fill_rasterizer(path, patronusphoto_vector::DEFAULT_TOLERANCE).render(patronusphoto_geom::Rect::from_xywh(x, y, 1, 1))[0]
 }
 
 /// A locked shape layer refuses the new component: the path drawn stays as the Pen's draft, and
@@ -109,7 +109,7 @@ fn a_locked_shape_layer_keeps_the_drawn_path() {
 }
 
 /// A hole drawn for a locked shape layer: the Pen's draft, refused, and the History length then.
-fn refused_hole(app: &mut PhotocraftApp) -> (LayerId, Path, usize) {
+fn refused_hole(app: &mut PatronusPhotoApp) -> (LayerId, Path, usize) {
     app.ui.tool_options.vector_mode = VectorMode::Shape;
     square(app, 20.0, 20.0, 100.0);
     let (id, body) = shape_path(app);
@@ -123,7 +123,7 @@ fn refused_hole(app: &mut PhotocraftApp) -> (LayerId, Path, usize) {
 
 /// The refused hole ended for good: kept, closed, as the Work Path, one History step; the locked
 /// shape is as it was.
-fn assert_kept_as_work_path(app: &PhotocraftApp, id: LayerId, body: &Path, steps: usize) {
+fn assert_kept_as_work_path(app: &PatronusPhotoApp, id: LayerId, body: &Path, steps: usize) {
     assert!(app.ui.pen.is_none() && app.ui.pen_doc.is_none());
     assert_eq!(shape_path(app), (id, body.clone()), "the locked shape is unchanged");
     let w = work(app);
@@ -141,7 +141,7 @@ fn assert_kept_as_work_path(app: &PhotocraftApp, id: LayerId, body: &Path, steps
 #[test]
 fn switching_tools_ends_a_refused_draft_once() {
     let mut h = egui_kittest::Harness::builder().with_size(vec2(1400.0, 900.0)).with_max_steps(64).build_eframe(|cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
         app_on(cc.egui_ctx.clone())
     });
     h.run_steps(2);
@@ -227,7 +227,7 @@ fn the_options_bar_menu_sets_the_operation_and_merges() {
     square(&mut app, 50.0, 50.0, 40.0);
     app.ui.tool_options.pen_path_op = "combine".into();
     let mut h = options_harness(app, 1100.0);
-    let open = |h: &mut egui_kittest::Harness<'_, Box<PhotocraftApp>>| {
+    let open = |h: &mut egui_kittest::Harness<'_, Box<PatronusPhotoApp>>| {
         h.get_by_label("Path operations").click();
         h.run_steps(3);
     };
@@ -336,7 +336,7 @@ fn make_shape_turns_the_work_path_into_a_shape_layer() {
     assert!(st.doc.work_path.is_none());
     let LayerContent::Shape(sh) = &st.doc.layer(id).unwrap().content else { panic!("not a shape layer") };
     let fg = app.session.tools.foreground;
-    assert_eq!(sh.fill, Some(photocraft_doc::Fill::Solid(photocraft_color::Color::rgba(fg[0], fg[1], fg[2], fg[3]))));
+    assert_eq!(sh.fill, Some(patronusphoto_doc::Fill::Solid(patronusphoto_color::Color::rgba(fg[0], fg[1], fg[2], fg[3]))));
     // An open path still being drawn becomes the shape too, still in one History step.
     draw(h.state_mut(), &[(10.0, 150.0), (60.0, 150.0), (60.0, 190.0)]);
     let steps = h.state().session.active().unwrap().history.past_len();
@@ -369,7 +369,7 @@ fn make_shape_while_drawing_leaves_a_targeted_vector_mask_alone() {
     assert_eq!(st.history.past_len(), steps + 1);
     let (_, path) = shape_path(&app);
     assert_eq!(path.subpaths.len(), 1);
-    assert_eq!(path.subpaths[0].knots[0].anchor, photocraft_geom::Point::new(10.0, 150.0));
+    assert_eq!(path.subpaths[0].knots[0].anchor, patronusphoto_geom::Point::new(10.0, 150.0));
 }
 
 /// Make Shape while drawing into a selected saved path: the shape is the saved path plus the
@@ -402,7 +402,7 @@ fn make_shape_keeps_a_saved_path() {
 }
 
 /// Clicks an open path with the Pen through `points`, without finishing it.
-fn draw(app: &mut PhotocraftApp, points: &[(f64, f64)]) {
+fn draw(app: &mut PatronusPhotoApp, points: &[(f64, f64)]) {
     for &(x, y) in points {
         testing::click(app, [x, y], Modifiers::NONE);
     }
@@ -459,7 +459,7 @@ fn make_shape_while_drawing_a_new_work_path_replaces_the_old_one() {
     assert!(st.doc.work_path.is_none(), "the old Work Path is gone, as after a commit and Make Shape");
     let shape = shape_path(&app).1;
     assert_eq!(shape.subpaths.len(), 1);
-    assert_eq!(shape.subpaths[0].knots[0].anchor, photocraft_geom::Point::new(10.0, 150.0));
+    assert_eq!(shape.subpaths[0].knots[0].anchor, patronusphoto_geom::Point::new(10.0, 150.0));
 }
 
 /// A draft begun in Shape mode that carries on an open subpath of a shape layer, with the mode

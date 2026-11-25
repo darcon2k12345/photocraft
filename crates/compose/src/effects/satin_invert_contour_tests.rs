@@ -1,7 +1,7 @@
 use super::{Contour, Map, satin_map};
-use photocraft_color::{BlendMode, Color};
-use photocraft_doc::adjust::CurvePoint;
-use photocraft_doc::{FxCommon, Satin};
+use patronusphoto_color::{BlendMode, Color};
+use patronusphoto_doc::adjust::CurvePoint;
+use patronusphoto_doc::{FxCommon, Satin};
 
 /// The built-in Gaussian contour (input, output, smooth).
 const GAUSSIAN: [(f32, f32, bool); 11] = [

@@ -3,18 +3,18 @@
 //! while the box is open applies the box first, as in Photoshop.
 
 use craft::draw::ui::transform::{Interpolation, TransformEdit};
-use photocraft_doc::LayerId;
-use photocraft_geom::Rect;
+use patronusphoto_doc::LayerId;
+use patronusphoto_geom::Rect;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::dialogs::alerts::alerts;
 use crate::transform_tool::LOCKED;
 
 /// A 200 × 200 document on a white Background: "A" with a red block at x 10..50, y 10..30, and
 /// "B" with a blue one at x 100..140, y 100..120. Only B is selected.
-fn app() -> (Box<PhotocraftApp>, LayerId, LayerId, LayerId) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> (Box<PatronusPhotoApp>, LayerId, LayerId, LayerId) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 200, "background": "white"})).unwrap();
     app.sync_views();
     let bg = app.session.active().unwrap().doc.layers[0].id;
@@ -30,22 +30,22 @@ fn app() -> (Box<PhotocraftApp>, LayerId, LayerId, LayerId) {
     (app, bg, a, b)
 }
 
-fn bounds(app: &PhotocraftApp, id: LayerId) -> Rect {
+fn bounds(app: &PatronusPhotoApp, id: LayerId) -> Rect {
     let st = app.session.active().unwrap();
-    photocraft_engine::transform_cmds::transform_bounds(&st.doc, st.doc.layer(id).unwrap())
+    patronusphoto_engine::transform_cmds::transform_bounds(&st.doc, st.doc.layer(id).unwrap())
 }
 
-fn select(app: &mut PhotocraftApp, id: LayerId, mode: &str) {
+fn select(app: &mut PatronusPhotoApp, id: LayerId, mode: &str) {
     app.run("layer.select", json!({"layer": id.0, "mode": mode})).unwrap();
 }
 
-fn invoke(app: &mut PhotocraftApp, id: &str) -> Result<(), String> {
+fn invoke(app: &mut PatronusPhotoApp, id: &str) -> Result<(), String> {
     let app_ctx = app.ctx().clone();
     crate::menus::invoke(app, &app_ctx, id, json!({})).map(|_| ())
 }
 
 /// Drag the open box `dx` px right, with nearest neighbour so the blocks keep their edges.
-fn nudge(app: &mut PhotocraftApp, dx: f64) {
+fn nudge(app: &mut PatronusPhotoApp, dx: f64) {
     let t = app.ui.transform.as_mut().expect("a box is open");
     t.session.apply(TransformEdit::Interpolation(Interpolation::NearestNeighbor), 0.0);
     t.edit_box(|b| b.quad = b.quad.map(|p| (p.x + dx, p.y).into()));
@@ -207,7 +207,7 @@ fn taking_a_child_of_a_selected_group_out_of_the_selection_applies_the_box() {
 
 /// An unselected layer "C" under the frame's bottom-right handle (x, y 180..200), so a press there
 /// that reached the Move tool's Auto-Select would select it.
-fn corner_layer(app: &mut PhotocraftApp) -> LayerId {
+fn corner_layer(app: &mut PatronusPhotoApp) -> LayerId {
     let c = LayerId(app.run("layer.new.layer", json!({"name": "C"})).unwrap()["layer"].as_u64().unwrap());
     app.run("select.rect", json!({"x": 180, "y": 180, "width": 20, "height": 20})).unwrap();
     app.run("edit.fill", json!({"contents": "color", "color": "#00ff00"})).unwrap();

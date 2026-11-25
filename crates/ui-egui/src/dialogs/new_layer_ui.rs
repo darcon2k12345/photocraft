@@ -7,11 +7,11 @@ use craft::ui::contract::Bind;
 use craft::ui::dialog::DialogId;
 use craft::ui::patterns::form_dialogs::{DialogFields, Param, ParamDialog, ParamKind, ParamResult};
 use craft::ui::runtime::env::{Label, UnitKind};
-use photocraft_doc::{BlendMode, LabelColor};
-use photocraft_engine::new_layer::neutral_color;
+use patronusphoto_doc::{BlendMode, LabelColor};
+use patronusphoto_engine::new_layer::neutral_color;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::dialogs::params;
 
 /// The command the dialog stands for; it is also the dialog's key.
@@ -34,7 +34,7 @@ pub(crate) fn opacity_param() -> Param {
 }
 
 /// Open the dialog for the active document, with the name the layer would get.
-pub fn open(app: &mut PhotocraftApp) -> Result<DialogId, String> {
+pub fn open(app: &mut PatronusPhotoApp) -> Result<DialogId, String> {
     let name = app.session.active().ok_or("no document open")?.doc.next_layer_name("Layer");
     Ok(params::open_param(app, COMMAND, DialogFields::new(), Value::Null, move |fields: &mut DialogFields| {
         let neutral_modes: Vec<String> =
@@ -53,14 +53,14 @@ pub fn open(app: &mut PhotocraftApp) -> Result<DialogId, String> {
 }
 
 /// OK: makes the layer the values describe.
-pub(crate) fn run(app: &mut PhotocraftApp, _ctx: &egui::Context, result: ParamResult) {
+pub(crate) fn run(app: &mut PatronusPhotoApp, _ctx: &egui::Context, result: ParamResult) {
     let result = app.run(COMMAND, params(&result.fields));
     // PLAN: assumed `dialogs::alerts::report(app, Result<Value, String>)` (dialogs-w21)
     super::alerts::report(app, result);
 }
 
 fn mode(f: &DialogFields) -> BlendMode {
-    f.text("mode").and_then(photocraft_engine::commands::parse_blend).filter(|m| *m != BlendMode::PassThrough).unwrap_or(BlendMode::Normal)
+    f.text("mode").and_then(patronusphoto_engine::commands::parse_blend).filter(|m| *m != BlendMode::PassThrough).unwrap_or(BlendMode::Normal)
 }
 
 fn flag(f: &DialogFields, k: &str) -> bool {
@@ -104,20 +104,20 @@ pub(crate) mod testing {
     use craft::ui::patterns::form_dialogs::{DialogFields, HostedParamDialog};
     use serde_json::Value;
 
-    use crate::PhotocraftApp;
+    use crate::PatronusPhotoApp;
 
     /// The dialog on top of the stack.
-    pub(crate) fn top(app: &PhotocraftApp) -> DialogId {
+    pub(crate) fn top(app: &PatronusPhotoApp) -> DialogId {
         app.framework.dialogs.stack().top().expect("a dialog is open")
     }
 
     /// The values of the open hosted dialog `id`.
-    pub(crate) fn fields(app: &PhotocraftApp, id: DialogId) -> &DialogFields {
+    pub(crate) fn fields(app: &PatronusPhotoApp, id: DialogId) -> &DialogFields {
         app.framework.dialogs.get_by_id::<HostedParamDialog>(id).expect("a hosted dialog").fields()
     }
 
     /// Sets `field` as the control surface would.
-    pub(crate) fn set(app: &mut PhotocraftApp, id: DialogId, field: &str, value: Value) -> Result<(), String> {
+    pub(crate) fn set(app: &mut PatronusPhotoApp, id: DialogId, field: &str, value: Value) -> Result<(), String> {
         let ctx = app.ctx().clone();
         app.framework.dialogs.set_json_field(&ctx, id, field, value)
     }
@@ -130,13 +130,13 @@ mod tests {
     use super::testing::{set, top};
     use super::*;
 
-    fn app() -> Box<PhotocraftApp> {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    fn app() -> Box<PatronusPhotoApp> {
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 16, "height": 16})).unwrap();
         app
     }
 
-    fn top_layer(app: &PhotocraftApp) -> &photocraft_doc::Layer {
+    fn top_layer(app: &PatronusPhotoApp) -> &patronusphoto_doc::Layer {
         app.session.active().unwrap().doc.layers.last().unwrap()
     }
 
@@ -177,8 +177,8 @@ mod tests {
             .with_size(egui::vec2(1280.0, 800.0))
             .with_max_steps(64)
             .with_context(ctx)
-            .build_ui_state(|ui, app: &mut Box<PhotocraftApp>| crate::dialogs::run(app, ui), app);
-        PhotocraftApp::setup_context(&h.ctx, Default::default());
+            .build_ui_state(|ui, app: &mut Box<PatronusPhotoApp>| crate::dialogs::run(app, ui), app);
+        PatronusPhotoApp::setup_context(&h.ctx, Default::default());
         h.run_steps(4);
         let mode = h.query_all_by_role(Role::ComboBox).find(|n| n.accesskit_node().label().as_deref() == Some("Mode")).expect("Mode").rect();
         let opacity = h.query_all_by_role(Role::SpinButton).find(|n| n.accesskit_node().label().as_deref() == Some("Opacity")).expect("Opacity").rect();

@@ -24,14 +24,14 @@ use craft::ui::patterns::presets::{PresetRow, ThumbInfo};
 use craft::ui::primitives::ContentPainterCx;
 use craft::ui::primitives::textures::TextureCache;
 use egui::{ColorImage, Pos2, Rect, pos2};
-use photocraft_doc::effects::{FxPaint, GlowSource, GlowTechnique, StrokePosition};
-use photocraft_doc::{Document, Effect, Layer, LayerId};
-use photocraft_engine::Session;
-use photocraft_engine::pattern_cmds::PatternLibrary;
-use photocraft_engine::presets::styles::StylePreset;
+use patronusphoto_doc::effects::{FxPaint, GlowSource, GlowTechnique, StrokePosition};
+use patronusphoto_doc::{Document, Effect, Layer, LayerId};
+use patronusphoto_engine::Session;
+use patronusphoto_engine::pattern_cmds::PatternLibrary;
+use patronusphoto_engine::presets::styles::StylePreset;
 use serde_json::{Map, Value, json};
 
-use crate::{PhotocraftApp, color_picker_ui};
+use crate::{PatronusPhotoApp, color_picker_ui};
 
 #[cfg(test)]
 mod bevel_reset_angle_tests;
@@ -61,13 +61,13 @@ pub const KINDS: &[(&str, &str)] = &[
 ];
 
 fn kind_of(e: &Effect) -> &'static str {
-    photocraft_engine::layer_style::kind_of(e)
+    patronusphoto_engine::layer_style::kind_of(e)
 }
 
 /// The engine's factory defaults for `kind`. Gradient Overlay's From and To are left out: the page
 /// models a stop list, and the engine would let a From/To pair override it.
 fn defaults(kind: &str) -> Value {
-    let mut p = photocraft_engine::layer_style::effect_defaults(kind);
+    let mut p = patronusphoto_engine::layer_style::effect_defaults(kind);
     if kind == "gradientOverlay" {
         drop_from_to(&mut p);
     }
@@ -102,7 +102,7 @@ fn fresh_params(kind: &str, light: f32, user: Option<&Value>) -> Value {
     p
 }
 
-fn hex(c: &photocraft_doc::Color) -> String {
+fn hex(c: &patronusphoto_doc::Color) -> String {
     let [r, g, b, _] = c.to_rgba8();
     format!("#{r:02x}{g:02x}{b:02x}")
 }
@@ -133,7 +133,7 @@ fn values_of(e: &Effect, light: f32) -> Value {
             set(&mut v, "distance", json!(s.distance));
             set(&mut v, if matches!(e, Effect::DropShadow(_)) { "spread" } else { "choke" }, json!((s.spread * 100.0).round()));
             set(&mut v, "size", json!(s.size));
-            set(&mut v, "contour", photocraft_engine::layer_style::contour_param(&s.contour));
+            set(&mut v, "contour", patronusphoto_engine::layer_style::contour_param(&s.contour));
             set(&mut v, "antiAlias", json!(s.anti_alias));
             set(&mut v, "noise", json!((s.noise * 100.0).round()));
             if matches!(e, Effect::DropShadow(_)) {
@@ -152,7 +152,7 @@ fn values_of(e: &Effect, light: f32) -> Value {
             set(&mut v, if matches!(e, Effect::OuterGlow(_)) { "spread" } else { "choke" }, json!((g.spread * 100.0).round()));
             set(&mut v, "size", json!(g.size));
             set(&mut v, "range", json!((g.range * 100.0).round()));
-            set(&mut v, "contour", photocraft_engine::layer_style::contour_param(&g.contour));
+            set(&mut v, "contour", patronusphoto_engine::layer_style::contour_param(&g.contour));
             set(&mut v, "antiAlias", json!(g.anti_alias));
             set(&mut v, "noise", json!((g.noise * 100.0).round()));
             if matches!(e, Effect::InnerGlow(_)) {
@@ -203,11 +203,11 @@ fn values_of(e: &Effect, light: f32) -> Value {
                 &mut v,
                 "style",
                 json!(match g.style {
-                    photocraft_doc::effects::GradientStyle::Radial => "radial",
-                    photocraft_doc::effects::GradientStyle::Angle => "angle",
-                    photocraft_doc::effects::GradientStyle::Reflected => "reflected",
-                    photocraft_doc::effects::GradientStyle::Diamond => "diamond",
-                    photocraft_doc::effects::GradientStyle::Linear => "linear",
+                    patronusphoto_doc::effects::GradientStyle::Radial => "radial",
+                    patronusphoto_doc::effects::GradientStyle::Angle => "angle",
+                    patronusphoto_doc::effects::GradientStyle::Reflected => "reflected",
+                    patronusphoto_doc::effects::GradientStyle::Diamond => "diamond",
+                    patronusphoto_doc::effects::GradientStyle::Linear => "linear",
                 }),
             );
             set(&mut v, "angle", json!(g.angle));
@@ -231,7 +231,7 @@ fn values_of(e: &Effect, light: f32) -> Value {
             set(&mut v, "distance", json!(s.distance));
             set(&mut v, "size", json!(s.size));
             set(&mut v, "invert", json!(s.invert));
-            set(&mut v, "contour", photocraft_engine::layer_style::contour_param(&s.contour));
+            set(&mut v, "contour", patronusphoto_engine::layer_style::contour_param(&s.contour));
             set(&mut v, "antiAlias", json!(s.anti_alias));
         }
         Effect::BevelEmboss(b) => {
@@ -239,20 +239,20 @@ fn values_of(e: &Effect, light: f32) -> Value {
                 &mut v,
                 "style",
                 json!(match b.style {
-                    photocraft_doc::effects::BevelStyle::OuterBevel => "outer",
-                    photocraft_doc::effects::BevelStyle::Emboss => "emboss",
-                    photocraft_doc::effects::BevelStyle::PillowEmboss => "pillow",
-                    photocraft_doc::effects::BevelStyle::StrokeEmboss => "stroke",
-                    photocraft_doc::effects::BevelStyle::InnerBevel => "inner",
+                    patronusphoto_doc::effects::BevelStyle::OuterBevel => "outer",
+                    patronusphoto_doc::effects::BevelStyle::Emboss => "emboss",
+                    patronusphoto_doc::effects::BevelStyle::PillowEmboss => "pillow",
+                    patronusphoto_doc::effects::BevelStyle::StrokeEmboss => "stroke",
+                    patronusphoto_doc::effects::BevelStyle::InnerBevel => "inner",
                 }),
             );
             set(
                 &mut v,
                 "technique",
                 json!(match b.technique {
-                    photocraft_doc::effects::BevelTechnique::ChiselHard => "chiselHard",
-                    photocraft_doc::effects::BevelTechnique::ChiselSoft => "chiselSoft",
-                    photocraft_doc::effects::BevelTechnique::Smooth => "smooth",
+                    patronusphoto_doc::effects::BevelTechnique::ChiselHard => "chiselHard",
+                    patronusphoto_doc::effects::BevelTechnique::ChiselSoft => "chiselSoft",
+                    patronusphoto_doc::effects::BevelTechnique::Smooth => "smooth",
                 }),
             );
             set(&mut v, "depth", json!((b.depth * 100.0).round()));
@@ -262,7 +262,7 @@ fn values_of(e: &Effect, light: f32) -> Value {
             set(&mut v, "useGlobalLight", json!(b.use_global_light));
             set(&mut v, "altitude", json!(b.altitude));
             set(&mut v, "direction", json!(if b.up { "up" } else { "down" }));
-            set(&mut v, "glossContour", photocraft_engine::layer_style::contour_param(&b.gloss_contour));
+            set(&mut v, "glossContour", patronusphoto_engine::layer_style::contour_param(&b.gloss_contour));
             set(&mut v, "glossAntiAlias", json!(b.gloss_anti_alias));
             set(&mut v, "highlightBlend", json!(b.highlight.blend.label()));
             set(&mut v, "highlightColor", json!(hex(&b.highlight_color)));
@@ -272,7 +272,7 @@ fn values_of(e: &Effect, light: f32) -> Value {
             set(&mut v, "shadowOpacity", json!((b.shadow.opacity * 100.0).round()));
             set(&mut v, "contour", json!(b.contour.is_some()));
             if let Some(c) = &b.contour {
-                set(&mut v, "contourName", photocraft_engine::layer_style::contour_param(&c.contour));
+                set(&mut v, "contourName", patronusphoto_engine::layer_style::contour_param(&c.contour));
                 set(&mut v, "contourRange", json!((c.range * 100.0).round()));
                 set(&mut v, "contourAntiAlias", json!(c.anti_alias));
             }
@@ -355,7 +355,7 @@ fn style_params_json(params: &StyleParams) -> Value {
 /// Adds each effect's command parameters (`params`, as [`style_params_json`] gives them) to the open Layer Style dialog's
 /// entry of `dialogs`, the `ui.inspect` listing: the framework's own listing names the effects but not their values, and
 /// an agent reads a gradient's stops or a colour from here.
-pub(crate) fn describe_params(app: &PhotocraftApp, dialogs: &mut Value) {
+pub(crate) fn describe_params(app: &PatronusPhotoApp, dialogs: &mut Value) {
     let Some((id, ..)) = app.layer_style_target else { return };
     let Some(dialog) = app.framework.dialogs.get_by_id::<HostedLayerStyle>(id) else { return };
     let key = id.value().to_string();
@@ -383,7 +383,7 @@ fn effect_params(kind: EffectKind, e: &Effect, light: f32) -> StyleParams {
 
 /// The draft's style for `layer`: one instance per effect (`fxN`, N from 1, in the layer's order),
 /// the Blending Options of a `mode` document and the document's global `light` angle.
-pub(crate) fn draft_of(layer: &Layer, light: f32, mode: photocraft_color::ColorMode) -> LayerStyle {
+pub(crate) fn draft_of(layer: &Layer, light: f32, mode: patronusphoto_color::ColorMode) -> LayerStyle {
     let effects = layer
         .effects
         .items
@@ -400,8 +400,8 @@ pub(crate) fn draft_of(layer: &Layer, light: f32, mode: photocraft_color::ColorM
 }
 
 /// Colour channel names of a document mode, as Blending Options lists them (Channels, Blend If).
-pub fn channel_names(mode: photocraft_color::ColorMode) -> Vec<&'static str> {
-    use photocraft_color::ColorMode as M;
+pub fn channel_names(mode: patronusphoto_color::ColorMode) -> Vec<&'static str> {
+    use patronusphoto_color::ColorMode as M;
     match mode {
         M::Rgb | M::Indexed | M::Multichannel => vec!["R", "G", "B"],
         M::Cmyk => vec!["C", "M", "Y", "K"],
@@ -411,7 +411,7 @@ pub fn channel_names(mode: photocraft_color::ColorMode) -> Vec<&'static str> {
 }
 
 /// Reads `layer`'s Blending Options of a `mode` document into `b`.
-pub(crate) fn set_blending_fields(b: &mut Blending, layer: &Layer, mode: photocraft_color::ColorMode) {
+pub(crate) fn set_blending_fields(b: &mut Blending, layer: &Layer, mode: patronusphoto_color::ColorMode) {
     let n = channel_names(mode).len();
     let a = &layer.advanced;
     // Blend If entries in the command's form: index 0 is Gray for colour documents; a one-channel
@@ -465,7 +465,7 @@ fn blending_json(b: &Blending, layer: LayerId) -> Value {
 
 /// Opens the Layer Style dialog on the active layer; `select` is a `KINDS` key, `STYLES_PAGE` or
 /// `BLENDING`. `None` when there is no active layer, or when a Free Transform box refuses to apply.
-pub fn open(app: &mut PhotocraftApp, select: Option<&str>) -> Option<DialogId> {
+pub fn open(app: &mut PatronusPhotoApp, select: Option<&str>) -> Option<DialogId> {
     // An open Free Transform box is applied first, as in Photoshop (#4821): the canvas shows the
     // box's preview while it is open, so the dialog's preview would not show until Enter.
     if app.ui.transform.is_some() {
@@ -521,7 +521,7 @@ pub fn open(app: &mut PhotocraftApp, select: Option<&str>) -> Option<DialogId> {
 
 /// Double-click on an effect row of the Layers panel: open Layer Style for that row's layer. A
 /// row of another layer selects it first, as its right-click menu does (Photoshop does the same).
-pub fn open_for_layer(app: &mut PhotocraftApp, layer: LayerId, select: Option<&str>) -> Option<DialogId> {
+pub fn open_for_layer(app: &mut PatronusPhotoApp, layer: LayerId, select: Option<&str>) -> Option<DialogId> {
     let active = app.session.active().is_some_and(|s| s.active_layer == Some(layer));
     if !active {
         app.run("layer.select", json!({"layer": layer.0})).ok()?;
@@ -530,7 +530,7 @@ pub fn open_for_layer(app: &mut PhotocraftApp, layer: LayerId, select: Option<&s
 }
 
 /// The layer the open Layer Style dialog edits; `None` when it is closed or another document is active.
-pub(crate) fn open_layer(app: &PhotocraftApp) -> Option<LayerId> {
+pub(crate) fn open_layer(app: &PatronusPhotoApp) -> Option<LayerId> {
     let (id, doc, layer) = app.layer_style_target?;
     app.framework.dialogs.get_by_id::<HostedLayerStyle>(id)?;
     (app.session.active()?.doc.id == doc).then_some(layer)
@@ -562,17 +562,17 @@ fn specs(keys: &HashMap<String, String>, user: &Map<String, Value>, light: f32) 
 /// The blend modes of the dialog's selects: Photoshop's, plus the layer's own Paint.NET mode when
 /// it has one (an imported .pdn).
 fn blend_modes(layer: &Layer) -> Vec<Entry<String>> {
-    let own = photocraft_color::BlendMode::PAINT_NET_MODES.into_iter().find(|m| m.label() == layer.blend.label());
-    photocraft_color::BlendMode::LAYER_MODES.into_iter().chain(own).map(|m| Entry::new(m.label().to_string(), m.label().to_string())).collect()
+    let own = patronusphoto_color::BlendMode::PAINT_NET_MODES.into_iter().find(|m| m.label() == layer.blend.label());
+    patronusphoto_color::BlendMode::LAYER_MODES.into_iter().chain(own).map(|m| Entry::new(m.label().to_string(), m.label().to_string())).collect()
 }
 
-/// English blend-mode name to the app's key: PhotoCraft keys modes by their label.
+/// English blend-mode name to the app's key: Patronus Photo keys modes by their label.
 fn blend_keys() -> HashMap<String, String> {
-    photocraft_color::BlendMode::LAYER_MODES.into_iter().map(|m| (m.label().to_string(), m.label().to_string())).collect()
+    patronusphoto_color::BlendMode::LAYER_MODES.into_iter().map(|m| (m.label().to_string(), m.label().to_string())).collect()
 }
 
 /// The patterns a style can use (document's, then the library's).
-pub fn pattern_list(app: &PhotocraftApp) -> Vec<PresetRow<String>> {
+pub fn pattern_list(app: &PatronusPhotoApp) -> Vec<PresetRow<String>> {
     let mut seen = HashSet::new();
     let doc_pats = app.session.active().map(|d| d.doc.patterns.clone()).unwrap_or_default();
     doc_pats
@@ -584,7 +584,7 @@ pub fn pattern_list(app: &PhotocraftApp) -> Vec<PresetRow<String>> {
 }
 
 /// The Gradients panel's presets resolved with the tool colours, for the Gradient field's select.
-fn gradient_presets(app: &PhotocraftApp) -> Vec<(String, GradientStops)> {
+fn gradient_presets(app: &PatronusPhotoApp) -> Vec<(String, GradientStops)> {
     let (fg, bg) = (app.session.tools.foreground, app.session.tools.background);
     app.session
         .presets
@@ -599,7 +599,7 @@ fn gradient_presets(app: &PhotocraftApp) -> Vec<(String, GradientStops)> {
 }
 
 /// The Styles page's rows: each group with its presets, presets keyed by name and groups by `group/<name>`.
-fn style_rows(app: &PhotocraftApp) -> Vec<PresetRow<String>> {
+fn style_rows(app: &PatronusPhotoApp) -> Vec<PresetRow<String>> {
     let mut rows = Vec::new();
     for group in &app.session.presets.styles {
         rows.push(PresetRow::group(format!("group/{}", group.name), group.name.clone(), 0).count(group.items.len()));
@@ -616,7 +616,7 @@ fn paint_picture(cx: &ContentPainterCx, rect: Rect, key: impl std::hash::Hash + 
 /// Paints a style preset's thumbnail. The dialog's painter cannot read the app, so it owns the
 /// presets and patterns; a picture is rendered on a texture miss only, under the key the Styles
 /// panel uses, so both share the textures.
-fn style_thumb(app: &PhotocraftApp) -> impl Fn(&ContentPainterCx, Rect, ThumbInfo<'_, String>) + Send + 'static {
+fn style_thumb(app: &PatronusPhotoApp) -> impl Fn(&ContentPainterCx, Rect, ThumbInfo<'_, String>) + Send + 'static {
     let presets: Vec<StylePreset> = app.session.presets.styles.iter().flat_map(|g| g.items.iter().cloned()).collect();
     let patterns = app.session.patterns.clone();
     move |cx, rect, info| {
@@ -631,7 +631,7 @@ fn style_thumb(app: &PhotocraftApp) -> impl Fn(&ContentPainterCx, Rect, ThumbInf
 }
 
 /// Paints the preview swatch: the draft's style on a sample square, rebuilt when its render hash changes.
-fn preview_thumb(app: &PhotocraftApp) -> impl Fn(&ContentPainterCx, Rect, &LayerStyleDraft) + Send + Sync + 'static {
+fn preview_thumb(app: &PatronusPhotoApp) -> impl Fn(&ContentPainterCx, Rect, &LayerStyleDraft) + Send + Sync + 'static {
     let patterns = app.session.patterns.clone();
     move |cx, rect, draft| {
         paint_picture(cx, rect, ("layer-style-swatch", draft.render_hash()), || {
@@ -777,17 +777,17 @@ pub(crate) enum Child {
 }
 
 /// The child of the Layer Style dialog `parent`.
-fn child_of(app: &PhotocraftApp, parent: DialogId) -> Option<&Child> {
+fn child_of(app: &PatronusPhotoApp, parent: DialogId) -> Option<&Child> {
     app.layer_style_child.as_ref().filter(|(p, _)| *p == parent).map(|(_, c)| c)
 }
 
 /// Takes the child record of `parent`.
-fn take_child(app: &mut PhotocraftApp, parent: DialogId) -> Option<Child> {
+fn take_child(app: &mut PatronusPhotoApp, parent: DialogId) -> Option<Child> {
     if app.layer_style_child.as_ref().is_some_and(|(p, _)| *p == parent) { app.layer_style_child.take().map(|(_, c)| c) } else { None }
 }
 
 /// The Layer Style dialog `parent` closed: its child goes with it.
-fn discard_child(app: &mut PhotocraftApp, parent: DialogId) {
+fn discard_child(app: &mut PatronusPhotoApp, parent: DialogId) {
     match take_child(app, parent) {
         Some(Child::Picker { id, .. }) => drop(app.framework.dialogs.take_by_id::<ColorPickerDialog>(id)),
         Some(Child::Editor { id, .. }) => drop(app.framework.dialogs.take_by_id::<ContourEditorDialog>(id)),
@@ -795,14 +795,14 @@ fn discard_child(app: &mut PhotocraftApp, parent: DialogId) {
     }
 }
 
-fn fail(app: &mut PhotocraftApp, error: String) {
+fn fail(app: &mut PatronusPhotoApp, error: String) {
     app.ui.status = error;
     app.ui.status_error = true;
 }
 
 /// Once per pass, after the host ran: the dialog's result (OK applies the style) or, while it is
 /// open, its asks and its children's answers.
-pub(crate) fn take(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(crate) fn take(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     let Some((id, doc, layer)) = app.layer_style_target else { return };
     if let Some(result) = app.framework.dialogs.take_by_id::<HostedLayerStyle>(id) {
         app.layer_style_target = None;
@@ -854,7 +854,7 @@ pub(crate) fn take(app: &mut PhotocraftApp, ctx: &egui::Context) {
 }
 
 /// OK: replaces the layer's effects with the style's, as one history step.
-fn finish(app: &mut PhotocraftApp, doc: photocraft_doc::DocId, layer: LayerId, style: &LayerStyle) {
+fn finish(app: &mut PatronusPhotoApp, doc: patronusphoto_doc::DocId, layer: LayerId, style: &LayerStyle) {
     let Some(light) = app.session.active().filter(|s| s.doc.id == doc).map(|s| f64::from(s.doc.global_light.angle)) else {
         return fail(app, "Layer Style target document changed".into());
     };
@@ -865,8 +865,8 @@ fn finish(app: &mut PhotocraftApp, doc: photocraft_doc::DocId, layer: LayerId, s
 
 /// Applies a style preset to the draft without touching the document: Cancel leaves the document
 /// untouched, OK commits.
-fn apply_style_preset(app: &mut PhotocraftApp, dialog: DialogId, name: &str) {
-    let Ok(style) = photocraft_engine::presets::styles::find_style(&app.session, &json!({"preset": name}), "apply_style_preset") else { return };
+fn apply_style_preset(app: &mut PatronusPhotoApp, dialog: DialogId, name: &str) {
+    let Ok(style) = patronusphoto_engine::presets::styles::find_style(&app.session, &json!({"preset": name}), "apply_style_preset") else { return };
     let Some(dialog) = app.framework.dialogs.get_mut_by_id::<HostedLayerStyle>(dialog) else { return };
     let light = dialog.draft().style.global_light;
     let effects =
@@ -885,7 +885,7 @@ fn apply_style_preset(app: &mut PhotocraftApp, dialog: DialogId, name: &str) {
 }
 
 /// Saves the draft's enabled instances and blending page as a style preset.
-fn save_new_style(app: &mut PhotocraftApp, dialog: DialogId, layer: LayerId) {
+fn save_new_style(app: &mut PatronusPhotoApp, dialog: DialogId, layer: LayerId) {
     let Some(style) = app.framework.dialogs.get_by_id::<HostedLayerStyle>(dialog).map(|d| d.draft().style.clone()) else { return };
     let entries: Vec<Value> =
         style.effects.iter().filter(|e| e.on).map(|e| json!([e.kind.key(), with_defaults(e.kind.key(), &style_params_json(&e.params))])).collect();
@@ -900,7 +900,7 @@ fn save_new_style(app: &mut PhotocraftApp, dialog: DialogId, layer: LayerId) {
 /// An effect lit by the shared light takes the dialog's light angle, not the default's own `angle`
 /// (120 for the factory): the same seeding [`fresh_params`] and the draft's `add_instance` apply to a
 /// new instance, so Reset to Default leaves a globally lit effect at the shared angle (#14843).
-fn reset_to_default(app: &mut PhotocraftApp, dialog: DialogId, instance: EffectId) {
+fn reset_to_default(app: &mut PatronusPhotoApp, dialog: DialogId, instance: EffectId) {
     let Some((kind, light)) = app
         .framework
         .dialogs
@@ -930,7 +930,7 @@ fn reset_to_default(app: &mut PhotocraftApp, dialog: DialogId, instance: EffectI
 /// The style the canvas shows for document `idx` with its memo key: the draft's style (an open
 /// picker's colour laid over it) while Preview is on; `None` for another document, with Preview off
 /// or while the box is held to compare. Key: the style's render hash mixed with the revision.
-fn preview_source(app: &PhotocraftApp, idx: usize) -> Option<(LayerStyle, LayerId, u64)> {
+fn preview_source(app: &PatronusPhotoApp, idx: usize) -> Option<(LayerStyle, LayerId, u64)> {
     let (id, doc, layer) = app.layer_style_target?;
     if app.session.active_index() != Some(idx) {
         return None;
@@ -949,7 +949,7 @@ fn preview_source(app: &PhotocraftApp, idx: usize) -> Option<(LayerStyle, LayerI
 }
 
 /// The active document with `style` applied, run on a scratch session (no history).
-fn build_preview(app: &PhotocraftApp, style: &LayerStyle, layer: LayerId) -> Result<Document, String> {
+fn build_preview(app: &PatronusPhotoApp, style: &LayerStyle, layer: LayerId) -> Result<Document, String> {
     let st = app.session.active().ok_or("no active document")?;
     let light = f64::from(st.doc.global_light.angle);
     let mut s = Session::new();
@@ -961,14 +961,14 @@ fn build_preview(app: &PhotocraftApp, style: &LayerStyle, layer: LayerId) -> Res
 
 #[cfg(test)]
 /// The preview of the open dialog's style on the active document, built afresh, with its key.
-pub(crate) fn preview_document(app: &PhotocraftApp) -> Option<(Arc<Document>, u64)> {
+pub(crate) fn preview_document(app: &PatronusPhotoApp) -> Option<(Arc<Document>, u64)> {
     let (style, layer, key) = preview_source(app, app.session.active_index()?)?;
     build_preview(app, &style, layer).ok().map(|doc| (Arc::new(doc), key))
 }
 
 /// The Layer Style step of `canvas::display_doc`: the preview for document `idx`, built once per
 /// key into `app.style_preview` (the only writer); `None` shows the document.
-pub(crate) fn display_doc(app: &mut PhotocraftApp, idx: usize) -> Option<(Arc<Document>, u64)> {
+pub(crate) fn display_doc(app: &mut PatronusPhotoApp, idx: usize) -> Option<(Arc<Document>, u64)> {
     let Some((style, layer, key)) = preview_source(app, idx) else {
         app.style_preview = None;
         return None;
@@ -1002,12 +1002,12 @@ pub(crate) fn pending_style(patterns: &PatternLibrary, style: &LayerStyle) -> Op
 }
 
 /// The width and height of the layer a Gradient Overlay's offset is a fraction of
-/// (`photocraft_compose::layer_bounds`, what the renderer paints against): `None` once that layer
+/// (`patronusphoto_compose::layer_bounds`, what the renderer paints against): `None` once that layer
 /// is gone or while it is empty (a gradient paints nothing there), when a drag on the image has
 /// nothing to move and the Hand tool pans.
 pub(crate) fn gradient_layer_bounds(session: &Session, layer: LayerId) -> Option<[f64; 2]> {
     let st = session.active()?;
-    let b = photocraft_compose::layer_bounds(st.doc.layer(layer)?, st.doc.bounds());
+    let b = patronusphoto_compose::layer_bounds(st.doc.layer(layer)?, st.doc.bounds());
     let [w, h] = [f64::from(b.width()), f64::from(b.height())];
     (w > 0.0 && h > 0.0).then_some([w, h])
 }

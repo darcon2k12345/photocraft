@@ -37,7 +37,7 @@ fn inverted(depth: u8) -> Session {
 /// The pixel a recorded Fade step leaves after the Invert it fades.
 fn played(depth: u8, descriptor: Descriptor) -> Value {
     let mut s = inverted(depth);
-    let loaded = s.execute("actions.load", json!({"data":photocraft_paint::tile::b64_encode(&fade_file(descriptor))})).unwrap();
+    let loaded = s.execute("actions.load", json!({"data":patronusphoto_paint::tile::b64_encode(&fade_file(descriptor))})).unwrap();
     assert_eq!(loaded["unsupported"], json!([]));
     let result = s.execute("actions.play", json!({"action":loaded["actions"][0]})).unwrap();
     assert!(result.get("failed").is_none(), "{result}");

@@ -3,12 +3,12 @@
 
 use egui::accesskit::Toggled;
 use egui_kittest::kittest::{NodeT, Queryable};
-use photocraft_ui_egui::PhotocraftApp;
-use photocraft_ui_egui::control::{ControlRequest, Reply, handle};
+use patronusphoto_ui_egui::PatronusPhotoApp;
+use patronusphoto_ui_egui::control::{ControlRequest, Reply, handle};
 use serde_json::{Value, json};
 use std::sync::Arc;
 
-type Harness = egui_kittest::Harness<'static, Box<PhotocraftApp>>;
+type Harness = egui_kittest::Harness<'static, Box<PatronusPhotoApp>>;
 
 fn harness() -> Option<Harness> {
     let built = std::panic::catch_unwind(|| {
@@ -16,10 +16,10 @@ fn harness() -> Option<Harness> {
             .with_size(egui::vec2(1280.0, 800.0))
             .with_pixels_per_point(1.0)
             .with_max_steps(64)
-            .wgpu_setup(photocraft_ui_egui::gpu_canvas::wgpu_setup())
+            .wgpu_setup(patronusphoto_ui_egui::gpu_canvas::wgpu_setup())
             .build_eframe(|cc| {
-                PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-                let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), Default::default());
+                PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+                let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), Default::default());
                 if let Some(rs) = cc.wgpu_render_state.as_ref() {
                     app.set_wgpu(rs.clone());
                 }
@@ -82,7 +82,7 @@ fn blue(h: &mut Harness, name: &str) -> (usize, u32, u32) {
         .into_iter()
         .collect();
     let img = h.render().expect("render");
-    if let Some(dir) = std::env::var_os("PHOTOCRAFT_ROTATION_EVIDENCE_DIR") {
+    if let Some(dir) = std::env::var_os("PATRONUSPHOTO_ROTATION_EVIDENCE_DIR") {
         std::fs::create_dir_all(&dir).expect("evidence directory");
         img.save(std::path::Path::new(&dir).join(format!("{name}.png"))).expect("save UI frame");
     }
@@ -105,7 +105,7 @@ fn blue(h: &mut Harness, name: &str) -> (usize, u32, u32) {
 
 #[test]
 fn size_changing_rotation_preview_is_visible_and_preserves_the_panned_center() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut h) = harness() else { return };
     h.run_steps(4);
     // The canvas places a size-changing preview by its size alone (`canvas/gpu_picture.rs`: `growth` and
@@ -116,7 +116,7 @@ fn size_changing_rotation_preview_is_visible_and_preserves_the_panned_center() {
         [(400, 240, 1.0, [160.0, 90.0], 45.0, 1), (400, 240, 1.0, [160.0, 90.0], 90.0, 1), (3000, 1800, 0.12, [1350.0, 825.0], 45.0, 2)]
     {
         setup(&mut h, width, height, zoom, center);
-        assert_eq!(photocraft_ui_egui::proxy::factor(&h.state().session.active().unwrap().doc), factor);
+        assert_eq!(patronusphoto_ui_egui::proxy::factor(&h.state().session.active().unwrap().doc), factor);
         let id = open(&mut h);
         let source = blue(&mut h, &format!("{width}x{height}-{degrees}-zero")).0;
         assert!(source > 5_000, "the unrotated blue image must be visible outside the dialog");
@@ -130,7 +130,7 @@ fn size_changing_rotation_preview_is_visible_and_preserves_the_panned_center() {
         assert!(preview_on(&h));
         let (count, top, bottom) = blue(&mut h, &format!("{width}x{height}-{degrees}-on"));
         assert!(count > 5_000, "{width}x{height}, {degrees}°, factor {factor}: rotated blue pixels disappeared ({count} remain)");
-        let rect = photocraft_ui_egui::canvas::active_view(h.state()).expect("a shown view").rect;
+        let rect = patronusphoto_ui_egui::canvas::active_view(h.state()).expect("a shown view").rect;
         let expected_y = rect.center().y + (height as f32 / 2.0 - center[1]) * zoom;
         let actual_y = (top + bottom) as f32 / 2.0;
         assert!((actual_y - expected_y).abs() < 3.0, "{degrees}°: preview moved the panned image center from {expected_y} to {actual_y}");
@@ -141,7 +141,7 @@ fn size_changing_rotation_preview_is_visible_and_preserves_the_panned_center() {
 
 #[test]
 fn preview_toggle_and_cancel_keep_the_document_while_ok_applies_rotation() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut h) = harness() else { return };
     h.run_steps(4);
     setup(&mut h, 400, 240, 1.0, [200.0, 120.0]);

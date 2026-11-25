@@ -4,10 +4,10 @@
 //! document with guides of both orientations associated the artboard with the
 //! wrong guides.
 
-use photocraft_color::{ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{Artboard, ArtboardBackground, Document, Guides, Layer, LayerContent};
-use photocraft_geom::{Rect, Size};
-use photocraft_io::comps_map::guides_in;
+use patronusphoto_color::{ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::{Artboard, ArtboardBackground, Document, Guides, Layer, LayerContent};
+use patronusphoto_geom::{Rect, Size};
+use patronusphoto_io::comps_map::guides_in;
 
 #[test]
 fn guides_in_numbers_vertical_first_like_resource_1032() {
@@ -40,7 +40,7 @@ fn doc_with_board(rect: Rect) -> Document {
 
 #[test]
 fn exported_artboard_indices_match_guides_resource() {
-    use photocraft_io::ExportOptions;
+    use patronusphoto_io::ExportOptions;
     let d = doc_with_board(Rect::new(10, 0, 30, 50));
     let bytes = export(&d, "x.psd", &ExportOptions::default()).expect("export").bytes;
     let f = craft_psd::PsdFile::from_bytes(&bytes).expect("parse");
@@ -66,4 +66,4 @@ fn exported_artboard_indices_match_guides_resource() {
     assert_eq!(idx, 0, "the inside guide is the vertical one, 1032 index 0");
 }
 
-use photocraft_io::export;
+use patronusphoto_io::export;

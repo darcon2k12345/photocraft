@@ -1,4 +1,4 @@
-//! The Layers panel footer's buttons run PhotoCraft's commands (#2561, #153, #4728). New Group: like
+//! The Layers panel footer's buttons run Patronus Photo's commands (#2561, #153, #4728). New Group: like
 //! Photoshop CC 2014 and later, a click with two or more layers selected puts them in a new,
 //! collapsed group, and with one layer it adds an empty group; Shift-click groups the selection
 //! too, Alt-click asks in the New Group dialog first and Cmd-click adds the empty group below the
@@ -9,15 +9,15 @@
 use egui::Modifiers;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use photocraft_doc::{Layer, LayerContent};
-use photocraft_engine::Session;
+use patronusphoto_doc::{Layer, LayerContent};
+use patronusphoto_engine::Session;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::layers_panel_nodes::{click, row_drawn, thumb};
 use craft::layers::ui::tree::LayerPart;
 
-type H = Harness<'static, Box<PhotocraftApp>>;
+type H = Harness<'static, Box<PatronusPhotoApp>>;
 
 /// OK in the open dialog `id`.
 fn confirm(h: &mut H, id: craft::ui::dialog::DialogId) {
@@ -62,8 +62,8 @@ fn masked(linked: bool) -> Session {
 
 fn harness(s: Session) -> H {
     let mut h = Harness::builder().with_size(egui::vec2(1440.0, 900.0)).with_step_dt(1.0 / 60.0).with_max_steps(64).build_eframe(|cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::with_context(cc.egui_ctx.clone(), s, crate::Services::default())
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        PatronusPhotoApp::with_context(cc.egui_ctx.clone(), s, crate::Services::default())
     });
     let ctx = h.ctx.clone();
     let (r, _) = crate::control::ControlRequest::new("ui.set", json!({"dock": {"collapsed": ["color", "properties", "history", "navigator"]}}));
@@ -72,7 +72,7 @@ fn harness(s: Session) -> H {
     h
 }
 
-fn doc(h: &H) -> &photocraft_doc::Document {
+fn doc(h: &H) -> &patronusphoto_doc::Document {
     &h.state().session.active().unwrap().doc
 }
 
@@ -160,7 +160,7 @@ struct Case {
 }
 
 #[test]
-fn footer_buttons_run_photocraft_commands() {
+fn footer_buttons_run_patronusphoto_commands() {
     let none: fn(&mut H) = |_| {};
     let cases = [
         Case { case: "New Group, two selected", doc: || two(true), before: none, button: "Create a new group", mods: Modifiers::NONE, after: grouped },

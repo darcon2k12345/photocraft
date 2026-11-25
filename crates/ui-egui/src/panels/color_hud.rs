@@ -18,7 +18,7 @@ use egui::{PointerButton, pos2};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::paint_mouse::has_brush_picker;
 use crate::state::UiState;
 
@@ -41,7 +41,7 @@ pub fn is_open(ui: &UiState) -> bool {
 
 /// Open the HUD at `at`, seeded from the current foreground colour. `hold` marks a real-mouse
 /// gesture (see [`Hud::hold`]).
-pub fn open(app: &mut PhotocraftApp, at: [f32; 2], hold: bool) {
+pub fn open(app: &mut PatronusPhotoApp, at: [f32; 2], hold: bool) {
     let fg = app.session.tools.foreground;
     app.ui.color_hud = Some(Hud { anchor: at, start: fg, hold });
 }
@@ -60,7 +60,7 @@ pub fn release(ui: &mut UiState) {
 
 /// Draw the HUD and write the colours it picks: called once per frame while a gesture is open. The HUD reports a pick
 /// only on a pass the pointer moved in, so every reported pick is written.
-pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn show(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let Some(hud) = app.ui.color_hud else { return };
     if !has_brush_picker(app.ui.tool) {
         close(&mut app.ui);
@@ -87,7 +87,7 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 
 /// One foreground-colour edit of the gesture: coalesced under the gesture's key, so the whole pick is a single
 /// history step (the colour is tool state, so it never touches the document).
-fn set_foreground(app: &mut PhotocraftApp, rgba: [f32; 4], event: &EditEvent<Srgba>) {
+fn set_foreground(app: &mut PatronusPhotoApp, rgba: [f32; 4], event: &EditEvent<Srgba>) {
     let mut p = json!({ "foreground": rgba });
     if let Some(key) = crate::history_keys::coalesce("color-hud", event) {
         p["coalesce"] = json!(key);
@@ -109,18 +109,18 @@ mod tests {
 
     const SHIFT_ALT: Modifiers = Modifiers { alt: true, ctrl: false, shift: true, mac_cmd: false, command: false };
 
-    fn harness() -> Harness<'static, Box<PhotocraftApp>> {
+    fn harness() -> Harness<'static, Box<PatronusPhotoApp>> {
         harness_size(400, 300)
     }
 
-    fn harness_size(width: u32, height: u32) -> Harness<'static, Box<PhotocraftApp>> {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    fn harness_size(width: u32, height: u32) -> Harness<'static, Box<PatronusPhotoApp>> {
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
         app.run("file.new", json!({"width": width, "height": height})).unwrap();
         app.run("tools.setColors", json!({"foreground": "#0000ff"})).unwrap();
         app.ui.tool = Tool::Brush;
         app.sync_views();
         let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(vec2(1200.0, 800.0)).with_step_dt(1.0 / 60.0).build_ui_state(
-            |ui, app: &mut Box<PhotocraftApp>| {
+            |ui, app: &mut Box<PatronusPhotoApp>| {
                 let ctx = ui.ctx().clone();
                 if !ctx.fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                     return;
@@ -129,12 +129,12 @@ mod tests {
             },
             app,
         );
-        PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+        PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
         h.run_steps(4);
         h
     }
 
-    fn button(h: &mut Harness<'static, Box<PhotocraftApp>>, pos: Pos2, pressed: bool, modifiers: Modifiers) {
+    fn button(h: &mut Harness<'static, Box<PatronusPhotoApp>>, pos: Pos2, pressed: bool, modifiers: Modifiers) {
         h.event(egui::Event::ModifiersChanged(modifiers));
         h.event(egui::Event::PointerButton { pos, button: PointerButton::Secondary, pressed, modifiers });
         h.run_steps(2);
@@ -143,7 +143,7 @@ mod tests {
     /// The HUD's picking content (the colour square and the hue strip beside it), found by its accessibility node: the
     /// smallest node named "Color", since the popover around it carries the same name. The square is as tall as
     /// the content is high; the strip stands in the content's right part.
-    fn content(h: &Harness<'static, Box<PhotocraftApp>>) -> Rect {
+    fn content(h: &Harness<'static, Box<PatronusPhotoApp>>) -> Rect {
         h.query_all_by_label("Color").map(|node| node.rect()).min_by(|a, b| a.area().total_cmp(&b.area())).expect("the HUD is shown")
     }
 
@@ -159,7 +159,7 @@ mod tests {
         pos2(content.right() - beside / 4.0, content.center().y)
     }
 
-    fn foreground(h: &Harness<'static, Box<PhotocraftApp>>) -> [f32; 4] {
+    fn foreground(h: &Harness<'static, Box<PatronusPhotoApp>>) -> [f32; 4] {
         h.state().session.tools.foreground
     }
 
@@ -283,7 +283,7 @@ mod tests {
         crate::canvas::testing::window(h.state_mut(), vec2(1200.0, 800.0));
         // The document's centre, in document points as `ui.pointer` takes them.
         let c = [200.0, 150.0];
-        let pointer = |h: &mut Harness<'static, Box<PhotocraftApp>>, events: serde_json::Value| {
+        let pointer = |h: &mut Harness<'static, Box<PatronusPhotoApp>>, events: serde_json::Value| {
             crate::canvas::testing::control(h.state_mut(), "ui.pointer", json!({"button": "right", "shift": true, "alt": true, "events": events}));
         };
         pointer(&mut h, json!([{"kind": "down", "x": c[0], "y": c[1]}, {"kind": "up", "x": c[0], "y": c[1]}]));

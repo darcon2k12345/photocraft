@@ -10,20 +10,20 @@ use egui_kittest::kittest::{NodeT, Queryable};
 use serde_json::json;
 
 use super::retouch_ui::bar::history::{ART_HISTORY_AREA_ALERT, ART_HISTORY_TOLERANCE_ALERT};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
-type H = Harness<'static, Box<PhotocraftApp>>;
+type H = Harness<'static, Box<PatronusPhotoApp>>;
 
 /// The options bar with the Art History Brush active, and the dialog host its alerts open on.
 fn bar() -> H {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 80, "height": 80})).unwrap();
     app.ui.tool = Tool::ArtHistoryBrush;
     crate::theme::install_fonts(app.ctx());
     crate::theme::apply(app.ctx(), &crate::theme::AppTheme::pro());
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(vec2(1800.0, 300.0)).with_step_dt(1.0 / 60.0).build_ui_state(
-        move |ui, app: &mut Box<PhotocraftApp>| {
+        move |ui, app: &mut Box<PatronusPhotoApp>| {
             crate::panels::options_bar(app, ui);
             crate::dialogs::run(app, ui);
         },
@@ -115,7 +115,7 @@ fn the_bar_has_no_hint_text() {
 
 #[test]
 fn the_command_takes_an_area_up_to_500() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 80, "height": 80})).unwrap();
     let stroke = |area: f64| json!({"points": [[10, 40], [70, 40]], "size": 8, "area": area});
     assert!(app.run("paint.artHistoryBrush", stroke(500.0)).is_ok());

@@ -9,17 +9,17 @@ use serde_json::json;
 use super::super::spell_enabled_ui_tests::{app, choose};
 use super::*;
 
-fn dialog(app: &PhotocraftApp) -> &CheckSpellingDialog {
+fn dialog(app: &PatronusPhotoApp) -> &CheckSpellingDialog {
     app.framework.dialogs.get::<CheckSpellingDialog>().expect("the Check Spelling dialog is open")
 }
 
 /// The dialog's words, in its order.
-fn words(app: &PhotocraftApp) -> Vec<String> {
+fn words(app: &PatronusPhotoApp) -> Vec<String> {
     dialog(app).items().iter().map(|i| i.word.clone()).collect()
 }
 
 /// The layers of the dialog's words, in its order.
-fn layers(app: &PhotocraftApp) -> Vec<u64> {
+fn layers(app: &PatronusPhotoApp) -> Vec<u64> {
     dialog(app).items().iter().map(|i| i.object).collect()
 }
 
@@ -44,7 +44,7 @@ fn dialog_starts_at_the_opening_layer_and_keeps_it_after_a_change() {
 }
 
 /// Bottom "Teh one" and top "brwn dog" over the empty layer; returns their ids.
-fn two_layers() -> (Box<PhotocraftApp>, u64, u64) {
+fn two_layers() -> (Box<PatronusPhotoApp>, u64, u64) {
     let mut app = app(true);
     let bottom = app.run("type.create", json!({"x": 10, "y": 60, "text": "Teh one"})).unwrap()["layer"].as_u64().unwrap();
     let top = app.run("type.create", json!({"x": 10, "y": 120, "text": "brwn dog"})).unwrap()["layer"].as_u64().unwrap();

@@ -5,15 +5,15 @@
 use super::*;
 use egui::accesskit::Role;
 use egui_kittest::{Harness, kittest::Queryable};
-use photocraft_doc::{Color, SampleType, Size};
-use photocraft_engine::export_preset_cmds::RESAMPLE;
-use photocraft_geom::Rect;
+use patronusphoto_doc::{Color, SampleType, Size};
+use patronusphoto_engine::export_preset_cmds::RESAMPLE;
+use patronusphoto_geom::Rect;
 
 /// 12 x 8 RGB/8 with a one-pixel checker, so resamplers differ when it is enlarged.
 fn checker() -> Document {
     let mut doc = Document::with_background("Checker", Size::new(12, 8), ColorMode::Rgb, SampleType::U8, Color::WHITE);
     let surface = doc.layers[0].surface_mut().unwrap();
-    let black = photocraft_raster::from_rgba(&surface.format(), [0.0, 0.0, 0.0, 1.0]);
+    let black = patronusphoto_raster::from_rgba(&surface.format(), [0.0, 0.0, 0.0, 1.0]);
     for y in 0..8 {
         for x in (y % 2..12).step_by(2) {
             surface.fill_rect(Rect::new(x, y, x + 1, y + 1), &black);
@@ -23,13 +23,13 @@ fn checker() -> Document {
 }
 
 fn pixels(doc: &Document) -> Vec<[f32; 4]> {
-    photocraft_compose::flatten(doc).into_px()
+    patronusphoto_compose::flatten(doc).into_px()
 }
 
 fn export_with(resample: &str) -> Document {
     let doc = checker();
     let f = json!({"scale": 300, "resample": resample, "profile": "document"}).as_object().unwrap().clone();
-    export_document(&doc, &f, None, &photocraft_engine::color_cmds::document_profile(&doc)).unwrap()
+    export_document(&doc, &f, None, &patronusphoto_engine::color_cmds::document_profile(&doc)).unwrap()
 }
 
 #[test]
@@ -56,7 +56,7 @@ fn seven_methods_in_the_reference_order_with_bicubic_automatic_the_default() {
 fn preserve_details_is_image_sizes_resampler_and_differs_from_bicubic() {
     let preserve = export_with("preserveDetails");
     assert_eq!((preserve.size.width, preserve.size.height), (36, 24));
-    let mut s = photocraft_engine::Session::new();
+    let mut s = patronusphoto_engine::Session::new();
     s.add_document(checker(), None);
     s.execute("image.imageSize", json!({"width": 36, "height": 24, "resample": "preserveDetails"})).unwrap();
     assert_eq!(pixels(&preserve), pixels(&s.active().unwrap().doc), "the same pixels as Image Size's Preserve Details");
@@ -66,9 +66,9 @@ fn preserve_details_is_image_sizes_resampler_and_differs_from_bicubic() {
 #[test]
 fn presets_and_recorded_steps_accept_preserve_details_and_unknown_names_still_fail() {
     assert!(valid_setting("resample", &json!("preserveDetails")));
-    let mut s = photocraft_engine::Session::new();
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.export.presets.save", json!({"name": "Detail", "settings": {"format": "png", "resample": "preserveDetails"}})).unwrap();
-    let err = photocraft_engine::export_preset_cmds::export_resample("lanczos").unwrap_err();
+    let err = patronusphoto_engine::export_preset_cmds::export_resample("lanczos").unwrap_err();
     assert!(err.contains("preserveDetails") && err.contains("bicubicAutomatic"), "{err}");
     assert!(!valid_setting("resample", &json!("lanczos")));
 }
@@ -79,13 +79,13 @@ fn presets_and_recorded_steps_accept_preserve_details_and_unknown_names_still_fa
 fn the_dialog_offers_preserve_details_and_it_sets_preserve_details() {
     let services =
         crate::Services { export: Some(Box::new(|_, _, _| Ok((Vec::new(), Vec::new())))), write: Some(Box::new(|_, _| Ok(()))), ..Default::default() };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     app.session.add_document(checker(), None);
     let mut h = Harness::builder()
         .with_size(egui::vec2(1100.0, 900.0))
         .with_step_dt(1.0 / 60.0)
         .with_context(app.ctx().clone())
-        .build_ui_state(|ui, app: &mut Box<PhotocraftApp>| crate::dialogs::run(app, ui), app);
+        .build_ui_state(|ui, app: &mut Box<PatronusPhotoApp>| crate::dialogs::run(app, ui), app);
     open(h.state_mut()).unwrap();
     h.run_steps(4);
     h.get_by_role_and_label(Role::ComboBox, "Resample").click();

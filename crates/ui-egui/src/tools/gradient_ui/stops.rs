@@ -10,10 +10,10 @@ use craft::behavior::kurbo::Vec2;
 use craft::color_ui::ui::gradient::{ColorStop, GradientStops, OpacityStop};
 use craft::draw::ui::gradient::{GradientFill, GradientStyle};
 use craft::theme::Srgba;
-use photocraft_compose::gradient_fill as gf;
-use photocraft_doc::{Color, Fill, GradientStyle as DocStyle};
-use photocraft_engine::gradient_fill_cmds as cmds;
-use photocraft_engine::presets::gradients::{GradientPreset, StopColor};
+use patronusphoto_compose::gradient_fill as gf;
+use patronusphoto_doc::{Color, Fill, GradientStyle as DocStyle};
+use patronusphoto_engine::gradient_fill_cmds as cmds;
+use patronusphoto_engine::presets::gradients::{GradientPreset, StopColor};
 use serde_json::{Value, json};
 
 /// The tag of a preset stop that follows the foreground colour.

@@ -3,7 +3,7 @@
 //! slider moves, so the proxy's pixels stay valid and each preview frame composites ~1/k² pixels.
 
 use craft::imaging::ui::live_preview::ProxyPlan;
-use photocraft_doc::Document;
+use patronusphoto_doc::Document;
 
 /// Target pixel count for previews (fast enough to composite every frame on CPU).
 pub const PREVIEW_PIXELS: u64 = 2_500_000;
@@ -19,7 +19,7 @@ pub fn factor(doc: &Document) -> u32 {
 
 /// Whether live previews may run on a reduced copy (Preferences › Performance › Low Resolution
 /// Previews, on by default). Off, every live preview renders at full resolution.
-pub fn reduced_previews(app: &crate::PhotocraftApp) -> bool {
+pub fn reduced_previews(app: &crate::PatronusPhotoApp) -> bool {
     app.session.prefs().performance.low_resolution_previews
 }
 
@@ -36,13 +36,13 @@ pub fn view_factor(k: u32, zoom: f32, document_pixels: u64) -> u32 {
     k.min(ProxyPlan::factor(zoom, document_pixels, true)).max(1)
 }
 
-pub use photocraft_compose::proxy::{downsample, proxy_document};
+pub use patronusphoto_compose::proxy::{downsample, proxy_document};
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use photocraft_color::{Color, ColorMode, SampleType};
-    use photocraft_doc::Size;
+    use patronusphoto_color::{Color, ColorMode, SampleType};
+    use patronusphoto_doc::Size;
 
     #[test]
     fn factor_scales_with_size() {

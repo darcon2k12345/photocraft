@@ -50,7 +50,7 @@ fn recorded(d: &Descriptor) -> Option<Fit> {
     Some(Fit { width: side(d.get("Wdth")?)?, height: side(d.get("Hght")?)?, dont_enlarge: *dont_enlarge })
 }
 
-/// The descriptor a step recorded in PhotoCraft saves as: the measured class and key order. The
+/// The descriptor a step recorded in Patronus Photo saves as: the measured class and key order. The
 /// message is empty: it is the script's own text, not a setting, and no text of the reference
 /// application is copied.
 fn canonical(fit: &Fit) -> Descriptor {
@@ -77,7 +77,7 @@ pub(super) fn fit_image_from(d: &Descriptor) -> Mapped {
     let Some(fit) = recorded(d) else { return Mapped::Unsupported { harmless: false } };
     let mut p = json!({"width": fit.width, "height": fit.height, "dontEnlarge": fit.dont_enlarge});
     if *d != canonical(&fit) {
-        p[SOURCE] = photocraft_paint::tile::b64_encode(&d.to_bytes()).into();
+        p[SOURCE] = patronusphoto_paint::tile::b64_encode(&d.to_bytes()).into();
     }
     step(FIT_IMAGE, p)
 }
@@ -103,7 +103,7 @@ fn native(p: &Value) -> Option<Fit> {
 
 /// The recorded descriptor carried in `SOURCE`, when it decodes to the measured form.
 fn source(p: &Value) -> Option<(Descriptor, Fit)> {
-    let d = Descriptor::from_bytes(&photocraft_paint::tile::b64_decode(jstr(p, SOURCE)?)?).ok()?;
+    let d = Descriptor::from_bytes(&patronusphoto_paint::tile::b64_decode(jstr(p, SOURCE)?)?).ok()?;
     let fit = recorded(&d)?;
     Some((d, fit))
 }

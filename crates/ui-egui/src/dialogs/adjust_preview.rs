@@ -45,12 +45,12 @@ use std::sync::Arc;
 
 use craft::imaging::ui::live_preview::{LivePreview, PreviewKey, PreviewLane, PreviewSession, ProxyPlan, settings_hash};
 use craft::ui::canvas::PixelRect;
-use photocraft_color::ColorMode;
-use photocraft_doc::{Adjustment, DocId, Document, Group, Layer, LayerContent, LayerId, LayerMask};
-use photocraft_geom::Rect;
+use patronusphoto_color::ColorMode;
+use patronusphoto_doc::{Adjustment, DocId, Document, Group, Layer, LayerContent, LayerId, LayerMask};
+use patronusphoto_geom::Rect;
 use serde_json::Value;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// Id of the temporary preview layer. Fixed so the GPU compositor keeps its mask (the selection)
 /// resident from one change to the next. Never reaches a committed document.
@@ -71,7 +71,7 @@ fn doc_rect(r: PixelRect) -> Rect {
 
 /// The time of the pass the app runs in, in seconds: the unit the live preview's settle time is in. It is the frame
 /// time, not the wall clock, so a driver that steps the frame clock steps the settle too.
-fn now_s(app: &PhotocraftApp) -> f64 {
+fn now_s(app: &PatronusPhotoApp) -> f64 {
     app.ctx().input(|i| i.time)
 }
 
@@ -86,10 +86,10 @@ pub fn unsupported(doc: &Document, target: LayerId) -> Option<&'static str> {
     // styled, every slider change invalidates that group's effect shape maps, and rebuilding
     // them is CPU work on the UI thread. The CPU proxy has its own worker, so styled clips keep
     // it; an unrelated styled sibling doesn't affect this target's clip.
-    if l.clipped && (photocraft_compose::effects::has_effects(l) || styled_ancestor(doc, target)) {
+    if l.clipped && (patronusphoto_compose::effects::has_effects(l) || styled_ancestor(doc, target)) {
         return Some("clipped target or enclosing group has layer effects");
     }
-    if photocraft_compose::blend_if_active(l, doc.mode) {
+    if patronusphoto_compose::blend_if_active(l, doc.mode) {
         return Some(tl!("Blend If"));
     }
     let shows_default = !s.format().alpha || s.default_pixel().last().is_some_and(|a| *a > 0.0);
@@ -102,7 +102,7 @@ pub fn unsupported(doc: &Document, target: LayerId) -> Option<&'static str> {
 /// Whether a group enclosing `target` has enabled layer effects.
 fn styled_ancestor(doc: &Document, target: LayerId) -> bool {
     let Some(path) = doc.path_of(target) else { return false };
-    (1..path.len()).any(|n| path.get(..n).and_then(|p| doc.layer_at(p)).is_some_and(photocraft_compose::effects::has_effects))
+    (1..path.len()).any(|n| path.get(..n).and_then(|p| doc.layer_at(p)).is_some_and(patronusphoto_compose::effects::has_effects))
 }
 
 /// Whether `adj` maps gray to gray. Others make colour in a grayscale document, which the command
@@ -160,7 +160,7 @@ pub fn with_settings(base: &Document, kind: &str, params: &Value) -> Result<Docu
 }
 
 fn set_adjustment(base: &Document, layer: LayerId, kind: &str, params: &Value) -> Result<Document, String> {
-    let adj = photocraft_engine::adjust_params::from_params(kind, params, None, base.mode).map_err(|e| e.to_string())?;
+    let adj = patronusphoto_engine::adjust_params::from_params(kind, params, None, base.mode).map_err(|e| e.to_string())?;
     if base.mode == ColorMode::Grayscale && !keeps_gray(&adj) {
         return Err("colour result in a grayscale document".into());
     }
@@ -229,7 +229,7 @@ struct GpuProxy {
 
 /// The open adjustment dialog: (kind, params, Preview on and not held to compare). None for a Smart Filter edit, which
 /// previews through the filter machinery.
-fn dialog(app: &PhotocraftApp) -> Option<(String, Value, bool)> {
+fn dialog(app: &PatronusPhotoApp) -> Option<(String, Value, bool)> {
     let open = crate::adjust_dialog::open_value(app).filter(|open| open.smart_filter.is_none())?;
     let hosted = crate::adjust_dialog::hosted(app, open.id)?;
     let params = hosted.value().params(hosted.edited());
@@ -239,19 +239,19 @@ fn dialog(app: &PhotocraftApp) -> Option<(String, Value, bool)> {
 
 /// Whether Image › Adjustments `kind` on document `idx` would edit a channel (the Channels panel's
 /// target or the Quick Mask) or the active layer's mask instead of the layer's pixels.
-pub(crate) fn targets_channel(app: &PhotocraftApp, idx: usize, kind: &str, params: &Value) -> bool {
+pub(crate) fn targets_channel(app: &PatronusPhotoApp, idx: usize, kind: &str, params: &Value) -> bool {
     // The dialog's own target choice, when it has one, decides.
     if let Some(target) = params.get("target") {
         return target.as_str() != Some("pixels");
     }
     let Some(st) = app.session.documents().get(idx) else { return false };
-    st.channel_view.target != photocraft_engine::channel_cmds::ChannelTarget::Composite
+    st.channel_view.target != patronusphoto_engine::channel_cmds::ChannelTarget::Composite
         || st.doc.quick_mask.is_some()
         || !app.with_mask_target(&format!("image.adjustments.{kind}"), Value::Null).is_null()
 }
 
 /// Whether the layer path can draw `doc` cheaply on this app's canvas.
-fn cheap(app: &PhotocraftApp, doc: &Document) -> bool {
+fn cheap(app: &PatronusPhotoApp, doc: &Document) -> bool {
     match &app.gpu {
         Some(g) => g.supports(doc),
         None => crate::proxy::preview_factor(doc, crate::proxy::reduced_previews(app)) <= 1,
@@ -259,7 +259,7 @@ fn cheap(app: &PhotocraftApp, doc: &Document) -> bool {
 }
 
 /// Bring the cached preview up to date for document `idx` (the active one) and return it.
-fn update(app: &mut PhotocraftApp, idx: usize) -> Option<&AdjustPreview> {
+fn update(app: &mut PatronusPhotoApp, idx: usize) -> Option<&AdjustPreview> {
     if app.session.active_index() != Some(idx) {
         return None;
     }
@@ -328,34 +328,34 @@ fn update(app: &mut PhotocraftApp, idx: usize) -> Option<&AdjustPreview> {
 
 /// The document the canvas shows for document `idx` while an adjustment dialog previews through
 /// the layer path: (document, preview key).
-pub fn display_doc(app: &mut PhotocraftApp, idx: usize) -> Option<(Arc<Document>, u64)> {
+pub fn display_doc(app: &mut PatronusPhotoApp, idx: usize) -> Option<(Arc<Document>, u64)> {
     update(app, idx)?.shown.as_ref().map(|(doc, key)| (doc.clone(), key.raw()))
 }
 
 /// Whether the open adjustment dialog previews through the layer path (so the CPU proxy preview
 /// must stay off).
-pub fn on_layer(app: &mut PhotocraftApp, idx: usize) -> bool {
+pub fn on_layer(app: &mut PatronusPhotoApp, idx: usize) -> bool {
     update(app, idx).is_some_and(|p| p.layer_path)
 }
 
 /// The canvas area to recomposite when document `idx` (at `revision`) switches from the preview
 /// key `from` to `to` (raw keys, display transform removed): both must be this dialog's previews
 /// or the committed document (0). None means "everything".
-pub fn switch_region(app: &PhotocraftApp, doc: DocId, revision: u64, from: u64, to: u64) -> Option<Rect> {
+pub fn switch_region(app: &PatronusPhotoApp, doc: DocId, revision: u64, from: u64, to: u64) -> Option<Rect> {
     let p = app.adjust_preview.as_ref().filter(|p| p.doc == doc && p.revision == revision)?;
     let (from, to) = (PreviewKey::from_raw(from), PreviewKey::from_raw(to));
     (p.live.owns(from) && p.live.owns(to) && (!from.is_none() || !to.is_none())).then(|| doc_rect(p.live.region()))
 }
 
 /// The key of the preview currently shown, if any.
-pub fn shown_key(app: &PhotocraftApp) -> Option<u64> {
+pub fn shown_key(app: &PatronusPhotoApp) -> Option<u64> {
     app.adjust_preview.as_ref()?.shown.as_ref().map(|s| s.1.raw())
 }
 
 /// The part of a switch's region (from [`switch_region`]) to composite now: to a preview, only
 /// what the view shows (`visible`, document pixels), remembering it so [`uncovered`] catches up
 /// as the view moves; back to the committed document (key 0), the whole region.
-pub fn switch_damage(app: &mut PhotocraftApp, to: u64, region: Rect, visible: Rect) -> Rect {
+pub fn switch_damage(app: &mut PatronusPhotoApp, to: u64, region: Rect, visible: Rect) -> Rect {
     let Some(p) = app.adjust_preview.as_mut() else { return region };
     let to = PreviewKey::from_raw(to);
     // The switch's own `from` is not known here and no key is recorded with an area, so the damage is the region
@@ -366,14 +366,14 @@ pub fn switch_damage(app: &mut PhotocraftApp, to: u64, region: Rect, visible: Re
 
 /// Where the main canvas texture (showing preview `key`) is out of date within `visible`: the
 /// region's visible part when the view moved past what was composited. Marks it covered.
-pub fn uncovered(app: &mut PhotocraftApp, doc: DocId, key: u64, visible: Rect) -> Option<Rect> {
+pub fn uncovered(app: &mut PatronusPhotoApp, doc: DocId, key: u64, visible: Rect) -> Option<Rect> {
     let p = app.adjust_preview.as_mut().filter(|p| p.doc == doc)?;
     p.live.uncovered(PreviewKey::from_raw(key), pixel_rect(&visible)).map(doc_rect)
 }
 
 /// True while the preview's settings changed within the last `ms` milliseconds (secondary views
 /// such as the Navigator wait for the settings to settle instead of recompositing every change).
-pub fn settling(app: &PhotocraftApp, ms: f64) -> bool {
+pub fn settling(app: &PatronusPhotoApp, ms: f64) -> bool {
     app.adjust_preview.as_ref().is_some_and(|p| p.shown.is_some() && p.live.settling(now_s(app), ms / 1000.0))
 }
 
@@ -395,8 +395,8 @@ fn flip_ids(layers: &mut [Layer]) {
 /// A [`base_document`] scaled down by `k` with its own document and layer ids (so the GPU keeps
 /// its textures beside the full-size document's).
 pub fn proxy_base(base: &Document, k: u32) -> Document {
-    let mut d = photocraft_compose::proxy::proxy_document(base, k);
-    d.id = photocraft_doc::DocId(base.id.0 ^ PROXY_DOC_BIT);
+    let mut d = patronusphoto_compose::proxy::proxy_document(base, k);
+    d.id = patronusphoto_doc::DocId(base.id.0 ^ PROXY_DOC_BIT);
     flip_ids(&mut d.layers);
     d
 }
@@ -420,7 +420,7 @@ pub struct ProxyFrame {
 /// The zoomed-out preview for document `idx` at `zoom`, when the dialog previews through the layer
 /// and the view is far enough out that a reduced copy shows the same detail as the full-size
 /// composite: each change then composites ~1/k² of the pixels. Built once per session and factor.
-pub fn gpu_proxy(app: &mut PhotocraftApp, idx: usize, zoom: f32) -> Option<ProxyFrame> {
+pub fn gpu_proxy(app: &mut PatronusPhotoApp, idx: usize, zoom: f32) -> Option<ProxyFrame> {
     if !crate::proxy::reduced_previews(app) {
         return None;
     }
@@ -432,7 +432,7 @@ pub fn gpu_proxy(app: &mut PhotocraftApp, idx: usize, zoom: f32) -> Option<Proxy
     let key = p.shown.as_ref()?.1;
     // `ProxyPlan::factor` is 1 for a document too small for a proxy, which `k < 2` refuses with the near views.
     let k = ProxyPlan::factor(zoom, base.size.area(), true);
-    if k < 2 || !photocraft_compose::proxy::proxy_faithful(&base) {
+    if k < 2 || !patronusphoto_compose::proxy::proxy_faithful(&base) {
         return None;
     }
     if p.proxy.as_ref().is_none_or(|g| g.k != k) {
@@ -456,7 +456,7 @@ pub fn gpu_proxy(app: &mut PhotocraftApp, idx: usize, zoom: f32) -> Option<Proxy
 }
 
 /// Record that `frame` was composited into the proxy's texture.
-pub fn proxy_drawn(app: &mut PhotocraftApp, frame: &ProxyFrame) {
+pub fn proxy_drawn(app: &mut PatronusPhotoApp, frame: &ProxyFrame) {
     if let Some(g) = app.adjust_preview.as_mut().and_then(|p| p.proxy.as_mut())
         && g.k == frame.k
     {
@@ -464,7 +464,7 @@ pub fn proxy_drawn(app: &mut PhotocraftApp, frame: &ProxyFrame) {
     }
 }
 
-pub(crate) fn retain_documents(app: &mut PhotocraftApp) {
+pub(crate) fn retain_documents(app: &mut PatronusPhotoApp) {
     // Native reopen can reuse the ID and revision; neither the old base document nor its
     // coverage and upload markers may survive after that document leaves the session.
     if app.adjust_preview.as_ref().is_some_and(|p| !app.session.documents().iter().any(|st| st.doc.id == p.doc)) {
@@ -476,7 +476,7 @@ pub(crate) fn retain_documents(app: &mut PhotocraftApp) {
 }
 
 /// GPU texture keys the preview uses besides the documents' own (keep them alive).
-pub fn gpu_keys(app: &PhotocraftApp) -> Option<u64> {
+pub fn gpu_keys(app: &PatronusPhotoApp) -> Option<u64> {
     let p = app.adjust_preview.as_ref().filter(|p| p.hash != 0)?;
     p.proxy.as_ref().map(|g| g.base.id.0)
 }
@@ -524,7 +524,7 @@ fn live_region(doc: &Document, layer: LayerId) -> Rect {
 
 /// The preview key for `params` on `layer` of `doc` at `revision`, starting a session (and
 /// measuring its region) when the document, revision or layer changes.
-pub fn live_key(app: &mut PhotocraftApp, doc: &Document, revision: u64, layer: LayerId, params: &Value) -> u64 {
+pub fn live_key(app: &mut PatronusPhotoApp, doc: &Document, revision: u64, layer: LayerId, params: &Value) -> u64 {
     let session = PreviewSession::new(doc.id.0, revision, layer.0);
     let now = now_s(app);
     let p = app.live_adjust_preview.get_or_insert_with(|| LiveAdjust {
@@ -544,7 +544,7 @@ pub fn live_key(app: &mut PhotocraftApp, doc: &Document, revision: u64, layer: L
 
 /// The canvas area to recomposite when document `doc` (at `revision`) switches between two of
 /// this drag's previews, or between one and the committed document (0).
-pub fn live_switch_region(app: &PhotocraftApp, doc: DocId, revision: u64, from: u64, to: u64) -> Option<Rect> {
+pub fn live_switch_region(app: &PatronusPhotoApp, doc: DocId, revision: u64, from: u64, to: u64) -> Option<Rect> {
     let p = app.live_adjust_preview.as_ref().filter(|p| p.doc == doc && p.revision == revision)?;
     let (from, to) = (PreviewKey::from_raw(from), PreviewKey::from_raw(to));
     (p.live.owns(from) && p.live.owns(to) && (!from.is_none() || !to.is_none())).then(|| doc_rect(p.live.region()))
@@ -553,7 +553,7 @@ pub fn live_switch_region(app: &PhotocraftApp, doc: DocId, revision: u64, from: 
 /// The part of a switch's region to composite now: to a preview, only what the view shows,
 /// remembered so [`live_uncovered`] catches up as the view moves; back to the committed
 /// document (key 0), the whole region.
-pub fn live_switch_damage(app: &mut PhotocraftApp, to: u64, region: Rect, visible: Rect) -> Rect {
+pub fn live_switch_damage(app: &mut PatronusPhotoApp, to: u64, region: Rect, visible: Rect) -> Rect {
     let Some(p) = app.live_adjust_preview.as_mut() else { return region };
     let to = PreviewKey::from_raw(to);
     // Going back to the committed document switches from the key last given (no key of it is shown).
@@ -563,7 +563,7 @@ pub fn live_switch_damage(app: &mut PhotocraftApp, to: u64, region: Rect, visibl
 
 /// Where the main canvas texture (showing preview `key`) is out of date within `visible`: the
 /// region's visible part when the view moved past what was composited. Marks it covered.
-pub fn live_uncovered(app: &mut PhotocraftApp, doc: DocId, key: u64, visible: Rect) -> Option<Rect> {
+pub fn live_uncovered(app: &mut PatronusPhotoApp, doc: DocId, key: u64, visible: Rect) -> Option<Rect> {
     let p = app.live_adjust_preview.as_mut().filter(|p| p.doc == doc)?;
     p.live.uncovered(PreviewKey::from_raw(key), pixel_rect(&visible)).map(doc_rect)
 }

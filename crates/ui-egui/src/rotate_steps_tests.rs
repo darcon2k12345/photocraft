@@ -4,13 +4,13 @@
 use egui::{Key, Modifiers};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing;
 use crate::shortcut_dispatch::fire_bridged;
 
 /// An app with `count` new documents, the last one active.
-fn app_docs(count: usize) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app_docs(count: usize) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     for _ in 0..count {
         app.run("file.new", json!({"width": 100, "height": 50})).unwrap();
     }
@@ -20,12 +20,12 @@ fn app_docs(count: usize) -> Box<PhotocraftApp> {
 }
 
 /// The rotation the active canvas shows, in degrees.
-fn rotation(app: &PhotocraftApp) -> f64 {
+fn rotation(app: &PatronusPhotoApp) -> f64 {
     testing::view(app).expect("the canvas shows the document").rotation
 }
 
 /// Fires the menu row `id` and runs the frames in which the canvas takes it.
-fn fire_row(app: &mut PhotocraftApp, id: &str) {
+fn fire_row(app: &mut PatronusPhotoApp, id: &str) {
     assert_eq!(fire_bridged(&testing::ctx(app), id), Some(true), "{id}: the runtime takes it");
     testing::frame(app);
     testing::frame(app);

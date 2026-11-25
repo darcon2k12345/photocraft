@@ -1,13 +1,13 @@
-//! The craft framework's runtime on PhotoCraft's context, hosted through `craft::ui::shell::embed`
+//! The craft framework's runtime on Patronus Photo's context, hosted through `craft::ui::shell::embed`
 //! (craft-libs docs/craft-framework.md 2.2, "Host the runtime from your own eframe `App`"):
-//! installed once with PhotoCraft's fonts, then given PhotoCraft's preferences before each frame.
+//! installed once with Patronus Photo's fonts, then given Patronus Photo's preferences before each frame.
 //!
 //! eframe's `ui` would also call `embed::before_ui`, which needs craft-ui-shell's `app` feature;
-//! that feature turns on egui's `default_fonts`, which PhotoCraft leaves out (it ships them
-//! deflated). Its two jobs are PhotoCraft's own here: `work_area::fit_window` fits the window to
-//! its monitor, and the Windows window comes from PhotoCraft's title bar code.
+//! that feature turns on egui's `default_fonts`, which Patronus Photo leaves out (it ships them
+//! deflated). Its two jobs are Patronus Photo's own here: `work_area::fit_window` fits the window to
+//! its monitor, and the Windows window comes from Patronus Photo's title bar code.
 //!
-//! The `craft` facade features PhotoCraft enables for this: `text`, `text-font-picker`,
+//! The `craft` facade features Patronus Photo enables for this: `text`, `text-font-picker`,
 //! `font-manager`, `menu`, `timeline` and `print`, plus `dialogs` on native targets.
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -31,11 +31,11 @@ use craft::ui::runtime::{InstallError, InstallSpec};
 use craft::ui::shell::embed;
 use craft::window::policy::Decision;
 use craft::window::system::SystemWindows;
-use photocraft_engine::Session;
-use photocraft_engine::prefs::{AppearanceMode, Preferences};
+use patronusphoto_engine::Session;
+use patronusphoto_engine::prefs::{AppearanceMode, Preferences};
 use serde_json::Value;
 
-use super::PhotocraftApp;
+use super::PatronusPhotoApp;
 use crate::i18n;
 use crate::state::Tool;
 use crate::theme::AppTheme;
@@ -45,7 +45,7 @@ use crate::theme::AppTheme;
 /// context). Only `theme::install_runtime` calls it.
 pub(crate) fn install(ctx: &egui::Context, fonts: &UiFonts<'_>, frame: Option<Decision>) {
     // The wheel zooms with the canvas's own keys and scrolls sideways with Shift or Command, as
-    // PhotoCraft's input always has.
+    // Patronus Photo's input always has.
     let wheel = WheelModifiers::new(egui::Modifiers::NONE, egui::Modifiers::SHIFT | egui::Modifiers::COMMAND);
     let wake = ctx.clone();
     let mut spec = InstallSpec::new(ShellInfo::default().backend(Backend::from_env()), Arc::new(SystemWindows))
@@ -72,9 +72,9 @@ pub(crate) fn install(ctx: &egui::Context, fonts: &UiFonts<'_>, frame: Option<De
 }
 
 #[cfg(test)]
-type TestBody = Box<dyn FnMut(&mut egui::Ui, &mut PhotocraftApp)>;
+type TestBody = Box<dyn FnMut(&mut egui::Ui, &mut PatronusPhotoApp)>;
 
-/// What PhotoCraft keeps for the framework: the `Host` its components read services from, and
+/// What Patronus Photo keeps for the framework: the `Host` its components read services from, and
 /// the host of the framework dialogs it opens.
 pub struct Framework {
     /// A test harness's own pass body, run in place of the app's frame (see [`BuildApp`]).
@@ -124,7 +124,7 @@ pub struct Framework {
     pub(crate) delivered: Vec<Fired>,
     /// The suite's theme selection, shared with the other Craft apps.
     suite: SuiteClient,
-    /// The theme slots and mode as PhotoCraft's preferences and the suite last agreed on them.
+    /// The theme slots and mode as Patronus Photo's preferences and the suite last agreed on them.
     synced: Option<ThemePrefs>,
     /// The preferences' rev `synced` was taken at: with no suite move since, nothing to sync.
     synced_rev: Option<u64>,
@@ -171,7 +171,7 @@ impl ThemePrefs {
         ThemePrefs { mode: i.appearance_mode, dark: i.dark_theme.clone(), light: i.light_theme.clone() }
     }
 
-    /// What the suite shows: its chosen fields, else PhotoCraft's defaults.
+    /// What the suite shows: its chosen fields, else Patronus Photo's defaults.
     fn of_suite(choice: &SuiteChoice) -> Self {
         let defaults = defaults();
         let shown = choice.with_defaults(&defaults);
@@ -206,12 +206,12 @@ fn mode_choice(mode: AppearanceMode) -> ModeChoice {
     }
 }
 
-/// PhotoCraft's theme in the dark mode when nobody chose one: Pro (Medium Gray).
+/// Patronus Photo's theme in the dark mode when nobody chose one: Pro (Medium Gray).
 const DEFAULT_DARK: &str = "craft.artcraft";
-/// PhotoCraft's theme in the light mode when nobody chose one: Pro (Light).
+/// Patronus Photo's theme in the light mode when nobody chose one: Pro (Light).
 const DEFAULT_LIGHT: &str = "craft.pro";
 
-/// What PhotoCraft shows for each suite field nobody has chosen: Pro (Medium Gray) in the dark
+/// What Patronus Photo shows for each suite field nobody has chosen: Pro (Medium Gray) in the dark
 /// mode, Pro in the light, and the dark mode, with the Creative component set.
 fn defaults() -> AppDefaults {
     let theme = |id: &str| ThemeId::parse(id).unwrap_or_else(|_| ThemeId::suite_default());
@@ -224,7 +224,7 @@ fn defaults() -> AppDefaults {
     }
 }
 
-/// PhotoCraft's size overrides: Photoshop's panel dock width, and 12-point Label and Mono text in the compact density.
+/// Patronus Photo's size overrides: Photoshop's panel dock width, and 12-point Label and Mono text in the compact density.
 const SIZES: &[u8] = include_bytes!("sizes.json");
 
 /// The size overrides, parsed once: the root keeps one `Arc` so the runtime's token and hit-size caches, which key on
@@ -234,7 +234,7 @@ fn app_sizes() -> &'static Arc<AppSizes> {
     &SIZES_ONCE
 }
 
-/// The root values PhotoCraft gives the runtime before the theme, mode, scale and direction: the
+/// The root values Patronus Photo gives the runtime before the theme, mode, scale and direction: the
 /// contrast, size and sizes a theme's tokens resolve under.
 fn base_root() -> RootEnv {
     let mut root = RootEnv::new();
@@ -254,7 +254,7 @@ impl Default for Framework {
 
 fn build_host(sections: &Arc<PrefSections>, lang: &str, files: Option<&Arc<dyn Files>>) -> Host {
     let i18n = i18n::framework_i18n();
-    let mut builder = Host::builder(AppInfo { id: "photocraft", name: "PhotoCraft", version: env!("CARGO_PKG_VERSION") })
+    let mut builder = Host::builder(AppInfo { id: "patronusphoto", name: "Patronus Photo", version: env!("CARGO_PKG_VERSION") })
         .i18n(Arc::clone(i18n))
         .settings(Arc::clone(sections) as Arc<dyn SectionStore>)
         .jobs(craft::host::default_jobs());
@@ -326,7 +326,7 @@ impl Framework {
         self.sections.sync(session);
     }
 
-    /// The input for the coming frame, from PhotoCraft's preferences: the held states of every command
+    /// The input for the coming frame, from Patronus Photo's preferences: the held states of every command
     /// source, the held catalog and overrides, and `gate` over the commands.
     fn frame_input(
         &mut self,
@@ -357,8 +357,8 @@ impl Framework {
         // Length fields read the Point/Pica size from the root; each passes its document's pixels
         // per inch in its own `LengthUnits`.
         root.values.set(match session.prefs().units_and_rulers.point_size {
-            photocraft_engine::prefs::PointSize::PostScript => PointSize::PostScript,
-            photocraft_engine::prefs::PointSize::Traditional => PointSize::Traditional,
+            patronusphoto_engine::prefs::PointSize::PostScript => PointSize::PostScript,
+            patronusphoto_engine::prefs::PointSize::Traditional => PointSize::Traditional,
         });
         let mut commands = CommandInput::new().states(&self.held_states.states);
         if let Some(catalog) = &self.catalog {
@@ -374,7 +374,7 @@ impl Framework {
     pub(crate) fn open_suite(&mut self, ctx: &egui::Context) {
         use craft::theme_store::{StoreOptions, SuiteDir, SuiteWatch};
         let ctx = ctx.clone();
-        let options = StoreOptions::new(concat!("photocraft ", env!("CARGO_PKG_VERSION")));
+        let options = StoreOptions::new(concat!("patronusphoto ", env!("CARGO_PKG_VERSION")));
         self.suite = SuiteClient::new(SuiteWatch::open(&SuiteDir::resolve(false), options, move || ctx.request_repaint()));
         self.synced = None;
         self.synced_rev = None;
@@ -444,9 +444,9 @@ impl Framework {
         changed
     }
 
-    /// The theme `id` to show in the dark or light mode: PhotoCraft's palette for it, else its
+    /// The theme `id` to show in the dark or light mode: Patronus Photo's palette for it, else its
     /// tokens resolved from the suite's definition under the root's contrast, size and sizes, as
-    /// the runtime resolves its own. A theme the suite can't resolve shows as PhotoCraft's default
+    /// the runtime resolves its own. A theme the suite can't resolve shows as Patronus Photo's default
     /// for the mode.
     pub(crate) fn theme_for(&self, id: &ThemeId, dark: bool, ctx: &egui::Context) -> AppTheme {
         #[cfg(test)]
@@ -491,7 +491,7 @@ impl Framework {
         }
     }
 
-    /// The name of theme `id` for a menu: PhotoCraft's own name for its palettes, else the suite's.
+    /// The name of theme `id` for a menu: Patronus Photo's own name for its palettes, else the suite's.
     pub(crate) fn theme_name(&self, id: &ThemeId, dark: bool) -> String {
         AppTheme::palette_label(id.as_str(), dark)
             .map(str::to_owned)
@@ -526,7 +526,7 @@ impl Framework {
     }
 
     /// Takes the runtime's keymap overrides built from `key` ([`Self::overrides_key`]). The pane
-    /// moves are unbound in the overrides, because PhotoCraft's own table binds F6 and Shift+F6
+    /// moves are unbound in the overrides, because Patronus Photo's own table binds F6 and Shift+F6
     /// (Window › Color, Select › Modify › Feather) until those are a framework `CommandSet`. The
     /// held `Arc` is replaced only when the bindings differ, so the runtime rebuilds its keymap
     /// only on a change.
@@ -550,13 +550,13 @@ impl Framework {
 /// ones it fires.
 pub(crate) struct CommandSource {
     /// The states of the source's commands for the coming frame.
-    states: fn(&PhotocraftApp) -> Vec<(CommandRef, CommandState)>,
+    states: fn(&PatronusPhotoApp) -> Vec<(CommandRef, CommandState)>,
     /// What `states` reads, for a source whose every input is a plain value or a revision that moves exactly when
     /// the data changes: the states are computed again only when the key changes. `None`: computed every frame,
     /// because what the source reads has no such revision yet.
-    key: Option<fn(&PhotocraftApp) -> StatesKey>,
+    key: Option<fn(&PatronusPhotoApp) -> StatesKey>,
     /// Runs `command` when it is this source's; whether it was.
-    run: fn(&mut PhotocraftApp, &egui::Context, &CommandRef) -> bool,
+    run: fn(&mut PatronusPhotoApp, &egui::Context, &CommandRef) -> bool,
 }
 
 /// Every command source, in the order [`run_command`] tries them. The theme has no entry: it has
@@ -599,19 +599,19 @@ struct KeptStates {
 }
 
 /// The tool commands: the current tool's row is checked.
-fn tool_states(app: &PhotocraftApp) -> Vec<(CommandRef, CommandState)> {
+fn tool_states(app: &PatronusPhotoApp) -> Vec<(CommandRef, CommandState)> {
     Tool::ALL.iter().map(|&tool| (CommandRef::from(crate::panels::tool_commands::command_of(tool)), CommandState::new().checked(app.ui.tool == tool))).collect()
 }
 
 /// What [`tool_states`] reads: the tool.
-fn tool_states_key(app: &PhotocraftApp) -> StatesKey {
+fn tool_states_key(app: &PatronusPhotoApp) -> StatesKey {
     [app.ui.tool as u64, 0, 0, 0]
 }
 
 /// Brings the held states up to date for the coming frame. A keyed source runs only when its key changed since it last
 /// ran; a source without a key runs every frame. The held list is written only when a source's states differ from the
 /// ones it last gave.
-fn command_states(app: &PhotocraftApp, held: &mut HeldStates) {
+fn command_states(app: &PatronusPhotoApp, held: &mut HeldStates) {
     held.kept.resize(COMMAND_SOURCES.len(), None);
     #[cfg(test)]
     held.runs.resize(COMMAND_SOURCES.len(), 0);
@@ -647,7 +647,7 @@ fn command_states(app: &PhotocraftApp, held: &mut HeldStates) {
 mod catalog_tests;
 
 /// Selects the tool a tool command names.
-fn run_tool(app: &mut PhotocraftApp, _ctx: &egui::Context, command: &CommandRef) -> bool {
+fn run_tool(app: &mut PatronusPhotoApp, _ctx: &egui::Context, command: &CommandRef) -> bool {
     let Some(command) = crate::panels::tool_commands::ToolCommand::from_ref(command) else {
         return false;
     };
@@ -656,13 +656,13 @@ fn run_tool(app: &mut PhotocraftApp, _ctx: &egui::Context, command: &CommandRef)
 }
 
 /// Runs `command` through the first source that owns it; whether one did.
-pub(crate) fn run_command(app: &mut PhotocraftApp, ctx: &egui::Context, command: &CommandRef) -> bool {
+pub(crate) fn run_command(app: &mut PatronusPhotoApp, ctx: &egui::Context, command: &CommandRef) -> bool {
     COMMAND_SOURCES.iter().any(|source| (source.run)(app, ctx, command))
 }
 
-impl PhotocraftApp {
+impl PatronusPhotoApp {
     /// Before each frame (`raw_input_hook`): the runtime's output of the last frame, and its
-    /// input for this one. Of the output, PhotoCraft keeps the fired commands (`shortcuts::handle`
+    /// input for this one. Of the output, Patronus Photo keeps the fired commands (`shortcuts::handle`
     /// runs them), the commands the canvas ran (`record_view_commands`, in `logic`) and whether a
     /// component refused its input.
     pub(crate) fn framework_before_input(&mut self, ctx: &egui::Context) {
@@ -703,13 +703,13 @@ impl PhotocraftApp {
         });
     }
 
-    /// Whether a dialog is open, PhotoCraft's own or a framework one: the canvas, shortcuts, menus and tools under it
+    /// Whether a dialog is open, Patronus Photo's own or a framework one: the canvas, shortcuts, menus and tools under it
     /// take no input.
     pub fn dialog_open(&self) -> bool {
         !self.framework.dialogs.stack().is_empty()
     }
 
-    /// How many dialogs are open, PhotoCraft's own and framework ones.
+    /// How many dialogs are open, Patronus Photo's own and framework ones.
     pub fn dialog_count(&self) -> usize {
         self.framework.dialogs.stack().ids().count()
     }
@@ -720,7 +720,7 @@ impl PhotocraftApp {
     }
 }
 
-/// The framework's settings sections, kept in PhotoCraft's preferences (`Preferences::sections`).
+/// The framework's settings sections, kept in Patronus Photo's preferences (`Preferences::sections`).
 /// Components write from inside a pass, where the session isn't reachable: the tables wait here
 /// and reach the preferences before the next frame.
 #[derive(Default)]
@@ -793,9 +793,9 @@ impl SectionStore for PrefSections {
 }
 
 /// One frame with the runtime installed on a fresh context, running only the root window's close
-/// path with PhotoCraft's decision, as `logic` does.
+/// path with Patronus Photo's decision, as `logic` does.
 #[cfg(test)]
-pub(crate) fn close_path_frame(app: &mut PhotocraftApp, input: egui::RawInput) -> egui::FullOutput {
+pub(crate) fn close_path_frame(app: &mut PatronusPhotoApp, input: egui::RawInput) -> egui::FullOutput {
     let ctx = app.ctx().clone();
     install(&ctx, &UiFonts::new(&craft::ui::fonts::I18nScripts), None);
     ctx.run_ui(input, |ui| embed::logic(ui.ctx(), || crate::discard_ui::close_decision(app)))
@@ -808,18 +808,18 @@ pub(crate) fn close_path_frame(app: &mut PhotocraftApp, input: egui::RawInput) -
 pub(crate) trait BuildApp {
     fn build_app(
         self,
-        body: impl FnMut(&mut egui::Ui, &mut PhotocraftApp) + 'static,
-        app: Box<PhotocraftApp>,
-    ) -> egui_kittest::Harness<'static, Box<PhotocraftApp>>;
+        body: impl FnMut(&mut egui::Ui, &mut PatronusPhotoApp) + 'static,
+        app: Box<PatronusPhotoApp>,
+    ) -> egui_kittest::Harness<'static, Box<PatronusPhotoApp>>;
 }
 
 #[cfg(test)]
-impl BuildApp for egui_kittest::HarnessBuilder<Box<PhotocraftApp>> {
+impl BuildApp for egui_kittest::HarnessBuilder<Box<PatronusPhotoApp>> {
     fn build_app(
         self,
-        body: impl FnMut(&mut egui::Ui, &mut PhotocraftApp) + 'static,
-        mut app: Box<PhotocraftApp>,
-    ) -> egui_kittest::Harness<'static, Box<PhotocraftApp>> {
+        body: impl FnMut(&mut egui::Ui, &mut PatronusPhotoApp) + 'static,
+        mut app: Box<PatronusPhotoApp>,
+    ) -> egui_kittest::Harness<'static, Box<PatronusPhotoApp>> {
         app.framework.test_body = Some(Box::new(body));
         let ctx = app.ctx().clone();
         self.with_context(ctx).build_eframe(move |_| app)
@@ -831,7 +831,7 @@ impl BuildApp for egui_kittest::HarnessBuilder<Box<PhotocraftApp>> {
 /// the pass's keys fired go to `shortcuts::handle` in the same frame, as `raw_input_hook` and
 /// `logic` hand them over in the next one.
 #[cfg(test)]
-pub(crate) fn keys_pass(app: &mut PhotocraftApp, ctx: &egui::Context, input: egui::RawInput, body: impl FnMut(&mut egui::Ui)) {
+pub(crate) fn keys_pass(app: &mut PatronusPhotoApp, ctx: &egui::Context, input: egui::RawInput, body: impl FnMut(&mut egui::Ui)) {
     app.framework_before_input(ctx);
     crate::testing::run_ui(ctx, input, body);
     // Collects what this pass fired.
@@ -886,7 +886,7 @@ mod tests {
         assert_eq!(store.read("one"), None);
     }
 
-    /// Every theme PhotoCraft has a palette for names a framework built-in.
+    /// Every theme Patronus Photo has a palette for names a framework built-in.
     #[test]
     fn every_palette_theme_is_a_builtin() {
         let builtins = craft::theme::builtins();
@@ -896,7 +896,7 @@ mod tests {
         assert_eq!(crate::theme::AppTheme::pro_medium().id().as_str(), "craft.artcraft");
     }
 
-    /// The size overrides PhotoCraft ships read without an error, so none is dropped at startup.
+    /// The size overrides Patronus Photo ships read without an error, so none is dropped at startup.
     #[test]
     fn the_size_overrides_parse() {
         if let Err(errors) = craft::theme::AppSizes::parse(super::SIZES) {

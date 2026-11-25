@@ -8,10 +8,10 @@
 use craft::quit::{CloseAnswer, CloseScope};
 use craft::ui::dialog::{DialogResult, UnsavedAnswer, UnsavedChangesDialog};
 use craft::ui::shell::embed::CloseDecision;
-use photocraft_doc::DocId;
+use patronusphoto_doc::DocId;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 const EXIT: &str = "file.exit";
 
@@ -34,7 +34,7 @@ pub struct Prompt {
     auto_control: bool,
 }
 
-fn index_of(app: &PhotocraftApp, id: DocId) -> Option<usize> {
+fn index_of(app: &PatronusPhotoApp, id: DocId) -> Option<usize> {
     app.session.documents().iter().position(|d| d.doc.id == id)
 }
 
@@ -61,7 +61,7 @@ fn reach(id: &str) -> Option<Reach> {
 
 /// The command's target document and the unsaved documents it would discard (empty for commands
 /// that discard nothing).
-fn discarded(app: &PhotocraftApp, id: &str, params: &Value) -> (Option<DocId>, Vec<DocId>) {
+fn discarded(app: &PatronusPhotoApp, id: &str, params: &Value) -> (Option<DocId>, Vec<DocId>) {
     let docs = app.session.documents();
     let target = params.get("document").and_then(Value::as_u64).map(|i| i as usize).or(app.session.active_index());
     let affected: Vec<usize> = match reach(id) {
@@ -75,7 +75,7 @@ fn discarded(app: &PhotocraftApp, id: &str, params: &Value) -> (Option<DocId>, V
 }
 
 /// Park `id` behind a prompt if it would discard unsaved work. Returns whether it did.
-pub fn intercept(app: &mut PhotocraftApp, id: &str, params: &Value) -> bool {
+pub fn intercept(app: &mut PatronusPhotoApp, id: &str, params: &Value) -> bool {
     let (target, docs) = discarded(app, id, params);
     if docs.is_empty() {
         return false;
@@ -105,7 +105,7 @@ pub fn intercept(app: &mut PhotocraftApp, id: &str, params: &Value) -> bool {
 
 /// Puts up `prompt`. One over several documents shows the document it asks about first; each
 /// later one is shown as it comes up (see [`advance`]).
-fn ask(app: &mut PhotocraftApp, prompt: Prompt) {
+fn ask(app: &mut PatronusPhotoApp, prompt: Prompt) {
     if !matches!(reach(&prompt.id), Some(Reach::Target)) {
         show_tab(app, prompt.docs.first().copied());
     }
@@ -113,13 +113,13 @@ fn ask(app: &mut PhotocraftApp, prompt: Prompt) {
 }
 
 /// Makes `doc` the active tab, if it is still open.
-fn show_tab(app: &mut PhotocraftApp, doc: Option<DocId>) {
+fn show_tab(app: &mut PatronusPhotoApp, doc: Option<DocId>) {
     if let Some(i) = doc.and_then(|d| index_of(app, d)) {
         app.session.set_active(i);
     }
 }
 
-impl PhotocraftApp {
+impl PatronusPhotoApp {
     /// Whether closing now would lose work: a document has unsaved changes and closing wasn't
     /// confirmed. The web build has the browser ask before leaving the page while this holds (#1380).
     pub fn has_unsaved_work(&self) -> bool {
@@ -131,7 +131,7 @@ impl PhotocraftApp {
 /// was asked to close: hold it while there is unsaved work. Every way of leaving (File › Exit /
 /// Quit, the close button, the OS's quit event, `app.quit`) ends up here as a close request. On
 /// `Close` the runtime leaves through the platform's own quit where there is one (macOS).
-pub fn close_decision(app: &mut PhotocraftApp) -> CloseDecision {
+pub fn close_decision(app: &mut PatronusPhotoApp) -> CloseDecision {
     if !app.allow_close && intercept(app, EXIT, &Value::Null) {
         return CloseDecision::Hold;
     }
@@ -145,7 +145,7 @@ pub fn close_decision(app: &mut PhotocraftApp) -> CloseDecision {
 }
 
 /// Moves on to the next document, or runs the parked action once none are left.
-fn advance(app: &mut PhotocraftApp, ctx: &egui::Context) {
+fn advance(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     let Some(p) = app.discard.as_mut() else { return };
     let answered = (!p.docs.is_empty()).then(|| p.docs.remove(0));
     let (next, one_by_one) = (p.docs.first().copied(), !matches!(reach(&p.id), Some(Reach::Target)));
@@ -208,7 +208,7 @@ fn advance(app: &mut PhotocraftApp, ctx: &egui::Context) {
 
 /// Saves `doc`; true once it is saved. A document without a file to write back to asks where in
 /// the save dialog: the prompt then hides until it is answered, and moves on only if it saved.
-fn save(app: &mut PhotocraftApp, ctx: &egui::Context, doc: DocId) -> bool {
+fn save(app: &mut PatronusPhotoApp, ctx: &egui::Context, doc: DocId) -> bool {
     let Some(i) = index_of(app, doc) else { return false };
     app.session.set_active(i);
     let saved = crate::menus::invoke_unguarded(app, ctx, "file.save", json!({}));
@@ -242,7 +242,7 @@ fn save(app: &mut PhotocraftApp, ctx: &egui::Context, doc: DocId) -> bool {
 /// A completed save may release the close prompt. Choosing a path only starts a layered TIFF
 /// save; TIFF Options calls this after the write, and `jobs_ui` when a background save ends.
 /// Copies and failed writes leave the doc dirty; so does any write when it is unconfirmed.
-pub(crate) fn saved_document(app: &mut PhotocraftApp, ctx: &egui::Context, doc: DocId) {
+pub(crate) fn saved_document(app: &mut PatronusPhotoApp, ctx: &egui::Context, doc: DocId) {
     // Still the prompt that asked (quitting may have replaced it meanwhile).
     if !app.save_options_open()
         && app.discard.as_ref().and_then(|p| p.docs.first()) == Some(&doc)
@@ -263,7 +263,7 @@ fn couldnt_save(e: String) -> String {
 ///
 /// A pass applies only the result stored for it: the host hands each result out once, so a second
 /// pass in one frame finds none. Each pass answers at most one document by Apply to All.
-pub(crate) fn take(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(crate) fn take(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     // Save can ask for a path and then TIFF or Targa Options, and then write in the background.
     // Wait for all three; cancellation or a failed save brings us back. The question is closed
     // meanwhile: the answer that started the save closed it.
@@ -352,7 +352,7 @@ fn scope_of(id: &str) -> CloseScope {
 /// Closes the open question when it no longer belongs to the pending prompt: the prompt is gone,
 /// quitting replaced it, or its front document moved on. The result the host keeps for it is
 /// dropped here so it is not taken as an answer.
-fn close_stale_question(app: &mut PhotocraftApp, ctx: &egui::Context) {
+fn close_stale_question(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     if !app.framework.dialogs.is_open::<UnsavedChangesDialog>() {
         return;
     }
@@ -366,7 +366,7 @@ fn close_stale_question(app: &mut PhotocraftApp, ctx: &egui::Context) {
 
 /// Makes a Save or Don't Save answer about `doc` the answer for every document still to ask about.
 /// `from_control` says a control client gave it, so each later Save is judged as automation too.
-fn apply_to_rest(app: &mut PhotocraftApp, doc: DocId, answer: Answer, from_control: bool) {
+fn apply_to_rest(app: &mut PatronusPhotoApp, doc: DocId, answer: Answer, from_control: bool) {
     if !matches!(answer, Answer::Save | Answer::Discard) {
         return;
     }
@@ -380,7 +380,7 @@ fn apply_to_rest(app: &mut PhotocraftApp, doc: DocId, answer: Answer, from_contr
 /// Acts on the answer about `doc`, the document the prompt is asking about. `from_control` says
 /// a control client gave it (`ui.dialog.confirm`). Save is refused when automation may not run
 /// File › Save (see [`authorize_save`]); the prompt stays up.
-fn apply(app: &mut PhotocraftApp, ctx: &egui::Context, doc: DocId, answer: Answer, from_control: bool) -> Result<(), String> {
+fn apply(app: &mut PatronusPhotoApp, ctx: &egui::Context, doc: DocId, answer: Answer, from_control: bool) -> Result<(), String> {
     match answer {
         Answer::Cancel => app.discard = None,
         Answer::Discard => advance(app, ctx),
@@ -402,7 +402,7 @@ fn apply(app: &mut PhotocraftApp, ctx: &egui::Context, doc: DocId, answer: Answe
 /// services' policy) and the command callback both judge it, and with neither available the
 /// Save is refused rather than run unjudged. A control client's `ui.dialog.confirm` calls it with
 /// `from_control` before it confirms a Save, so a refusal leaves the question open.
-pub(crate) fn authorize_save(app: &PhotocraftApp, from_control: bool) -> Result<(), String> {
+pub(crate) fn authorize_save(app: &PatronusPhotoApp, from_control: bool) -> Result<(), String> {
     if !(from_control || app.automation_input || app.session.authorize.is_some()) {
         return Ok(());
     }
@@ -423,14 +423,14 @@ pub(crate) fn authorize_save(app: &PhotocraftApp, from_control: bool) -> Result<
 pub const CONTROL_ID: &str = "discard";
 
 /// The host's id of the open question, for a control request naming [`CONTROL_ID`].
-pub(crate) fn host_id(app: &PhotocraftApp) -> Option<craft::ui::dialog::DialogId> {
+pub(crate) fn host_id(app: &PatronusPhotoApp) -> Option<craft::ui::dialog::DialogId> {
     app.framework.dialogs.get::<UnsavedChangesDialog>().map(craft::ui::dialog::StackDialog::id)
 }
 
 /// Lists the open question in `dialogs` (the host's `ui.inspect` entries) under [`CONTROL_ID`], its fields adding the
 /// command it holds back, the document it asks about, how many are left to answer, the choices `ui.dialog.confirm`
 /// takes and the default one.
-pub(crate) fn describe(app: &PhotocraftApp, dialogs: &mut Value) {
+pub(crate) fn describe(app: &PatronusPhotoApp, dialogs: &mut Value) {
     let Some(key) = host_id(app).map(|id| id.value().to_string()) else { return };
     let Some(entry) = dialogs.as_array_mut().and_then(|list| list.iter_mut().find(|d| d["id"] == key.as_str())) else { return };
     entry["id"] = json!(CONTROL_ID);
@@ -457,7 +457,7 @@ pub(crate) fn describe(app: &PhotocraftApp, dialogs: &mut Value) {
 
 /// The command the prompt holds back and its params, for the automation policy to see before a
 /// control client answers it.
-pub fn pending_command(app: &PhotocraftApp) -> Option<(String, Value)> {
+pub fn pending_command(app: &PatronusPhotoApp) -> Option<(String, Value)> {
     app.discard.as_ref().map(|p| (p.id.clone(), p.params.clone()))
 }
 

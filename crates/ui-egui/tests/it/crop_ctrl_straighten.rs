@@ -9,12 +9,12 @@
 //! in an egui_kittest harness (no GPU needed): the canvas takes each `ui.pointer` call's input on
 //! the frames that follow it.
 
-use photocraft_ui_egui::PhotocraftApp;
-use photocraft_ui_egui::control::{ControlRequest, Reply, handle};
-use photocraft_ui_egui::crop_ui::{frame, pending};
+use patronusphoto_ui_egui::PatronusPhotoApp;
+use patronusphoto_ui_egui::control::{ControlRequest, Reply, handle};
+use patronusphoto_ui_egui::crop_ui::{frame, pending};
 use serde_json::{Value, json};
 
-type Harness = egui_kittest::Harness<'static, Box<PhotocraftApp>>;
+type Harness = egui_kittest::Harness<'static, Box<PatronusPhotoApp>>;
 
 /// The background colour, #1050e0: what the turn uncovers is filled with it.
 const BLUE: [f32; 3] = [16.0 / 255.0, 80.0 / 255.0, 224.0 / 255.0];
@@ -23,8 +23,8 @@ const BLUE: [f32; 3] = [16.0 / 255.0, 80.0 / 255.0, 224.0 / 255.0];
 /// picked in Classic Mode or the default mode, and its default frame.
 fn app(classic: bool) -> Harness {
     let mut h = Harness::builder().with_size(egui::vec2(1100.0, 760.0)).with_max_steps(64).build_eframe(|cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), Default::default());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), Default::default());
         app.session.prefs.edit(|p| p.interface.language = "en".into());
         app.run("file.new", json!({"width": 800, "height": 500, "background": "white"})).expect("new");
         app.run("select.rect", json!({"x": 280, "y": 180, "width": 40, "height": 40})).expect("select");
@@ -95,7 +95,7 @@ fn angle(h: &Harness) -> f64 {
 /// Commits the crop (`image.crop`, as ↵ does) and returns the document's new size.
 fn committed(h: &mut Harness) -> (u32, u32) {
     let ctx = h.ctx.clone();
-    photocraft_ui_egui::menus::invoke(h.state_mut(), &ctx, "image.crop", json!({})).expect("crop");
+    patronusphoto_ui_egui::menus::invoke(h.state_mut(), &ctx, "image.crop", json!({})).expect("crop");
     h.run_steps(6);
     let size = h.state().session.active().expect("document").doc.size;
     (size.width, size.height)
@@ -104,7 +104,7 @@ fn committed(h: &mut Harness) -> (u32, u32) {
 /// The flattened document's pixel at (`x`, `y`).
 fn pixel(h: &Harness, x: usize, y: usize) -> [f32; 4] {
     let doc = &h.state().session.active().expect("document").doc;
-    let flat = photocraft_compose::flatten(doc);
+    let flat = patronusphoto_compose::flatten(doc);
     flat.px[y * doc.size.width as usize + x]
 }
 

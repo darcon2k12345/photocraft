@@ -3,7 +3,7 @@
 
 use super::*;
 use craft_xcf::{Compression, MAX_STRING, TILE};
-use photocraft_raster::Interrupt;
+use patronusphoto_raster::Interrupt;
 
 /// A small XCF writer for tests: version 11+ layout (64-bit pointers) by default.
 pub(super) struct W {
@@ -752,8 +752,9 @@ fn gzipped_files_are_recognised_by_name_and_inflated() {
 #[test]
 fn a_png_with_an_xcf_suffix_opens_by_content() {
     let img =
-        photocraft_codecs::Image::from_raw(12, 8, photocraft_codecs::ChannelLayout::Rgba, photocraft_codecs::SampleType::U8, vec![90; 12 * 8 * 4]).unwrap();
-    let png = photocraft_codecs::encode(&img, photocraft_codecs::Format::Png, &Default::default()).unwrap();
+        patronusphoto_codecs::Image::from_raw(12, 8, patronusphoto_codecs::ChannelLayout::Rgba, patronusphoto_codecs::SampleType::U8, vec![90; 12 * 8 * 4])
+            .unwrap();
+    let png = patronusphoto_codecs::encode(&img, patronusphoto_codecs::Format::Png, &Default::default()).unwrap();
     let r = crate::import("renamed.xcf", &png).unwrap();
     assert_eq!((r.document.size.width, r.document.size.height), (12, 8));
     assert!(crate::import("broken.xcf", b"not an image at all").is_err());
@@ -822,7 +823,7 @@ fn a_narrow_drawable_is_charged_the_tiles_it_stores() {
 fn blank_layers_are_not_charged_for_pruned_tiles() {
     let mut budget = MAX_PIXEL_BYTES;
     for _ in 0..4 {
-        let mut surface = Surface::new(photocraft_color::PixelFormat::RGBA8);
+        let mut surface = Surface::new(patronusphoto_color::PixelFormat::RGBA8);
         let px = Pixels { width: 1, height: 300_000, channels: 4, data: vec![0.0; 1_200_000] };
         write_pixels(&mut surface, &px, 0, 0, &mut budget).unwrap();
     }

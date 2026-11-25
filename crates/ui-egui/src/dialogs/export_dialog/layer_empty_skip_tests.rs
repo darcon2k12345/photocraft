@@ -4,7 +4,7 @@
 
 use super::*;
 use craft::host::{Picked, ScriptedFiles};
-use photocraft_geom::Rect;
+use patronusphoto_geom::Rect;
 use std::{cell::RefCell, rc::Rc};
 
 type Written = Rc<RefCell<Vec<String>>>;
@@ -20,14 +20,14 @@ struct Layers {
 /// 100 x 80 with, bottom to top: Background, `Empty` (no pixels), an Invert adjustment layer,
 /// `Gone` (pixels only past the right edge), `Red` and `Blue` (filled). Its file dialogs stay open
 /// until the test answers them.
-fn app() -> (Box<PhotocraftApp>, Layers, Written, Arc<ScriptedFiles>) {
+fn app() -> (Box<PatronusPhotoApp>, Layers, Written, Arc<ScriptedFiles>) {
     let written = Written::default();
     let capture = written.clone();
     let files = Arc::new(ScriptedFiles::held());
     let services = crate::Services {
         files: Some(files.clone()),
         export: Some(Box::new(|doc, path, settings| {
-            photocraft_io::export(doc, path, &settings.io_options()).map(|r| (r.bytes, r.warnings)).map_err(|e| e.to_string())
+            patronusphoto_io::export(doc, path, &settings.io_options()).map(|r| (r.bytes, r.warnings)).map_err(|e| e.to_string())
         })),
         write: Some(Box::new(move |path, _| {
             capture.borrow_mut().push(path.to_string());
@@ -35,9 +35,9 @@ fn app() -> (Box<PhotocraftApp>, Layers, Written, Arc<ScriptedFiles>) {
         })),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     app.run("file.new", json!({"width": 100, "height": 80})).unwrap();
-    let active = |app: &PhotocraftApp| app.session.active().unwrap().active_layer.unwrap();
+    let active = |app: &PatronusPhotoApp| app.session.active().unwrap().active_layer.unwrap();
     app.run("layer.new.layer", json!({"name": "Empty"})).unwrap();
     let empty = active(&app);
     app.run("layer.newAdjustmentLayer.invert", json!({})).unwrap();
@@ -48,7 +48,7 @@ fn app() -> (Box<PhotocraftApp>, Layers, Written, Arc<ScriptedFiles>) {
         let st = app.session.active_mut().unwrap();
         let doc = Arc::make_mut(st.doc_mut());
         let surface = doc.layer_mut(gone).unwrap().surface_mut().unwrap();
-        let red = photocraft_raster::from_rgba(&surface.format(), [1.0, 0.0, 0.0, 1.0]);
+        let red = patronusphoto_raster::from_rgba(&surface.format(), [1.0, 0.0, 0.0, 1.0]);
         surface.fill_rect(Rect::new(150, 0, 190, 40), &red);
     }
     app.run("layer.new.layer", json!({"name": "Red"})).unwrap();
@@ -61,7 +61,7 @@ fn app() -> (Box<PhotocraftApp>, Layers, Written, Arc<ScriptedFiles>) {
 }
 
 /// The user answers the open file dialog with `path`, and the app takes the answer.
-fn answer(app: &mut PhotocraftApp, files: &ScriptedFiles, path: &std::path::Path) {
+fn answer(app: &mut PatronusPhotoApp, files: &ScriptedFiles, path: &std::path::Path) {
     files.answer(Picked::Paths(vec![path.to_path_buf()])).expect("a file dialog is open");
     app.poll_file_dialog();
 }

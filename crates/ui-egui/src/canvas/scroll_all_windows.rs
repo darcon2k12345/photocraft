@@ -13,7 +13,7 @@
 
 use craft::ui::canvas::ViewPan;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::View;
 
 /// The view a Hand drag moves itself: a document's view in the main window, or a document window
@@ -26,7 +26,7 @@ pub enum Source {
 
 /// Whether the main window shows the Home screen or an open-file card instead of a document
 /// canvas, as `tabs::documents` draws it.
-fn main_canvas_hidden(app: &mut PhotocraftApp) -> bool {
+fn main_canvas_hidden(app: &mut PatronusPhotoApp) -> bool {
     let n = app.session.documents().len();
     let opening = !app.jobs.opens.is_empty();
     (!opening && app.ui.chrome.shows_home(n, app.session.prefs().general.auto_show_home_screen)) || app.jobs.focus.is_some()
@@ -35,7 +35,7 @@ fn main_canvas_hidden(app: &mut PhotocraftApp) -> bool {
 /// Move every shown view except `source` by the distance of `pan`, in document pixels: each view's
 /// center moves by the same number of its own document's pixels. Does nothing unless the press chose
 /// Scroll All Windows.
-pub fn follow(app: &mut PhotocraftApp, source: Source, pan: ViewPan) {
+pub fn follow(app: &mut PatronusPhotoApp, source: Source, pan: ViewPan) {
     if !pan.scroll_all {
         return;
     }
@@ -131,8 +131,8 @@ mod tests {
     }
 
     /// The app with the views at known centers and the windows of `layout`.
-    fn app_with(layout: Layout) -> Box<PhotocraftApp> {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    fn app_with(layout: Layout) -> Box<PatronusPhotoApp> {
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         for (w, h) in [(400, 300), (800, 600), (200, 100)] {
             app.run("file.new", json!({"width": w, "height": h})).unwrap();
         }
@@ -143,7 +143,7 @@ mod tests {
         app.ui.views[2] = view(1.0, [100.0, 50.0], 0.0);
         let id = |i: usize| app.session.documents()[i].doc.id;
         let (d0, d1, d2) = (id(0), id(1), id(2));
-        let group = |id: u64, documents: Vec<photocraft_doc::DocId>, shown| {
+        let group = |id: u64, documents: Vec<patronusphoto_doc::DocId>, shown| {
             let mut g = DocumentGroup::new(id, documents);
             g.shown = Some(shown);
             g
@@ -176,7 +176,7 @@ mod tests {
         app
     }
 
-    fn center(app: &PhotocraftApp, at: Spot) -> [f32; 2] {
+    fn center(app: &PatronusPhotoApp, at: Spot) -> [f32; 2] {
         match at {
             Spot::Doc(d) => app.ui.views[d].center,
             Spot::Window(id) => app.ui.window_views[&id].center,
@@ -280,7 +280,7 @@ mod tests {
                 Hidden::No => {}
                 Hidden::Home => app.ui.chrome.home = Some(app.session.documents().len()),
                 Hidden::Card => {
-                    let job = photocraft_engine::jobs::JobId(9);
+                    let job = patronusphoto_engine::jobs::JobId(9);
                     app.jobs.opens.push(crate::jobs_ui::OpenTab { job, name: "opening.psd".into(), path: None, slot: None, order: None });
                     app.jobs.focus = Some(job);
                 }

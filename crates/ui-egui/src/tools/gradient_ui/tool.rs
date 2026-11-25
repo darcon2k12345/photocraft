@@ -10,11 +10,11 @@ use craft::ui::canvas::{CanvasTool, ToolAccess, ToolAction, ToolContext, ToolHos
 use craft::ui::primitives::{DataWidth, Draw, PaintShape};
 use craft::ui::style::DataColor;
 use egui::{Color32, Pos2};
-use photocraft_doc::LayerId;
+use patronusphoto_doc::LayerId;
 use serde_json::json;
 
 use super::{active_gradient, cmds, create_params, dist, live_mode};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::document_display::CanvasHost;
 use crate::canvas::tools::{FamilyTool, ToolScope};
 
@@ -47,7 +47,7 @@ pub(crate) fn tool<'a>(scope: &'a ToolScope<'a>, state: &'a mut GradientDraw, _h
 
 /// Ends the drag when the host reports its end. The tool clears it at release and cancel itself; this covers a gesture
 /// the host ended without a call, so none is left behind.
-pub(crate) fn drain(_app: &mut PhotocraftApp, state: &mut GradientDraw, response: &ToolHostResponse) {
+pub(crate) fn drain(_app: &mut PatronusPhotoApp, state: &mut GradientDraw, response: &ToolHostResponse) {
     if matches!(response.gesture, Some(GesturePhase::Commit | GesturePhase::Cancel)) {
         state.clear();
     }
@@ -74,7 +74,7 @@ fn snapped(from: [f32; 2], to: [f32; 2], shift: bool) -> [f32; 2] {
 }
 
 /// Runs the drag `from`→`to` as the active mode does: the live Gradient Fill layer, or the classic paint.
-fn commit(app: &mut PhotocraftApp, from: [f32; 2], to: [f32; 2], redraw: Option<LayerId>) {
+fn commit(app: &mut PatronusPhotoApp, from: [f32; 2], to: [f32; 2], redraw: Option<LayerId>) {
     if live_mode(app) {
         let result = match redraw {
             Some(id) => app.run(cmds::SET, json!({"layer": id.0, "from": from, "to": to})),
@@ -96,7 +96,7 @@ fn commit(app: &mut PhotocraftApp, from: [f32; 2], to: [f32; 2], redraw: Option<
 }
 
 /// Says in the status line why a drag changed nothing (a locked layer, no pixels to paint).
-fn report<T, E: std::fmt::Display>(app: &mut PhotocraftApp, result: Result<T, E>) {
+fn report<T, E: std::fmt::Display>(app: &mut PatronusPhotoApp, result: Result<T, E>) {
     if let Err(error) = result {
         app.ui.status = error.to_string();
         app.ui.status_error = true;

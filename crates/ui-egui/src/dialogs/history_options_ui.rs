@@ -7,10 +7,10 @@
 use craft::ui::contract::Bind;
 use craft::ui::dialog::DialogId;
 use craft::ui::patterns::form_dialogs::{DialogFields, Param, ParamDialog, ParamKind, ParamResult};
-use photocraft_engine::history_options_cmds::{self, OPTIONS};
+use patronusphoto_engine::history_options_cmds::{self, OPTIONS};
 use serde_json::{Map, Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::dialogs::params;
 
 /// The command the dialog runs; also the dialog's key.
@@ -22,7 +22,7 @@ pub(crate) fn owns(key: &str) -> bool {
 }
 
 /// Opens the dialog for a parameterless `history.options`; anything else is not handled here.
-pub fn menu(app: &mut PhotocraftApp, id: &str, params: &Value) -> Option<Result<Value, String>> {
+pub fn menu(app: &mut PatronusPhotoApp, id: &str, params: &Value) -> Option<Result<Value, String>> {
     if id != COMMAND || params.as_object().is_some_and(|m| m.keys().any(|k| !k.starts_with("__"))) {
         return None;
     }
@@ -42,7 +42,7 @@ fn label(key: &str) -> &'static str {
 }
 
 /// Open the dialog on the current options; returns its id.
-pub fn open(app: &mut PhotocraftApp) -> DialogId {
+pub fn open(app: &mut PatronusPhotoApp) -> DialogId {
     let current = history_options_cmds::current(&app.session);
     let rows: Vec<(&'static str, bool)> = OPTIONS.iter().map(|key| (*key, current.get(*key).and_then(Value::as_bool).unwrap_or(false))).collect();
     params::open_param(app, COMMAND, DialogFields::new(), Value::Null, move |fields: &mut DialogFields| {
@@ -52,7 +52,7 @@ pub fn open(app: &mut PhotocraftApp) -> DialogId {
 }
 
 /// OK: applies the five options.
-pub(crate) fn run(app: &mut PhotocraftApp, _ctx: &egui::Context, result: ParamResult) {
+pub(crate) fn run(app: &mut PatronusPhotoApp, _ctx: &egui::Context, result: ParamResult) {
     let options: Map<String, Value> = OPTIONS.iter().map(|key| (key.to_string(), json!(result.fields.bool(key).unwrap_or(false)))).collect();
     let outcome = app.run(COMMAND, Value::Object(options));
     super::alerts::report(app, outcome);
@@ -63,8 +63,8 @@ mod tests {
     use super::*;
     use crate::new_layer_ui::testing::{set, top};
 
-    fn app() -> Box<PhotocraftApp> {
-        PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default())
+    fn app() -> Box<PatronusPhotoApp> {
+        PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default())
     }
 
     #[test]

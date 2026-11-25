@@ -1,13 +1,13 @@
 use super::{
-    PhotocraftApp, canvas, discard_ui, gpu_canvas, gpu_status, i18n, jobs_ui, last_brush, monitor_status, native_menu, notices, paint_mouse, panels, prefs_ui,
-    screen_picker, shortcuts, smart_svg_ui, tool_memory, transform_tool, type_tool, updates_ui, view_cmds, work_area,
+    PatronusPhotoApp, canvas, discard_ui, gpu_canvas, gpu_status, i18n, jobs_ui, last_brush, monitor_status, native_menu, notices, paint_mouse, panels,
+    prefs_ui, screen_picker, shortcuts, smart_svg_ui, tool_memory, transform_tool, type_tool, updates_ui, view_cmds, work_area,
 };
 use craft::ui::contract::Bind;
 use craft::ui::runtime::env::WindowKey;
 use craft::ui::runtime::windows::WindowHost;
 use craft::ui::shell::AppShell;
 
-impl PhotocraftApp {
+impl PatronusPhotoApp {
     /// Close this frame's stage record (`frame_stages`): keep it if it was slow, and hand it to
     /// the stroke trace. `ui_ms` is this pass's UI build. A pass egui will run again
     /// (`request_discard`, such as a sizing pass) leaves the record open, so a frame is one
@@ -40,7 +40,7 @@ impl PhotocraftApp {
     }
 }
 
-impl PhotocraftApp {
+impl PatronusPhotoApp {
     /// Whether the Home screen is what the canvas area shows this frame. Files opening in the
     /// background (#210) have tabs before they have documents, so they win over Home. The frame
     /// draws no tool strip, options bar, status bar or docks under Home, and the canvas area
@@ -96,7 +96,7 @@ impl PhotocraftApp {
         // A window bigger than its display (1440 × 900 on 1366 × 768) runs under the taskbar:
         // maximize it into the work area once (#315).
         work_area::fit_window(ctx);
-        // The runtime's close path, which asks PhotoCraft when the window was asked to close.
+        // The runtime's close path, which asks Patronus Photo when the window was asked to close.
         craft::ui::shell::embed::logic(ctx, || discard_ui::close_decision(self));
         // A component refused its input (a zoom field turning a Tab or Alt away, a dialog field):
         // the alert plays once per frame, whatever the number of refusals.

@@ -8,7 +8,7 @@
 mod recovery_psd;
 
 use craft_psd::PsdFile;
-use photocraft_io::{ImportOptions, import, import_for_open};
+use patronusphoto_io::{ImportOptions, import, import_for_open};
 
 /// Verifies a generated, two-layer PSD opens without source restrictions or damage prompts.
 #[test]
@@ -88,14 +88,14 @@ fn fatal_parse_errors_are_not_turned_into_confirmation_requests() {
 /// Generate the same two PSDs on demand for manual testing in the GUI.
 ///
 /// Run with:
-/// cargo test -p photocraft-io --test it \
+/// cargo test -p patronusphoto-io --test it \
 ///   psd_recovery_generated::write_psds_for_manual_gui_test -- --ignored --nocapture
 ///
 /// The files go to the system's temp folder, not into the repository.
 #[test]
 #[ignore = "writes temporary PSD fixtures only when manual GUI testing is requested"]
 fn write_psds_for_manual_gui_test() {
-    let output = std::env::temp_dir().join(format!("photocraft-psd-recovery-{}", std::process::id()));
+    let output = std::env::temp_dir().join(format!("patronusphoto-psd-recovery-{}", std::process::id()));
     std::fs::create_dir_all(&output).expect("create temporary fixture directory");
 
     for (name, corrupt) in [("valid-two-layers.psd", false), ("corrupt-green-rle.psd", true)] {

@@ -20,7 +20,7 @@ use craft::layers::ui::filter::LayerFilter;
 use craft::layers::ui::options::LayersSettings;
 use craft::ui::canvas::{SplitAt, ViewCommands, ViewRequest};
 use craft::ui::patterns::presets::{PresetState, PresetView};
-use photocraft_doc::DocId;
+use patronusphoto_doc::DocId;
 
 use crate::panels::brush_panel::brushes::BrushKey;
 
@@ -36,7 +36,7 @@ pub use transform::{CamTransform, ContentAwareOptions, Extras, FreeTransform, Ma
 pub struct Panels {
     pub options_bar: bool,
     pub status_bar: bool,
-    /// The title bar with the in-window menus. An app that embeds PhotoCraft's UI and draws its own
+    /// The title bar with the in-window menus. An app that embeds Patronus Photo's UI and draws its own
     /// bar can hide it; the caption buttons of a custom title bar go with it.
     #[serde(default = "yes")]
     pub menu_bar: bool,
@@ -62,7 +62,7 @@ impl Default for Panels {
 pub struct View {
     /// Screen (device) pixels per document pixel: the user-facing zoom (`100%` is `1.0`).
     /// Canvas geometry works in egui points and divides by `ctx.pixels_per_point`
-    /// (`PhotocraftApp::point_zoom`), so neither the display scale nor Interface › UI Scale
+    /// (`PatronusPhotoApp::point_zoom`), so neither the display scale nor Interface › UI Scale
     /// magnifies the image (#1943, #2121).
     pub zoom: f32,
     /// Document-space point shown at the canvas centre.
@@ -262,13 +262,13 @@ pub struct UiState {
     #[serde(default = "default_brush_tool")]
     pub brush_tool: Tool,
     #[serde(default)]
-    pub tool_brushes: Vec<(Tool, photocraft_engine::paint::BrushSettings)>,
+    pub tool_brushes: Vec<(Tool, patronusphoto_engine::paint::BrushSettings)>,
     /// Pen path under construction. Not saved: its `EditSubpath` has no serde.
     #[serde(skip)]
     pub pen: Option<crate::vector_ui::PenPath>,
     /// The document the pen path is drawn on; switching away commits it to that Work Path.
     #[serde(default)]
-    pub pen_doc: Option<photocraft_doc::DocId>,
+    pub pen_doc: Option<patronusphoto_doc::DocId>,
     /// The shape options' Stroke Options popover is open.
     #[serde(default)]
     pub shape_stroke_open: bool,
@@ -298,7 +298,7 @@ pub struct UiState {
     /// Selection tool (#6079): the canvas hides that path until a path is selected again or the
     /// Work Path changes.
     #[serde(default)]
-    pub hidden_work_path: Option<(u64, photocraft_doc::Path)>,
+    pub hidden_work_path: Option<(u64, patronusphoto_doc::Path)>,
     /// The Layers panel filter: what it filters by (kind, name, effect, mode, attribute, colour,
     /// smart object) and each type's value (#5048, #5898, #10880, #10881).
     #[serde(default)]
@@ -422,7 +422,7 @@ pub struct UiState {
     /// The shape Fill / Stroke swatches' recently used gradients, newest first (the Gradient
     /// tab's Recent row).
     #[serde(default)]
-    pub recent_gradients: Vec<photocraft_doc::Fill>,
+    pub recent_gradients: Vec<patronusphoto_doc::Fill>,
     pub next_id: u64,
     /// Last status message (errors from commands, hints).
     pub status: String,

@@ -1,12 +1,13 @@
 use super::*;
 use crate::smart_cmds::{WARNING_SOURCE_DECODES, WARNING_SOURCE_LIMIT, WarningRenderSources, render_with_warnings_using};
-use photocraft_color::{ColorMode, PixelFormat, SampleType};
-use photocraft_doc::SmartFilter;
-use photocraft_geom::Affine;
+use patronusphoto_color::{ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::SmartFilter;
+use patronusphoto_geom::Affine;
 
 fn artwork(width: u32, height: u32) -> String {
-    let image = photocraft_codecs::Image::from_u8(width, height, photocraft_codecs::ChannelLayout::Rgb, [0, 255, 0].repeat((width * height) as usize)).unwrap();
-    let png = photocraft_codecs::encode(&image, photocraft_codecs::Format::Png, &Default::default()).unwrap();
+    let image =
+        patronusphoto_codecs::Image::from_u8(width, height, patronusphoto_codecs::ChannelLayout::Rgb, [0, 255, 0].repeat((width * height) as usize)).unwrap();
+    let png = patronusphoto_codecs::encode(&image, patronusphoto_codecs::Format::Png, &Default::default()).unwrap();
     let encoded = base64::engine::general_purpose::STANDARD.encode(png);
     format!(
         r##"<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><image width="8" height="16" preserveAspectRatio="none" href="data:image/png;base64,{encoded}"/><rect x="8" width="8" height="16" fill="#808080"/><image width="1" height="1" href="data:image/png;base64,A"/></svg>"##
@@ -36,7 +37,7 @@ fn assert_update_warnings(result: &Value) {
     }));
 }
 
-fn draw(sources: &mut WarningRenderSources<'_>, sm: &SmartObject) -> photocraft_raster::Surface {
+fn draw(sources: &mut WarningRenderSources<'_>, sm: &SmartObject) -> patronusphoto_raster::Surface {
     let (surface, warnings) = render_with_warnings_using(sm, sources).unwrap();
     assert_eq!(warnings.len(), 1);
     surface.unwrap()
@@ -68,8 +69,8 @@ fn request(s: &mut Session, id: LayerId, svg: &str) -> Value {
 #[test]
 fn warning_source_profile_context_stays_lazy_for_non_svg_and_missing_sources() {
     let doc = Document::new("Raster", Size::new(8, 8), ColorMode::Rgb, SampleType::U8);
-    let image = photocraft_codecs::Image::from_u8(2, 2, photocraft_codecs::ChannelLayout::Rgb, [0, 255, 0].repeat(4)).unwrap();
-    let png = photocraft_codecs::encode(&image, photocraft_codecs::Format::Png, &Default::default()).unwrap();
+    let image = patronusphoto_codecs::Image::from_u8(2, 2, patronusphoto_codecs::ChannelLayout::Rgb, [0, 255, 0].repeat(4)).unwrap();
+    let png = patronusphoto_codecs::encode(&image, patronusphoto_codecs::Format::Png, &Default::default()).unwrap();
     let sm = SmartObject::new(SmartSource::Embedded { file_name: "Raster.png".into(), bytes: Arc::new(png) }, Affine::IDENTITY, None);
     let expected = crate::smart_cmds::render(&doc, &sm).unwrap();
     let mut sources = WarningRenderSources::new(&doc);
@@ -116,7 +117,7 @@ fn shared_svg_update_decodes_one_source_for_equal_scale_and_keeps_warning_caches
     let sm = smart(doc, id).unwrap();
     assert!(crate::smart_cmds::render(doc, sm).is_err(), "strict global cache must remain unpoisoned");
     let mut stack = sm.clone();
-    stack.stack_mode = Some(photocraft_doc::StackMode::Mean);
+    stack.stack_mode = Some(patronusphoto_doc::StackMode::Mean);
     assert!(crate::smart_cmds::render(doc, &stack).is_err(), "Stack Mode still requires complete artwork");
     assert!(s.undo());
     assert_eq!(s.active().unwrap().doc, before);
@@ -136,7 +137,7 @@ fn local_svg_sources_separate_scale_and_profile_but_keep_instance_filters_and_pl
     moved.smart_filters.push(SmartFilter {
         command: "image.adjustments.invert".into(),
         params: json!({}),
-        blend: photocraft_color::BlendMode::Normal,
+        blend: patronusphoto_color::BlendMode::Normal,
         opacity: 0.5,
         visible: true,
     });
@@ -167,7 +168,7 @@ fn local_svg_source_memo_evicts_and_oversize_entries_render_without_retention() 
     let first = object(&artwork(4, 4));
     let mut scaled = first.clone();
     scaled.transform = Affine { m: [2., 0., 0., 2., 0., 0.] };
-    let tile = photocraft_raster::tile_storage_bytes(Rect::new(0, 0, 32, 32), &PixelFormat::RGBA8) as usize;
+    let tile = patronusphoto_raster::tile_storage_bytes(Rect::new(0, 0, 32, 32), &PixelFormat::RGBA8) as usize;
     for (budget, limit) in [(tile + 4096, 32), (usize::MAX, 1)] {
         let mut sources = WarningRenderSources::with_limits(&doc, budget, limit);
         reset();
@@ -201,7 +202,7 @@ fn shared_svg_update_render_failure_and_cancelled_authorization_preserve_documen
         sm.smart_filters.push(SmartFilter {
             command: if cancel { "image.adjustments.invert" } else { "unsupported.persisted.filter" }.into(),
             params: json!({}),
-            blend: photocraft_color::BlendMode::Normal,
+            blend: patronusphoto_color::BlendMode::Normal,
             opacity: 1.,
             visible: true,
         });

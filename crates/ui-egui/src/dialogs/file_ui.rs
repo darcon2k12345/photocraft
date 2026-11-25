@@ -8,7 +8,7 @@
 use craft::ui::dialog::DialogId;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 pub(crate) mod print;
 mod web;
@@ -38,7 +38,7 @@ fn opened(id: DialogId) -> Value {
 const SCRIPT_EXTENSIONS: &[&str] = &["psjs", "ccjs", "jsx", "js", "jsxbin", "json", "txt", "pcdroplet"];
 
 /// Menu items fronted here (dialogs before the engine command). `None` when not ours.
-pub fn invoke(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, params: &Value) -> Option<Result<Value, String>> {
+pub fn invoke(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: &str, params: &Value) -> Option<Result<Value, String>> {
     if !no_params(params) {
         return None;
     }
@@ -48,7 +48,7 @@ pub fn invoke(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, params: &V
             app.session.active()?;
             Ok(opened(open_print(app)))
         }
-        "file.printOneCopy" if photocraft_engine::print_cmds::last_print(&app.session).is_none() => {
+        "file.printOneCopy" if patronusphoto_engine::print_cmds::last_print(&app.session).is_none() => {
             app.session.active()?;
             Ok(opened(open_print(app)))
         }
@@ -74,7 +74,7 @@ pub fn invoke(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, params: &V
 }
 
 /// Checked state of toggle items owned here.
-pub fn checked(app: &PhotocraftApp, id: &str) -> Option<bool> {
+pub fn checked(app: &PatronusPhotoApp, id: &str) -> Option<bool> {
     match id {
         "view.lockSlices" => Some(app.session.file_menu.slices_locked),
         "file.generate.imageAssets" => Some(app.session.active().is_some_and(|d| app.session.file_menu.image_assets.contains(&d.doc.id))),
@@ -83,7 +83,7 @@ pub fn checked(app: &PhotocraftApp, id: &str) -> Option<bool> {
 }
 
 /// Answers the requests and results of the Save for Web and Print dialogs; one row of the app's takers.
-pub(crate) fn take(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(crate) fn take(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     web::take(app, ctx);
     print::take(app, ctx);
 }
@@ -102,13 +102,13 @@ mod web_playback_tests {
     use std::sync::Arc;
 
     use craft::ui::patterns::form_dialogs::{WebFormat, WebView};
-    use photocraft_engine::web_cmds::{self, Optimized, WebSettings};
+    use patronusphoto_engine::web_cmds::{self, Optimized, WebSettings};
 
     use super::tests::{app, pass, set_option};
     use super::*;
 
-    fn animated_app(depth: u32) -> Box<PhotocraftApp> {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    fn animated_app(depth: u32) -> Box<PatronusPhotoApp> {
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 32, "height": 24, "depth": depth})).unwrap();
         app.run("timeline.create", json!({"duration": 3, "fps": 2})).unwrap();
         app.run("layer.videoLayers.newBlankVideoLayer", json!({})).unwrap();
@@ -121,14 +121,14 @@ mod web_playback_tests {
     }
 
     /// The indexed encode the preview of pane `index` keeps, for the pictures it was asked for.
-    fn encoded(app: &PhotocraftApp, index: usize) -> Arc<Optimized> {
+    fn encoded(app: &PatronusPhotoApp, index: usize) -> Arc<Optimized> {
         let doc_id = app.session.active().unwrap().doc.id.0;
         app.ctx().data(|d| d.get_temp::<(String, Arc<Optimized>)>(pane_key(doc_id, index).with("indexed-source"))).unwrap().1
     }
 
     /// Sets the frame the dialog shows, as its play row does.
     // PLAN: assumed the hosted dialog takes the frame as the JSON field `frame` (`HostedSaveForWeb::frame` is its getter).
-    fn set_frame(app: &mut PhotocraftApp, id: DialogId, frame: usize) {
+    fn set_frame(app: &mut PatronusPhotoApp, id: DialogId, frame: usize) {
         set_option(app, id, "frame", json!(frame));
         pass(app);
         let ctx = app.ctx().clone();
@@ -143,13 +143,13 @@ mod web_playback_tests {
             for (frame, expected) in [[1.0, 0.0, 0.0, 1.0], [0.0, 1.0, 0.0, 1.0], [0.0, 0.0, 1.0, 1.0]].iter().enumerate() {
                 let preview = web_frame_document(&source, Some(frame)).unwrap();
                 let (proxy, _, _) = web_cmds::web_document(&preview, &json!({"width":16,"height":12}), &WebSettings::default()).unwrap();
-                let pixels = photocraft_compose::flatten(&proxy);
+                let pixels = patronusphoto_compose::flatten(&proxy);
                 for (actual, expected) in pixels.px[0].iter().zip(expected) {
                     assert!((actual - expected).abs() < 0.002, "depth={depth} frame={frame}");
                 }
             }
             assert_eq!(source.timeline.as_ref().unwrap().current, 0);
-            assert_eq!(photocraft_compose::flatten(&source).px[0], [1.0, 0.0, 0.0, 1.0]);
+            assert_eq!(patronusphoto_compose::flatten(&source).px[0], [1.0, 0.0, 0.0, 1.0]);
         }
     }
 
@@ -206,8 +206,8 @@ mod web_playback_tests {
         let source = app.session.active().unwrap().doc.clone();
         let edited = web_frame_document(&source, Some(0)).unwrap();
         let other = web_frame_document(&source, Some(1)).unwrap();
-        assert_eq!(photocraft_compose::flatten(&edited).px[0], [1.0, 1.0, 0.0, 1.0]);
-        assert_eq!(photocraft_compose::flatten(&other).px[0], [0.0, 1.0, 0.0, 1.0]);
+        assert_eq!(patronusphoto_compose::flatten(&edited).px[0], [1.0, 1.0, 0.0, 1.0]);
+        assert_eq!(patronusphoto_compose::flatten(&other).px[0], [0.0, 1.0, 0.0, 1.0]);
         assert!(Arc::ptr_eq(&source, &app.session.active().unwrap().doc));
         assert_eq!(source.timeline.as_ref().unwrap().current, 0);
     }
@@ -220,8 +220,9 @@ mod web_playback_tests {
             for (frame, expected) in [[255, 0, 0, 255], [0, 255, 0, 255], [0, 0, 255, 255]].iter().enumerate() {
                 let doc = web_frame_document(&app.session.active().unwrap().doc, Some(frame)).unwrap();
                 let (proxy, _, _) = web_cmds::web_document(&doc, &json!({"width":16,"height":12}), &settings).unwrap();
-                let pixels = photocraft_compose::flatten(&proxy);
-                let optimized = web_cmds::optimize(&pixels.px, 16, photocraft_geom::Rect::new(0, 0, 16, 12), &settings, None, None, None, 72.0, true).unwrap();
+                let pixels = patronusphoto_compose::flatten(&proxy);
+                let optimized =
+                    web_cmds::optimize(&pixels.px, 16, patronusphoto_geom::Rect::new(0, 0, 16, 12), &settings, None, None, None, 72.0, true).unwrap();
                 assert_eq!(&optimized.preview[..4], expected, "depth={depth} frame={frame}");
             }
         }

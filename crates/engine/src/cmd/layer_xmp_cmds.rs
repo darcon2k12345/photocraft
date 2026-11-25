@@ -4,7 +4,7 @@
 
 use std::sync::Arc;
 
-use photocraft_doc::LayerId;
+use patronusphoto_doc::LayerId;
 use serde_json::{Map, Value, json};
 
 use crate::commands::CommandSpec;
@@ -77,7 +77,7 @@ fn xmp_metadata(s: &mut Session, p: &Value) -> Result<Value> {
         })?;
         if let Some(st) = s.active_mut() {
             // Saved metadata only; no canvas pixels need recompositing.
-            st.last_damage = Some(photocraft_geom::Rect::EMPTY);
+            st.last_damage = Some(patronusphoto_geom::Rect::EMPTY);
             st.record_damage();
         }
     }

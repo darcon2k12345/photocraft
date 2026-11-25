@@ -1,5 +1,5 @@
 use super::{Document, Rect, Session, json, rotate_arbitrary_with};
-use photocraft_doc::Size;
+use patronusphoto_doc::Size;
 
 const ARBITRARY: &str = "image.rotation.arbitrary";
 const CW: &str = "image.imageRotation.90cw";
@@ -13,12 +13,12 @@ fn session(depth: u32) -> Session {
     s.execute("layer.new.layer", json!({"name": "Top"})).unwrap();
     s.edit("Fixture", |doc, active| {
         let background = doc.background_mut().unwrap().surface_mut().unwrap();
-        let blue = photocraft_raster::from_rgba(&background.format(), [0.0, 0.0, 1.0, 1.0]);
+        let blue = patronusphoto_raster::from_rgba(&background.format(), [0.0, 0.0, 1.0, 1.0]);
         background.fill_rect(Rect::new(396, 297, 400, 300), &blue);
         let top = doc.layer_mut(active.unwrap()).unwrap().surface_mut().unwrap();
-        let green = photocraft_raster::from_rgba(&top.format(), [0.0, 1.0, 0.0, 1.0]);
+        let green = patronusphoto_raster::from_rgba(&top.format(), [0.0, 1.0, 0.0, 1.0]);
         top.fill_rect(Rect::new(175, 125, 225, 175), &green);
-        let translucent = photocraft_raster::from_rgba(&top.format(), [0.15432, 0.891, 1.0, 0.63654]);
+        let translucent = patronusphoto_raster::from_rgba(&top.format(), [0.15432, 0.891, 1.0, 0.63654]);
         top.fill_rect(Rect::new(175, 125, 182, 130), &translucent);
         Ok(())
     })

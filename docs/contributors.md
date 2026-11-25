@@ -1,6 +1,6 @@
 # Contributors in the About window
 
-**About ▸ Contributors** credits everyone who contributed to PhotoCraft, and **About ▸ Models** credits
+**About ▸ Contributors** credits everyone who contributed to Patronus Photo, and **About ▸ Models** credits
 the AI models named in `Co-Authored-By` trailers.
 
 ## Decision
@@ -20,11 +20,11 @@ the AI models named in `Co-Authored-By` trailers.
   first or last commit date. The name toggle cycles **Username → Display name → Real name**; a
   missing name falls back to `@username`. Alphabetical sorting is case-insensitive and ignores the `@`.
 
-## In PhotoCraft
+## In Patronus Photo
 
-- The About window is `DialogKind::About` in `crates/ui-egui/src/dialogs.rs` (Help ▸ About PhotoCraft).
+- The About window is `DialogKind::About` in `crates/ui-egui/src/dialogs.rs` (Help ▸ About Patronus Photo).
   Its tab is the dialog field `tab` (`about`, `contributors`, `models`), so agents can switch it with
-  `ui.dialog.set`. Labels are translated like the rest of the shell (`tl!` + craft-i18n's `locales/<code>/photocraft.tsv`).
+  `ui.dialog.set`. Labels are translated like the rest of the shell (`tl!` + craft-i18n's `locales/<code>/patronusphoto.tsv`).
 
 ## Credit yourself
 

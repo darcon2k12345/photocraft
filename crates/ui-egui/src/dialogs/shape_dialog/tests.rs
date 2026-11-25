@@ -1,39 +1,39 @@
 use craft::draw::ui::shape::VectorMode;
 use craft::ui::dialog::{DialogId, StackDialog as _};
-use photocraft_doc::LayerContent;
-use photocraft_doc::vector::LiveShape;
+use patronusphoto_doc::LayerContent;
+use patronusphoto_doc::vector::LiveShape;
 use serde_json::{Value, json};
 
 use super::*;
 use crate::canvas::testing;
 use crate::state::Tool;
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 400, "height": 300, "background": "white"})).unwrap();
     app.run("tools.setColors", json!({"foreground": "#ff0000", "background": "#0000ff"})).unwrap();
     app
 }
 
 /// A click with `tool` at `at`, through the canvas pass.
-fn click(app: &mut PhotocraftApp, tool: Tool, at: [f64; 2]) {
+fn click(app: &mut PatronusPhotoApp, tool: Tool, at: [f64; 2]) {
     app.ui.tool = tool;
     testing::click(app, at, egui::Modifiers::NONE);
 }
 
 /// A drag with `tool` from `start` to `end`, through the canvas pass.
-fn drag(app: &mut PhotocraftApp, tool: Tool, start: [f64; 2], end: [f64; 2]) {
+fn drag(app: &mut PatronusPhotoApp, tool: Tool, start: [f64; 2], end: [f64; 2]) {
     app.ui.tool = tool;
     testing::press(app, start, egui::Modifiers::NONE);
     testing::move_to(app, end, egui::Modifiers::NONE);
     testing::release(app, end, egui::Modifiers::NONE);
 }
 
-fn layers(app: &PhotocraftApp) -> usize {
+fn layers(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().doc.layers.len()
 }
 
-fn live(app: &PhotocraftApp) -> LiveShape {
+fn live(app: &PatronusPhotoApp) -> LiveShape {
     let st = app.session.active().unwrap();
     let l = st.doc.layer(st.active_layer.unwrap()).unwrap();
     let LayerContent::Shape(sh) = &l.content else { panic!("not a shape layer") };
@@ -41,18 +41,18 @@ fn live(app: &PhotocraftApp) -> LiveShape {
 }
 
 /// Writes fields of the hosted dialog `id`, as `ui.dialog.set` does.
-fn set(app: &mut PhotocraftApp, id: DialogId, fields: Value) {
+fn set(app: &mut PatronusPhotoApp, id: DialogId, fields: Value) {
     let ctx = app.ctx().clone();
     for (k, v) in fields.as_object().unwrap() {
         app.framework.dialogs.set_json_field(&ctx, id, k, v.clone()).unwrap_or_else(|e| panic!("{k}: {e}"));
     }
 }
 
-fn confirm_by_id(app: &mut PhotocraftApp, id: DialogId) {
+fn confirm_by_id(app: &mut PatronusPhotoApp, id: DialogId) {
     crate::dialogs::testing::confirm(app, id).unwrap();
 }
 
-fn only_dialog(app: &PhotocraftApp) -> DialogId {
+fn only_dialog(app: &PatronusPhotoApp) -> DialogId {
     assert_eq!(app.framework.dialogs.stack().ids().count(), 1, "a click opens one dialog");
     app.framework.dialogs.get::<CreateShapeDialog>().expect("it is a Create Shape dialog").id()
 }
@@ -100,9 +100,9 @@ fn from_center_and_the_other_tools() {
 #[test]
 fn click_dialogs_and_drags_keep_complete_stroke_defaults() {
     let style = crate::shape_stroke_ui::StrokeOptions {
-        align: photocraft_doc::StrokeAlign::Outside,
-        cap: photocraft_doc::LineCap::Square,
-        join: photocraft_doc::LineJoin::Bevel,
+        align: patronusphoto_doc::StrokeAlign::Outside,
+        cap: patronusphoto_doc::LineCap::Square,
+        join: patronusphoto_doc::LineJoin::Bevel,
         miter_limit: 7.0,
         dashes: vec![3.0, 1.0, 0.0, 2.0],
         dash_offset: -0.75,
@@ -136,7 +136,7 @@ fn click_dialogs_and_drags_keep_complete_stroke_defaults() {
 fn agents_click_set_and_confirm_over_the_control_channel() {
     let mut app = app();
     let ctx = app.ctx().clone();
-    let call = |app: &mut PhotocraftApp, method: &str, params: Value| {
+    let call = |app: &mut PatronusPhotoApp, method: &str, params: Value| {
         let (req, _rx) = crate::control::ControlRequest::new(method, params);
         match crate::control::handle(app, &ctx, &req) {
             crate::control::Reply::Done(v) => v,
@@ -172,7 +172,7 @@ fn a_path_mode_click_opens_no_create_dialog() {
 /// nothing to the work path either. Its box would round to a 1 × 1 px outline.
 #[test]
 fn a_path_mode_click_that_moved_a_little_adds_no_subpath() {
-    let work = |app: &PhotocraftApp| app.session.active().unwrap().doc.work_path.as_ref().map_or(0, |p| p.subpaths.len());
+    let work = |app: &PatronusPhotoApp| app.session.active().unwrap().doc.work_path.as_ref().map_or(0, |p| p.subpaths.len());
     for tool in [Tool::Rectangle, Tool::EllipseShape, Tool::Triangle, Tool::Polygon, Tool::Line] {
         for end in [[20.8, 30.8], [21.0, 31.0]] {
             let mut app = app();

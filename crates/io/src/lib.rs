@@ -1,6 +1,6 @@
-//! # photocraft-io
+//! # patronusphoto-io
 //!
-//! Import and export between [`photocraft_doc::Document`] and files:
+//! Import and export between [`patronusphoto_doc::Document`] and files:
 //!
 //! * PSD / PSB (detected by the `8BPS` signature) via `craft-psd`, with
 //!   fidelity levels 1–3 (raster layers, masks, blend/opacity/fill,
@@ -11,7 +11,7 @@
 //!   smart-object layers also keep their pixels as the cached raster, and fill
 //!   layers keep Photoshop's rendering in `Layer::fill_cache`.
 //! * Camera raws (DNG, CR2, uncompressed / lossless TIFF-EP raws) via
-//!   `photocraft-raw`, developed into a 16-bit ProPhoto RGB "Background"
+//!   `patronusphoto-raw`, developed into a 16-bit ProPhoto RGB "Background"
 //!   layer; unsupported raw variants fall back to the embedded JPEG preview.
 //! * Layered TIFFs (Photoshop layer data in tags 37724 and 34377) open with their
 //!   layers through the PSD path and are written back the same way; see `tiff_layers`.
@@ -25,12 +25,12 @@
 //! * Affinity documents (`.af`, `.afdesign`, `.afphoto`, `.afpub`) open natively
 //!   with no source save path, what isn't imported listed in the warnings; a file
 //!   whose native data can't be read opens as its embedded preview; see `affinity`.
-//! * Every other format goes through `photocraft-codecs` as a single layer
+//! * Every other format goes through `patronusphoto-codecs` as a single layer
 //!   (depth and Gray/RGB/CMYK model preserved): a locked "Background" when the
 //!   image is opaque, a normal "Layer 0" when it has transparency.
 //!
 //! Exports to PSD render the merged composite with
-//! `photocraft_compose::flatten`; flat exports report what is lost.
+//! `patronusphoto_compose::flatten`; flat exports report what is lost.
 #![forbid(unsafe_code)]
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
@@ -92,9 +92,9 @@ mod xcf;
 
 use craft_psd::{PsdError, PsdFile};
 pub use export_estimate::estimate_export_bytes;
-use photocraft_codecs::{CodecError, EncodeOptions};
-pub use photocraft_codecs::{DdsCompression, DdsOptions, DpxBits};
-use photocraft_doc::{Adjustment, Document, Layer, LayerContent};
+use patronusphoto_codecs::{CodecError, EncodeOptions};
+pub use patronusphoto_codecs::{DdsCompression, DdsOptions, DpxBits};
+use patronusphoto_doc::{Adjustment, Document, Layer, LayerContent};
 
 pub use adjust_map::ADJUSTMENT_KEYS;
 pub use flat::{
@@ -159,10 +159,10 @@ pub enum IoError {
     Unsupported(String),
     /// Native `.pcraft` bundle failure.
     #[error("pcraft: {0}")]
-    Pcraft(#[from] photocraft_format::FormatError),
+    Pcraft(#[from] patronusphoto_format::FormatError),
     /// Camera raw decode failure.
     #[error("{0}")]
-    Raw(#[from] photocraft_raw::RawError),
+    Raw(#[from] patronusphoto_raw::RawError),
     /// An SVG that does not parse (or is too large to rasterise).
     #[error("SVG: {0}")]
     Svg(String),
@@ -284,7 +284,7 @@ pub fn open_warnings(doc: &Document) -> Vec<String> {
     let mut stack: Vec<&Layer> = doc.layers.iter().rev().collect();
     while let Some(l) = stack.pop() {
         if let LayerContent::Adjustment(Adjustment::ColorLookup { name: _, size, lut, .. }) = &l.content {
-            match lut.as_deref().zip(photocraft_doc::adjust::lut3d_len(*size)) {
+            match lut.as_deref().zip(patronusphoto_doc::adjust::lut3d_len(*size)) {
                 Some((table, len)) if table.len() >= len => {}
                 Some((table, len)) => out.push(format!(
                     "layer \"{}\": its Color Lookup table has {} values, but a {size}³ lookup needs {len}; the layer renders without the lookup",
@@ -440,7 +440,7 @@ pub struct ExportOptions {
     pub pdf_spot_plates: bool,
     /// `.pcraft`: request the flattened document at its canvas size as `composite/full.png`
     /// (Preferences › File Handling › Save Full-Size Composite in .pcraft Files). The save may
-    /// omit it; check the manifest's `full_composite` member ([`photocraft_format::read_full_composite`]
+    /// omit it; check the manifest's `full_composite` member ([`patronusphoto_format::read_full_composite`]
     /// reads it). Off by default.
     pub pcraft_full_composite: bool,
 }
@@ -504,7 +504,7 @@ pub fn is_psd(bytes: &[u8]) -> bool {
 /// (#5258 review).
 #[cfg(test)]
 fn is_psd_input(name: &str, bytes: &[u8]) -> bool {
-    photocraft_formats::detect(name, bytes) == Some(photocraft_formats::Format::Psd)
+    patronusphoto_formats::detect(name, bytes) == Some(patronusphoto_formats::Format::Psd)
 }
 
 /// How an import bounds its pixel memory before decoding pixels, for a caller that must fit
@@ -516,7 +516,7 @@ pub enum ImportPreflight {
     Psd,
     /// TIFF: a layered page uses [`ImportOptions::psd_max_pixel_bytes`]; a flat page is decoded
     /// in bands, so the caller bounds its whole canvas from the page's header
-    /// ([`photocraft_codecs::tiff_info`]).
+    /// ([`patronusphoto_codecs::tiff_info`]).
     Tiff,
     /// A flat raster decoded into one image, bounded by
     /// [`ImportOptions::flat_max_pixel_bytes`].
@@ -530,41 +530,41 @@ pub enum ImportPreflight {
 ///
 /// The order matches [`import_stages`]; keep the two in step.
 pub fn import_preflight(name: &str, bytes: &[u8]) -> ImportPreflight {
-    match photocraft_formats::detect(name, bytes) {
-        Some(photocraft_formats::Format::Psd) => ImportPreflight::Psd,
-        Some(photocraft_formats::Format::Tiff) => ImportPreflight::Tiff,
+    match patronusphoto_formats::detect(name, bytes) {
+        Some(patronusphoto_formats::Format::Psd) => ImportPreflight::Psd,
+        Some(patronusphoto_formats::Format::Tiff) => ImportPreflight::Tiff,
         Some(
-            photocraft_formats::Format::Pcraft
-            | photocraft_formats::Format::Affinity
-            | photocraft_formats::Format::Ora
-            | photocraft_formats::Format::Kra
-            | photocraft_formats::Format::Xcf
-            | photocraft_formats::Format::Pdn
-            | photocraft_formats::Format::Raw
-            | photocraft_formats::Format::Svg
-            | photocraft_formats::Format::Svgz
-            | photocraft_formats::Format::Pdf,
+            patronusphoto_formats::Format::Pcraft
+            | patronusphoto_formats::Format::Affinity
+            | patronusphoto_formats::Format::Ora
+            | patronusphoto_formats::Format::Kra
+            | patronusphoto_formats::Format::Xcf
+            | patronusphoto_formats::Format::Pdn
+            | patronusphoto_formats::Format::Raw
+            | patronusphoto_formats::Format::Svg
+            | patronusphoto_formats::Format::Svgz
+            | patronusphoto_formats::Format::Pdf,
         ) => ImportPreflight::Unbounded,
         _ => ImportPreflight::Flat,
     }
 }
 
 /// Imports a file. PSD/PSB, Affinity containers and camera raws are detected by magic; everything
-/// else is decoded with `photocraft-codecs`.
+/// else is decoded with `patronusphoto-codecs`.
 pub fn import(name: &str, bytes: &[u8]) -> Result<ImportResult, IoError> {
-    import_with_svg_group_depth(name, bytes, photocraft_doc::MAX_GROUP_DEPTH)
+    import_with_svg_group_depth(name, bytes, patronusphoto_doc::MAX_GROUP_DEPTH)
 }
 
 /// [`import`] for a background open: checks `ctl` between stages (and per layer for PSD/PSB) and
 /// reports progress. A cancelled import fails with [`IoError::Cancelled`].
-pub fn import_with(name: &str, bytes: &[u8], ctl: &photocraft_raster::Interrupt) -> Result<ImportResult, IoError> {
-    import_with_svg_group_depth_and_interrupt(name, bytes, photocraft_doc::MAX_GROUP_DEPTH, ctl)
+pub fn import_with(name: &str, bytes: &[u8], ctl: &patronusphoto_raster::Interrupt) -> Result<ImportResult, IoError> {
+    import_with_svg_group_depth_and_interrupt(name, bytes, patronusphoto_doc::MAX_GROUP_DEPTH, ctl)
 }
 
 /// Imports a file with a configurable SVG editability threshold. SVG groups deeper than this are
 /// rasterised during conversion; the XML parser safety cap and document nesting limit stay fixed.
 pub fn import_with_svg_group_depth(name: &str, bytes: &[u8], max_group_depth: usize) -> Result<ImportResult, IoError> {
-    import_with_svg_group_depth_and_interrupt(name, bytes, max_group_depth, &photocraft_raster::Interrupt::NONE)
+    import_with_svg_group_depth_and_interrupt(name, bytes, max_group_depth, &patronusphoto_raster::Interrupt::NONE)
 }
 
 /// [`import_with`] with the SVG editable-group threshold selected by the user.
@@ -572,7 +572,7 @@ pub fn import_with_svg_group_depth_and_interrupt(
     name: &str,
     bytes: &[u8],
     max_group_depth: usize,
-    ctl: &photocraft_raster::Interrupt,
+    ctl: &patronusphoto_raster::Interrupt,
 ) -> Result<ImportResult, IoError> {
     import_with_options_and_interrupt(name, bytes, &ImportOptions { max_group_depth, ..Default::default() }, ctl)
 }
@@ -600,7 +600,7 @@ pub struct ImportOptions {
     pub pdf_dpi: f32,
     /// The 1-based, inclusive page range to import; `None` imports every page (up to the cap).
     pub pdf_pages: Option<(u32, u32)>,
-    /// Import PDF painted paths and embedded-font text as editable [`photocraft_doc::ShapeLayer`]s
+    /// Import PDF painted paths and embedded-font text as editable [`patronusphoto_doc::ShapeLayer`]s
     /// and text layers instead of a page raster (experimental). Images, complex clips/masks,
     /// patterns, non-normal blends and unembedded/Type 3 text make that page fall back to the
     /// raster importer with a warning. Text that uses fonts embedded in the PDF may change font
@@ -617,7 +617,7 @@ pub struct ImportOptions {
 impl Default for ImportOptions {
     fn default() -> Self {
         ImportOptions {
-            max_group_depth: photocraft_doc::MAX_GROUP_DEPTH,
+            max_group_depth: patronusphoto_doc::MAX_GROUP_DEPTH,
             demosaic: raw::Demosaic::default(),
             keep_raw: false,
             psd_max_pixel_bytes: 0,
@@ -633,16 +633,21 @@ impl Default for ImportOptions {
 
 /// [`import`] with the user's import settings.
 pub fn import_with_options(name: &str, bytes: &[u8], opts: &ImportOptions) -> Result<ImportResult, IoError> {
-    import_with_options_and_interrupt(name, bytes, opts, &photocraft_raster::Interrupt::NONE)
+    import_with_options_and_interrupt(name, bytes, opts, &patronusphoto_raster::Interrupt::NONE)
 }
 
 /// [`import_with_options`] forcing the decoder named by `as_ext` when provided (`File › Open As`).
 pub fn import_with_options_as(name: &str, bytes: &[u8], as_ext: Option<&str>, opts: &ImportOptions) -> Result<ImportResult, IoError> {
-    import_for_open_with_as(name, bytes, as_ext, opts, &photocraft_raster::Interrupt::NONE).map(|(result, _)| result)
+    import_for_open_with_as(name, bytes, as_ext, opts, &patronusphoto_raster::Interrupt::NONE).map(|(result, _)| result)
 }
 
 /// [`import_with`] with the user's import settings.
-pub fn import_with_options_and_interrupt(name: &str, bytes: &[u8], opts: &ImportOptions, ctl: &photocraft_raster::Interrupt) -> Result<ImportResult, IoError> {
+pub fn import_with_options_and_interrupt(
+    name: &str,
+    bytes: &[u8],
+    opts: &ImportOptions,
+    ctl: &patronusphoto_raster::Interrupt,
+) -> Result<ImportResult, IoError> {
     import_for_open_with(name, bytes, opts, ctl).map(|(result, _)| result)
 }
 
@@ -655,11 +660,11 @@ pub fn import_with_options_and_interrupt(name: &str, bytes: &[u8], opts: &Import
 /// The flag is independent of the wording of `warnings`. An ordinary compatibility
 /// warning does not set it. No file is decoded a second time to obtain this information.
 pub fn import_for_open(name: &str, bytes: &[u8], opts: &ImportOptions) -> Result<(ImportResult, bool), IoError> {
-    import_for_open_with(name, bytes, opts, &photocraft_raster::Interrupt::NONE)
+    import_for_open_with(name, bytes, opts, &patronusphoto_raster::Interrupt::NONE)
 }
 
 /// [`import_for_open`] with cancellation and progress, shared with [`import_with_options_and_interrupt`].
-pub fn import_for_open_with(name: &str, bytes: &[u8], opts: &ImportOptions, ctl: &photocraft_raster::Interrupt) -> Result<(ImportResult, bool), IoError> {
+pub fn import_for_open_with(name: &str, bytes: &[u8], opts: &ImportOptions, ctl: &patronusphoto_raster::Interrupt) -> Result<(ImportResult, bool), IoError> {
     import_for_open_with_as(name, bytes, None, opts, ctl)
 }
 
@@ -668,17 +673,17 @@ fn import_for_open_with_as(
     bytes: &[u8],
     as_ext: Option<&str>,
     opts: &ImportOptions,
-    ctl: &photocraft_raster::Interrupt,
+    ctl: &patronusphoto_raster::Interrupt,
 ) -> Result<(ImportResult, bool), IoError> {
-    photocraft_compose::discard_unreadable_pixel_caches();
-    let scratch_generation = photocraft_raster::spill::read_error_generation();
+    patronusphoto_compose::discard_unreadable_pixel_caches();
+    let scratch_generation = patronusphoto_raster::spill::read_error_generation();
     ctl.check().map_err(|_| IoError::Cancelled)?;
     let mut damaged = false;
     let result = import_stages(name, bytes, as_ext, ctl, opts, &mut damaged)?;
     ctl.check().map_err(|_| IoError::Cancelled)?;
     ctl.progress(1.0);
     // The imported document's own tiles, and anything that failed or recovered meanwhile.
-    photocraft_raster::spill::check_since(scratch_generation).map_err(IoError::Unsupported)?;
+    patronusphoto_raster::spill::check_since(scratch_generation).map_err(IoError::Unsupported)?;
     result.document.scratch_health().map_err(IoError::Unsupported)?;
     Ok((result, damaged))
 }
@@ -687,7 +692,7 @@ fn import_for_open_with_as(
 /// `want` and `recover`: of the file's bytes, or of the file itself ([`import_file_for_open_with`]).
 fn import_psd(
     name: &str,
-    ctl: &photocraft_raster::Interrupt,
+    ctl: &patronusphoto_raster::Interrupt,
     damaged: &mut bool,
     opts: &ImportOptions,
     parse: impl FnOnce(&dyn Fn(&PsdFile) -> craft_psd::Result<bool>, &dyn Fn(&PsdFile) -> bool) -> craft_psd::Result<(PsdFile, Option<craft_psd::Result<Vec<u8>>>)>,
@@ -775,7 +780,7 @@ fn import_psd(
     ctl.progress(0.05);
 
     // Read before the conversion, which moves the global blocks into the document.
-    let txt2 = file.global_blocks.iter().find(|b| &b.key == b"Txt2").and_then(|b| photocraft_text::psd::parse_txt2(&b.data));
+    let txt2 = file.global_blocks.iter().find(|b| &b.key == b"Txt2").and_then(|b| patronusphoto_text::psd::parse_txt2(&b.data));
     let (mut document, warnings, psd_damaged, fatal_error) = psd_import::psd_to_document_owned(file, ctl, merged).ok_or(IoError::Cancelled)?;
     // Source reads and allocation failures fail the entire open; partial layers are discarded.
     if let Some(e) = fatal_error {
@@ -799,7 +804,7 @@ pub fn import_file_for_open_with(
     name: &str,
     path: &std::path::Path,
     opts: &ImportOptions,
-    ctl: &photocraft_raster::Interrupt,
+    ctl: &patronusphoto_raster::Interrupt,
 ) -> Result<(ImportResult, bool), IoError> {
     let mut identity = None;
     import_file_for_open_verified(name, path, None, opts, ctl, &mut identity)
@@ -809,7 +814,7 @@ pub fn import_file_for_open_with(
 ///
 /// The path is opened exactly once. `identity_out` is set from that handle before any pixel is
 /// read; a PSD/PSB is then streamed from the same handle (not read whole), anything else is read
-/// from it within `photocraft_format::MAX_OPEN_BYTES`. When `expected` is given, the import
+/// from it within `patronusphoto_format::MAX_OPEN_BYTES`. When `expected` is given, the import
 /// refuses with [`IoError::SourceChanged`] unless the opened file is that one. When the parse
 /// stops for a high-memory approval, the identity is read again from a duplicate of the same
 /// handle: a file rewritten in place while its estimate was checked is refused, so the approval
@@ -823,7 +828,7 @@ pub fn import_file_for_open_verified(
     path: &std::path::Path,
     expected: Option<&FileIdentity>,
     opts: &ImportOptions,
-    ctl: &photocraft_raster::Interrupt,
+    ctl: &patronusphoto_raster::Interrupt,
     identity_out: &mut Option<FileIdentity>,
 ) -> Result<(ImportResult, bool), IoError> {
     let read_failed = |e: std::io::Error| IoError::Read(format!("{}: {e}", path.display()));
@@ -842,7 +847,7 @@ pub fn import_file_for_open_verified(
     // the identity from it after parsing, and never from a path that may point elsewhere now.
     let watch = source.file().try_clone().map_err(read_failed)?;
     let mut magic = [0u8; 4];
-    let psd = !has_extension(name, photocraft_format::EXTENSION) && craft_psd::ReadAt::read_at(&source, 0, &mut magic).is_ok() && is_psd(&magic);
+    let psd = !has_extension(name, patronusphoto_format::EXTENSION) && craft_psd::ReadAt::read_at(&source, 0, &mut magic).is_ok() && is_psd(&magic);
     let result = if psd {
         import_source_with_options(name, craft_psd::Source::new(source), ctl, opts)
     } else {
@@ -855,14 +860,14 @@ pub fn import_file_for_open_verified(
         // layouts, and EXR headers the band decoder refuses, are read whole below.
         let mut streamed = None;
         let format_name = path.file_name().and_then(|name| name.to_str()).unwrap_or(name);
-        if photocraft_formats::detect(format_name, &magic) == Some(photocraft_formats::Format::OpenExr) {
-            let before = photocraft_raster::spill::read_error_generation();
+        if patronusphoto_formats::detect(format_name, &magic) == Some(patronusphoto_formats::Format::OpenExr) {
+            let before = patronusphoto_raster::spill::read_error_generation();
             if let Some(mut result) = exr_native::import(&mut file, ctl)? {
                 // A rewrite in place while the blocks were read must not become the document.
                 if FileIdentity::of_handle(&watch).map_err(read_failed)? != identity {
                     return Err(IoError::Read(format!("{}: the file changed while it was being opened; open it again", path.display())));
                 }
-                photocraft_raster::spill::check_since(before).map_err(IoError::Read)?;
+                patronusphoto_raster::spill::check_since(before).map_err(IoError::Read)?;
                 ctl.check().map_err(|_| IoError::Cancelled)?;
                 result.document.name = name.to_string();
                 streamed = Some(result);
@@ -873,7 +878,7 @@ pub fn import_file_for_open_verified(
         match streamed {
             Some(result) => Ok((result, false)),
             None => {
-                let bytes = photocraft_format::read::read_all(&mut file, craft_psd::ReadAt::len(&source)).map_err(read_failed)?;
+                let bytes = patronusphoto_format::read::read_all(&mut file, craft_psd::ReadAt::len(&source)).map_err(read_failed)?;
                 import_for_open_with(name, &bytes, opts, ctl)
             }
         }
@@ -891,7 +896,7 @@ pub fn import_file_for_open_verified(
 }
 
 /// [`import_file_for_open_with`] for a PSD/PSB in any [`craft_psd::ReadAt`] source.
-pub fn import_source_for_open_with(name: &str, source: craft_psd::Source, ctl: &photocraft_raster::Interrupt) -> Result<(ImportResult, bool), IoError> {
+pub fn import_source_for_open_with(name: &str, source: craft_psd::Source, ctl: &patronusphoto_raster::Interrupt) -> Result<(ImportResult, bool), IoError> {
     import_source_with_options(name, source, ctl, &ImportOptions::default())
 }
 
@@ -899,7 +904,7 @@ pub fn import_source_for_open_with(name: &str, source: craft_psd::Source, ctl: &
 pub fn import_source_with_options(
     name: &str,
     source: craft_psd::Source,
-    ctl: &photocraft_raster::Interrupt,
+    ctl: &patronusphoto_raster::Interrupt,
     opts: &ImportOptions,
 ) -> Result<(ImportResult, bool), IoError> {
     ctl.check().map_err(|_| IoError::Cancelled)?;
@@ -916,7 +921,7 @@ pub fn import_source_with_options(
 pub(crate) fn import_source_with_limit(
     name: &str,
     source: craft_psd::Source,
-    ctl: &photocraft_raster::Interrupt,
+    ctl: &patronusphoto_raster::Interrupt,
     pixel_limit: u64,
 ) -> Result<(ImportResult, bool), IoError> {
     let opts = ImportOptions { psd_max_pixel_bytes: pixel_limit, ..Default::default() };
@@ -925,7 +930,7 @@ pub(crate) fn import_source_with_limit(
 
 /// [`import_file_for_open_with`] without the damage flag.
 #[cfg(any(unix, windows))]
-pub fn import_file(name: &str, path: &std::path::Path, opts: &ImportOptions, ctl: &photocraft_raster::Interrupt) -> Result<ImportResult, IoError> {
+pub fn import_file(name: &str, path: &std::path::Path, opts: &ImportOptions, ctl: &patronusphoto_raster::Interrupt) -> Result<ImportResult, IoError> {
     import_file_for_open_with(name, path, opts, ctl).map(|(result, _)| result)
 }
 
@@ -950,25 +955,25 @@ pub(crate) enum Route {
 
 /// Which importer takes the file `name` holding `bytes`. The checks run in this order.
 pub(crate) fn route(name: &str, bytes: &[u8]) -> Route {
-    match photocraft_formats::detect(name, bytes) {
-        Some(photocraft_formats::Format::Pcraft) => Route::Pcraft,
-        Some(photocraft_formats::Format::Psd) if is_psd(bytes) => Route::Psd,
-        Some(photocraft_formats::Format::Psd) => Route::NamedPsd,
-        Some(photocraft_formats::Format::Affinity) => Route::Affinity,
-        Some(photocraft_formats::Format::Ora) => Route::Ora,
-        Some(photocraft_formats::Format::Kra) => Route::Kra,
-        Some(photocraft_formats::Format::Xcf) if xcf::is_gzipped_xcf(name, bytes) => Route::GzippedXcf,
-        Some(photocraft_formats::Format::Xcf) => Route::Xcf,
-        Some(photocraft_formats::Format::Pdn) => Route::Pdn,
-        Some(photocraft_formats::Format::Raw) => Route::Raw,
-        Some(photocraft_formats::Format::Svg | photocraft_formats::Format::Svgz) => Route::Svg,
+    match patronusphoto_formats::detect(name, bytes) {
+        Some(patronusphoto_formats::Format::Pcraft) => Route::Pcraft,
+        Some(patronusphoto_formats::Format::Psd) if is_psd(bytes) => Route::Psd,
+        Some(patronusphoto_formats::Format::Psd) => Route::NamedPsd,
+        Some(patronusphoto_formats::Format::Affinity) => Route::Affinity,
+        Some(patronusphoto_formats::Format::Ora) => Route::Ora,
+        Some(patronusphoto_formats::Format::Kra) => Route::Kra,
+        Some(patronusphoto_formats::Format::Xcf) if xcf::is_gzipped_xcf(name, bytes) => Route::GzippedXcf,
+        Some(patronusphoto_formats::Format::Xcf) => Route::Xcf,
+        Some(patronusphoto_formats::Format::Pdn) => Route::Pdn,
+        Some(patronusphoto_formats::Format::Raw) => Route::Raw,
+        Some(patronusphoto_formats::Format::Svg | patronusphoto_formats::Format::Svgz) => Route::Svg,
         _ => Route::Flat,
     }
 }
 
 fn route_forced(ext: &str) -> Route {
     let ext = ext.trim_start_matches('.').to_ascii_lowercase();
-    if ext == photocraft_format::EXTENSION {
+    if ext == patronusphoto_format::EXTENSION {
         Route::Pcraft
     } else if matches!(ext.as_str(), "psd" | "psb" | "psdt") {
         Route::Psd
@@ -999,7 +1004,7 @@ fn import_stages(
     name: &str,
     bytes: &[u8],
     as_ext: Option<&str>,
-    ctl: &photocraft_raster::Interrupt,
+    ctl: &patronusphoto_raster::Interrupt,
     opts: &ImportOptions,
     damaged: &mut bool,
 ) -> Result<ImportResult, IoError> {
@@ -1017,14 +1022,14 @@ fn import_stages(
         }
         // PDF (craft-pdf, pure Rust). `.ai` files that start with `%PDF-` are PDFs and take this
         // importer too; a recognized raster signature wins over a misleading `.pdf` suffix.
-        if photocraft_formats::detect(name, bytes) == Some(photocraft_formats::Format::Pdf) {
+        if patronusphoto_formats::detect(name, bytes) == Some(patronusphoto_formats::Format::Pdf) {
             return pdf_import::import(name, bytes, opts, ctl);
         }
         route(name, bytes)
     };
     match selected {
         Route::Pcraft => {
-            let document = photocraft_format::load_from_bytes(bytes)?;
+            let document = patronusphoto_format::load_from_bytes(bytes)?;
             Ok(ImportResult { warnings: open_warnings(&document), document, source_read_only: false, preview_only: false })
         }
         Route::Psd | Route::NamedPsd => import_psd(name, ctl, damaged, opts, |want, recover| PsdFile::from_bytes_and_merged_preflight(bytes, want, recover)),
@@ -1050,7 +1055,7 @@ fn import_stages(
 /// Valid plain SVG is recognized by its XML content; an otherwise unknown `.svg` is passed to the
 /// SVG parser for a useful malformed-file error, and `.svgz` disambiguates gzip streams.
 pub fn is_svg_input(name: &str, bytes: &[u8]) -> bool {
-    matches!(photocraft_formats::detect(name, bytes), Some(photocraft_formats::Format::Svg | photocraft_formats::Format::Svgz))
+    matches!(patronusphoto_formats::detect(name, bytes), Some(patronusphoto_formats::Format::Svg | patronusphoto_formats::Format::Svgz))
 }
 
 fn extension(name_or_ext: &str) -> String {
@@ -1080,14 +1085,14 @@ pub fn named_for_file<'a>(doc: &'a Document, name: &str) -> std::borrow::Cow<'a,
 /// Exports `doc` to the format named by `name_or_ext` (a file name, path or
 /// bare extension).
 pub fn export(doc: &Document, name_or_ext: &str, opts: &ExportOptions) -> Result<ExportResult, IoError> {
-    export_with(doc, name_or_ext, opts, &photocraft_raster::Interrupt::NONE)
+    export_with(doc, name_or_ext, opts, &patronusphoto_raster::Interrupt::NONE)
 }
 
 /// [`export`] for a background save (#3389): reports how far encoding has got through `ctl`
 /// (monotonic, `1.0` once the bytes are ready; per layer and per composite band for PSD/PSB and
 /// layered TIFF, in coarse steps for the other formats) and checks it between stages. A cancelled
 /// export fails with [`IoError::Cancelled`]; otherwise the bytes are exactly [`export`]'s.
-pub fn export_with(doc: &Document, name_or_ext: &str, opts: &ExportOptions, ctl: &photocraft_raster::Interrupt) -> Result<ExportResult, IoError> {
+pub fn export_with(doc: &Document, name_or_ext: &str, opts: &ExportOptions, ctl: &patronusphoto_raster::Interrupt) -> Result<ExportResult, IoError> {
     export_with_renderer(doc, name_or_ext, opts, ctl, None)
 }
 
@@ -1096,7 +1101,7 @@ pub fn export_with_renderer(
     doc: &Document,
     name_or_ext: &str,
     opts: &ExportOptions,
-    ctl: &photocraft_raster::Interrupt,
+    ctl: &patronusphoto_raster::Interrupt,
     renderer: Option<&mut dyn BandRenderer>,
 ) -> Result<ExportResult, IoError> {
     let r = checked_stages(doc, name_or_ext, opts, ctl, renderer)?;
@@ -1111,7 +1116,7 @@ pub fn export_with_renderer(
 /// encoded. Every pixel is read from the document (scratch included, and checked as
 /// [`export_with`] checks it) before this returns: the model holds the encoded channels, never a
 /// reference to the document's tiles. Reports progress up to `1.0` once the result is ready.
-pub fn encode_with(doc: &Document, name_or_ext: &str, opts: &ExportOptions, ctl: &photocraft_raster::Interrupt) -> Result<EncodedExport, IoError> {
+pub fn encode_with(doc: &Document, name_or_ext: &str, opts: &ExportOptions, ctl: &patronusphoto_raster::Interrupt) -> Result<EncodedExport, IoError> {
     let r = checked_stages(doc, name_or_ext, opts, ctl, None)?;
     ctl.check().map_err(|_| IoError::Cancelled)?;
     ctl.progress(1.0);
@@ -1124,18 +1129,18 @@ fn checked_stages(
     doc: &Document,
     name_or_ext: &str,
     opts: &ExportOptions,
-    ctl: &photocraft_raster::Interrupt,
+    ctl: &patronusphoto_raster::Interrupt,
     renderer: Option<&mut dyn BandRenderer>,
 ) -> Result<EncodedExport, IoError> {
     ctl.check().map_err(|_| IoError::Cancelled)?;
-    photocraft_compose::discard_unreadable_pixel_caches();
+    patronusphoto_compose::discard_unreadable_pixel_caches();
     doc.scratch_health().map_err(IoError::Unsupported)?;
-    let scratch_generation = photocraft_raster::spill::read_error_generation();
+    let scratch_generation = patronusphoto_raster::spill::read_error_generation();
     let mut renderer = renderer;
     // `as_deref_mut` would tie the trait object's lifetime to this function's; the closure shortens it.
     #[allow(clippy::option_as_ref_deref)]
     let r = export_stages_with_renderer(doc, name_or_ext, opts, ctl, renderer.as_mut().map(|r| -> &mut dyn BandRenderer { &mut **r }))?;
-    if let Err(e) = photocraft_raster::spill::check_since(scratch_generation)
+    if let Err(e) = patronusphoto_raster::spill::check_since(scratch_generation)
         .map_err(IoError::Unsupported)
         .and_then(|()| doc.scratch_health().map_err(IoError::Unsupported))
     {
@@ -1153,10 +1158,10 @@ fn checked_stages(
 }
 
 /// Run `f` with an interrupt whose progress `0..=1` fills `lo..=hi` of `ctl`'s (same cancellation).
-pub(crate) fn with_span<R>(ctl: &photocraft_raster::Interrupt, lo: f32, hi: f32, f: impl FnOnce(&photocraft_raster::Interrupt) -> R) -> R {
+pub(crate) fn with_span<R>(ctl: &patronusphoto_raster::Interrupt, lo: f32, hi: f32, f: impl FnOnce(&patronusphoto_raster::Interrupt) -> R) -> R {
     let cancelled = || ctl.cancelled();
     let progress = |p: f32| ctl.progress(lo + (hi - lo) * p.clamp(0.0, 1.0));
-    f(&photocraft_raster::Interrupt::new(&cancelled, &progress))
+    f(&patronusphoto_raster::Interrupt::new(&cancelled, &progress))
 }
 
 /// Where a .pcraft save's progress stands once its thumbnail, then its 1024 px composite preview,
@@ -1175,7 +1180,7 @@ fn export_stages_with_renderer(
     doc: &Document,
     name_or_ext: &str,
     opts: &ExportOptions,
-    ctl: &photocraft_raster::Interrupt,
+    ctl: &patronusphoto_raster::Interrupt,
     renderer: Option<&mut dyn BandRenderer>,
 ) -> Result<EncodedExport, IoError> {
     let ext = extension(name_or_ext);
@@ -1190,7 +1195,7 @@ fn export_stages_with_renderer(
     }
     if ext == "xcf" {
         return Err(IoError::Unsupported(
-            "XCF is GIMP's own format and PhotoCraft only opens it; save as .pcraft to keep the layers, or export a flat image".into(),
+            "XCF is GIMP's own format and Patronus Photo only opens it; save as .pcraft to keep the layers, or export a flat image".into(),
         ));
     }
     if ext == "ora" {
@@ -1210,12 +1215,12 @@ fn export_stages_with_renderer(
         }
         return Ok(res.into());
     }
-    if ext == photocraft_format::EXTENSION {
+    if ext == patronusphoto_format::EXTENSION {
         let doc = named_for_file(doc, name_or_ext);
-        let thumbnail = Some(photocraft_compose::thumbnail(doc.as_ref(), 256));
+        let thumbnail = Some(patronusphoto_compose::thumbnail(doc.as_ref(), 256));
         ctl.check().map_err(|_| IoError::Cancelled)?;
         ctl.progress(PCRAFT_THUMBNAIL_DONE);
-        let composite = Some(photocraft_compose::thumbnail(doc.as_ref(), 1024));
+        let composite = Some(patronusphoto_compose::thumbnail(doc.as_ref(), 1024));
         ctl.check().map_err(|_| IoError::Cancelled)?;
         ctl.progress(PCRAFT_PREVIEWS_DONE);
         let mut full_composite = None;
@@ -1225,10 +1230,10 @@ fn export_stages_with_renderer(
             ctl.progress(PCRAFT_FULL_COMPOSITE_DONE);
         }
         let full_composite_icc = full_composite.as_ref().map(|_| pcraft_full_composite_icc(doc.as_ref()));
-        let previews = photocraft_format::SaveOptions { thumbnail, composite, full_composite, full_composite_icc };
+        let previews = patronusphoto_format::SaveOptions { thumbnail, composite, full_composite, full_composite_icc };
         let bytes = match &opts.pcraft_cache {
             Some(cache) => cache.encode(doc.as_ref(), &previews)?,
-            None => photocraft_format::save_to_bytes(doc.as_ref(), &previews)?,
+            None => patronusphoto_format::save_to_bytes(doc.as_ref(), &previews)?,
         };
         return Ok(ExportResult { bytes, warnings: Vec::new() }.into());
     }
@@ -1269,10 +1274,10 @@ fn export_stages_with_renderer(
         }
         return Ok(EncodedExport { encoded: Encoded::Psd(Box::new(file)), warnings });
     }
-    let format = photocraft_formats::from_extension(&ext)
-        .and_then(photocraft_formats::Format::raster_codec)
+    let format = patronusphoto_formats::from_extension(&ext)
+        .and_then(patronusphoto_formats::Format::raster_codec)
         .ok_or_else(|| IoError::UnknownFormat(name_or_ext.to_string()))?;
-    if format == photocraft_codecs::Format::Tiff && opts.tiff_layers && tiff_layers::would_write_layers(doc) {
+    if format == patronusphoto_codecs::Format::Tiff && opts.tiff_layers && tiff_layers::would_write_layers(doc) {
         let mut res = tiff_layers::export_layered(doc, opts, ctl)?;
         if let Some(r) = renderer {
             res.warnings.push("TIFF layered export uses CPU compositor; GPU rendering applies to flat formats".into());
@@ -1286,8 +1291,8 @@ fn export_stages_with_renderer(
 /// The flattened document at its canvas size, in 8-bit RGBA like a `.pcraft` file's two previews,
 /// for the bundle's `composite/full.png`. `None` for a canvas past
 /// 2^26 pixels, or when its pixels cannot be allocated.
-pub fn pcraft_full_composite(doc: &Document) -> Option<photocraft_raster::Rgba8Image> {
-    pcraft_full_composite_with(doc, &photocraft_raster::Interrupt::NONE).ok().flatten()
+pub fn pcraft_full_composite(doc: &Document) -> Option<patronusphoto_raster::Rgba8Image> {
+    pcraft_full_composite_with(doc, &patronusphoto_raster::Interrupt::NONE).ok().flatten()
 }
 
 /// The ICC profile of [`pcraft_full_composite`]'s pixels: an RGB document's own profile as stored,
@@ -1295,7 +1300,7 @@ pub fn pcraft_full_composite(doc: &Document) -> Option<photocraft_raster::Rgba8I
 /// profile ([`psd_thumbnail::composite_profile`]).
 pub fn pcraft_full_composite_icc(doc: &Document) -> Vec<u8> {
     let own = doc.icc_profile.as_ref().filter(|bytes| {
-        doc.mode == photocraft_color::ColorMode::Rgb && craft_cms::Profile::parse(bytes).is_ok_and(|p| p.color_space == craft_cms::ColorSpace::Rgb)
+        doc.mode == patronusphoto_color::ColorMode::Rgb && craft_cms::Profile::parse(bytes).is_ok_and(|p| p.color_space == craft_cms::ColorSpace::Rgb)
     });
     match own {
         Some(bytes) => bytes.to_vec(),
@@ -1305,7 +1310,7 @@ pub fn pcraft_full_composite_icc(doc: &Document) -> Vec<u8> {
 
 /// [`pcraft_full_composite`] rendered in bands: `ctl` gets the fraction of rows done, and a
 /// cancelled render fails with [`IoError::Cancelled`].
-fn pcraft_full_composite_with(doc: &Document, ctl: &photocraft_raster::Interrupt) -> Result<Option<photocraft_raster::Rgba8Image>, IoError> {
+fn pcraft_full_composite_with(doc: &Document, ctl: &patronusphoto_raster::Interrupt) -> Result<Option<patronusphoto_raster::Rgba8Image>, IoError> {
     let canvas = doc.bounds();
     if canvas.is_empty() || u64::from(canvas.width()) * u64::from(canvas.height()) > PCRAFT_FULL_COMPOSITE_PIXELS {
         return Ok(None);
@@ -1316,10 +1321,10 @@ fn pcraft_full_composite_with(doc: &Document, ctl: &photocraft_raster::Interrupt
         return Ok(None);
     }
     pixels.resize(len, 0);
-    let mut image = photocraft_raster::Rgba8Image { width: canvas.width(), height: canvas.height(), pixels };
+    let mut image = patronusphoto_raster::Rgba8Image { width: canvas.width(), height: canvas.height(), pixels };
     let row = canvas.width() as usize * 4;
     let rows = canvas.height() as f32;
-    photocraft_compose::render_bands(doc, canvas, 0, |band| -> Result<(), IoError> {
+    patronusphoto_compose::render_bands(doc, canvas, 0, |band| -> Result<(), IoError> {
         ctl.check().map_err(|_| IoError::Cancelled)?;
         let start = (band.rect.y0 - canvas.y0) as usize * row;
         let pixels = band.to_rgba8().pixels;
@@ -1403,15 +1408,15 @@ pub fn merged_composite(file: &PsdFile) -> Result<Vec<[f32; 4]>, IoError> {
     let layer_info = Some(craft_psd::LayerInfo { merged_alpha: file.merged_has_alpha(), layers: Vec::new(), padding: None });
     let (doc, _) = psd_to_document(&PsdFile { layer_info, ..file.clone() });
     // Multichannel documents keep their channels apart (no layer): composite them.
-    if doc.layers.is_empty() && doc.mode == photocraft_color::ColorMode::Multichannel {
-        return Ok(photocraft_compose::flatten(&doc).into_px());
+    if doc.layers.is_empty() && doc.mode == patronusphoto_color::ColorMode::Multichannel {
+        return Ok(patronusphoto_compose::flatten(&doc).into_px());
     }
     let l = doc.layers.first().ok_or_else(|| IoError::Unsupported("no merged image".into()))?;
     let s = l.surface().ok_or_else(|| IoError::Unsupported("no merged image".into()))?;
     // CMYK reads through the file's own profile, as the compositor reads its layers, so a tagged
     // file's merged image and its composite are compared in the same colours.
-    let cmyk = photocraft_compose::cmyk_space(&doc);
-    Ok(photocraft_color::convert::with_cmyk_space(cmyk.as_ref(), || photocraft_compose::surface_to_buffer(s, doc.bounds()).into_px()))
+    let cmyk = patronusphoto_compose::cmyk_space(&doc);
+    Ok(patronusphoto_color::convert::with_cmyk_space(cmyk.as_ref(), || patronusphoto_compose::surface_to_buffer(s, doc.bounds()).into_px()))
 }
 
 #[cfg(test)]
@@ -1478,7 +1483,7 @@ mod tests {
     fn nested_psd_import_enforces_the_callers_local_bounds_before_charging_the_parent() {
         let gb = 1u64 << 30;
         let bytes = testgen::small(Version::Psd, Compression::Raw).to_bytes().unwrap();
-        let ctl = photocraft_raster::Interrupt::NONE;
+        let ctl = patronusphoto_raster::Interrupt::NONE;
         let ample = 16 * gb;
         let _parent = super::psd_gate::acquire_decode_admission(&ctl).expect("parent admission");
 
@@ -1546,15 +1551,15 @@ mod tests {
     #[cfg(any(unix, windows))]
     #[test]
     fn verified_path_import_reads_a_flat_file_from_its_start() {
-        let dir = std::env::temp_dir().join(format!("photocraft-verified-png-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("patronusphoto-verified-png-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("verified.png");
-        let image = photocraft_codecs::Image::from_u8(2, 3, photocraft_codecs::ChannelLayout::Rgb, vec![64; 18]).unwrap();
-        let bytes = photocraft_codecs::encode(&image, photocraft_codecs::Format::Png, &Default::default()).unwrap();
+        let image = patronusphoto_codecs::Image::from_u8(2, 3, patronusphoto_codecs::ChannelLayout::Rgb, vec![64; 18]).unwrap();
+        let bytes = patronusphoto_codecs::encode(&image, patronusphoto_codecs::Format::Png, &Default::default()).unwrap();
         std::fs::write(&path, bytes).unwrap();
         let mut identity = None;
         let (opened, damaged) =
-            super::import_file_for_open_verified("verified.png", &path, None, &ImportOptions::default(), &photocraft_raster::Interrupt::NONE, &mut identity)
+            super::import_file_for_open_verified("verified.png", &path, None, &ImportOptions::default(), &patronusphoto_raster::Interrupt::NONE, &mut identity)
                 .unwrap();
         assert_eq!((opened.document.size.width, opened.document.size.height), (2, 3));
         assert!(!damaged);
@@ -1567,7 +1572,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn verified_import_binds_the_decoded_handle_identity() {
-        let dir = std::env::temp_dir().join(format!("photocraft-io-verified-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("patronusphoto-io-verified-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("source.psd");
@@ -1580,7 +1585,7 @@ mod tests {
             &path,
             Some(&expected),
             &ImportOptions::default(),
-            &photocraft_raster::Interrupt::NONE,
+            &patronusphoto_raster::Interrupt::NONE,
             &mut opened,
         )
         .unwrap();
@@ -1596,7 +1601,7 @@ mod tests {
             &path,
             Some(&expected),
             &ImportOptions::default(),
-            &photocraft_raster::Interrupt::NONE,
+            &patronusphoto_raster::Interrupt::NONE,
             &mut opened,
         )
         .expect_err("the path now names another file");
@@ -1609,11 +1614,11 @@ mod tests {
     /// as on main and in Photoshop.
     #[test]
     fn raster_bytes_named_psd_still_open() {
-        use photocraft_codecs::{ChannelLayout, EncodeOptions, Format, Image};
+        use patronusphoto_codecs::{ChannelLayout, EncodeOptions, Format, Image};
         let n = 8 * 8 * 3;
         let img = Image::from_u8(8, 8, ChannelLayout::Rgb, vec![180; n]).unwrap();
-        let png = photocraft_codecs::encode(&img, Format::Png, &EncodeOptions::default()).unwrap();
-        let jpeg = photocraft_codecs::encode(&img, Format::Jpeg, &EncodeOptions::default()).unwrap();
+        let png = patronusphoto_codecs::encode(&img, Format::Png, &EncodeOptions::default()).unwrap();
+        let jpeg = patronusphoto_codecs::encode(&img, Format::Jpeg, &EncodeOptions::default()).unwrap();
         for (name, bytes) in [("download.psd", png.as_slice()), ("scan.PSB", jpeg.as_slice())] {
             assert!(!is_psd_input(name, bytes), "{name}");
             let d = import(name, bytes).unwrap_or_else(|e| panic!("{name}: {e}")).document;

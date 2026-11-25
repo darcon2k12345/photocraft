@@ -1,4 +1,4 @@
-//! Plain `photocraft-cli mcp` with agents allowed (the ArtCraft Launcher's switch): the MCP server finds the desktop
+//! Plain `patronusphoto-cli mcp` with agents allowed (the ArtCraft Launcher's switch): the MCP server finds the desktop
 //! app through its connection file before every call, follows it to a new port and token, and
 //! applies the closed-app choice (start it, headless, or an error) when no app answers.
 
@@ -10,9 +10,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use craft::automation::agents::{self, Connection};
-use photocraft_automation::PhotocraftMcp;
-use photocraft_automation::live::LiveConfig;
-use photocraft_engine::prefs::WhenAppClosed;
+use patronusphoto_automation::PatronusPhotoMcp;
+use patronusphoto_automation::live::LiveConfig;
+use patronusphoto_engine::prefs::WhenAppClosed;
 use rmcp::model::{CallToolRequestParams, CallToolResult, ClientConfig};
 use rmcp::service::RunningService;
 use rmcp::{ClientHandler, RoleClient, ServiceExt};
@@ -26,7 +26,7 @@ impl ClientHandler for Client {
     }
 }
 
-async fn connect(server: PhotocraftMcp) -> RunningService<RoleClient, Client> {
+async fn connect(server: PatronusPhotoMcp) -> RunningService<RoleClient, Client> {
     let (s, c) = tokio::io::duplex(1 << 20);
     tokio::spawn(async move {
         if let Ok(running) = server.serve(s).await {
@@ -71,8 +71,8 @@ fn fake_app(dir: &Path, name: &'static str) -> FakeApp {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();
     let token_file = dir.join(agents::TOKEN_FILE);
-    let token = photocraft_automation::security::replace_token_file(&token_file).unwrap();
-    agents::write_connection(dir, &Connection::new(port, token_file, "PhotoCraft test")).unwrap();
+    let token = patronusphoto_automation::security::replace_token_file(&token_file).unwrap();
+    agents::write_connection(dir, &Connection::new(port, token_file, "Patronus Photo test")).unwrap();
     let stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
     let stopped = stop.clone();
     std::thread::spawn(move || {
@@ -84,14 +84,14 @@ fn fake_app(dir: &Path, name: &'static str) -> FakeApp {
             std::thread::spawn(move || {
                 let mut out = stream.try_clone().unwrap();
                 // The app's own handshake (challenge or token), as the app's control server runs it.
-                let mut handshake = photocraft_automation::security::ServerHandshake::new();
+                let mut handshake = patronusphoto_automation::security::ServerHandshake::new();
                 let mut authenticated = false;
                 for line in BufReader::new(stream).lines() {
                     let Ok(line) = line else { break };
                     if !authenticated {
                         let (reply, step) = handshake.reply(&line, &token);
-                        authenticated = step == photocraft_automation::security::AuthStep::Authenticated;
-                        if writeln!(out, "{reply}").is_err() || step == photocraft_automation::security::AuthStep::Rejected {
+                        authenticated = step == patronusphoto_automation::security::AuthStep::Authenticated;
+                        if writeln!(out, "{reply}").is_err() || step == patronusphoto_automation::security::AuthStep::Rejected {
                             break;
                         }
                         continue;
@@ -147,11 +147,11 @@ fn shown(p: &Path) -> Value {
 #[tokio::test(flavor = "multi_thread")]
 async fn agent_folders_names_the_default_agent_folder_of_a_headless_session() {
     let dir = settings_dir("folders-headless");
-    let default = dir.join("Agents").join("PhotoCraft");
+    let default = dir.join("Agents").join("Patronus Photo");
     prefs(&dir, json!({"connectAgents": true, "whenAppClosed": "headless"}));
     let mut config = live(&dir, None);
     config.default_folder = Some(default.clone());
-    let client = connect(PhotocraftMcp::live(config)).await;
+    let client = connect(PatronusPhotoMcp::live(config)).await;
     assert!(client.list_all_tools().await.unwrap().iter().any(|t| t.name == "agent_folders"));
     let a = answer(&call(&client, "agent_folders", json!({})).await);
     assert_eq!(a, json!({"read_folder": shown(&default), "write_folder": shown(&default)}));
@@ -168,7 +168,7 @@ async fn agent_folders_names_the_default_agent_folder_of_a_headless_session() {
     prefs(&dir, json!({"connectAgents": true, "whenAppClosed": "headless", "writeRoot": own.to_string_lossy()}));
     let mut config = live(&dir, None);
     config.default_folder = Some(default.clone());
-    let client = connect(PhotocraftMcp::live(config)).await;
+    let client = connect(PatronusPhotoMcp::live(config)).await;
     let a = answer(&call(&client, "agent_folders", json!({})).await);
     assert_eq!(a, json!({"read_folder": shown(&default), "write_folder": shown(&own)}));
     // No arguments: anything else is refused, not ignored.
@@ -182,13 +182,13 @@ async fn agent_folders_names_the_default_agent_folder_of_a_headless_session() {
 #[tokio::test(flavor = "multi_thread")]
 async fn agent_folders_names_the_open_windows_folders() {
     let dir = settings_dir("folders-window");
-    let default = dir.join("Agents").join("PhotoCraft");
+    let default = dir.join("Agents").join("Patronus Photo");
     let own = dir.join("in");
     prefs(&dir, json!({"connectAgents": true, "whenAppClosed": "error", "readRoot": own.to_string_lossy()}));
     let app = fake_app(&dir, "window");
     let mut config = live(&dir, None);
     config.default_folder = Some(default.clone());
-    let client = connect(PhotocraftMcp::live(config)).await;
+    let client = connect(PatronusPhotoMcp::live(config)).await;
     let a = answer(&call(&client, "agent_folders", json!({})).await);
     assert_eq!(a, json!({"read_folder": shown(&own), "write_folder": shown(&default)}));
     client.cancel().await.unwrap();
@@ -204,13 +204,13 @@ async fn agent_folders_names_the_root_flags_of_a_headless_session() {
     for d in [&a_in, &b_in, &out] {
         std::fs::create_dir_all(d).unwrap();
     }
-    let workspace = photocraft_automation::AuthorizedWorkspace::with_read_roots([a_in.as_path(), b_in.as_path()], Some(&out)).unwrap();
-    let client = connect(PhotocraftMcp::headless_with_workspace(workspace)).await;
+    let workspace = patronusphoto_automation::AuthorizedWorkspace::with_read_roots([a_in.as_path(), b_in.as_path()], Some(&out)).unwrap();
+    let client = connect(PatronusPhotoMcp::headless_with_workspace(workspace)).await;
     let a = answer(&call(&client, "agent_folders", json!({})).await);
     assert_eq!(a, json!({"read_folder": shown(&a_in), "write_folder": shown(&out), "read_folders": [shown(&a_in), shown(&b_in)]}));
     client.cancel().await.unwrap();
 
-    let client = connect(PhotocraftMcp::headless_with_workspace(photocraft_automation::AuthorizedWorkspace::default())).await;
+    let client = connect(PatronusPhotoMcp::headless_with_workspace(patronusphoto_automation::AuthorizedWorkspace::default())).await;
     assert_eq!(answer(&call(&client, "agent_folders", json!({})).await), json!({"read_folder": null, "write_folder": null}));
     client.cancel().await.unwrap();
     let _ = std::fs::remove_dir_all(&dir);
@@ -220,7 +220,7 @@ async fn agent_folders_names_the_root_flags_of_a_headless_session() {
 async fn a_closed_app_is_a_tool_error_that_says_what_to_do() {
     let dir = settings_dir("closed");
     prefs(&dir, json!({"connectAgents": true}));
-    let client = connect(PhotocraftMcp::live(live(&dir, Some(WhenAppClosed::Error)))).await;
+    let client = connect(PatronusPhotoMcp::live(live(&dir, Some(WhenAppClosed::Error)))).await;
     // The tool list doesn't need the app.
     assert!(client.list_all_tools().await.unwrap().iter().any(|t| t.name == "ui_inspect"));
     let r = call(&client, "command_list", json!({})).await;
@@ -230,7 +230,7 @@ async fn a_closed_app_is_a_tool_error_that_says_what_to_do() {
     let gone = TcpListener::bind("127.0.0.1:0").unwrap();
     let port = gone.local_addr().unwrap().port();
     drop(gone);
-    agents::write_connection(&dir, &Connection::new(port, dir.join(agents::TOKEN_FILE), "PhotoCraft test")).unwrap();
+    agents::write_connection(&dir, &Connection::new(port, dir.join(agents::TOKEN_FILE), "Patronus Photo test")).unwrap();
     let r = call(&client, "ui_inspect", json!({})).await;
     assert!(text(&r).contains("isn't running"), "{}", text(&r));
     client.cancel().await.unwrap();
@@ -241,7 +241,7 @@ async fn a_closed_app_is_a_tool_error_that_says_what_to_do() {
 async fn follows_the_app_across_restarts_on_new_ports_and_tokens() {
     let dir = settings_dir("follow");
     prefs(&dir, json!({"connectAgents": true, "whenAppClosed": "error"}));
-    let client = connect(PhotocraftMcp::live(live(&dir, None))).await;
+    let client = connect(PatronusPhotoMcp::live(live(&dir, None))).await;
     let first = fake_app(&dir, "first");
     let r = call(&client, "ui_inspect", json!({})).await;
     assert_eq!(r.is_error, Some(false), "{}", text(&r));
@@ -282,7 +282,7 @@ async fn launch_starts_the_app_once_and_only_when_agents_may_connect() {
     };
     // Agents not allowed: the app would never listen, so it isn't started; the session works
     // without a window, as `mcp` always did.
-    let client = connect(PhotocraftMcp::live(config(&dir))).await;
+    let client = connect(PatronusPhotoMcp::live(config(&dir))).await;
     let r = call(&client, "ui_inspect", json!({})).await;
     assert!(text(&r).contains("bridge"), "UI tools need the open app: {}", text(&r));
     let r = call(&client, "command_list", json!({})).await;
@@ -293,7 +293,7 @@ async fn launch_starts_the_app_once_and_only_when_agents_may_connect() {
     // The ArtCraft Launcher's switch is the consent: the app is started on it alone.
     let mut c = config(&dir);
     c.allowed = |_| true;
-    let client = connect(PhotocraftMcp::live(c)).await;
+    let client = connect(PatronusPhotoMcp::live(c)).await;
     let r = call(&client, "ui_inspect", json!({})).await;
     assert_eq!(r.is_error, Some(false), "{}", text(&r));
     assert_eq!(launches.load(Ordering::SeqCst), 1);
@@ -304,7 +304,7 @@ async fn launch_starts_the_app_once_and_only_when_agents_may_connect() {
     launches.store(0, Ordering::SeqCst);
 
     prefs(&dir, json!({"connectAgents": true}));
-    let client = connect(PhotocraftMcp::live(config(&dir))).await;
+    let client = connect(PatronusPhotoMcp::live(config(&dir))).await;
     // Two calls at once start one app.
     let (a, b) = tokio::join!(call(&client, "ui_inspect", json!({})), call(&client, "ui_inspect", json!({})));
     for r in [a, b] {
@@ -326,20 +326,20 @@ async fn a_launch_that_never_listens_times_out_with_advice() {
     let mut c = live(&dir, Some(WhenAppClosed::Launch));
     c.launch_timeout = Duration::from_millis(600);
     c.launch = Some(Box::new(|| Ok(())));
-    let client = connect(PhotocraftMcp::live(c)).await;
+    let client = connect(PatronusPhotoMcp::live(c)).await;
     let r = call(&client, "ui_inspect", json!({})).await;
     assert_eq!(r.is_error, Some(true));
     assert!(text(&r).contains("didn't accept agents"), "{}", text(&r));
     // A launcher that fails says so.
     let mut c = live(&dir, Some(WhenAppClosed::Launch));
     c.launch = Some(Box::new(|| Err("no such file".into())));
-    let client2 = connect(PhotocraftMcp::live(c)).await;
+    let client2 = connect(PatronusPhotoMcp::live(c)).await;
     let r = call(&client2, "ui_inspect", json!({})).await;
-    assert!(text(&r).contains("couldn't start PhotoCraft: no such file"), "{}", text(&r));
+    assert!(text(&r).contains("couldn't start Patronus Photo: no such file"), "{}", text(&r));
     // No launcher (Flatpak, the app not installed beside the CLI): ask the user.
-    let client3 = connect(PhotocraftMcp::live(live(&dir, Some(WhenAppClosed::Launch)))).await;
+    let client3 = connect(PatronusPhotoMcp::live(live(&dir, Some(WhenAppClosed::Launch)))).await;
     let r = call(&client3, "ui_inspect", json!({})).await;
-    assert!(text(&r).contains("open PhotoCraft"), "{}", text(&r));
+    assert!(text(&r).contains("open Patronus Photo"), "{}", text(&r));
     for c in [client, client2, client3] {
         c.cancel().await.unwrap();
     }
@@ -352,7 +352,7 @@ async fn headless_uses_the_app_folders_and_stays_headless() {
     let work = dir.join("work");
     std::fs::create_dir_all(&work).unwrap();
     prefs(&dir, json!({"connectAgents": true, "whenAppClosed": "headless", "writeRoot": work.to_string_lossy()}));
-    let client = connect(PhotocraftMcp::live(live(&dir, None))).await;
+    let client = connect(PatronusPhotoMcp::live(live(&dir, None))).await;
     let r = call(&client, "doc_new", json!({"width": 8, "height": 8})).await;
     assert_eq!(r.is_error, Some(false), "{}", text(&r));
     let r = call(&client, "doc_save", json!({"path": "out.pcraft"})).await;
@@ -372,7 +372,7 @@ async fn headless_uses_the_app_folders_and_stays_headless() {
     // A folder that doesn't exist is a clear error, not a crash.
     prefs(&dir, json!({"connectAgents": true, "whenAppClosed": "headless", "readRoot": dir.join("missing").to_string_lossy()}));
     std::fs::remove_file(dir.join(agents::CONNECTION_FILE)).unwrap();
-    let client = connect(PhotocraftMcp::live(live(&dir, None))).await;
+    let client = connect(PatronusPhotoMcp::live(live(&dir, None))).await;
     let r = call(&client, "command_list", json!({})).await;
     assert_eq!(r.is_error, Some(true));
     assert!(text(&r).contains("agent folders"), "{}", text(&r));
@@ -393,7 +393,7 @@ async fn headless_root_flags_override_each_direction_on_their_own() {
     // Only the write root is given: saves go there, reads still come from the app's read folder.
     let mut c = live(&dir, None);
     c.write_root = Some(given.clone());
-    let client = connect(PhotocraftMcp::live(c)).await;
+    let client = connect(PatronusPhotoMcp::live(c)).await;
     let r = call(&client, "doc_new", json!({"width": 8, "height": 8})).await;
     assert_eq!(r.is_error, Some(false), "{}", text(&r));
     let r = call(&client, "doc_save", json!({"path": "out.pcraft"})).await;
@@ -407,7 +407,7 @@ async fn headless_root_flags_override_each_direction_on_their_own() {
     // Only a read root is given: it replaces the app's read folder; saves still go to the app's write folder.
     let mut c = live(&dir, None);
     c.read_roots = vec![given.clone()];
-    let client = connect(PhotocraftMcp::live(c)).await;
+    let client = connect(PatronusPhotoMcp::live(c)).await;
     let r = call(&client, "doc_open", json!({"path": app_read.join("in.pcraft").to_string_lossy()})).await;
     assert_eq!(r.is_error, Some(true), "the app's read folder is replaced by the given one");
     let r = call(&client, "doc_open", json!({"path": given.join("out.pcraft").to_string_lossy()})).await;
@@ -444,14 +444,14 @@ async fn without_consent_mcp_is_headless_with_its_own_folders() {
         }));
         c
     };
-    let client = connect(PhotocraftMcp::live(config(None))).await;
+    let client = connect(PatronusPhotoMcp::live(config(None))).await;
     let r = call(&client, "doc_new", json!({"width": 8, "height": 8})).await;
     assert_eq!(r.is_error, Some(false), "{}", text(&r));
     let r = call(&client, "doc_save", json!({"path": "out.pcraft"})).await;
     assert_eq!(r.is_error, Some(true), "the app's folder isn't granted without consent");
     assert!(!app_folder.join("out.pcraft").exists());
     client.cancel().await.unwrap();
-    let client = connect(PhotocraftMcp::live(config(Some(given.clone())))).await;
+    let client = connect(PatronusPhotoMcp::live(config(Some(given.clone())))).await;
     call(&client, "doc_new", json!({"width": 8, "height": 8})).await;
     let r = call(&client, "doc_save", json!({"path": "out.pcraft"})).await;
     assert_eq!(r.is_error, Some(false), "{}", text(&r));

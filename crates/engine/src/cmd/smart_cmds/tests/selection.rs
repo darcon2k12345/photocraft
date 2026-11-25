@@ -1,9 +1,9 @@
 use super::*;
-use photocraft_color::{ColorMode, SampleType};
+use patronusphoto_color::{ColorMode, SampleType};
 
 fn pixel(doc: &Document, name: &str, bounds: Rect, rgba: [f32; 4]) -> Layer {
     let mut layer = Layer::raster(name, doc.pixel_format());
-    layer.surface_mut().unwrap().fill_rect(bounds, &photocraft_raster::from_rgba(&doc.pixel_format(), rgba));
+    layer.surface_mut().unwrap().fill_rect(bounds, &patronusphoto_raster::from_rgba(&doc.pixel_format(), rgba));
     layer
 }
 
@@ -38,9 +38,9 @@ fn selected_pixels_become_one_editable_smart_object_in_every_mode_and_depth() {
             b.mask.as_mut().unwrap().surface.fill_rect(Rect::new(14, 16, 20, 22), &[0.5]);
             b.locks.all = true;
             b.effects.enabled = true;
-            b.effects.items.push(photocraft_doc::Effect::ColorOverlay {
-                common: photocraft_doc::FxCommon { enabled: true, blend: BlendMode::Normal, opacity: 0.3 },
-                color: photocraft_color::Color::WHITE,
+            b.effects.items.push(patronusphoto_doc::Effect::ColorOverlay {
+                common: patronusphoto_doc::FxCommon { enabled: true, blend: BlendMode::Normal, opacity: 0.3 },
+                color: patronusphoto_color::Color::WHITE,
             });
             let mut hidden = pixel(&doc, "Hidden", Rect::new(50, 40, 58, 44), [0.2, 0.9, 0.3, 1.0]);
             hidden.visible = false;
@@ -164,11 +164,11 @@ fn combined_contents_survive_native_and_psd_save_open() {
         let mut s = selected_session(doc, &ids);
         let id = LayerId(convert(&mut s));
         let original = s.active().unwrap().doc.clone();
-        let native = photocraft_format::save_to_bytes(&original, &Default::default()).unwrap();
-        let native_back = photocraft_format::load_from_bytes(&native).unwrap();
+        let native = patronusphoto_format::save_to_bytes(&original, &Default::default()).unwrap();
+        let native_back = patronusphoto_format::load_from_bytes(&native).unwrap();
         assert_eq!(smart(&original, id).unwrap(), smart(&native_back, id).unwrap());
-        let psd = photocraft_io::export(&original, "pair.psd", &Default::default()).unwrap();
-        let back = photocraft_io::import("pair.psd", &psd.bytes).unwrap().document;
+        let psd = patronusphoto_io::export(&original, "pair.psd", &Default::default()).unwrap();
+        let back = patronusphoto_io::import("pair.psd", &psd.bytes).unwrap().document;
         assert_eq!(back.depth, depth);
         assert_eq!(back.layers.len(), 1);
         let LayerContent::Smart(sm) = &back.layers[0].content else { panic!("PSD lost the smart object") };

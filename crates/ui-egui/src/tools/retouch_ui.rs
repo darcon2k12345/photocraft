@@ -6,7 +6,7 @@
 use craft::keymap::Mods;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// The tool a stroke uses with ⌥ held: Dodge and Burn swap, as do Blur and Sharpen.
@@ -23,7 +23,7 @@ pub(crate) fn alt_flipped(tool: Tool, alt: bool) -> Tool {
 /// Clone Stamp / Healing Brush params for the options bar and the clone source (without
 /// `points` and `target`): shared by the live preview and the commit. `None` when no source
 /// point is set yet.
-pub(crate) fn clone_params(app: &PhotocraftApp) -> Option<Value> {
+pub(crate) fn clone_params(app: &PatronusPhotoApp) -> Option<Value> {
     // Refused there (`healing_refused`): no live preview either.
     if healing_in_indexed(app, app.ui.tool) {
         return None;
@@ -48,20 +48,20 @@ pub(crate) fn clone_params(app: &PhotocraftApp) -> Option<Value> {
 
 /// The Clone Stamp in an Indexed Color document, where the reference greys Sample at Current Layer
 /// and names the Normal Mode "Threshold" (#12613).
-pub(crate) fn clone_stamp_indexed(app: &PhotocraftApp) -> bool {
-    app.ui.tool == Tool::CloneStamp && app.session.active().is_some_and(|st| st.doc.mode == photocraft_doc::ColorMode::Indexed)
+pub(crate) fn clone_stamp_indexed(app: &PatronusPhotoApp) -> bool {
+    app.ui.tool == Tool::CloneStamp && app.session.active().is_some_and(|st| st.doc.mode == patronusphoto_doc::ColorMode::Indexed)
 }
 
 /// History Brush params for the live preview and the commit (without `points` and `target`): the
 /// options bar's Mode and the tool's own brush. For an Eraser with Erase to History they also
 /// carry `eraseToHistory` and the Eraser's Pencil or Block tip.
-pub(crate) fn history_brush_params(app: &PhotocraftApp) -> Value {
+pub(crate) fn history_brush_params(app: &PatronusPhotoApp) -> Value {
     history_brush_params_with(app, app.ui.tool_options.erase_to_history)
 }
 
 /// [`history_brush_params`], with Erase to History on whatever the option says: ⌥ reverses the
 /// option for one stroke.
-fn history_brush_params_with(app: &PhotocraftApp, erase_to_history: bool) -> Value {
+fn history_brush_params_with(app: &PatronusPhotoApp, erase_to_history: bool) -> Value {
     // The tool's tip goes in the params: the session's brush changes with the tool, if a tool key
     // is pressed mid-stroke.
     let brush = &app.session.tools.brush;
@@ -78,7 +78,7 @@ fn history_brush_params_with(app: &PhotocraftApp, erase_to_history: bool) -> Val
     // (`remembered_settings`, as each tool's remembered brush); only with a sampled tip or pattern
     // too big for that, not yet in the preset store, does the brush go in full. `square` is
     // written out even when off.
-    let mut whole = photocraft_engine::brush_cmds::remembered_settings(brush).or_else(|| serde_json::to_value(brush).ok()).unwrap_or(Value::Null);
+    let mut whole = patronusphoto_engine::brush_cmds::remembered_settings(brush).or_else(|| serde_json::to_value(brush).ok()).unwrap_or(Value::Null);
     if let Some(o) = whole.as_object_mut() {
         o.insert("square".into(), json!(brush.square));
         p["brush"] = whole;
@@ -100,13 +100,13 @@ fn history_brush_params_with(app: &PhotocraftApp, erase_to_history: bool) -> Val
 }
 
 /// The options a stroke of `tool` keeps from its press (`canvas::Drag::history_params`).
-pub(crate) fn history_params_at_press(app: &PhotocraftApp, tool: Tool, alt: bool) -> Option<Value> {
+pub(crate) fn history_params_at_press(app: &PatronusPhotoApp, tool: Tool, alt: bool) -> Option<Value> {
     (tool == Tool::HistoryBrush).then(|| history_brush_params_with(app, alt != app.ui.tool_options.erase_to_history))
 }
 
 /// The command and options-bar params (without `points` and `target`) of a sequential-dab tool:
 /// Blur, Sharpen, Smudge, Dodge, Burn, Sponge. Shared by the live preview and the commit.
-pub(crate) fn dab_params(app: &PhotocraftApp, tool: Tool) -> Option<(&'static str, Value)> {
+pub(crate) fn dab_params(app: &PatronusPhotoApp, tool: Tool) -> Option<(&'static str, Value)> {
     let o = &app.ui.tool_options;
     Some(match tool {
         Tool::Blur => ("paint.blur", json!({"strength": o.strength, "sampleAllLayers": o.sample_all.blur})),
@@ -128,7 +128,7 @@ pub(crate) fn dab_params(app: &PhotocraftApp, tool: Tool) -> Option<(&'static st
 /// `paint.colorReplacement` params from the options bar (without `points`): shared by the live
 /// preview and the commit. The replacement `color` is the foreground, recorded so a replayed
 /// stroke paints the same colour; Background Swatch sampling matches the background colour.
-pub(crate) fn color_replacement_params(app: &PhotocraftApp) -> Value {
+pub(crate) fn color_replacement_params(app: &PatronusPhotoApp) -> Value {
     let o = &app.ui.tool_options;
     json!({
         "color": app.session.tools.foreground,
@@ -147,7 +147,7 @@ pub(crate) fn color_replacement_params(app: &PhotocraftApp) -> Value {
 /// `paint.patternStamp` params from the options bar and the Patterns panel (without `points` and
 /// `target`): shared by the live preview and the commit. The jitter `seed` comes from the stroke's
 /// first point, so the live stroke (which starts with only that point) and the commit agree.
-pub(crate) fn pattern_stamp_params(app: &PhotocraftApp, points: &[[f64; 3]]) -> Value {
+pub(crate) fn pattern_stamp_params(app: &PatronusPhotoApp, points: &[[f64; 3]]) -> Value {
     let o = &app.ui.tool_options;
     let mut p = json!({
         "aligned": o.pattern_stamp_aligned,
@@ -165,7 +165,7 @@ pub(crate) fn pattern_stamp_params(app: &PhotocraftApp, points: &[[f64; 3]]) -> 
     {
         p["phase"] = json!(ph);
     }
-    if let Some(id) = photocraft_engine::presets::patterns::current(&app.session).or(app.session.patterns.items.first()).map(|x| x.id.clone()) {
+    if let Some(id) = patronusphoto_engine::presets::patterns::current(&app.session).or(app.session.patterns.items.first()).map(|x| x.id.clone()) {
         p["pattern"] = json!(id);
     }
     p
@@ -177,12 +177,12 @@ pub(crate) fn pattern_stamp_params(app: &PhotocraftApp, points: &[[f64; 3]]) -> 
 pub(crate) fn stroke_seed(points: &[[f64; 3]]) -> u64 {
     // Position only: a pen tap raises the first point's pressure on release (#1798).
     let first = points.first().map(|p| json!([p[0], p[1]]).to_string()).unwrap_or_default();
-    photocraft_engine::paint::rng::seed_from_bytes(first.as_bytes())
+    patronusphoto_engine::paint::rng::seed_from_bytes(first.as_bytes())
 }
 
 /// A Clone Stamp press with no source point yet: the reference application's alert, opened at
 /// the press (#12609) and once while it is up. Returns whether it refused the stroke.
-pub(crate) fn clone_stamp_without_source(app: &mut PhotocraftApp, tool: Tool) -> bool {
+pub(crate) fn clone_stamp_without_source(app: &mut PatronusPhotoApp, tool: Tool) -> bool {
     if tool != Tool::CloneStamp || clone_params(app).is_some() {
         return false;
     }
@@ -196,12 +196,12 @@ pub(crate) fn clone_stamp_without_source(app: &mut PhotocraftApp, tool: Tool) ->
 }
 
 /// Finish a stroke with a retouching tool. Returns false if `tool` isn't one.
-pub fn finish_stroke(app: &mut PhotocraftApp, tool: Tool, points: &[[f64; 3]], mods: Mods, line: bool) -> bool {
+pub fn finish_stroke(app: &mut PatronusPhotoApp, tool: Tool, points: &[[f64; 3]], mods: Mods, line: bool) -> bool {
     finish_stroke_with(app, tool, points, mods, line, None)
 }
 
 /// [`finish_stroke`], with a History Brush stroke's options as they were at the press.
-pub(crate) fn finish_stroke_with(app: &mut PhotocraftApp, tool: Tool, points: &[[f64; 3]], mods: Mods, line: bool, history: Option<Value>) -> bool {
+pub(crate) fn finish_stroke_with(app: &mut PatronusPhotoApp, tool: Tool, points: &[[f64; 3]], mods: Mods, line: bool, history: Option<Value>) -> bool {
     let o = app.ui.tool_options.clone();
     let pts = json!(points);
     let (cmd, mut p): (&str, Value) = match tool {
@@ -252,7 +252,7 @@ pub(crate) fn finish_stroke_with(app: &mut PhotocraftApp, tool: Tool, points: &[
         },
         Tool::QuickSelection => {
             // Indexed Color and Bitmap: the reference application's alert with OK (#12934), and nothing runs.
-            if let Some(why) = app.session.active().and_then(|st| photocraft_engine::smartselect_cmds::quick_mode_refusal(st.doc.mode)) {
+            if let Some(why) = app.session.active().and_then(|st| patronusphoto_engine::smartselect_cmds::quick_mode_refusal(st.doc.mode)) {
                 let _ = crate::dialogs::alerts::alert(app, tl!(why));
                 return true;
             }
@@ -305,20 +305,20 @@ fn remove_params(o: &crate::state::ToolOptions, composite: bool) -> Value {
 /// redirect the queued strokes to a different layer or colour component.
 #[derive(Clone, PartialEq)]
 pub(crate) struct RemoveTarget {
-    doc: photocraft_doc::DocId,
-    layer: Option<photocraft_doc::LayerId>,
-    channel: photocraft_engine::channel_cmds::ChannelTarget,
+    doc: patronusphoto_doc::DocId,
+    layer: Option<patronusphoto_doc::LayerId>,
+    channel: patronusphoto_engine::channel_cmds::ChannelTarget,
     paint: Value,
 }
 
-fn remove_target(app: &PhotocraftApp) -> Option<RemoveTarget> {
+fn remove_target(app: &PatronusPhotoApp) -> Option<RemoveTarget> {
     let st = app.session.active()?;
     Some(RemoveTarget { doc: st.doc.id, layer: st.active_layer, channel: st.channel_view.target, paint: crate::canvas::paint_target(app) })
 }
 
 /// Remove after each stroke off: a finished stroke waits with the others, tinted on the canvas,
 /// until ↩ or the options bar's ✓ applies them all as one removal (Esc or ⊘ drops them).
-pub fn remove_pending_add(app: &mut PhotocraftApp, points: &[[f64; 3]]) {
+pub fn remove_pending_add(app: &mut PatronusPhotoApp, points: &[[f64; 3]]) {
     let Some(target) = remove_target(app) else { return };
     let Some(st) = app.session.active() else { return };
     let size = [st.doc.size.width, st.doc.size.height];
@@ -331,7 +331,7 @@ pub fn remove_pending_add(app: &mut PhotocraftApp, points: &[[f64; 3]]) {
     // the brush changes before ↩.
     let b = &app.session.tools.brush;
     let entry = json!({"points": points, "size": b.size, "hardness": b.hardness * 100.0, "spacing": b.spacing * 100.0});
-    let brush = || photocraft_engine::retouch_cmds::stroke_brush(&app.session.tools.brush, &entry);
+    let brush = || patronusphoto_engine::retouch_cmds::stroke_brush(&app.session.tools.brush, &entry);
     app.remove_trail.get_or_insert_with(|| crate::stroke_trail::Trail::new(size)).feed_stroke_reach(points, brush);
     app.remove_pending.push(entry);
     app.ui.status = crate::i18n::fmt(tl!("Strokes to remove: {n} (Enter applies, Esc cancels)"), &[("n", &app.remove_pending.len().to_string())]);
@@ -339,7 +339,7 @@ pub fn remove_pending_add(app: &mut PhotocraftApp, points: &[[f64; 3]]) {
 }
 
 /// Apply the waiting strokes as one removal (one job, one undo step). False when none wait.
-pub fn remove_pending_commit(app: &mut PhotocraftApp) -> bool {
+pub fn remove_pending_commit(app: &mut PatronusPhotoApp) -> bool {
     // Enter can arrive before the next canvas frame checks pending-stroke lifetime.
     if !remove_pending_live(app) {
         return false;
@@ -359,7 +359,7 @@ pub fn remove_pending_commit(app: &mut PhotocraftApp) -> bool {
 }
 
 /// Drop the waiting strokes. False when none wait.
-pub fn remove_pending_cancel(app: &mut PhotocraftApp) -> bool {
+pub fn remove_pending_cancel(app: &mut PatronusPhotoApp) -> bool {
     if app.remove_pending.is_empty() {
         return false;
     }
@@ -373,7 +373,7 @@ pub fn remove_pending_cancel(app: &mut PhotocraftApp) -> bool {
 
 /// Whether Remove strokes are still waiting: they are dropped when the tool or the document
 /// changed under them (checked every frame).
-pub fn remove_pending_live(app: &mut PhotocraftApp) -> bool {
+pub fn remove_pending_live(app: &mut PatronusPhotoApp) -> bool {
     if app.remove_pending.is_empty() {
         return false;
     }
@@ -386,7 +386,7 @@ pub fn remove_pending_live(app: &mut PhotocraftApp) -> bool {
 
 /// Patch Tool and Content-Aware Move Tool: a drag that starts inside the selection (without ⇧ or
 /// ⌥) drags the selection; any other drag draws a lasso selection.
-pub fn patch_drags_selection(app: &PhotocraftApp, at: [f64; 2], mods: Mods) -> bool {
+pub fn patch_drags_selection(app: &PatronusPhotoApp, at: [f64; 2], mods: Mods) -> bool {
     if mods.shift || mods.alt {
         return false;
     }
@@ -426,7 +426,7 @@ pub(crate) fn patch_end(press: &PatchPress, end: [f64; 2], shift: bool) -> [f64;
 
 /// Whole-pixel offset for a drag from `start` to `end`, limited so the dragged outline stays on the
 /// canvas (the engine rejects a patch or move that leaves it).
-pub fn patch_offset(app: &mut PhotocraftApp, start: [f64; 2], end: [f64; 2]) -> [i32; 2] {
+pub fn patch_offset(app: &mut PatronusPhotoApp, start: [f64; 2], end: [f64; 2]) -> [i32; 2] {
     let (dx, dy) = ((end[0] - start[0]).round(), (end[1] - start[1]).round());
     let (dx, dy) = if dx.is_finite() && dy.is_finite() { (dx.clamp(-1e7, 1e7) as i32, dy.clamp(-1e7, 1e7) as i32) } else { (0, 0) };
     let Some((canvas, sel)) = app.session.active().and_then(|st| Some((st.doc.bounds(), st.doc.selection.clone()?))) else { return [dx, dy] };
@@ -442,13 +442,13 @@ pub fn patch_offset(app: &mut PhotocraftApp, start: [f64; 2], end: [f64; 2]) -> 
 /// Status-bar hint for the Patch and Content-Aware Move tools: the selection is the patch and it
 /// has to be dragged somewhere. Without it a lasso, or a click inside the selection, changes
 /// nothing on the canvas and the tool looks dead (#1715).
-pub fn patch_hint(app: &mut PhotocraftApp) {
+pub fn patch_hint(app: &mut PatronusPhotoApp) {
     app.ui.status = tl!("Now drag the selection onto another area").into();
     app.ui.status_error = false;
 }
 
 /// Patch Tool: the patch was dragged from `start` to `end`.
-pub fn finish_patch(app: &mut PhotocraftApp, start: [f64; 2], end: [f64; 2]) {
+pub fn finish_patch(app: &mut PatronusPhotoApp, start: [f64; 2], end: [f64; 2]) {
     let off = patch_offset(app, start, end);
     if off == [0, 0] {
         patch_hint(app);
@@ -485,7 +485,7 @@ pub fn finish_patch(app: &mut PhotocraftApp, start: [f64; 2], end: [f64; 2]) {
 /// Content-Aware Move Tool: the selection was dragged from `start` to `end`. The engine runs it as
 /// a background job (progress dialog, Esc cancels); the selection follows the content. With
 /// Transform On Drop a transform box comes up on the dropped patch first ([`crate::cam_transform`]).
-pub fn finish_content_aware_move(app: &mut PhotocraftApp, start: [f64; 2], end: [f64; 2]) {
+pub fn finish_content_aware_move(app: &mut PatronusPhotoApp, start: [f64; 2], end: [f64; 2]) {
     let off = patch_offset(app, start, end);
     if off == [0, 0] {
         patch_hint(app);
@@ -508,7 +508,7 @@ pub(crate) const CAM_NO_PIXELS_PREF: &str = "contentAwareMove.noPixelsSelected";
 /// a straight line) selects nothing and adds no History state, and says so in the alert "No pixels
 /// are selected." with "Don't show again" (#12192). Returns whether this drag was such a one. With
 /// a selection, or a lasso that selects pixels, it is the tool's lasso as before.
-pub fn content_aware_move_no_pixels(app: &mut PhotocraftApp, points: &[[f64; 2]]) -> bool {
+pub fn content_aware_move_no_pixels(app: &mut PatronusPhotoApp, points: &[[f64; 2]]) -> bool {
     let Some(canvas) = app.session.active().filter(|s| s.doc.selection.is_none()).map(|s| s.doc.bounds()) else { return false };
     if lasso_selects_pixels(points, canvas, app.ui.tool_options.anti_alias) {
         return false;
@@ -524,7 +524,7 @@ pub fn content_aware_move_no_pixels(app: &mut PhotocraftApp, points: &[[f64; 2]]
 /// selects is answered after the first, and double up to about 4 MP (16 MB), so a lasso that
 /// selects nothing (a long line) is rasterized and scanned in parallel: a corner-to-corner line
 /// on 7360 x 4912 takes 25-32 ms, about what the `select.lasso` it replaces took (23-27 ms).
-fn lasso_selects_pixels(points: &[[f64; 2]], canvas: photocraft_geom::Rect, anti_alias: bool) -> bool {
+fn lasso_selects_pixels(points: &[[f64; 2]], canvas: patronusphoto_geom::Rect, anti_alias: bool) -> bool {
     const FIRST_STRIP: u32 = 64;
     const MAX_STRIP_PIXELS: u32 = 1 << 22;
     // `coverage8` of the selection combine: the 8-bit value a pixel's coverage is stored as. It
@@ -552,13 +552,13 @@ fn lasso_selects_pixels(points: &[[f64; 2]], canvas: photocraft_geom::Rect, anti
     }
     // Saturating float-to-int casts; the canvas clips them.
     let bounds =
-        photocraft_geom::Rect::new(lo.0.floor() as i32, lo.1.floor() as i32, (hi.0.ceil() as i32).saturating_add(1), (hi.1.ceil() as i32).saturating_add(1));
+        patronusphoto_geom::Rect::new(lo.0.floor() as i32, lo.1.floor() as i32, (hi.0.ceil() as i32).saturating_add(1), (hi.1.ceil() as i32).saturating_add(1));
     let window = bounds.intersect(&canvas);
     let max_rows = (MAX_STRIP_PIXELS / window.width().max(1)).max(FIRST_STRIP);
     let (mut y, mut rows) = (window.y0, FIRST_STRIP);
     while y < window.y1 {
-        let strip = photocraft_geom::Rect::new(window.x0, y, window.x1, y.saturating_add_unsigned(rows).min(window.y1));
-        if any_at_least(&photocraft_algo::selection::polygon_window(&pts, canvas, strip, anti_alias), least) {
+        let strip = patronusphoto_geom::Rect::new(window.x0, y, window.x1, y.saturating_add_unsigned(rows).min(window.y1));
+        if any_at_least(&patronusphoto_algo::selection::polygon_window(&pts, canvas, strip, anti_alias), least) {
             return true;
         }
         y = strip.y1;
@@ -581,7 +581,7 @@ fn any_at_least(mask: &[f32], least: f32) -> bool {
 }
 
 /// `paint.contentAwareMove`'s params for a drag by `offset`, from the options bar.
-pub fn content_aware_move_params(app: &PhotocraftApp, offset: [i64; 2]) -> Value {
+pub fn content_aware_move_params(app: &PatronusPhotoApp, offset: [i64; 2]) -> Value {
     let o = &app.ui.tool_options;
     json!({
         "offset": offset,
@@ -601,9 +601,9 @@ pub fn content_aware_move_params(app: &PhotocraftApp, offset: [i64; 2]) -> Value
 /// reference application's alert with "Don't show again" (#12861). Both combine as the options
 /// bar's New / Add / Subtract / Intersect buttons say, with ⇧ adding, ⌥ subtracting and ⇧⌥
 /// intersecting (#12853).
-pub fn finish_object_selection(app: &mut PhotocraftApp, start: [f64; 2], end: [f64; 2], mods: Mods) {
+pub fn finish_object_selection(app: &mut PatronusPhotoApp, start: [f64; 2], end: [f64; 2], mods: Mods) {
     // Indexed Color and Bitmap: the reference application's alert with OK (#12867), and nothing runs.
-    if let Some(why) = app.session.active().and_then(|st| photocraft_engine::smartselect_cmds::object_mode_refusal(st.doc.mode)) {
+    if let Some(why) = app.session.active().and_then(|st| patronusphoto_engine::smartselect_cmds::object_mode_refusal(st.doc.mode)) {
         crate::object_finder::clear(app);
         let _ = crate::dialogs::alerts::alert(app, tl!(why));
         return;
@@ -622,11 +622,11 @@ pub fn finish_object_selection(app: &mut PhotocraftApp, start: [f64; 2], end: [f
         // Object Finder (#4087): the object under the click, as hovering highlighted it.
         // A click that finds nothing stays silent, as in the reference application (#12861):
         // where the sampled layer has no pixels the engine's error is not run into either.
-        let here = photocraft_geom::Rect::from_xywh((end[0] as f32).floor() as i32, (end[1] as f32).floor() as i32, 1, 1);
+        let here = patronusphoto_geom::Rect::from_xywh((end[0] as f32).floor() as i32, (end[1] as f32).floor() as i32, 1, 1);
         let empty = app
             .session
             .active()
-            .is_some_and(|st| photocraft_engine::smartselect_cmds::empty_sampled_area(&st.doc, st.active_layer, sample_all, here).is_some());
+            .is_some_and(|st| patronusphoto_engine::smartselect_cmds::empty_sampled_area(&st.doc, st.active_layer, sample_all, here).is_some());
         if !empty {
             let _ = app.run("select.object", json!({"point": [end[0], end[1]], "mode": mode, "sampleAllLayers": sample_all, "hardEdge": hard_edge}));
         }
@@ -654,10 +654,10 @@ pub fn finish_object_selection(app: &mut PhotocraftApp, start: [f64; 2], end: [f
 const OBJECT_NOT_FOUND_PREF: &str = "objectSelection.notFound";
 
 /// Reports a smart-selection command result in the status bar. Engine errors are already
-/// reported by [`PhotocraftApp::run`], but an empty result (`changed: false`) is a silent
+/// reported by [`PatronusPhotoApp::run`], but an empty result (`changed: false`) is a silent
 /// success that looks like a dead button (Select Subject finding nothing on a busy photo).
 /// `empty_msg` says what to try next.
-pub fn report_smart_result(app: &mut PhotocraftApp, res: Result<Value, String>, empty_msg: &str) {
+pub fn report_smart_result(app: &mut PatronusPhotoApp, res: Result<Value, String>, empty_msg: &str) {
     if matches!(res, Ok(ref v) if v.get("changed").and_then(Value::as_bool) == Some(false)) {
         app.ui.status = empty_msg.into();
         app.ui.status_error = false;
@@ -666,7 +666,7 @@ pub fn report_smart_result(app: &mut PhotocraftApp, res: Result<Value, String>, 
 
 /// The Healing Brush in an Indexed Color document: the reference's alert with OK at the ⌥-click
 /// and at a stroke, and nothing changes (#12112). The engine refuses the stroke with the same words.
-fn healing_refused(app: &mut PhotocraftApp, tool: Tool) -> bool {
+fn healing_refused(app: &mut PatronusPhotoApp, tool: Tool) -> bool {
     if !healing_in_indexed(app, tool) {
         return false;
     }
@@ -677,12 +677,12 @@ fn healing_refused(app: &mut PhotocraftApp, tool: Tool) -> bool {
     true
 }
 
-fn healing_in_indexed(app: &PhotocraftApp, tool: Tool) -> bool {
-    tool == Tool::Healing && app.session.active().is_some_and(|st| st.doc.mode == photocraft_doc::ColorMode::Indexed)
+fn healing_in_indexed(app: &PatronusPhotoApp, tool: Tool) -> bool {
+    tool == Tool::Healing && app.session.active().is_some_and(|st| st.doc.mode == patronusphoto_doc::ColorMode::Indexed)
 }
 
 /// ⌥-click with Clone Stamp / Healing Brush sets the source.
-pub fn set_source(app: &mut PhotocraftApp, x: f64, y: f64) {
+pub fn set_source(app: &mut PatronusPhotoApp, x: f64, y: f64) {
     if healing_refused(app, app.ui.tool) {
         return;
     }
@@ -698,7 +698,7 @@ pub fn set_source(app: &mut PhotocraftApp, x: f64, y: f64) {
 /// is painted, as in Photoshop: setting the source (⌥-click) leaves nothing on the canvas (#668).
 /// `at` is the last point of the running stroke, `None` while none runs. A source in another open
 /// document has no point on this canvas.
-pub fn source_marker_point(app: &PhotocraftApp, at: Option<[f64; 2]>) -> Option<[f64; 2]> {
+pub fn source_marker_point(app: &PatronusPhotoApp, at: Option<[f64; 2]>) -> Option<[f64; 2]> {
     if !matches!(app.ui.tool, Tool::CloneStamp | Tool::Healing) {
         return None;
     }

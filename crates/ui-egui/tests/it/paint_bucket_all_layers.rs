@@ -2,18 +2,18 @@
 //! active layer. Driven through the control channel (`ui.set`, then a `ui.pointer` click in
 //! document px) in an egui_kittest harness; no GPU needed.
 
-use photocraft_doc::LayerId;
-use photocraft_geom::Rect;
-use photocraft_ui_egui::PhotocraftApp;
-use photocraft_ui_egui::control::{ControlRequest, Reply, handle};
+use patronusphoto_doc::LayerId;
+use patronusphoto_geom::Rect;
+use patronusphoto_ui_egui::PatronusPhotoApp;
+use patronusphoto_ui_egui::control::{ControlRequest, Reply, handle};
 use serde_json::{Value, json};
 
-type Harness = egui_kittest::Harness<'static, Box<PhotocraftApp>>;
+type Harness = egui_kittest::Harness<'static, Box<PatronusPhotoApp>>;
 
 fn harness() -> Harness {
     let mut h = Harness::builder().with_size(egui::vec2(1100.0, 720.0)).with_pixels_per_point(1.0).with_max_steps(64).build_eframe(|cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), Default::default());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), Default::default());
         app.session.prefs.edit(|p| p.interface.language = "en".into());
         app
     });

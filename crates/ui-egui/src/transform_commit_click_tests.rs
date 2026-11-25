@@ -2,25 +2,25 @@
 //! box open, a click on the pasteboard commits.
 
 use egui::Modifiers;
-use photocraft_doc::LayerId;
+use patronusphoto_doc::LayerId;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::{ToolEvent, tool_event};
 
 /// Moves the open box 10 px right, reference point and corners together.
-fn shift_right(app: &mut PhotocraftApp) {
+fn shift_right(app: &mut PatronusPhotoApp) {
     app.ui.transform.as_mut().expect("a box is open").edit_box(|b| *b = b.moved((10.0, 0.0).into()));
 }
 
-fn quad(app: &PhotocraftApp) -> [[f64; 2]; 4] {
+fn quad(app: &PatronusPhotoApp) -> [[f64; 2]; 4] {
     app.ui.transform.as_ref().expect("a box is open").session.quad().map(|p| [p.x, p.y])
 }
 
 /// A 200 × 200 document with a red block (x 20..60, y 20..60) on layer "Paint", Free Transform
 /// open on it, and the box moved 10 px to the right as in the measurement.
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 200, "background": "white"})).unwrap();
     app.sync_views();
     app.ui.extras.rulers = false;
@@ -36,11 +36,11 @@ fn app() -> Box<PhotocraftApp> {
     app
 }
 
-fn steps(app: &PhotocraftApp) -> usize {
+fn steps(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.past_len()
 }
 
-fn click(app: &mut PhotocraftApp, p: [f64; 2]) {
+fn click(app: &mut PatronusPhotoApp, p: [f64; 2]) {
     tool_event(app, ToolEvent::Down { x: p[0], y: p[1], pressure: 1.0 }, Modifiers::NONE);
     tool_event(app, ToolEvent::Up { x: p[0], y: p[1] }, Modifiers::NONE);
 }
@@ -83,7 +83,7 @@ fn a_click_on_the_pasteboard_commits_one_free_transform_step() {
 /// (the click doesn't pick the layer under it).
 #[test]
 fn a_click_on_another_layers_pixels_commits_and_keeps_the_selection() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 200, "background": "white"})).unwrap();
     app.sync_views();
     app.ui.extras.rulers = false;
@@ -109,7 +109,7 @@ fn a_click_on_another_layers_pixels_commits_and_keeps_the_selection() {
     assert!(app.ui.transform.is_none(), "committed");
     assert_eq!(steps(&app), before + 1);
     let bounds = app.session.active().unwrap().doc.layer(paint).unwrap().surface().unwrap().content_bounds();
-    assert_eq!(bounds, photocraft_geom::Rect::new(0, 0, 80, 80), "the resized pixels are committed");
+    assert_eq!(bounds, patronusphoto_geom::Rect::new(0, 0, 80, 80), "the resized pixels are committed");
     assert_eq!(app.session.active().unwrap().history.entries().last().map(ToString::to_string).as_deref(), Some("Free Transform"));
     assert_eq!(app.session.active().unwrap().selected_layers(), vec![paint], "the selection doesn't change");
     app.ui.tool = crate::state::Tool::Move;
@@ -124,7 +124,7 @@ fn a_click_on_another_layers_pixels_commits_and_keeps_the_selection() {
 /// another layer: the box stays open.
 #[test]
 fn a_click_on_a_layer_linked_after_the_box_opened_keeps_it_open() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 200, "background": "white"})).unwrap();
     app.sync_views();
     app.ui.extras.rulers = false;
@@ -158,7 +158,7 @@ fn a_click_on_a_layer_linked_after_the_box_opened_keeps_it_open() {
 /// covered layer.
 #[test]
 fn a_click_on_a_grouped_layer_covering_another_layer_keeps_the_box_open() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 200, "background": "white"})).unwrap();
     app.sync_views();
     app.ui.extras.rulers = false;

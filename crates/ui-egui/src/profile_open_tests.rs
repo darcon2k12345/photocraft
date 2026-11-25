@@ -3,13 +3,13 @@
 //! Mismatch prompt at a time, naming its file, before that file opens; OK opens it and asks about
 //! the next; Cancel opens neither it nor the files still to come.
 
-use crate::{PhotocraftApp, Services};
+use crate::{PatronusPhotoApp, Services};
 use craft::color_ui::ui::ProfileMismatchDialog;
 use craft::ui::dialog::DialogId;
 use egui::vec2;
 use egui_kittest::Harness;
-use photocraft_doc::{Color, ColorMode, Document, SampleType, Size};
-use photocraft_engine::Session;
+use patronusphoto_doc::{Color, ColorMode, Document, SampleType, Size};
+use patronusphoto_engine::Session;
 use serde_json::json;
 
 /// What the prompt's `action` field calls each choice.
@@ -21,18 +21,18 @@ const DISCARD: &str = "discard";
 fn adobe_png() -> Vec<u8> {
     let mut d = Document::with_background("t", Size::new(8, 8), ColorMode::Rgb, SampleType::U8, Color::rgba(0.2, 0.6, 0.9, 1.0));
     d.icc_profile = Some(craft::cms::Builtin::from_id("adobe-rgb-compat").unwrap().profile().to_bytes());
-    photocraft_io::export(&d, "t.png", &Default::default()).unwrap().bytes
+    patronusphoto_io::export(&d, "t.png", &Default::default()).unwrap().bytes
 }
 
-fn harness(background: bool) -> Harness<'static, Box<PhotocraftApp>> {
+fn harness(background: bool) -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut h = Harness::builder().with_size(vec2(1400.0, 900.0)).with_max_steps(64).build_eframe(|cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::with_context(
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        PatronusPhotoApp::with_context(
             cc.egui_ctx.clone(),
             Session::new(),
             Services {
                 import: Some(Box::new(|name, bytes, opts| {
-                    photocraft_io::import_with_options(name, bytes, opts).map(|r| (r.document, r.warnings)).map_err(|e| e.to_string())
+                    patronusphoto_io::import_with_options(name, bytes, opts).map(|r| (r.document, r.warnings)).map_err(|e| e.to_string())
                 })),
                 ..Default::default()
             },
@@ -45,7 +45,7 @@ fn harness(background: bool) -> Harness<'static, Box<PhotocraftApp>> {
 }
 
 /// Open a.png, b.png and c.png together and let every read finish.
-fn open_three(h: &mut Harness<'static, Box<PhotocraftApp>>) {
+fn open_three(h: &mut Harness<'static, Box<PatronusPhotoApp>>) {
     let png = adobe_png();
     for name in ["a.png", "b.png", "c.png"] {
         h.state_mut().open_file(&format!("/pics/{name}"), &png).unwrap();
@@ -54,7 +54,7 @@ fn open_three(h: &mut Harness<'static, Box<PhotocraftApp>>) {
 }
 
 /// Run frames until no open is still reading.
-fn settle(h: &mut Harness<'static, Box<PhotocraftApp>>) {
+fn settle(h: &mut Harness<'static, Box<PatronusPhotoApp>>) {
     for _ in 0..200 {
         h.run_steps(2);
         if h.state().jobs.opens.is_empty() && h.state().session.jobs().is_empty() {
@@ -65,12 +65,12 @@ fn settle(h: &mut Harness<'static, Box<PhotocraftApp>>) {
     h.run_steps(6);
 }
 
-fn docs(h: &Harness<'static, Box<PhotocraftApp>>) -> Vec<String> {
+fn docs(h: &Harness<'static, Box<PatronusPhotoApp>>) -> Vec<String> {
     h.state().session.documents().iter().map(|d| d.doc.name.clone()).collect()
 }
 
 /// The one prompt up: its host id.
-fn prompt(h: &Harness<'static, Box<PhotocraftApp>>) -> DialogId {
+fn prompt(h: &Harness<'static, Box<PatronusPhotoApp>>) -> DialogId {
     let host = &h.state().framework.dialogs;
     assert!(host.is_open::<ProfileMismatchDialog>(), "a prompt is up");
     let open = host.open_dialogs();
@@ -79,12 +79,12 @@ fn prompt(h: &Harness<'static, Box<PhotocraftApp>>) -> DialogId {
 }
 
 /// Whether no dialog is open on the host.
-fn no_prompt(h: &Harness<'static, Box<PhotocraftApp>>) -> bool {
+fn no_prompt(h: &Harness<'static, Box<PatronusPhotoApp>>) -> bool {
     h.state().framework.dialogs.is_empty()
 }
 
 /// Sets the prompt's `action` and, when `remember`, ticks "Remember this choice"; then presses OK.
-fn answer_with(h: &mut Harness<'static, Box<PhotocraftApp>>, action: &str, remember: bool) {
+fn answer_with(h: &mut Harness<'static, Box<PatronusPhotoApp>>, action: &str, remember: bool) {
     let (ctx, id) = (h.ctx.clone(), prompt(h));
     let host = &mut h.state_mut().framework.dialogs;
     host.set_json_field(&ctx, id, "action", json!(action)).unwrap();
@@ -95,17 +95,17 @@ fn answer_with(h: &mut Harness<'static, Box<PhotocraftApp>>, action: &str, remem
     settle(h);
 }
 
-fn answer(h: &mut Harness<'static, Box<PhotocraftApp>>, action: &str) {
+fn answer(h: &mut Harness<'static, Box<PatronusPhotoApp>>, action: &str) {
     answer_with(h, action, false);
 }
 
-fn profile(h: &Harness<'static, Box<PhotocraftApp>>, name: &str) -> Option<String> {
+fn profile(h: &Harness<'static, Box<PatronusPhotoApp>>, name: &str) -> Option<String> {
     let st = h.state().session.documents().iter().find(|d| d.doc.name == name).unwrap();
-    st.doc.icc_profile.as_ref().map(|b| photocraft_engine::color_cmds::profile_from_bytes(b).unwrap().description.clone())
+    st.doc.icc_profile.as_ref().map(|b| patronusphoto_engine::color_cmds::profile_from_bytes(b).unwrap().description.clone())
 }
 
 /// The file the prompt on screen asks about: the front of the held files.
-fn asked(h: &Harness<'static, Box<PhotocraftApp>>) -> &'static str {
+fn asked(h: &Harness<'static, Box<PatronusPhotoApp>>) -> &'static str {
     prompt(h);
     let name = &h.state().held_opens.front().expect("a file is held").name;
     ["a.png", "b.png", "c.png", "d.png"].into_iter().find(|n| n == name).unwrap_or_else(|| panic!("an unexpected file is held: {name}"))
@@ -152,8 +152,8 @@ fn a_held_file_still_reports_its_missing_fonts() {
     let mut doc = (*s.active().unwrap().doc).clone();
     doc.icc_profile = Some(craft::cms::Builtin::from_id("adobe-rgb-compat").unwrap().profile().to_bytes());
     let services =
-        Services { import: Some(Box::new(move |_: &str, _: &[u8], _: &photocraft_io::ImportOptions| Ok((doc.clone(), Vec::new())))), ..Default::default() };
-    let mut app = PhotocraftApp::new(Session::new(), services);
+        Services { import: Some(Box::new(move |_: &str, _: &[u8], _: &patronusphoto_io::ImportOptions| Ok((doc.clone(), Vec::new())))), ..Default::default() };
+    let mut app = PatronusPhotoApp::new(Session::new(), services);
     app.run("edit.colorSettings", serde_json::json!({"askOnMismatch": true, "policyRgb": "preserve"})).unwrap();
     assert_eq!(app.open_bytes("poster.psd", b"x").unwrap(), vec![warning.clone()]);
     assert!(app.session.documents().is_empty() && app.ui.notices.is_empty(), "held: nothing shown yet");
@@ -226,7 +226,7 @@ fn remember_answers_the_waiting_files_and_stops_asking() {
             assert_eq!(profile(&h, name).as_deref(), Some("sRGB IEC61966-2.1"), "background {background}: {name} converted");
         }
         let settings = &h.state().session.color.settings;
-        assert_eq!(settings.policy(photocraft_doc::ColorMode::Rgb), photocraft_engine::color_cmds::Policy::Convert);
+        assert_eq!(settings.policy(patronusphoto_doc::ColorMode::Rgb), patronusphoto_engine::color_cmds::Policy::Convert);
         assert!(!settings.ask_on_mismatch, "background {background}");
         h.state_mut().open_file("/pics/d.png", &adobe_png()).unwrap();
         settle(&mut h);

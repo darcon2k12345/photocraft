@@ -1,6 +1,6 @@
 //! Frozen scalar sharpen from main, used as an exact-output oracle. Its Protect Detail branch
 //! follows #12938: a wider unsharp mask whose differences are soft-limited to 6 levels.
-use photocraft_algo::retouch::{PROTECT_DETAIL_SIGMA, local_blur, local_sharpen};
+use patronusphoto_algo::retouch::{PROTECT_DETAIL_SIGMA, local_blur, local_sharpen};
 
 #[test]
 fn matches_scalar_sharpen_bit_for_bit_across_layouts_edges_and_hdr() {

@@ -1,8 +1,8 @@
 use super::*;
 use crate::canvas::ToolEvent;
 
-fn app_with_gradient(style: &str) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app_with_gradient(style: &str) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 120})).unwrap();
     app.ui.tool = Tool::Gradient;
     app.ui.tool_options.gradient_style = style.into();
@@ -13,14 +13,14 @@ fn mods() -> egui::Modifiers {
     egui::Modifiers::NONE
 }
 
-fn drag(app: &mut PhotocraftApp, a: [f64; 2], b: [f64; 2]) {
+fn drag(app: &mut PatronusPhotoApp, a: [f64; 2], b: [f64; 2]) {
     crate::canvas::tool_event(app, ToolEvent::Down { x: a[0], y: a[1], pressure: 1.0 }, mods());
     crate::canvas::tool_event(app, ToolEvent::Move { x: (a[0] + b[0]) / 2.0, y: (a[1] + b[1]) / 2.0, pressure: 1.0 }, mods());
     crate::canvas::tool_event(app, ToolEvent::Move { x: b[0], y: b[1], pressure: 1.0 }, mods());
     crate::canvas::tool_event(app, ToolEvent::Up { x: b[0], y: b[1] }, mods());
 }
 
-fn get(app: &mut PhotocraftApp) -> Value {
+fn get(app: &mut PatronusPhotoApp) -> Value {
     app.run(cmds::GET, json!({})).unwrap()
 }
 
@@ -55,7 +55,7 @@ fn shift_snaps_live_drags_to_45_degrees() {
 fn classic_drag_preserves_preset_transparency_at_all_depths() {
     for depth in [8, 16, 32] {
         for reverse in [false, true] {
-            let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
             app.run("file.new", json!({"width": 200, "height": 120, "depth": depth, "background": "transparent"})).unwrap();
             app.ui.tool = Tool::Gradient;
             app.ui.tool_options.gradient_classic = true;
@@ -93,14 +93,14 @@ fn classic_drag_preserves_preset_transparency_at_all_depths() {
 /// its pixels per mode.
 #[test]
 fn gradient_blend_mode_reaches_classic_drags_not_the_live_fill_layer() {
-    use photocraft_color::BlendMode;
+    use patronusphoto_color::BlendMode;
     for mode in [BlendMode::Difference, BlendMode::Multiply, BlendMode::Screen, BlendMode::Exclusion] {
         let mut live = app_with_gradient("linear");
         live.ui.tool_options.gradient_blend_mode = mode;
         live.ui.tool_options.fill_opacity = 40.0;
         drag(&mut live, [20.0, 60.0], [180.0, 60.0]);
         let layer = live.session.active().unwrap().doc.layers.last().unwrap();
-        assert!(matches!(layer.content, photocraft_doc::LayerContent::Fill(_)), "a fill layer");
+        assert!(matches!(layer.content, patronusphoto_doc::LayerContent::Fill(_)), "a fill layer");
         assert_eq!(
             (layer.blend, layer.opacity),
             (BlendMode::Normal, 1.0),
@@ -184,9 +184,9 @@ fn the_preview_of_a_new_gradient_goes_inside_the_selected_artboard() {
     crate::canvas::tool_event(&mut app, ToolEvent::Down { x: 110.0, y: 60.0, pressure: 1.0 }, mods());
     crate::canvas::tool_event(&mut app, ToolEvent::Move { x: 190.0, y: 60.0, pressure: 1.0 }, mods());
     let (doc, _) = display_doc(&mut app, 0, None).expect("a preview while drawing");
-    let top = |d: &Document| d.layer(board).and_then(photocraft_doc::Layer::children).and_then(<[photocraft_doc::Layer]>::last).map(|l| l.id);
+    let top = |d: &Document| d.layer(board).and_then(patronusphoto_doc::Layer::children).and_then(<[patronusphoto_doc::Layer]>::last).map(|l| l.id);
     assert_eq!(top(&doc), Some(PREVIEW_LAYER), "the preview sits on top of Board B's contents");
-    let kids = doc.layer(board).and_then(photocraft_doc::Layer::children).map(<[photocraft_doc::Layer]>::len);
+    let kids = doc.layer(board).and_then(patronusphoto_doc::Layer::children).map(<[patronusphoto_doc::Layer]>::len);
     assert_eq!(kids, Some(2), "beside the board's existing layer");
     crate::canvas::tool_event(&mut app, ToolEvent::Up { x: 190.0, y: 60.0 }, mods());
     let committed = app.session.active().unwrap().active_layer;

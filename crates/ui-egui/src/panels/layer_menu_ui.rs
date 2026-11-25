@@ -2,7 +2,7 @@
 //! menu catalog; the panel greys unavailable ones with the main menus' enablement and runs them as
 //! menu invocations, so dialogs open like in the menu bar.
 
-use photocraft_doc::{LabelColor, Layer, LayerContent};
+use patronusphoto_doc::{LabelColor, Layer, LayerContent};
 
 /// One entry: label, command id. `None` = separator.
 pub type Entry = Option<(&'static str, &'static str)>;

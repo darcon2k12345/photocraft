@@ -6,7 +6,7 @@
 use super::*;
 use craft::host::{PickKind, Picked, ScriptedFiles};
 use craft::ui::patterns::form_dialogs::ScaleSize;
-use photocraft_doc::{Color, SampleType, Size};
+use patronusphoto_doc::{Color, SampleType, Size};
 use std::{cell::RefCell, rc::Rc};
 
 type Writes = Rc<RefCell<Vec<(String, Vec<u8>)>>>;
@@ -17,14 +17,14 @@ fn rows(list: &[(ScaleSize, &str)]) -> Vec<ScaleRow> {
 
 /// A 200 x 150 document named `harbor.psd` with Export As open, its exporter encoding for real and its writer keeping
 /// each file. Its file dialogs stay open until the test answers them.
-fn opened() -> (Box<PhotocraftApp>, DialogId, Writes, Arc<ScriptedFiles>) {
+fn opened() -> (Box<PatronusPhotoApp>, DialogId, Writes, Arc<ScriptedFiles>) {
     let writes = Writes::default();
     let captured = writes.clone();
     let files = Arc::new(ScriptedFiles::held());
     let services = crate::Services {
         files: Some(files.clone()),
         export: Some(Box::new(|doc, path, settings| {
-            photocraft_io::export(doc, path, &settings.io_options()).map(|r| (r.bytes, r.warnings)).map_err(|e| e.to_string())
+            patronusphoto_io::export(doc, path, &settings.io_options()).map(|r| (r.bytes, r.warnings)).map_err(|e| e.to_string())
         })),
         write: Some(Box::new(move |path, bytes| {
             captured.borrow_mut().push((path.to_string(), bytes.to_vec()));
@@ -32,21 +32,21 @@ fn opened() -> (Box<PhotocraftApp>, DialogId, Writes, Arc<ScriptedFiles>) {
         })),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     app.session.add_document(Document::with_background("harbor.psd", Size::new(200, 150), ColorMode::Rgb, SampleType::U8, Color::WHITE), None);
     let id = open(&mut app).unwrap();
     (app, id, writes, files)
 }
 
 /// Sets the dialog's Scale All rows, then presses Export.
-fn export_rows(app: &mut PhotocraftApp, id: DialogId, list: &[ScaleRow]) {
+fn export_rows(app: &mut PatronusPhotoApp, id: DialogId, list: &[ScaleRow]) {
     let ctx = app.ctx().clone();
     app.framework.dialogs.set_json_field(&ctx, id, "scale_all", serde_json::to_value(list).unwrap()).unwrap();
     crate::dialogs::confirm(app, &ctx, id).unwrap();
 }
 
 /// The user answers the open file dialog with `path`, the app takes the answer, and the dialog's next pass exports.
-fn answer(app: &mut PhotocraftApp, id: DialogId, files: &ScriptedFiles, path: &std::path::Path) {
+fn answer(app: &mut PatronusPhotoApp, id: DialogId, files: &ScriptedFiles, path: &std::path::Path) {
     files.answer(Picked::Paths(vec![path.to_path_buf()])).expect("a file dialog is open");
     app.poll_file_dialog();
     let ctx = app.ctx().clone();
@@ -55,7 +55,7 @@ fn answer(app: &mut PhotocraftApp, id: DialogId, files: &ScriptedFiles, path: &s
 
 /// The decoded file's pixel size and resolution.
 fn size_of(bytes: &[u8]) -> (u32, u32, f32) {
-    let doc = photocraft_io::import("out.png", bytes).unwrap().document;
+    let doc = patronusphoto_io::import("out.png", bytes).unwrap().document;
     (doc.size.width, doc.size.height, doc.resolution_dpi)
 }
 

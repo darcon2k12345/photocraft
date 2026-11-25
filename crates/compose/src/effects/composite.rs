@@ -32,7 +32,7 @@ pub(crate) fn map_count(layer: &Layer) -> usize {
     let outside = usize::from(out_widths.iter().any(|&w| !stroke_outside_exact(w))) + usize::from(out_widths.iter().any(|&w| stroke_outside_exact(w)));
     let stroke = if has_stroke { 1 + outside } else { 0 };
     let vector_outline =
-        if has_stroke && matches!(layer.content, photocraft_doc::LayerContent::Shape(_)) && crate::effect_outline(layer).is_none() { outside } else { 0 };
+        if has_stroke && matches!(layer.content, patronusphoto_doc::LayerContent::Shape(_)) && crate::effect_outline(layer).is_none() { outside } else { 0 };
     1 + per + stroke + vector_outline
 }
 
@@ -63,7 +63,8 @@ pub(crate) fn build_maps_prepared(
             // as their union (a 4 px stroke over a 10 px one shades the whole 10 px band). Without
             // a stroke it has nothing to emboss.
             Effect::BevelEmboss(b) if b.style == BevelStyle::StrokeEmboss => {
-                let strokes: Vec<&photocraft_doc::StrokeFx> = items.iter().filter_map(|e| if let Effect::Stroke(st) = e { Some(st) } else { None }).collect();
+                let strokes: Vec<&patronusphoto_doc::StrokeFx> =
+                    items.iter().filter_map(|e| if let Effect::Stroke(st) = e { Some(st) } else { None }).collect();
                 let band = strokes.iter().map(|st| stroke_band(&shape, st)).reduce(|mut acc, m| {
                     for (a, s) in acc.v.iter_mut().zip(&m.v) {
                         *a = a.max(*s);
@@ -97,7 +98,7 @@ pub(crate) fn build_maps_prepared(
         })
         .collect();
     let has_stroke = items.iter().any(|e| matches!(e, Effect::Stroke(_)));
-    let vector_shape = matches!(layer.content, photocraft_doc::LayerContent::Shape(_));
+    let vector_shape = matches!(layer.content, patronusphoto_doc::LayerContent::Shape(_));
     // A stroke's outer edge keeps the 5 × 5 chamfer while its outside width is under
     // `STROKE_CHAMFER_MAX` — Photoshop matches the chamfer's sub-pixel edge seeding at small
     // offsets — and uses the exact Euclidean transform at or above it, where the chamfer's octagon
@@ -183,7 +184,7 @@ pub fn premerges_layer(layer: &Layer) -> bool {
 /// Coverage of `st`'s band around `shape` (row-major over the same region): its inside part as
 /// far in as the inside width, its outside part as far out as the outside width, as the
 /// compositor paints them. The shape Stroke Emboss bevels (#8639).
-fn stroke_band(shape: &Map, st: &photocraft_doc::StrokeFx) -> Map {
+fn stroke_band(shape: &Map, st: &patronusphoto_doc::StrokeFx) -> Map {
     let (in_w, out_w) = stroke_widths(st);
     let din = (in_w > 0.0).then(|| dist_inside_by(shape, Metric::Chamfer));
     let metric = if stroke_outside_exact(out_w) { Metric::Euclidean } else { Metric::Chamfer };
@@ -201,7 +202,7 @@ fn stroke_band(shape: &Map, st: &photocraft_doc::StrokeFx) -> Map {
 
 /// `true` if there are strokes and none reaches outside the layer: Stroke Emboss then shades with
 /// the layer, as an Inner Bevel does.
-fn strokes_inside(strokes: &[&photocraft_doc::StrokeFx]) -> bool {
+fn strokes_inside(strokes: &[&patronusphoto_doc::StrokeFx]) -> bool {
     !strokes.is_empty() && strokes.iter().all(|st| stroke_widths(st).1 <= 0.0)
 }
 
@@ -212,7 +213,7 @@ pub(super) fn blends_inside(layer: &Layer) -> bool {
     // Stroke Emboss with its strokes wholly inside shades with the layer (`BevelPaint::Inner` in
     // `build_maps_prepared`), as an Inner Bevel does; one reaching outside shades over the
     // finished layer.
-    let strokes: Vec<&photocraft_doc::StrokeFx> =
+    let strokes: Vec<&patronusphoto_doc::StrokeFx> =
         layer.effects.items.iter().filter(|e| e.enabled()).filter_map(|e| if let Effect::Stroke(st) = e { Some(st) } else { None }).collect();
     let stroke_inside = strokes_inside(&strokes);
     layer.effects.items.iter().filter(|e| e.enabled()).any(|e| match e {
@@ -285,7 +286,7 @@ pub(crate) fn composite_with_effects_prepared_with<A: BufferAlloc>(
             *lp = psblend::composite_gamma(layer.blend, *wp, *lp, 1.0, gamma);
         }
     }
-    let strokes: Vec<&photocraft_doc::StrokeFx> = pass.items.iter().filter_map(|e| if let Effect::Stroke(s) = e { Some(s) } else { None }).collect();
+    let strokes: Vec<&patronusphoto_doc::StrokeFx> = pass.items.iter().filter_map(|e| if let Effect::Stroke(s) = e { Some(s) } else { None }).collect();
     let fields = pass.stroke_fields(!strokes.is_empty());
     pass.paint_interior(&mut lay, &shape);
     pass.paint_vector_stroke(&mut lay, &shape);
@@ -551,7 +552,7 @@ impl<'a> EffectPass<'a> {
     }
 
     /// A gradient stroke aligned with the layer spans the stroke's own extent.
-    fn stroke_frame(&self, st: &photocraft_doc::StrokeFx) -> Rect {
+    fn stroke_frame(&self, st: &patronusphoto_doc::StrokeFx) -> Rect {
         self.maps.stroke_frame(st).unwrap_or(self.sb)
     }
 
@@ -561,7 +562,7 @@ impl<'a> EffectPass<'a> {
         &self,
         lay: &mut Buffer,
         shape: &Map,
-        strokes: &[&photocraft_doc::StrokeFx],
+        strokes: &[&patronusphoto_doc::StrokeFx],
         fields: &StrokeFields,
         alloc: &A,
     ) -> Result<(), A::Error> {
@@ -624,7 +625,7 @@ impl<'a> EffectPass<'a> {
         work: &mut Buffer,
         lay: &Buffer,
         shape: &Map,
-        strokes: &[&photocraft_doc::StrokeFx],
+        strokes: &[&patronusphoto_doc::StrokeFx],
         fields: &StrokeFields,
         alloc: &A,
     ) -> Result<(), A::Error> {
@@ -679,7 +680,7 @@ impl<'a> EffectPass<'a> {
     /// × opacity not yet taken by the strokes above, which `cover` accumulates.
     fn outside_share<A: BufferAlloc>(
         &self,
-        st: &photocraft_doc::StrokeFx,
+        st: &patronusphoto_doc::StrokeFx,
         shape: &Map,
         lay: &Buffer,
         fields: &StrokeFields,
@@ -690,7 +691,7 @@ impl<'a> EffectPass<'a> {
         let (w, big) = (self.w, self.big);
         // Shape layers without a filled outline stroke their vector outline, estimated from local
         // coverage; every other layer strokes its shape. The width then picks the field.
-        let vector_shape = matches!(self.layer.content, photocraft_doc::LayerContent::Shape(_));
+        let vector_shape = matches!(self.layer.content, patronusphoto_doc::LayerContent::Shape(_));
         let vector_outline = vector_shape && !self.maps.outline;
         // Shape layers: Photoshop strokes the vector outline (estimated from local coverage
         // for unfilled shapes); the stroke never shows through the shape's pixels. Along a
@@ -756,7 +757,7 @@ pub fn outline_share(cov: f32, l: f32) -> f32 {
 }
 
 /// (inside width, outside width) of a stroke.
-pub fn stroke_widths(st: &photocraft_doc::StrokeFx) -> (f32, f32) {
+pub fn stroke_widths(st: &patronusphoto_doc::StrokeFx) -> (f32, f32) {
     match st.position {
         StrokePosition::Outside => (0.0, st.size),
         StrokePosition::Inside => (st.size, 0.0),
@@ -809,8 +810,8 @@ fn mix_premul(a: [f32; 4], b: [f32; 4], k: f32) -> [f32; 4] {
 #[cfg(test)]
 mod outside_stroke_allocation_tests {
     use super::*;
-    use photocraft_color::{Color, PixelFormat};
-    use photocraft_doc::{FxCommon, StrokeFx};
+    use patronusphoto_color::{Color, PixelFormat};
+    use patronusphoto_doc::{FxCommon, StrokeFx};
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     struct RejectFilled;
@@ -852,7 +853,7 @@ mod outside_stroke_allocation_tests {
             if attempt == self.fail_at {
                 return Err(attempt);
             }
-            Ok(photocraft_raster::scratch::take(rect.width() as usize * rect.height() as usize, value))
+            Ok(patronusphoto_raster::scratch::take(rect.width() as usize * rect.height() as usize, value))
         }
     }
 

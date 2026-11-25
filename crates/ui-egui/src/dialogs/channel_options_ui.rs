@@ -17,10 +17,10 @@
 
 use craft::ui::dialog::DialogId;
 use craft::ui::patterns::form_dialogs::{DialogFields, FieldValue, Param, ParamDialog, ParamKind, ParamResult};
-use photocraft_doc::ColorIndicates;
+use patronusphoto_doc::ColorIndicates;
 use serde_json::{Map, Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::dialogs::params;
 
 pub const COMMAND: &str = "channel.options";
@@ -73,7 +73,7 @@ fn open_fields(name: Option<String>, indicates: Option<&str>, color: [f32; 3], p
 
 /// The open values for `channel` (an alpha/spot channel index, `"quickMask"`, or `"mask"` for
 /// Layer Mask Display Options), or `None` when there's no document or no such channel.
-pub fn fields(app: &PhotocraftApp, channel: &Value) -> Option<DialogFields> {
+pub fn fields(app: &PatronusPhotoApp, channel: &Value) -> Option<DialogFields> {
     let doc = &app.session.active()?.doc;
     let kind = |i: ColorIndicates| if i == ColorIndicates::SelectedAreas { "selected" } else { "masked" };
     if channel.as_str() == Some("mask") {
@@ -95,17 +95,17 @@ pub fn fields(app: &PhotocraftApp, channel: &Value) -> Option<DialogFields> {
 
 /// The New Channel values: Channel Options' for a channel still to be made (the next "Alpha N"
 /// name, Masked Areas, red at 50%), or `None` without a document. OK runs `channel.new`.
-pub fn new_channel_fields(app: &PhotocraftApp) -> Option<DialogFields> {
+pub fn new_channel_fields(app: &PatronusPhotoApp) -> Option<DialogFields> {
     let doc = &app.session.active()?.doc;
-    let name = photocraft_engine::channel_cmds::next_alpha_name(doc, "Alpha");
+    let name = patronusphoto_engine::channel_cmds::next_alpha_name(doc, "Alpha");
     Some(open_fields(Some(name), Some("masked"), [1.0, 0.0, 0.0], 50.0, "opacity"))
 }
 
 /// The New Spot Channel values: the next "Spot Color N" name, red and 0% solidity (the framework
 /// opens the last remembered ink over them), or `None` without a document.
-pub fn new_spot_fields(app: &PhotocraftApp) -> Option<DialogFields> {
+pub fn new_spot_fields(app: &PatronusPhotoApp) -> Option<DialogFields> {
     let doc = &app.session.active()?.doc;
-    let name = photocraft_engine::channel_cmds::next_alpha_name(doc, "Spot Color");
+    let name = patronusphoto_engine::channel_cmds::next_alpha_name(doc, "Spot Color");
     Some(open_fields(Some(name), None, [1.0, 0.0, 0.0], 0.0, "solidity"))
 }
 
@@ -160,26 +160,26 @@ fn build(key: &'static str, channel: Value) -> impl for<'b> Fn(&'b mut DialogFie
     }
 }
 
-fn open_with(app: &mut PhotocraftApp, key: &'static str, fields: DialogFields, channel: Value) -> DialogId {
+fn open_with(app: &mut PatronusPhotoApp, key: &'static str, fields: DialogFields, channel: Value) -> DialogId {
     let captured = json!({ "channel": channel });
 
     params::open_param(app, key, fields, captured, build(key, channel))
 }
 
 /// Opens Channel Options on `channel`, or `None` if it doesn't exist.
-pub fn open(app: &mut PhotocraftApp, channel: &Value) -> Option<DialogId> {
+pub fn open(app: &mut PatronusPhotoApp, channel: &Value) -> Option<DialogId> {
     let f = fields(app, channel)?;
     Some(open_with(app, COMMAND, f, channel.clone()))
 }
 
 /// Opens New Channel, or `None` without a document.
-pub fn open_new_channel(app: &mut PhotocraftApp) -> Option<DialogId> {
+pub fn open_new_channel(app: &mut PatronusPhotoApp) -> Option<DialogId> {
     let f = new_channel_fields(app)?;
     Some(open_with(app, NEW_CHANNEL, f, Value::Null))
 }
 
 /// Opens New Spot Channel, or `None` without a document.
-pub fn open_new_spot(app: &mut PhotocraftApp) -> Option<DialogId> {
+pub fn open_new_spot(app: &mut PatronusPhotoApp) -> Option<DialogId> {
     let f = new_spot_fields(app)?;
     Some(open_with(app, NEW_SPOT, f, Value::Null))
 }
@@ -222,7 +222,7 @@ pub fn new_spot_params(f: &DialogFields) -> Value {
 }
 
 /// OK: runs the dialog's command; New Spot Channel remembers its ink once the channel is made.
-pub fn run(app: &mut PhotocraftApp, ctx: &egui::Context, result: ParamResult) {
+pub fn run(app: &mut PatronusPhotoApp, ctx: &egui::Context, result: ParamResult) {
     let channel = params::captured(app, &result.key).get("channel").cloned().unwrap_or(Value::Null);
     let outcome = if result.key == NEW_SPOT {
         let made = app.run(NEW_SPOT, new_spot_params(&result.fields));

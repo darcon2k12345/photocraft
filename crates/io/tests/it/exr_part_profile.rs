@@ -1,10 +1,10 @@
 //! Selecting an EXR part must interpret its linear samples like ordinary File > Open.
 
 use craft_cms::{Builtin, ColorSpace, Intent, Profile, Transform};
-use photocraft_codecs::{self as codecs, ChannelLayout, Format, Image, SampleType as CodecSample};
-use photocraft_color::{ColorMode, SampleType};
-use photocraft_doc::Document;
-use photocraft_io::{ExportOptions, ImportResult, export, exr_parts, import};
+use patronusphoto_codecs::{self as codecs, ChannelLayout, Format, Image, SampleType as CodecSample};
+use patronusphoto_color::{ColorMode, SampleType};
+use patronusphoto_doc::Document;
+use patronusphoto_io::{ExportOptions, ImportResult, export, exr_parts, import};
 
 fn exr(layout: ChannelLayout, depth: CodecSample) -> Vec<u8> {
     // Exactly representable in half precision, including negative and HDR luminance.
@@ -61,7 +61,7 @@ fn selected_gray_exr_part_keeps_linear_profile_and_float_samples() {
             let mut display = samples(doc);
             transform.apply(&mut display, 2).unwrap();
             for i in [1, 2] {
-                let expected_gray = photocraft_color::convert::linear_to_srgb(expected[i * 2]);
+                let expected_gray = patronusphoto_color::convert::linear_to_srgb(expected[i * 2]);
                 assert!((display[i * 2] - expected_gray).abs() < 1e-4, "{layout:?} {depth:?}: display gray");
                 assert_eq!(display[i * 2 + 1], expected[i * 2 + 1], "alpha is not gamma encoded");
             }
@@ -89,7 +89,7 @@ fn selected_gray_exr_part_exports_like_ordinary_import() {
                     assert_eq!(output, original, "linear EXR samples, including negative/HDR and alpha, survive re-export");
                 } else {
                     for i in [1, 2] {
-                        let expected = photocraft_color::convert::linear_to_srgb(original[i * 2]);
+                        let expected = patronusphoto_color::convert::linear_to_srgb(original[i * 2]);
                         assert!((output[i * 2] - expected).abs() <= 1.0 / 255.0, "TGA uses display-encoded gray");
                         assert!((output[i * 2 + 1] - original[i * 2 + 1]).abs() <= 1.0 / 255.0, "TGA preserves alpha");
                     }

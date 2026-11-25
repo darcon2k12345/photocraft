@@ -5,12 +5,12 @@
 use egui::Modifiers;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing;
 use crate::state::Tool;
 
-fn app(tool: Tool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app(tool: Tool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 200, "height": 200})).unwrap();
     app.sync_views();
     app.ui.tool = tool;
@@ -18,7 +18,7 @@ fn app(tool: Tool) -> Box<PhotocraftApp> {
 }
 
 /// A square work path; knot 1 at (120, 40) is smooth with handles at (100, 40) and (140, 40).
-fn with_path(app: &mut PhotocraftApp) {
+fn with_path(app: &mut PatronusPhotoApp) {
     let path = json!({"subpaths": [{"closed": true, "knots": [
         [40, 40],
         {"anchor": [120, 40], "in": [100, 40], "out": [140, 40], "smooth": true},
@@ -28,22 +28,22 @@ fn with_path(app: &mut PhotocraftApp) {
     app.run("path.set", json!({"name": "work", "path": path})).unwrap();
 }
 
-pub(super) fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2], mods: Modifiers) {
+pub(super) fn drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2], mods: Modifiers) {
     testing::press(app, from, mods);
     testing::move_to(app, to, mods);
     testing::release(app, to, mods);
 }
 
-pub(super) fn click(app: &mut PhotocraftApp, at: [f64; 2], mods: Modifiers) {
+pub(super) fn click(app: &mut PatronusPhotoApp, at: [f64; 2], mods: Modifiers) {
     testing::click(app, at, mods);
 }
 
-fn names(app: &PhotocraftApp) -> Vec<String> {
+fn names(app: &PatronusPhotoApp) -> Vec<String> {
     app.session.active().unwrap().history.entries()
 }
 
 /// Runs `gesture` and returns the History steps it added.
-pub(super) fn added(app: &mut PhotocraftApp, gesture: impl FnOnce(&mut PhotocraftApp)) -> Vec<String> {
+pub(super) fn added(app: &mut PatronusPhotoApp, gesture: impl FnOnce(&mut PatronusPhotoApp)) -> Vec<String> {
     let n = names(app).len();
     gesture(app);
     names(app).split_off(n)
@@ -51,7 +51,7 @@ pub(super) fn added(app: &mut PhotocraftApp, gesture: impl FnOnce(&mut Photocraf
 
 /// `tool` with the smooth anchor selected so its handles show: a ⌘-click, Direct Selection in
 /// each of these tools (a selection made with another tool is dropped when the Pen is taken).
-fn with_shown_handles(tool: Tool) -> Box<PhotocraftApp> {
+fn with_shown_handles(tool: Tool) -> Box<PatronusPhotoApp> {
     let mut app = app(tool);
     with_path(&mut app);
     click(&mut app, [120.0, 40.0], Modifiers::COMMAND);
@@ -66,7 +66,7 @@ fn convert_point_handle_drags_are_corner_drag() {
         let mut app = with_shown_handles(Tool::ConvertPoint);
         assert_eq!(added(&mut app, |a| drag(a, [140.0, 40.0], [140.0, 70.0], mods)), one, "{mods:?}");
         let k = app.session.active().unwrap().doc.work_path.clone().unwrap().subpaths[0].knots[1];
-        assert!(!k.smooth && k.in_ctrl == photocraft_geom::Point::new(100.0, 40.0), "the handle moved alone: {k:?}");
+        assert!(!k.smooth && k.in_ctrl == patronusphoto_geom::Point::new(100.0, 40.0), "the handle moved alone: {k:?}");
         let click_anchor = added(&mut app, |a| click(a, [120.0, 40.0], Modifiers::NONE));
         assert_eq!(click_anchor, ["Change Anchor Point"], "click on an anchor with broken handles");
     }

@@ -1,7 +1,7 @@
 //! Free Transform stalls (#11103): two selected raster layers on a 24 MP document, one box.
 //!
 //! ```sh
-//! cargo run --release -p photocraft-ui-egui --example free_transform_bench -- [--size 6000x4000] [--reps 9] [--steps 60]
+//! cargo run --release -p patronusphoto-ui-egui --example free_transform_bench -- [--size 6000x4000] [--reps 9] [--steps 60]
 //! ```
 //!
 //! - begin: Ctrl+T (`transform_tool::begin`) and the first frame of the document area, then Esc.
@@ -18,10 +18,10 @@ use std::time::Instant;
 
 use craft::behavior::kurbo::Point;
 use egui::{Event, Modifiers, PointerButton, Pos2};
-use photocraft_ui_egui::{PhotocraftApp, Services, canvas, transform_tool};
+use patronusphoto_ui_egui::{PatronusPhotoApp, Services, canvas, transform_tool};
 use serde_json::json;
 
-type H = egui_kittest::Harness<'static, Box<PhotocraftApp>>;
+type H = egui_kittest::Harness<'static, Box<PatronusPhotoApp>>;
 
 fn arg(args: &[String], name: &str) -> Option<String> {
     args.iter().position(|a| a == name).and_then(|i| args.get(i + 1).cloned())
@@ -72,7 +72,7 @@ fn main() {
     let reps: usize = arg(&args, "--reps").and_then(|s| s.parse().ok()).unwrap_or(9).max(1);
     let steps: usize = arg(&args, "--steps").and_then(|s| s.parse().ok()).unwrap_or(60).max(2);
 
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Services::default());
     app.run("file.new", json!({"width": w, "height": h, "background": "white"})).expect("new document");
     // Two overlapping layers, each covering most of the canvas.
     let (fw, fh) = (w * 2 / 3, h * 3 / 4);
@@ -100,7 +100,7 @@ fn main() {
     let mut h: H = egui_kittest::Harness::builder()
         .with_context(ctx.clone())
         .with_size(egui::vec2(1600.0, 1000.0))
-        .build_ui_state(|ui, app: &mut Box<PhotocraftApp>| canvas::document_area(app, ui), app);
+        .build_ui_state(|ui, app: &mut Box<PatronusPhotoApp>| canvas::document_area(app, ui), app);
     h.input_mut().max_texture_side = Some(MAX_TEXTURE_SIDE);
     for _ in 0..4 {
         h.step();
@@ -157,8 +157,8 @@ fn main() {
     }
 
     if let Some(out) = arg(&args, "--json") {
-        use photocraft_testkit::perf::{process_peak_rss_bytes, report, row, write_report};
-        let rss = photocraft_testkit::perf::current_rss_bytes().max(process_peak_rss_bytes());
+        use patronusphoto_testkit::perf::{process_peak_rss_bytes, report, row, write_report};
+        let rss = patronusphoto_testkit::perf::current_rss_bytes().max(process_peak_rss_bytes());
         let rows = vec![
             row("Free Transform begin, 2 layers on 24 MP: Ctrl+T + first frame", &begin_total, rss, None),
             row("Free Transform begin, 2 layers on 24 MP: Ctrl+T", &begin, rss, None),

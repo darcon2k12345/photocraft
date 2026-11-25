@@ -12,12 +12,12 @@ use egui::Pos2;
 use serde_json::{Value, json};
 
 use super::{DirectSelection, Owner, PathRef, keep_after_command};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// Applies the reports of one overlay pass. `refs` are the refs of the `EditPath`s the pass showed
 /// (`edit_paths`); a report names its path by key, and only a key of `refs` is applied.
-pub(crate) fn apply(app: &mut PhotocraftApp, output: &BezierOutput, refs: &[PathRef], tool: Tool, mods: Mods) {
+pub(crate) fn apply(app: &mut PatronusPhotoApp, output: &BezierOutput, refs: &[PathRef], tool: Tool, mods: Mods) {
     if let Some(selection) = &output.select {
         select(app, selection);
     }
@@ -72,13 +72,13 @@ pub(crate) fn apply(app: &mut PhotocraftApp, output: &BezierOutput, refs: &[Path
 }
 
 /// A pass that shows no editing overlay: a gesture it began has nobody to end it.
-pub(crate) fn not_shown(app: &mut PhotocraftApp) {
+pub(crate) fn not_shown(app: &mut PatronusPhotoApp) {
     app.ui.direct_selection.editing = None;
 }
 
 /// Deletes anchors `[subpath, knot]` of `path`, highest index first so the lower ones stay valid.
 /// A live shape asks first (`live_shape_prompt`); the selection then keeps only the path.
-pub(crate) fn delete_anchors(app: &mut PhotocraftApp, path: PathRef, anchors: &[[usize; 2]], segments: bool) {
+pub(crate) fn delete_anchors(app: &mut PatronusPhotoApp, path: PathRef, anchors: &[[usize; 2]], segments: bool) {
     let mut order = anchors.to_vec();
     order.sort_unstable_by(|a, b| b.cmp(a));
     if order.is_empty() {
@@ -140,7 +140,7 @@ pub(crate) fn delete_anchors(app: &mut PhotocraftApp, path: PathRef, anchors: &[
 
 /// A Delete Anchor click on empty canvas hides the anchors of the selected saved path: its outline stays and it
 /// stays targeted (#12769).
-fn hide_anchors(app: &mut PhotocraftApp) {
+fn hide_anchors(app: &mut PatronusPhotoApp) {
     if let Some((index, _)) = crate::vector_ui::selected_saved_path_index(app) {
         let owner = Owner::current(app);
         app.ui.direct_selection = DirectSelection { target: Some(PathRef::Saved(index)), shown: Some(Vec::new()), owner, ..Default::default() };
@@ -153,7 +153,7 @@ fn known(key: u64, refs: &[PathRef]) -> Option<PathRef> {
 }
 
 /// The overlay's selection replaces this one and its owner; a running gesture stays.
-fn select(app: &mut PhotocraftApp, selection: &PathSelection) {
+fn select(app: &mut PatronusPhotoApp, selection: &PathSelection) {
     let owner = Owner::current(app);
     let ds = &mut app.ui.direct_selection;
     let editing = ds.editing.take();
@@ -190,7 +190,7 @@ fn moved(x: f64, y: f64) -> bool {
 
 /// Runs the command a finished edit stands for. `dragged` is whether a pointer gesture made it:
 /// an arrow-key nudge (`Set`) keeps the command's own step name.
-fn change_path(app: &mut PhotocraftApp, change: &PathEdit, refs: &[PathRef], tool: Tool, mods: Mods, dragged: bool) {
+fn change_path(app: &mut PatronusPhotoApp, change: &PathEdit, refs: &[PathRef], tool: Tool, mods: Mods, dragged: bool) {
     let Some(r) = known(change.path(), refs) else { return };
     if r == PathRef::Pen {
         edit_draft(app, |path| change.apply(path));
@@ -257,7 +257,7 @@ fn change_path(app: &mut PhotocraftApp, change: &PathEdit, refs: &[PathRef], too
 /// `path.addAnchor` on the segment leaving `segment`, then the out handle of the new anchor (`knot + 1`) at `out`
 /// with the in handle opposite it (a smooth knot), or at `in_ctrl` once ⌥ broke the pair; one history step.
 fn add_and_pull(
-    app: &mut PhotocraftApp,
+    app: &mut PatronusPhotoApp,
     r: PathRef,
     segment: KnotRef,
     t: f64,
@@ -288,7 +288,7 @@ fn add_and_pull(
 
 /// `path.addAnchor` on the segment leaving `segment`, then the drag's move of the new anchor
 /// (`knot + 1`); one history step when both run.
-fn add_and_move(app: &mut PhotocraftApp, r: PathRef, prefix: &str, segment: KnotRef, t: f64, by: [f64; 2], curvature: bool) {
+fn add_and_move(app: &mut PatronusPhotoApp, r: PathRef, prefix: &str, segment: KnotRef, t: f64, by: [f64; 2], curvature: bool) {
     let dragged = moved(by[0], by[1]);
     let key = dragged.then(|| format!("{prefix}-{}", app.ui.alloc_id()));
     let mut add = json!({"subpath": segment.subpath, "knot": segment.knot, "t": t});
@@ -306,7 +306,7 @@ fn add_and_move(app: &mut PhotocraftApp, r: PathRef, prefix: &str, segment: Knot
 }
 
 /// The Insert key: an anchor in the middle of the segment leaving `knot`.
-fn insert(app: &mut PhotocraftApp, r: PathRef, knot: KnotRef, t: f64) {
+fn insert(app: &mut PatronusPhotoApp, r: PathRef, knot: KnotRef, t: f64) {
     if r == PathRef::Pen {
         edit_draft(app, |path| path.subpaths.get_mut(knot.subpath).and_then(|sub| sub.insert_at(knot.knot, t)).is_some());
         return;
@@ -315,14 +315,14 @@ fn insert(app: &mut PhotocraftApp, r: PathRef, knot: KnotRef, t: f64) {
 }
 
 /// A secondary click on a path part opens the canvas tool menu with that part as its point entry.
-fn context(app: &mut PhotocraftApp, hit: &BezierHit, at: Pos2, tool: Tool, mods: Mods) {
+fn context(app: &mut PatronusPhotoApp, hit: &BezierHit, at: Pos2, tool: Tool, mods: Mods) {
     let Some(r) = PathRef::from_key(hit.path()) else { return };
     let Some(doc) = crate::canvas::document_display::doc_point_at(app, at) else { return };
     crate::canvas_tool_menu::open_at(app, tool, mods, at, [doc.x, doc.y], Some((r, *hit)));
 }
 
 /// The `path.deleteAnchor` parameters for one anchor of `path`.
-fn anchor_params(app: &PhotocraftApp, path: PathRef, segments: bool, &[s, k]: &[usize; 2]) -> Value {
+fn anchor_params(app: &PatronusPhotoApp, path: PathRef, segments: bool, &[s, k]: &[usize; 2]) -> Value {
     let mut params = json!({"subpath": s, "knot": k});
     if segments {
         params["segments"] = json!(true);
@@ -330,21 +330,21 @@ fn anchor_params(app: &PhotocraftApp, path: PathRef, segments: bool, &[s, k]: &[
     with_target(app, path, params)
 }
 
-fn with_target(app: &PhotocraftApp, r: PathRef, mut params: Value) -> Value {
+fn with_target(app: &PatronusPhotoApp, r: PathRef, mut params: Value) -> Value {
     if let (Some(p), Some(t)) = (params.as_object_mut(), r.params(app).as_object()) {
         p.extend(t.clone());
     }
     params
 }
 
-fn fail(app: &mut PhotocraftApp, error: String) {
+fn fail(app: &mut PatronusPhotoApp, error: String) {
     app.ui.status = error;
     app.ui.status_error = true;
 }
 
 /// Runs `id` on `r`. The selection stays off the live UI while its own command runs (`sync_views`
 /// checks ownership then) and is bound to the revision the command made.
-fn command(app: &mut PhotocraftApp, r: PathRef, id: &str, params: Value) -> Option<Value> {
+fn command(app: &mut PatronusPhotoApp, r: PathRef, id: &str, params: Value) -> Option<Value> {
     let params = with_target(app, r, params);
     let selection = std::mem::take(&mut app.ui.direct_selection);
     match app.run(id, params) {
@@ -363,7 +363,7 @@ fn command(app: &mut PhotocraftApp, r: PathRef, id: &str, params: Value) -> Opti
 }
 
 /// Edits the pen draft as a path of its own key and hands the result back to the pen.
-fn edit_draft(app: &mut PhotocraftApp, edit: impl FnOnce(&mut EditPath) -> bool) {
+fn edit_draft(app: &mut PatronusPhotoApp, edit: impl FnOnce(&mut EditPath) -> bool) {
     let Some(draft) = app.ui.pen.as_ref().map(|pen| pen.draft.clone()) else { return };
     let mut path = EditPath::new(PathRef::Pen.key(), vec![draft]).copies(false);
     if !edit(&mut path) {

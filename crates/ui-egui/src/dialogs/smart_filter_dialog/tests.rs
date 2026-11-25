@@ -2,22 +2,22 @@ use std::sync::Arc;
 
 use craft::ui::dialog::DialogId;
 use craft::ui::patterns::form_dialogs::{DialogFields, HostedParamDialog};
-use photocraft_doc::{SmartFilter, SmartObject};
+use patronusphoto_doc::{SmartFilter, SmartObject};
 
 use super::*;
 
 /// The newest open dialog.
-pub(crate) fn newest(app: &PhotocraftApp) -> DialogId {
+pub(crate) fn newest(app: &PatronusPhotoApp) -> DialogId {
     app.framework.dialogs.open_dialogs().pop().expect("an open dialog").id
 }
 
 /// How many dialogs are open.
-pub(crate) fn open_count(app: &PhotocraftApp) -> usize {
+pub(crate) fn open_count(app: &PatronusPhotoApp) -> usize {
     app.framework.dialogs.open_dialogs().len()
 }
 
 /// Sets `field` of dialog `id` as `ui.dialog.set` does.
-pub(crate) fn set(app: &mut PhotocraftApp, id: DialogId, field: &str, value: Value) {
+pub(crate) fn set(app: &mut PatronusPhotoApp, id: DialogId, field: &str, value: Value) {
     let ctx = app.ctx().clone();
     for (field, value) in crate::control::dialogs::map_request(app, id, field, value) {
         app.framework.dialogs.set_json_field(&ctx, id, &field, value).unwrap();
@@ -25,30 +25,30 @@ pub(crate) fn set(app: &mut PhotocraftApp, id: DialogId, field: &str, value: Val
 }
 
 /// OK on dialog `id` through the dispatcher; a refused OK leaves the dialog open.
-pub(crate) fn confirm(app: &mut PhotocraftApp, id: DialogId) {
+pub(crate) fn confirm(app: &mut PatronusPhotoApp, id: DialogId) {
     let _ = crate::dialogs::testing::confirm(app, id);
 }
 
 /// Cancel on dialog `id` through the dispatcher.
-pub(crate) fn cancel(app: &mut PhotocraftApp, id: DialogId) {
+pub(crate) fn cancel(app: &mut PatronusPhotoApp, id: DialogId) {
     let _ = crate::dialogs::testing::cancel(app, id);
 }
 
 /// One frame of the app's dialogs.
-pub(crate) fn pass(app: &mut PhotocraftApp) {
+pub(crate) fn pass(app: &mut PatronusPhotoApp) {
     let ctx = app.ctx().clone();
     let input = egui::RawInput { screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(800.0, 600.0))), ..Default::default() };
     crate::testing::run_ui(&ctx, input, |ui| crate::dialogs::run(app, ui));
 }
 
 /// The values of the hosted dialog `id`.
-fn fields_of(app: &PhotocraftApp, id: DialogId) -> DialogFields {
+fn fields_of(app: &PatronusPhotoApp, id: DialogId) -> DialogFields {
     app.framework.dialogs.get_by_id::<HostedParamDialog>(id).expect("a hosted dialog").fields().clone()
 }
 
 /// A document with one Smart Object holding Box Blur and Smart Sharpen, wrapped in an app that renders on the calling thread.
-pub(crate) fn app(depth: u32, mode: &str) -> (Box<PhotocraftApp>, LayerId) {
-    let mut s = photocraft_engine::Session::new();
+pub(crate) fn app(depth: u32, mode: &str) -> (Box<PatronusPhotoApp>, LayerId) {
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 64, "height": 48, "depth": depth, "mode": mode})).unwrap();
     s.execute("layer.new.layer", json!({"name": "Smart Object"})).unwrap();
     s.execute("edit.fill", json!({"contents": "color", "color": "#305080"})).unwrap();
@@ -59,19 +59,19 @@ pub(crate) fn app(depth: u32, mode: &str) -> (Box<PhotocraftApp>, LayerId) {
     let layer = s.active().unwrap().active_layer.unwrap();
     s.execute("filter.blur.boxBlur", json!({"radius": 4})).unwrap();
     s.execute("filter.sharpen.smartSharpen", json!({"amount": 125, "radius": 2})).unwrap();
-    let mut app = PhotocraftApp::new(s, Default::default());
+    let mut app = PatronusPhotoApp::new(s, Default::default());
     app.background_jobs = false;
     (app, layer)
 }
 
 /// The Smart Object content of `layer` in the active document.
-pub(crate) fn smart(app: &PhotocraftApp, layer: LayerId) -> &SmartObject {
+pub(crate) fn smart(app: &PatronusPhotoApp, layer: LayerId) -> &SmartObject {
     let LayerContent::Smart(sm) = &app.session.active().unwrap().doc.layer(layer).unwrap().content else { panic!("smart") };
     sm
 }
 
 /// A copy of the Smart Object's filters, for comparing before and after an edit.
-fn filters(app: &PhotocraftApp, layer: LayerId) -> Vec<SmartFilter> {
+fn filters(app: &PatronusPhotoApp, layer: LayerId) -> Vec<SmartFilter> {
     smart(app, layer).smart_filters.clone()
 }
 
@@ -99,7 +99,7 @@ fn closing_the_document_cancels_its_open_smart_filter_dialog() {
 fn blending_edits_one_filter_with_percent_opacity_and_undo_redo() {
     let (mut app, layer) = app(16, "rgb");
     let original = filters(&app, layer);
-    let source = photocraft_engine::smart_cmds::contents_of(&app.session.active().unwrap().doc, layer).unwrap();
+    let source = patronusphoto_engine::smart_cmds::contents_of(&app.session.active().unwrap().doc, layer).unwrap();
     for blend in ["multiply", "luminosity"] {
         let steps = app.session.active().unwrap().history.past_len();
         let id = open(&mut app, layer, 0).unwrap();
@@ -115,7 +115,7 @@ fn blending_edits_one_filter_with_percent_opacity_and_undo_redo() {
         assert!((changed[0].opacity - 0.01).abs() < 1e-6);
         assert_eq!((changed[0].blend).key().to_string(), blend);
         assert_eq!(serde_json::to_value(&changed[1]).unwrap(), serde_json::to_value(&original[1]).unwrap());
-        assert_eq!(photocraft_engine::smart_cmds::contents_of(&app.session.active().unwrap().doc, layer).unwrap(), source);
+        assert_eq!(patronusphoto_engine::smart_cmds::contents_of(&app.session.active().unwrap().doc, layer).unwrap(), source);
         assert_eq!(app.session.active().unwrap().doc.layer(layer).unwrap().blend, BlendMode::Normal);
         assert_eq!(
             smart(&app, layer).cache.as_ref().unwrap().read_region(before.bounds()),
@@ -180,8 +180,8 @@ fn reduced_preview_scales_placement_stack_and_mask_without_adding_filters() {
     let st = app.session.active_mut().unwrap();
     let doc = Arc::make_mut(st.doc_mut());
     let LayerContent::Smart(sm) = &mut doc.layer_mut(layer).unwrap().content else { panic!() };
-    let mut mask = photocraft_doc::LayerMask::reveal_all();
-    mask.surface.fill_rect(photocraft_geom::Rect::new(32, 0, 64, 48), &[0.0]);
+    let mut mask = patronusphoto_doc::LayerMask::reveal_all();
+    mask.surface.fill_rect(patronusphoto_geom::Rect::new(32, 0, 64, 48), &[0.0]);
     sm.filter_mask = Some(mask);
     let id = open(&mut app, layer, 0).unwrap();
     set(&mut app, id, "opacity", json!(50));
@@ -210,7 +210,7 @@ fn native_save_preserves_edited_blending_and_existing_invert() {
     set(&mut app, id, "opacity", json!(1));
     confirm(&mut app, id);
     let doc = &app.session.active().unwrap().doc;
-    let loaded = photocraft_format::load_from_bytes(&photocraft_format::save_to_bytes(doc, &Default::default()).unwrap()).unwrap();
+    let loaded = patronusphoto_format::load_from_bytes(&patronusphoto_format::save_to_bytes(doc, &Default::default()).unwrap()).unwrap();
     let LayerContent::Smart(sm) = &loaded.layers.last().unwrap().content else { panic!() };
     assert_eq!(serde_json::to_value(&sm.smart_filters).unwrap(), serde_json::to_value(filters(&app, layer)).unwrap());
 }
@@ -241,7 +241,7 @@ fn blending_does_not_follow_layer_selection_or_the_layer_mask_target() {
 #[test]
 fn invert_blending_keeps_transparency_at_every_depth() {
     for depth in [8, 16, 32] {
-        let mut s = photocraft_engine::Session::new();
+        let mut s = patronusphoto_engine::Session::new();
         s.execute("file.new", json!({"width":8,"height":8,"depth":depth})).unwrap();
         s.execute("layer.new.layer", json!({})).unwrap();
         s.edit("synthetic translucent pixels", |doc, active| {
@@ -254,7 +254,7 @@ fn invert_blending_keeps_transparency_at_every_depth() {
         let layer = s.active().unwrap().active_layer.unwrap();
         let before = s.active().unwrap().doc.layer(layer).unwrap().surface().unwrap().pixel(3, 3);
         s.execute("image.adjustments.invert", json!({})).unwrap();
-        let mut app = PhotocraftApp::new(s, Default::default());
+        let mut app = PatronusPhotoApp::new(s, Default::default());
         app.background_jobs = false;
         let id = open(&mut app, layer, 0).unwrap();
         set(&mut app, id, "opacity", json!(1));

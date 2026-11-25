@@ -10,45 +10,45 @@ use serde_json::{Value, json};
 
 use crate::panels::registry;
 
-fn app() -> Box<PhotocraftApp> {
-    PhotocraftApp::new(photocraft_engine::Session::new(), Default::default())
+fn app() -> Box<PatronusPhotoApp> {
+    PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default())
 }
 
 /// Runs `id` as the menus and the control protocol do.
-fn invoke(app: &mut PhotocraftApp, id: &str, params: Value) -> Result<Value, String> {
+fn invoke(app: &mut PatronusPhotoApp, id: &str, params: Value) -> Result<Value, String> {
     let app_ctx = app.ctx().clone();
     crate::menus::invoke(app, &app_ctx, id, params)
 }
 
 /// The workspace as saved JSON: equal values mean an unchanged workspace.
-fn saved(app: &PhotocraftApp) -> Value {
+fn saved(app: &PatronusPhotoApp) -> Value {
     serde_json::to_value(&app.ui.docking).unwrap()
 }
 
-fn floating(app: &PhotocraftApp, panel: &str) -> bool {
+fn floating(app: &PatronusPhotoApp, panel: &str) -> bool {
     app.ui.docking.layout().floating.iter().any(|window| window.contains(panel))
 }
 
 /// The panel's group is minimized.
-fn minimized(app: &PhotocraftApp, panel: &str) -> bool {
+fn minimized(app: &PatronusPhotoApp, panel: &str) -> bool {
     let layout = app.ui.docking.layout();
     layout.place(&panel.to_owned()).is_some_and(|place| layout.group(&place).is_some_and(|group| group.minimized))
 }
 
 /// The panel's column is collapsed to icons.
-fn iconic(app: &PhotocraftApp, panel: &str) -> bool {
+fn iconic(app: &PatronusPhotoApp, panel: &str) -> bool {
     let layout = app.ui.docking.layout();
     layout.place(&panel.to_owned()).and_then(|place| layout.column(&place)).is_some_and(|column| column.iconic)
 }
 
 /// The selected tab of the group holding `panel`.
-fn active_tab(app: &PhotocraftApp, panel: &str) -> Option<String> {
+fn active_tab(app: &PatronusPhotoApp, panel: &str) -> Option<String> {
     let layout = app.ui.docking.layout();
     let place = layout.place(&panel.to_owned())?;
     layout.group(&place)?.active_panel().cloned()
 }
 
-fn control_set(app: &mut PhotocraftApp, ctx: &egui::Context, params: Value) -> Value {
+fn control_set(app: &mut PatronusPhotoApp, ctx: &egui::Context, params: Value) -> Value {
     let (request, _) = crate::control::ControlRequest::new("ui.set", params);
     match crate::control::handle(app, ctx, &request) {
         crate::control::Reply::Done(value) => value,
@@ -68,7 +68,7 @@ fn end_columns(layout: &Layout<String>) -> Option<&Vec<Column<String>>> {
     find(layout.root.as_ref()?)
 }
 
-type Check = fn(&PhotocraftApp) -> bool;
+type Check = fn(&PatronusPhotoApp) -> bool;
 
 /// The `window.panel.*`, `window.toggle.*`, `type.panels.*` and `ui.dock` ids are the automation
 /// contract (`docs/control-protocol.md`): each family changes the workspace as documented, and a
@@ -266,7 +266,7 @@ fn a_pre_docking_save_migrates_once() {
 fn ui_set_dock_fields_map_onto_the_workspace_atomically() {
     let mut app = app();
     let ctx = app.ctx().clone();
-    let ok = |app: &mut PhotocraftApp, params: Value| control_set(app, &ctx, params)["ok"] == true;
+    let ok = |app: &mut PatronusPhotoApp, params: Value| control_set(app, &ctx, params)["ok"] == true;
 
     assert!(ok(&mut app, json!({"dockTabs": {"layers": 1}})));
     assert!(is_front(&app, "channels"), "a tab index picks the panel of the group's one tab order");
@@ -351,7 +351,7 @@ fn main_workspace_file_loads_as_the_default_and_saves_as_a_workspace() {
 }
 
 /// The dock edge the toolbar's column is docked on.
-fn toolbar_edge(app: &PhotocraftApp) -> Option<DockEdge> {
+fn toolbar_edge(app: &PatronusPhotoApp) -> Option<DockEdge> {
     let layout = app.ui.docking.layout();
     let Some(PanelPlace::Dock { path, .. }) = layout.place(&registry::TOOLBAR.to_owned()) else { return None };
     [DockEdge::Start, DockEdge::End].into_iter().find(|edge| layout.dock_path(*edge).as_ref() == Some(&path))
@@ -379,7 +379,7 @@ fn the_window_menu_opens_and_closes_the_flyout_of_an_icon_panel() {
     let mut app = app();
     let before = saved(&app);
     let checked =
-        |app: &PhotocraftApp| crate::menus::menu_rows(app).iter().find(|row| row.command.id == "window.panel.navigator").and_then(|row| row.kind.checked());
+        |app: &PatronusPhotoApp| crate::menus::menu_rows(app).iter().find(|row| row.command.id == "window.panel.navigator").and_then(|row| row.kind.checked());
     assert_eq!(checked(&app), Some(false));
     invoke(&mut app, "window.panel.navigator", json!({})).unwrap();
     assert_eq!(checked(&app), Some(true), "the flyout is open");
@@ -418,7 +418,7 @@ fn the_toolbar_shares_nothing_floats_and_docks_at_either_edge() {
 fn ui_set_toolbar_columns_sets_the_toolbar_columns_steps() {
     let mut app = app();
     let ctx = app.ctx().clone();
-    let steps = |app: &PhotocraftApp| {
+    let steps = |app: &PatronusPhotoApp| {
         let layout = app.ui.docking.layout();
         layout.place(&registry::TOOLBAR.to_owned()).and_then(|place| layout.column(&place)).and_then(|column| column.steps)
     };

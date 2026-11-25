@@ -3,13 +3,13 @@
 
 use std::sync::Arc;
 
-use photocraft_color::{PixelFormat, SampleType};
-use photocraft_doc::{
+use patronusphoto_color::{PixelFormat, SampleType};
+use patronusphoto_doc::{
     AlphaChannel, ColorIndices, CompAppearance, CompLayerState, DocId, Document, Effects, FillCache, Group, Layer, LayerComp, LayerContent, LayerId, LayerMask,
     Metadata, NamedPath, Pattern, ShapeLayer, SmartContentsId, SmartObject, SmartSource, TextLayer,
 };
-use photocraft_geom::{TILE_SIZE, TileCoord};
-use photocraft_raster::{Surface, Tile, decode_pixel, encode_pixel};
+use patronusphoto_geom::{TILE_SIZE, TileCoord};
+use patronusphoto_raster::{Surface, Tile, decode_pixel, encode_pixel};
 
 use crate::manifest::{
     ChannelM, ColorIndicesM, CompAppearanceM, CompStateM, ContentM, DocM, EffectsM, FillCacheM, Hash, LayerCompM, LayerM, MaskM, MetadataM, NamedPathM,
@@ -18,8 +18,8 @@ use crate::manifest::{
 use crate::{FormatError, Result};
 
 /// Deepest group nesting a bundle may hold — the one nesting limit every consumer of the layer
-/// tree shares; see [`photocraft_doc::MAX_GROUP_DEPTH`].
-pub use photocraft_doc::MAX_GROUP_DEPTH;
+/// tree shares; see [`patronusphoto_doc::MAX_GROUP_DEPTH`].
+pub use patronusphoto_doc::MAX_GROUP_DEPTH;
 
 fn too_deep() -> FormatError {
     FormatError::LimitExceeded(format!("layer groups nested deeper than {MAX_GROUP_DEPTH}"))
@@ -113,7 +113,7 @@ fn opt_blob(b: &Option<Arc<Vec<u8>>>, sink: &mut dyn Sink) -> Option<Hash> {
     b.as_ref().map(|b| sink.blob(b))
 }
 
-fn video_m(v: &photocraft_doc::VideoData, sink: &mut dyn Sink) -> crate::manifest::VideoDataM {
+fn video_m(v: &patronusphoto_doc::VideoData, sink: &mut dyn Sink) -> crate::manifest::VideoDataM {
     crate::manifest::VideoDataM {
         frames: v.frames.iter().map(|f| surface_m(f, sink)).collect(),
         original_frames: v.original_frames.as_ref().map(|frames| frames.iter().map(|f| surface_m(f, sink)).collect()),
@@ -155,19 +155,19 @@ fn layer_m(l: &Layer, sink: &mut dyn Sink) -> LayerM {
             psd_raw: opt_blob(&s.psd_raw, sink),
             path: s.path.clone(),
             stroke: s.stroke.clone(),
-            // Older PhotoCraft versions cannot deserialize ArrowLine.
+            // Older Patronus Photo versions cannot deserialize ArrowLine.
             // The saved path preserves the arrow's visual appearance.
             live: match &s.live {
-                Some(photocraft_doc::LiveShape::ArrowLine { .. } | photocraft_doc::LiveShape::Triangle { .. }) => None,
+                Some(patronusphoto_doc::LiveShape::ArrowLine { .. } | patronusphoto_doc::LiveShape::Triangle { .. }) => None,
                 other => other.clone(),
             },
             arrow_live: match &s.live {
-                Some(arrow @ photocraft_doc::LiveShape::ArrowLine { .. }) => Some(arrow.clone()),
+                Some(arrow @ patronusphoto_doc::LiveShape::ArrowLine { .. }) => Some(arrow.clone()),
                 _ => None,
             },
             // Likewise for a triangle: older builds cannot read the kind, so they open its path.
             triangle_live: match &s.live {
-                Some(triangle @ photocraft_doc::LiveShape::Triangle { .. }) => Some(triangle.clone()),
+                Some(triangle @ patronusphoto_doc::LiveShape::Triangle { .. }) => Some(triangle.clone()),
                 _ => None,
             },
             density: s.density,
@@ -350,13 +350,13 @@ pub(crate) struct Loader<'a> {
 }
 
 impl Loader<'_> {
-    fn video(&mut self, m: &crate::manifest::VideoDataM) -> Result<photocraft_doc::VideoData> {
+    fn video(&mut self, m: &crate::manifest::VideoDataM) -> Result<patronusphoto_doc::VideoData> {
         let frames = m.frames.iter().map(|f| self.surface(f)).collect::<Result<Vec<_>>>()?;
         if m.original_frames.as_ref().is_some_and(|o| o.len() != frames.len()) {
             return Err(FormatError::corrupt("video original frame count differs from edited frame count"));
         }
         let original_frames = m.original_frames.as_ref().map(|source| source.iter().map(|f| self.surface(f)).collect::<Result<Vec<_>>>()).transpose()?;
-        Ok(photocraft_doc::VideoData { frames, original_frames, source: m.source.clone(), fps: m.fps, show_altered: m.show_altered })
+        Ok(patronusphoto_doc::VideoData { frames, original_frames, source: m.source.clone(), fps: m.fps, show_altered: m.show_altered })
     }
 
     fn surface(&mut self, m: &SurfaceM) -> Result<Surface> {
@@ -511,8 +511,8 @@ impl Loader<'_> {
                 stroke: stroke.clone(),
                 live: arrow_live
                     .as_ref()
-                    .filter(|shape| matches!(shape, photocraft_doc::LiveShape::ArrowLine { .. }))
-                    .or_else(|| triangle_live.as_ref().filter(|shape| matches!(shape, photocraft_doc::LiveShape::Triangle { .. })))
+                    .filter(|shape| matches!(shape, patronusphoto_doc::LiveShape::ArrowLine { .. }))
+                    .or_else(|| triangle_live.as_ref().filter(|shape| matches!(shape, patronusphoto_doc::LiveShape::Triangle { .. })))
                     .cloned()
                     .or_else(|| live.clone()),
                 cache: self.opt_surface(cache)?,
@@ -542,9 +542,11 @@ impl Loader<'_> {
                 vector_preview: match vector_preview {
                     // A display-only preview must not prevent recovery of the native source
                     // and cached pixels if its optional blob is missing or damaged.
-                    Some(preview) => {
-                        self.fetch.blob_bounded(&preview.svg, 16 << 20).ok().map(|svg| photocraft_doc::VectorPreview { source_hash: preview.source_hash, svg })
-                    }
+                    Some(preview) => self
+                        .fetch
+                        .blob_bounded(&preview.svg, 16 << 20)
+                        .ok()
+                        .map(|svg| patronusphoto_doc::VectorPreview { source_hash: preview.source_hash, svg }),
                     None => None,
                 },
                 transform: *transform,
@@ -665,7 +667,7 @@ impl Loader<'_> {
         for p in &m.patterns {
             // Sizes come from the file: a pattern with no tiles can claim any size, and renderers
             // allocate per pixel.
-            let max = photocraft_doc::pattern::MAX_EDGE;
+            let max = patronusphoto_doc::pattern::MAX_EDGE;
             if p.width == 0 || p.height == 0 {
                 return Err(FormatError::corrupt(format!("pattern `{}` is {}×{} px", p.name, p.width, p.height)));
             }
@@ -682,8 +684,8 @@ impl Loader<'_> {
         for sl in &mut slices.list {
             if let Some(l) = sl.layer {
                 sl.layer = self.id_map.get(&l.0).copied();
-                if sl.layer.is_none() && sl.origin == photocraft_doc::SliceOrigin::Layer {
-                    sl.origin = photocraft_doc::SliceOrigin::User;
+                if sl.layer.is_none() && sl.origin == patronusphoto_doc::SliceOrigin::Layer {
+                    sl.origin = patronusphoto_doc::SliceOrigin::User;
                 }
             }
         }
@@ -759,7 +761,7 @@ pub(crate) fn reserve_ids_through(max: u64) -> bool {
     if max - probe > 10_000_000 {
         return false;
     }
-    photocraft_doc::ensure_ids_above(max);
+    patronusphoto_doc::ensure_ids_above(max);
     true
 }
 

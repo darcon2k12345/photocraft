@@ -28,8 +28,8 @@ fn document_shape() -> Map {
 /// Choke 0, Size 10, Contour Linear, Anti-aliased off, Noise `noise`.
 fn shadow(noise: f32) -> Shadow {
     Shadow {
-        common: photocraft_doc::FxCommon::new(BlendMode::Normal, 1.0),
-        color: photocraft_color::Color::BLACK,
+        common: patronusphoto_doc::FxCommon::new(BlendMode::Normal, 1.0),
+        color: patronusphoto_color::Color::BLACK,
         angle: 0.0,
         use_global_light: false,
         distance: 0.0,

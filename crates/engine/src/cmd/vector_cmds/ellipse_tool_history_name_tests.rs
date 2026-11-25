@@ -1,4 +1,4 @@
-use photocraft_doc::LiveShape;
+use patronusphoto_doc::LiveShape;
 use serde_json::json;
 
 use crate::Session;
@@ -34,9 +34,9 @@ fn each_ellipse_work_path_edit_records_an_independent_tool_step() {
     let state = session.active().unwrap();
     let steps = state.history.past_len();
     let layers = state.doc.layers.len();
-    let mut outline = photocraft_doc::vector::Path::default();
+    let mut outline = patronusphoto_doc::vector::Path::default();
     for (i, x) in [15.0, 80.0].into_iter().enumerate() {
-        let ellipse = photocraft_vector::shapes::live_path(&LiveShape::Ellipse { rect: [x, 20.0, 45.0, 35.0] });
+        let ellipse = patronusphoto_vector::shapes::live_path(&LiveShape::Ellipse { rect: [x, 20.0, 45.0, 35.0] });
         outline.subpaths.extend(ellipse.subpaths);
         session.execute("path.set", json!({"name": "work", "path": super::path_json(&outline), "historyName": LABEL})).unwrap();
         let state = session.active().unwrap();
@@ -60,7 +60,7 @@ fn scripting_defaults_and_shape_additions_keep_their_labels() {
     session.execute("shape.create", json!({"kind": "ellipse", "rect": [30, 30, 40, 40], "addTo": layer, "historyName": LABEL})).unwrap();
     assert_eq!(session.active().unwrap().history.undo_label(), Some("Add Shape"));
 
-    let ellipse = photocraft_vector::shapes::live_path(&LiveShape::Ellipse { rect: [15.0, 20.0, 45.0, 35.0] });
+    let ellipse = patronusphoto_vector::shapes::live_path(&LiveShape::Ellipse { rect: [15.0, 20.0, 45.0, 35.0] });
     session.execute("path.set", json!({"name": "work", "path": super::path_json(&ellipse)})).unwrap();
     assert_eq!(session.active().unwrap().history.undo_label(), Some("Work Path"));
 }
@@ -70,7 +70,7 @@ fn invalid_history_labels_leave_the_document_and_history_intact() {
     let mut session = document();
     let before = session.active().unwrap().doc.clone();
     let steps = session.active().unwrap().history.past_len();
-    let ellipse = photocraft_vector::shapes::live_path(&LiveShape::Ellipse { rect: [15.0, 20.0, 45.0, 35.0] });
+    let ellipse = patronusphoto_vector::shapes::live_path(&LiveShape::Ellipse { rect: [15.0, 20.0, 45.0, 35.0] });
     for invalid in [json!("Wrong Tool"), json!(42), json!("Ellipse tool")] {
         assert!(session.execute("shape.create", json!({"kind": "ellipse", "rect": [15, 20, 45, 35], "historyName": invalid})).is_err());
         assert!(session.execute("path.set", json!({"name": "work", "path": super::path_json(&ellipse), "historyName": invalid})).is_err());

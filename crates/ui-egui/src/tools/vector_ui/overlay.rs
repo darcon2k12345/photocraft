@@ -1,11 +1,11 @@
 use craft::draw::ui::pen::{AnchorsShown, BezierOutput, BezierOverlay, BezierTool, EditPath, PathMode};
 use craft::keymap::Mods;
 use craft::ui::contract::{Bind, Show as _};
-use photocraft_doc::vector::Path;
-use photocraft_doc::{DocId, Document, LayerContent};
+use patronusphoto_doc::vector::Path;
+use patronusphoto_doc::{DocId, Document, LayerContent};
 
 use super::path_ops::{MovedPath, active_type_path, edit_path, path_selection_preview, targeted_vector_mask, work_path_shown_in};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::direct_select::PathRef;
 use crate::state::Tool;
 
@@ -30,27 +30,27 @@ pub(crate) fn shows_anchors(tool: Tool) -> bool {
 #[cfg(test)]
 /// The saved path selected in the Paths panel: Photoshop's target path, drawn on the canvas with
 /// any tool (#6550). `None` when the panel selects the work path, a layer's path or nothing.
-pub(crate) fn selected_saved_path(app: &PhotocraftApp) -> Option<&Path> {
+pub(crate) fn selected_saved_path(app: &PatronusPhotoApp) -> Option<&Path> {
     let sel = app.ui.selected_path.as_deref().filter(|s| !matches!(*s, "work" | "layer"))?;
     app.session.active()?.doc.paths.iter().find(|p| p.name == sel).map(|p| &p.path)
 }
 
 /// [`selected_saved_path`] with its index in the document's `paths`: the saved path Path
 /// Selection and Direct Selection edit (#8478).
-pub(crate) fn selected_saved_path_index(app: &PhotocraftApp) -> Option<(usize, Path)> {
+pub(crate) fn selected_saved_path_index(app: &PatronusPhotoApp) -> Option<(usize, Path)> {
     let sel = app.ui.selected_path.as_deref().filter(|s| !matches!(*s, "work" | "layer"))?;
     app.session.active()?.doc.paths.iter().enumerate().find(|(_, p)| p.name == sel).map(|(i, p)| (i, p.path.clone()))
 }
 
 /// View › Show › Target Path (under Extras) hides the paths; the Pen's path in progress stays.
 /// Free Transform Path draws the path through its box instead (transform_tool).
-fn paths_shown(app: &PhotocraftApp) -> bool {
+fn paths_shown(app: &PatronusPhotoApp) -> bool {
     app.ui.view.shows(app.ui.view.show.target_path) && app.ui.transform.as_ref().is_none_or(|t| t.path.is_none())
 }
 
 /// The overlay tool of the editing tools (Direct Selection, the anchor tools, the Pen with ⌘);
 /// `None` for Path Selection, the Pen and the shape tools, whose paths are only shown.
-fn editing_tool(app: &PhotocraftApp, mods: Mods) -> Option<BezierTool> {
+fn editing_tool(app: &PatronusPhotoApp, mods: Mods) -> Option<BezierTool> {
     // PLAN: assumed `direct_select::path_tool(Tool, Mods)` (R21; tools-w39)
     let tool = crate::direct_select::path_tool(app.ui.tool, mods)?;
     let mode = PathMode::resolve(tool, mods, app.ui.pen.is_some(), app.ui.tool_options.pen_auto_add_delete);
@@ -61,7 +61,7 @@ fn editing_tool(app: &PhotocraftApp, mods: Mods) -> Option<BezierTool> {
 /// selected saved path, the active shape layer's path, a targeted vector mask, a type path, the
 /// Path Selection drag's moved copy and the open Pen draft. The Paths-panel selection and the
 /// targets belong to the active document.
-fn shown_paths(app: &PhotocraftApp, doc: &Document) -> Vec<(PathRef, EditPath)> {
+fn shown_paths(app: &PatronusPhotoApp, doc: &Document) -> Vec<(PathRef, EditPath)> {
     let active = app.session.active().is_some_and(|st| st.doc.id == doc.id);
     let tool = app.ui.tool;
     let anchors = shows_anchors(tool);
@@ -114,7 +114,7 @@ fn shown_paths(app: &PhotocraftApp, doc: &Document) -> Vec<(PathRef, EditPath)> 
 
 /// What [`show_paths`] shows for the canvas of `doc` with `mods` held: the overlay tool and each
 /// path with its `PathRef` and whether its anchors show. The one builder of the overlay's paths.
-fn plan(app: &PhotocraftApp, doc: DocId, mods: Mods) -> (BezierTool, Vec<(PathRef, EditPath, AnchorsShown)>) {
+fn plan(app: &PatronusPhotoApp, doc: DocId, mods: Mods) -> (BezierTool, Vec<(PathRef, EditPath, AnchorsShown)>) {
     let Some(state) = app.session.documents().iter().find(|s| s.doc.id == doc) else { return (BezierTool::Anchors, Vec::new()) };
     let active = app.session.active().is_some_and(|st| st.doc.id == doc);
     if active
@@ -131,7 +131,7 @@ fn plan(app: &PhotocraftApp, doc: DocId, mods: Mods) -> (BezierTool, Vec<(PathRe
 /// Shows the paths of the canvas of `doc` as one `BezierOverlay` over `at` and returns
 /// its report with the path of each `EditPath`. `None` when no path shows; the editing state is
 /// then told so (`edits::not_shown`).
-pub(crate) fn show_paths(app: &mut PhotocraftApp, ui: &mut egui::Ui, at: egui::Rect, doc: DocId) -> Option<BezierShown> {
+pub(crate) fn show_paths(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, at: egui::Rect, doc: DocId) -> Option<BezierShown> {
     let mods = craft::ui::runtime::pointer::frame(ui.ctx()).mods;
     let (tool, shown) = plan(app, doc, mods);
     if shown.is_empty() {
@@ -150,6 +150,6 @@ pub(crate) fn show_paths(app: &mut PhotocraftApp, ui: &mut egui::Ui, at: egui::R
 
 /// What [`show_paths`] would show in the canvas of `doc` with no modifier held, without a pass.
 #[cfg(test)]
-pub(crate) fn overlay_paths(app: &PhotocraftApp, doc: DocId) -> Vec<(PathRef, EditPath, AnchorsShown)> {
+pub(crate) fn overlay_paths(app: &PatronusPhotoApp, doc: DocId) -> Vec<(PathRef, EditPath, AnchorsShown)> {
     plan(app, doc, Mods::default()).1
 }

@@ -16,11 +16,11 @@
 
 use craft::ui::dialog::DialogId;
 use craft::ui::patterns::form_dialogs::{ExportOptionsKind, FormatOptions, HostedFormatOptions, TiffCompression as UiTiffCompression, TiffOptions};
-use photocraft_codecs::TiffCompression;
+use patronusphoto_codecs::TiffCompression;
 use serde_json::Value;
 
 use crate::format_prompts::{self, ParkedFormat, ParkedSave};
-use crate::{ExportSettings, PhotocraftApp};
+use crate::{ExportSettings, PatronusPhotoApp};
 
 /// A TIFF Options answer, from the prompt or from a command's params.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -72,7 +72,7 @@ pub fn compression_name(c: TiffCompression) -> &'static str {
 /// `tiffPyramid`, `tiffLayers`), which skip the prompt. None given: `None`. A bad value is an
 /// error, as in the engine's saves.
 pub fn choice_param(params: &Value, cmd: &str) -> Result<Option<TiffChoice>, String> {
-    use photocraft_engine::file_cmds::{tiff_bool_param, tiff_compression_param};
+    use patronusphoto_engine::file_cmds::{tiff_bool_param, tiff_compression_param};
     let compression = tiff_compression_param(params, cmd).map_err(|e| e.to_string())?;
     let transparency = tiff_bool_param(params, "tiffTransparency", cmd).map_err(|e| e.to_string())?;
     let pyramid = tiff_bool_param(params, "tiffPyramid", cmd).map_err(|e| e.to_string())?;
@@ -129,21 +129,21 @@ pub fn is_tiff_path(path: &str) -> bool {
 }
 
 /// Whether saving the active document to `path` asks for TIFF Options: any TIFF.
-pub fn wants_prompt(app: &PhotocraftApp, path: &str) -> bool {
+pub fn wants_prompt(app: &PatronusPhotoApp, path: &str) -> bool {
     is_tiff_path(path) && app.session.active().is_some()
 }
 
 /// Parks the save of the active document to `path` behind the prompt. A prompt already waiting
 /// is never replaced.
-pub fn park(app: &mut PhotocraftApp, path: String, copy: bool, record: &'static str) -> Result<(), String> {
+pub fn park(app: &mut PatronusPhotoApp, path: String, copy: bool, record: &'static str) -> Result<(), String> {
     park_dialog(app, path, copy, record).map(drop)
 }
 
 /// [`park`], returning the id of the dialog it opened.
-pub fn park_dialog(app: &mut PhotocraftApp, path: String, copy: bool, record: &'static str) -> Result<DialogId, String> {
+pub fn park_dialog(app: &mut PatronusPhotoApp, path: String, copy: bool, record: &'static str) -> Result<DialogId, String> {
     let doc = app.active_doc_id()?;
     let st = app.session.active().ok_or("no document")?;
-    let layered = photocraft_engine::file_cmds::tiff_would_write_layers(&st.doc);
+    let layered = patronusphoto_engine::file_cmds::tiff_would_write_layers(&st.doc);
     let has_transparency = st.doc.background().is_none();
     // Starts where an unset Save Transparency writes: kept unless there are alpha or spot channels.
     let transparency = st.doc.channels.is_empty() && st.doc.quick_mask.is_none();
@@ -160,7 +160,7 @@ pub fn park_dialog(app: &mut PhotocraftApp, path: String, copy: bool, record: &'
 }
 
 /// OK: writes the parked save with the dialog's answer, and journals it.
-pub(crate) fn finish(app: &mut PhotocraftApp, ctx: &egui::Context, save: ParkedSave, options: TiffOptions) {
+pub(crate) fn finish(app: &mut PatronusPhotoApp, ctx: &egui::Context, save: ParkedSave, options: TiffOptions) {
     let ParkedFormat::Tiff(Parked { layered, has_transparency, layer_note }) = save.format else { return };
     if layer_note && options.dont_show_again && !options.discard_layers {
         app.session.edit_prefs(|prefs| prefs.file_handling.ask_before_saving_layered_tiff = false);

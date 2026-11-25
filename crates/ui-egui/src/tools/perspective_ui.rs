@@ -15,12 +15,12 @@ use craft::imaging::ui::transform_preview::{PreviewPixels, PreviewTextures};
 use craft::imaging::ui::warp::perspective::{PerspectiveBar, PerspectiveEdit, PerspectiveSession, PerspectiveWarp, Plane, PlaneMode, Straighten};
 use craft::imaging::ui::{PreviewMap, PreviewQuality, TransformPreview};
 use craft::ui::contract::{Bind, Show as _};
-use photocraft_algo::perspective::{PerspectiveMap, Plane as AlgoPlane, Straighten as AlgoStraighten};
-use photocraft_doc::{DocId, Document, LayerId};
-use photocraft_geom::Rect;
+use patronusphoto_algo::perspective::{PerspectiveMap, Plane as AlgoPlane, Straighten as AlgoStraighten};
+use patronusphoto_doc::{DocId, Document, LayerId};
+use patronusphoto_geom::Rect;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 fn point(v: [f64; 2]) -> Point {
     Point::new(v[0], v[1])
@@ -83,7 +83,7 @@ fn doc_rect(b: Rect) -> DocRect {
 }
 
 /// Starts Perspective Warp on the active layer.
-pub fn begin(app: &mut PhotocraftApp, _ctx: &egui::Context, command: &str) -> Result<(), String> {
+pub fn begin(app: &mut PatronusPhotoApp, _ctx: &egui::Context, command: &str) -> Result<(), String> {
     if let Some(why) = app.session.disabled_reason(command) {
         return Err(why);
     }
@@ -120,14 +120,14 @@ pub fn begin(app: &mut PhotocraftApp, _ctx: &egui::Context, command: &str) -> Re
 
 /// Commits the session: one `edit.perspectiveWarp` step. No planes, or planes that all map onto themselves, run no
 /// command.
-pub fn commit(app: &mut PhotocraftApp) {
+pub fn commit(app: &mut PatronusPhotoApp) {
     let Some(s) = app.distort.perspective.take() else { return };
     let Some(planes) = s.warp.result() else { return };
     let _ = app.run(&s.command, json!({"planes": to_algo(planes), "layer": s.layer.0}));
 }
 
 /// Control channel: `edit.perspectiveWarp {"ui": {...}}` while the mode is active.
-pub fn control(app: &mut PhotocraftApp, ui: &Value) -> Result<Value, String> {
+pub fn control(app: &mut PatronusPhotoApp, ui: &Value) -> Result<Value, String> {
     if ui.get("commit").and_then(Value::as_bool) == Some(true) {
         commit(app);
         return Ok(json!({"committed": true}));
@@ -155,7 +155,7 @@ pub fn control(app: &mut PhotocraftApp, ui: &Value) -> Result<Value, String> {
 /// The warped pixels and the planes, in the canvas body at `at`. Each pass applies only the edits its own pointer and
 /// key input produced, so a second pass in one frame applies nothing the first did; Enter commits and Escape with no
 /// drag cancels.
-pub fn canvas(app: &mut PhotocraftApp, ui: &mut egui::Ui, at: egui::Rect) {
+pub fn canvas(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, at: egui::Rect) {
     let Some(size) = app.session.active().map(|st| [st.doc.size.width, st.doc.size.height]) else { return };
     let Some(s) = app.distort.perspective.as_ref() else { return };
     // Layout leaves the picture where it is; Warp pushes it through the engine's map of the planes.
@@ -188,7 +188,7 @@ pub fn canvas(app: &mut PhotocraftApp, ui: &mut egui::Ui, at: egui::Rect) {
 
 /// The options bar: the Layout and Warp tabs, the plane count and Remove Planes or the straighten buttons, commit and
 /// cancel.
-pub fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn options_bar(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let Some(s) = app.distort.perspective.as_mut() else { return };
     let output = PerspectiveBar::new(&s.warp).show(ui);
     for edit in output.edits {
@@ -205,8 +205,8 @@ pub fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 mod tests {
     use super::*;
 
-    fn perspective_app() -> Box<PhotocraftApp> {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    fn perspective_app() -> Box<PatronusPhotoApp> {
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
         app.session.execute("file.new", json!({"width": 200, "height": 120, "depth": 8})).unwrap();
         app.session.execute("layer.new.layer", json!({})).unwrap();
         app.session
@@ -221,7 +221,7 @@ mod tests {
         app
     }
 
-    fn past_len(app: &PhotocraftApp) -> usize {
+    fn past_len(app: &PatronusPhotoApp) -> usize {
         app.session.active().unwrap().history.past_len()
     }
 

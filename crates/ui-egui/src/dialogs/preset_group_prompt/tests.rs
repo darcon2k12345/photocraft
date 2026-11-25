@@ -11,7 +11,7 @@ enum Kind {
 }
 
 struct Fixture {
-    app: Box<PhotocraftApp>,
+    app: Box<PatronusPhotoApp>,
     ctx: egui::Context,
     kind: Kind,
     name: &'static str,
@@ -22,7 +22,7 @@ struct Fixture {
     unrelated: Value,
 }
 
-fn call(app: &mut PhotocraftApp, ctx: &egui::Context, method: &str, params: Value) -> Value {
+fn call(app: &mut PatronusPhotoApp, ctx: &egui::Context, method: &str, params: Value) -> Value {
     let (request, _reply) = ControlRequest::new(method, params);
     match handle(app, ctx, &request) {
         Reply::Done(value) => value,
@@ -30,14 +30,14 @@ fn call(app: &mut PhotocraftApp, ctx: &egui::Context, method: &str, params: Valu
     }
 }
 
-fn group(app: &PhotocraftApp, kind: Kind, name: &str) -> Value {
+fn group(app: &PatronusPhotoApp, kind: Kind, name: &str) -> Value {
     match kind {
         Kind::Brushes => json!(app.session.tools.presets.iter().filter(|p| p.group == name).collect::<Vec<_>>()),
         Kind::Gradients => json!(app.session.presets.gradients.iter().filter(|g| g.name == name).collect::<Vec<_>>()),
     }
 }
 
-fn library(app: &PhotocraftApp) -> Value {
+fn library(app: &PatronusPhotoApp) -> Value {
     json!({"brushes": app.session.tools.presets.as_ref(), "gradients": app.session.presets.gradients, "selectedBrush": app.session.tools.brush})
 }
 
@@ -68,7 +68,7 @@ impl Fixture {
                 ("Fire.grd", "Fire", write(&[gradient("Ember", [1.0, 0.0, 0.0]), gradient("Tide", [0.0, 0.0, 1.0])]))
             }
         };
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.open_bytes(name, &bytes).unwrap();
         let original = group(&app, kind, stem);
         match kind {

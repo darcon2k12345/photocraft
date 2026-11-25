@@ -2,19 +2,19 @@
 //! (hardness 0 %, spacing 25 %): a click with the reset brush paints the soft dab. The tip values
 //! themselves are checked in `reset_tip_tests.rs`.
 
-use photocraft_ui_egui::control::{ControlRequest, handle};
-use photocraft_ui_egui::{PhotocraftApp, Tool};
+use patronusphoto_ui_egui::control::{ControlRequest, handle};
+use patronusphoto_ui_egui::{PatronusPhotoApp, Tool};
 use serde_json::{Value, json};
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 200, "height": 200})).unwrap();
     app.sync_views();
     app
 }
 
 /// A control request as the control channel sends it, then the frame's sync.
-fn control(app: &mut PhotocraftApp, method: &str, params: Value) -> Value {
+fn control(app: &mut PatronusPhotoApp, method: &str, params: Value) -> Value {
     let ctx = app.ctx().clone();
     let (req, rx) = ControlRequest::new(method, params);
     handle(app, &ctx, &req);
@@ -23,9 +23,9 @@ fn control(app: &mut PhotocraftApp, method: &str, params: Value) -> Value {
 }
 
 /// Pick `tool`, and swap its brush in as a frame does.
-fn pick(app: &mut PhotocraftApp, tool: Tool) {
+fn pick(app: &mut PatronusPhotoApp, tool: Tool) {
     app.ui.tool = tool;
-    photocraft_ui_egui::paint_mouse::sync_tool_brush(app);
+    patronusphoto_ui_egui::paint_mouse::sync_tool_brush(app);
     app.sync_views();
 }
 

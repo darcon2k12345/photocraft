@@ -7,7 +7,7 @@ use craft::ui::patterns::form_dialogs::{DialogFields, Param, ParamDialog, ParamK
 use craft::ui::runtime::env::Label;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::dialogs::params;
 
 /// The command the dialog runs; also the dialog's key.
@@ -29,7 +29,7 @@ enum Destination {
 /// The destination the `document` field names; one rule for the held OK's check and for the run.
 /// The field holds the document's id, looked up again here, so closing or reordering tabs while
 /// the dialog is open never sends the copy to whichever document took the chosen one's place.
-fn destination(app: &PhotocraftApp, fields: &DialogFields) -> Result<Destination, String> {
+fn destination(app: &PatronusPhotoApp, fields: &DialogFields) -> Result<Destination, String> {
     match fields.text("document") {
         Some("new") => Ok(Destination::New),
         Some(id) => {
@@ -46,7 +46,7 @@ fn destination(app: &PhotocraftApp, fields: &DialogFields) -> Result<Destination
 }
 
 /// Opens the dialog on the selected layers. The document and the selection are captured for [`check`].
-pub fn open(app: &mut PhotocraftApp) -> Result<DialogId, String> {
+pub fn open(app: &mut PatronusPhotoApp) -> Result<DialogId, String> {
     let st = app.session.active().ok_or("no document")?;
     let source = st.doc.id.0;
     let selected = st.selected_layers();
@@ -78,19 +78,19 @@ pub fn open(app: &mut PhotocraftApp) -> Result<DialogId, String> {
 /// their document id, without those `layer.copyToDocument` refuses (Indexed Color and the other modes
 /// outside `layered`), as Photoshop leaves them out (#14612). The source stays: copying within it
 /// is a plain duplicate.
-pub(crate) fn destinations(app: &PhotocraftApp) -> Vec<(String, String)> {
+pub(crate) fn destinations(app: &PatronusPhotoApp) -> Vec<(String, String)> {
     let source = app.session.active_index();
     app.session
         .documents()
         .iter()
         .enumerate()
-        .filter(|(i, d)| Some(*i) == source || photocraft_engine::layer_copy_cmds::layered(d.doc.mode))
+        .filter(|(i, d)| Some(*i) == source || patronusphoto_engine::layer_copy_cmds::layered(d.doc.mode))
         .map(|(_, d)| (d.doc.id.0.to_string(), d.doc.name.clone()))
         .collect()
 }
 
 /// Refuses an OK after the document, the selection or the destination changed, so the dialog stays open with the reason.
-pub(crate) fn check(app: &mut PhotocraftApp, result: &ParamResult) -> Result<(), Label> {
+pub(crate) fn check(app: &mut PatronusPhotoApp, result: &ParamResult) -> Result<(), Label> {
     let captured = params::captured(app, KEY);
     let st = app.session.active().ok_or_else(|| Label::from(tl!("The document is closed")))?;
     let selected: Vec<u64> = st.selected_layers().iter().map(|id| id.0).collect();
@@ -101,12 +101,12 @@ pub(crate) fn check(app: &mut PhotocraftApp, result: &ParamResult) -> Result<(),
 }
 
 /// OK: duplicates into the chosen document.
-pub(crate) fn run(app: &mut PhotocraftApp, _ctx: &egui::Context, result: ParamResult) {
+pub(crate) fn run(app: &mut PatronusPhotoApp, _ctx: &egui::Context, result: ParamResult) {
     let outcome = duplicate(app, &result.fields);
     super::alerts::report(app, outcome);
 }
 
-fn duplicate(app: &mut PhotocraftApp, fields: &DialogFields) -> Result<Value, String> {
+fn duplicate(app: &mut PatronusPhotoApp, fields: &DialogFields) -> Result<Value, String> {
     let index = app.session.active_index().ok_or("The document is closed")?;
     let mut params = serde_json::Map::new();
     if let Some(name) = fields.text("name") {
@@ -133,34 +133,34 @@ mod tests {
     use super::*;
     use crate::new_layer_ui::testing::{set, top};
 
-    fn make_app() -> Box<PhotocraftApp> {
-        let mut s = photocraft_engine::Session::new();
+    fn make_app() -> Box<PatronusPhotoApp> {
+        let mut s = patronusphoto_engine::Session::new();
         s.execute("file.new", json!({"width":8,"height":8,"name":"Poster"})).unwrap();
         s.execute("layer.new.layer", json!({"name":"Ink"})).unwrap();
-        PhotocraftApp::new(s, crate::Services::default())
+        PatronusPhotoApp::new(s, crate::Services::default())
     }
-    fn invoke(app: &mut PhotocraftApp) -> DialogId {
+    fn invoke(app: &mut PatronusPhotoApp) -> DialogId {
         let ctx = app.ctx().clone();
         crate::menus::invoke(app, &ctx, "layer.duplicate", json!({})).unwrap();
         top(app)
     }
     /// OK on `dialog`; the passes after it deliver the held answer to the family that runs it.
-    fn confirm(app: &mut PhotocraftApp, ctx: &egui::Context, dialog: DialogId) -> Result<(), String> {
+    fn confirm(app: &mut PatronusPhotoApp, ctx: &egui::Context, dialog: DialogId) -> Result<(), String> {
         let answered = crate::dialogs::confirm(app, ctx, dialog);
         for _ in 0..2 {
             crate::dialogs::testing::show(app);
         }
         answered
     }
-    fn names(app: &PhotocraftApp, i: usize) -> Vec<String> {
+    fn names(app: &PatronusPhotoApp, i: usize) -> Vec<String> {
         app.session.documents()[i].doc.walk().into_iter().map(|(_, _, l)| l.name.clone()).collect()
     }
     /// The Document choice's value for the document at tab `i`: its id.
-    fn key(app: &PhotocraftApp, i: usize) -> serde_json::Value {
+    fn key(app: &PatronusPhotoApp, i: usize) -> serde_json::Value {
         json!(app.session.documents()[i].doc.id.0.to_string())
     }
     /// Poster (active, with Ink), Card and Spare.
-    fn three_docs() -> Box<PhotocraftApp> {
+    fn three_docs() -> Box<PatronusPhotoApp> {
         let mut app = make_app();
         for name in ["Card", "Spare"] {
             app.session.execute("file.new", json!({"width":8,"height":8,"name":name})).unwrap();

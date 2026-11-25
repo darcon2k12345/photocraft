@@ -1,7 +1,7 @@
 //! The global adjustment-table cache is isolated from parallel unit tests; the tests that count
 //! it take turns.
-use photocraft_compose::lut_rows::{self, ROW_LEN};
-use photocraft_engine::Session;
+use patronusphoto_compose::lut_rows::{self, ROW_LEN};
+use patronusphoto_engine::Session;
 use serde_json::json;
 
 #[test]

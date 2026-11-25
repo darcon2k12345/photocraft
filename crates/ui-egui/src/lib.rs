@@ -1,7 +1,7 @@
-//! PhotoCraft's first UI shell, built on egui/eframe.
+//! Patronus Photo's first UI shell, built on egui/eframe.
 //!
 //! This crate is deliberately thin. Every action goes through
-//! [`photocraft_engine::Session::execute`], and all UI state lives in [`state::UiState`] (plain
+//! [`patronusphoto_engine::Session::execute`], and all UI state lives in [`state::UiState`] (plain
 //! data). The [`control`] module exposes both to automation, so agents can drive and inspect every
 //! part of the interface.
 #![forbid(unsafe_code)]
@@ -9,12 +9,19 @@
 #![recursion_limit = "256"]
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
-/// PhotoCraft as craft-update knows it, with its 128 px icon and accent colour: the update
+/// Patronus Photo as craft-update knows it, with its 128 px icon and accent colour: the update
 /// prompt shows both, and an AppImage's menu entry gets the icon.
 #[cfg(not(target_arch = "wasm32"))]
 pub const UPDATE_APP: craft::update::app::App = craft::update::app::App {
-    icon_png: Some(include_bytes!("../../../assets/app-icon/hicolor/128x128/apps/ai.storyteller.photocraft.png")),
-    accent: Some([0x2f, 0x7b, 0xf5]),
+    id: "patronusphoto",
+    name: "Patronus Photo",
+    repo: "darcon2k12345/photocraft",
+    former_ids: &["photocraft"],
+    former_names: &["PhotoCraft"],
+    developer: "Patronus",
+    bundle_id_override: Some("com.patronus.patronusphoto"),
+    icon_png: Some(include_bytes!("../../../assets/app-icon/hicolor/128x128/apps/com.patronus.patronusphoto.png")),
+    accent: Some([0x3f, 0x91, 0xdf]),
     ..craft::update::suite::PHOTOCRAFT
 };
 
@@ -66,8 +73,8 @@ pub mod work_area;
 
 use std::collections::HashMap;
 
-use photocraft_doc::{DocId, Document};
-use photocraft_engine::Session;
+use patronusphoto_doc::{DocId, Document};
+use patronusphoto_engine::Session;
 use serde_json::{Value, json};
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -302,7 +309,7 @@ pub use tools::vector_ui;
 /// The Info panel's cached sample: pixel x, y, document revision, Eyedropper Sample Size and the view zoom's bits.
 type InfoSampleKey = (i32, i32, u64, u32, u32);
 
-pub struct PhotocraftApp {
+pub struct PatronusPhotoApp {
     pub session: Session,
     pub ui: UiState,
     pub services: Services,
@@ -387,7 +394,7 @@ pub struct PhotocraftApp {
     /// tool) and the engine's active-layer change count right after that pick
     /// (`Session::active_layer_changes`). The Layers panel's reveal reads it when it next draws, and
     /// accepts it only if nothing changed the active layer since, however long ago (`layer_reveal`, #11381).
-    pub(crate) move_pick: Option<(photocraft_doc::LayerId, u64)>,
+    pub(crate) move_pick: Option<(patronusphoto_doc::LayerId, u64)>,
     /// Caps Lock toggled on, read from the OS each frame (`services.caps_lock`): painting tools
     /// show the precise crosshair whatever the cursor preference (#1758).
     pub caps_lock: bool,
@@ -398,7 +405,7 @@ pub struct PhotocraftApp {
     #[cfg(not(target_arch = "wasm32"))]
     control: Option<craft::automation::ControlChannel>,
     /// Live (uncommitted) adjustment edit shown on canvas while a slider is dragged.
-    pub live_adjust: Option<(photocraft_doc::LayerId, Value)>,
+    pub live_adjust: Option<(patronusphoto_doc::LayerId, Value)>,
     /// Frames rendered (for tests and the status bar).
     pub frame: u64,
     /// What the notice stack keeps between frames: the pointer rest that gives a fresh auto-hide
@@ -434,7 +441,7 @@ pub struct PhotocraftApp {
     pub fps: f32,
     pub(crate) last_frame_time: f64,
     /// Content bounds cached per (key, revision): scanning a 36 MP layer every frame cost ~77 ms.
-    bounds_cache: HashMap<u64, (u64, photocraft_geom::Rect)>,
+    bounds_cache: HashMap<u64, (u64, patronusphoto_geom::Rect)>,
     /// Downsampled proxy of the active document for live previews: (doc, revision, k, proxy).
     pub(crate) proxy: Option<(DocId, u64, u32, std::sync::Arc<Document>)>,
     /// Key of the preview currently uploaded to the GPU (doc, params hash).
@@ -466,21 +473,21 @@ pub struct PhotocraftApp {
     pub(crate) vanishing: Option<vp_ui::VpApp>,
     /// The Layer Style, Select and Mask and parameter dialogs' open targets, one field per family,
     /// keyed by the dialog.
-    pub(crate) layer_style_target: Option<(craft::ui::dialog::DialogId, DocId, photocraft_doc::LayerId)>,
-    pub(crate) select_mask_target: Option<(craft::ui::dialog::DialogId, DocId, photocraft_doc::LayerId, std::sync::Arc<select_mask_ui::PcSelectMaskSource>)>,
+    pub(crate) layer_style_target: Option<(craft::ui::dialog::DialogId, DocId, patronusphoto_doc::LayerId)>,
+    pub(crate) select_mask_target: Option<(craft::ui::dialog::DialogId, DocId, patronusphoto_doc::LayerId, std::sync::Arc<select_mask_ui::PcSelectMaskSource>)>,
     /// The Guide Layout dialog's document.
     pub(crate) guide_layout_doc: Option<(craft::ui::dialog::DialogId, DocId)>,
     /// The Export As dialog that is open.
     pub(crate) export_open: Option<export_dialog::ExportOpen>,
     /// The layer the Layers panel reveals when it next draws, with the groups to open for it
     /// (`layer_reveal::{mark, file}`).
-    pub(crate) pending_reveal: Option<(photocraft_doc::LayerId, craft::layers::ui::panel::Groups)>,
+    pub(crate) pending_reveal: Option<(patronusphoto_doc::LayerId, craft::layers::ui::panel::Groups)>,
     /// The Pattern Fill dialog's preview and open state (`pattern_fill_ui`).
     pub(crate) pattern_fill: pattern_fill_ui::State,
     #[cfg(not(target_arch = "wasm32"))]
     filter_preview_worker: crate::dialogs::filter_preview_worker::Worker,
     /// Full CPU canvas redraws running in the background, by document (#4024).
-    pub(crate) redraws: std::collections::HashMap<photocraft_doc::DocId, background_redraw::Redraw>,
+    pub(crate) redraws: std::collections::HashMap<patronusphoto_doc::DocId, background_redraw::Redraw>,
     /// The last finished background redraws, for going back to a state drawn a moment ago (#6528).
     pub(crate) kept: background_redraw::KeptComposites,
     /// Select › Color Range dialog preview (proxy document + mask / image textures).
@@ -510,7 +517,7 @@ pub struct PhotocraftApp {
     /// ([`actions::RESUME`]): what to play next and the automation gate it paused under.
     pub(crate) paused_playbacks: actions::PausedPlaybacks,
     /// Levels/Curves histogram cache: (document, adjustment layer, revision it is valid for).
-    pub(crate) tone_hist: Option<(DocId, photocraft_doc::LayerId, u64, std::sync::Arc<tone::Histograms>)>,
+    pub(crate) tone_hist: Option<(DocId, patronusphoto_doc::LayerId, u64, std::sync::Arc<tone::Histograms>)>,
     /// Histogram panel: the document's histogram (`histogram_panel`).
     pub(crate) doc_hist: Option<histogram_panel::PanelHist>,
     /// Histogram panel: the histogram of the adjustment previewing on the canvas.
@@ -579,18 +586,18 @@ pub struct PhotocraftApp {
     /// Pointer position over the canvas (document px), for the Info panel and status bar.
     pub(crate) hover_doc: Option<[f64; 2]>,
     /// Layer hovered in the Layers panel, outlined on the canvas.
-    pub(crate) hover_layer: Option<photocraft_doc::LayerId>,
+    pub(crate) hover_layer: Option<patronusphoto_doc::LayerId>,
     /// The commands run from any source (`menus::invoke`, the commands keys and surfaces fire, the control channel).
     pub(crate) commands_run: u64,
     /// A layer whose row the Layers panel opens for renaming in its next pass (Layer › Rename
     /// Layer, the row menu's Rename Layer…).
-    pub(crate) layers_rename: Option<photocraft_doc::LayerId>,
+    pub(crate) layers_rename: Option<patronusphoto_doc::LayerId>,
     /// The Smart Filter row selected on its own, per document ([`crate::smart_ui::selected`]).
     pub(crate) smart_filter_picks: crate::smart_ui::FilterPicks,
     /// Select › Find Layers: the Layers panel's Name filter takes the focus in its next pass.
     pub(crate) find_layers_focus: bool,
     /// Layer hovered on the canvas, highlighted in the Layers panel.
-    pub(crate) canvas_hover_layer: Option<photocraft_doc::LayerId>,
+    pub(crate) canvas_hover_layer: Option<patronusphoto_doc::LayerId>,
     pub(crate) clone_preview: Option<crate::canvas::ClonePreviewCache>,
     /// Info panel sample cache: ((x, y, revision, Sample Size), composite RGBA).
     info_sample: Option<(InfoSampleKey, [f32; 4])>,
@@ -600,7 +607,7 @@ pub struct PhotocraftApp {
     /// (`vector_ui::pen_resume_on_undo`).
     pub(crate) finished_pens: Vec<vector_ui::FinishedPen>,
     /// Type tool layout cache: ((doc, revision, layer), layout).
-    pub(crate) type_layout: Option<((u64, u64, u64), std::sync::Arc<photocraft_text::TextLayout>)>,
+    pub(crate) type_layout: Option<((u64, u64, u64), std::sync::Arc<patronusphoto_text::TextLayout>)>,
     /// The path a Type tool click on a path would place its text on, shown before the click
     /// (`type_path_placement`).
     pub(crate) type_path_preview: Option<type_path_placement::Preview>,
@@ -628,7 +635,7 @@ pub struct PhotocraftApp {
     gpu: Option<gpu_canvas::GpuCanvas>,
     /// The device the window itself draws with, and its health flag: the GPU canvas's, or one
     /// watched for the CPU canvas (see `gpu_status::check_window`).
-    window_device: Option<(eframe::wgpu::Device, photocraft_gpu::DeviceHealth)>,
+    window_device: Option<(eframe::wgpu::Device, patronusphoto_gpu::DeviceHealth)>,
     /// That device was lost: frames draw nothing and the app closes once its work is saved (#3438).
     window_lost: bool,
     /// When (in `egui::InputState::time`) to try saving unsaved work for recovery again after a
@@ -638,14 +645,14 @@ pub struct PhotocraftApp {
     /// build a new one on the same device (see `gpu_status::choose_recovery`, #6577).
     gpu_render_state: Option<eframe::egui_wgpu::RenderState>,
     /// Why the GPU canvas was dropped (see `gpu_status::fall_back`).
-    gpu_fault: Option<photocraft_gpu::Fault>,
+    gpu_fault: Option<patronusphoto_gpu::Fault>,
     /// Out-of-memory errors this session after which the GPU canvas was rebuilt by itself (#6564).
     gpu_oom_retries: u32,
     /// Run once the first frames have rendered (see [`Self::on_started`]).
     started: Option<gpu_status::StartedHook>,
     /// Frame and canvas-upload timings (exposed via `ui.inspect`).
     pub perf: gpu_canvas::Perf,
-    /// Per-frame stroke timings for latency reports (`PHOTOCRAFT_STROKE_TRACE`, see `stroke_trace`).
+    /// Per-frame stroke timings for latency reports (`PATRONUSPHOTO_STROKE_TRACE`, see `stroke_trace`).
     pub stroke_trace: stroke_trace::StrokeTrace,
     /// Why each document's view is drawn on the CPU, and the history of changes (`render_path`).
     pub render_path: render_path::RenderPath,
@@ -661,10 +668,10 @@ pub struct PhotocraftApp {
     pub(crate) parked_save: Option<format_prompts::ParkedSave>,
     /// Where each document was last saved or exported to through a dialog (#1826): its next Save
     /// As or export dialog starts there rather than beside the document. Session-only.
-    pub(crate) save_dirs: HashMap<photocraft_doc::DocId, std::path::PathBuf>,
+    pub(crate) save_dirs: HashMap<patronusphoto_doc::DocId, std::path::PathBuf>,
     /// Each document's own file as it was when the document was opened from it or saved to it
     /// (see [`FileStamp`]).
-    pub(crate) disk_stamps: HashMap<photocraft_doc::DocId, (String, FileStamp)>,
+    pub(crate) disk_stamps: HashMap<patronusphoto_doc::DocId, (String, FileStamp)>,
     /// Files read but not opened yet: the first waits on its profile prompt, the rest behind it
     /// (see `open_prompt`).
     pub(crate) held_opens: std::collections::VecDeque<open_prompt::Held>,
@@ -748,13 +755,13 @@ pub(crate) mod testing {
     use crate::Services;
 
     /// The folder of the scratch settings store; its file lives in `files`.
-    const DIR: &str = "/memory/photocraft";
+    const DIR: &str = "/memory/patronusphoto";
 
     /// Services whose preferences store reads and writes `files`, so a second app over the same files reads what the
     /// first one stored. A zero debounce makes the first frame after a change write it.
     pub(crate) fn services_over(files: &Arc<MemoryFiles>) -> Services {
         let options = OpenOptions::new(Location::Dir(DIR.into())).debounce(Duration::ZERO).files(files.clone());
-        Services { settings: Some(SettingsStore::<photocraft_engine::prefs::SavedPrefs>::open_with(options)), ..Default::default() }
+        Services { settings: Some(SettingsStore::<patronusphoto_engine::prefs::SavedPrefs>::open_with(options)), ..Default::default() }
     }
 
     /// Makes the input a test hands `ctx` carry its modifiers as the window's does. egui reads the held modifiers only
@@ -772,7 +779,7 @@ pub(crate) mod testing {
 
     impl egui::Plugin for AnnouncedModifiers {
         fn debug_name(&self) -> &'static str {
-            "photocraft.testing.announced_modifiers"
+            "patronusphoto.testing.announced_modifiers"
         }
 
         fn input_hook(&mut self, _ctx: &egui::Context, input: &mut egui::RawInput) {

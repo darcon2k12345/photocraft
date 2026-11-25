@@ -1,7 +1,7 @@
 use craft_psd::atn::{self, AtnAction, AtnEvent, AtnFile, AtnItem};
 use craft_psd::descriptor::{Descriptor, Id, UnicodeString, Value as D};
-use photocraft_engine::actions_cmds::{ActionList, ActionsFile};
-use photocraft_engine::{Session, atn_cmds};
+use patronusphoto_engine::actions_cmds::{ActionList, ActionsFile};
+use patronusphoto_engine::{Session, atn_cmds};
 use serde_json::{Value, json};
 
 fn encoded(code: &[u8; 4], d: Descriptor) -> Vec<u8> {
@@ -75,16 +75,16 @@ fn custom_and_fibers_recordings_round_trip_replay_native_settings_and_undo() {
             let mut native = fixture(depth);
             native.execute(id, p.clone()).unwrap();
             let mut s = fixture(depth);
-            let before = photocraft_format::save_to_bytes(&s.active().unwrap().doc, &Default::default()).unwrap();
+            let before = patronusphoto_format::save_to_bytes(&s.active().unwrap().doc, &Default::default()).unwrap();
             s.actions.list = ActionList::from_file(ActionsFile::new(imported.actions.clone(), Vec::new()));
             assert_eq!(s.execute("actions.play", json!({"action":"Dialog"})).unwrap()["ran"], 1);
             assert_eq!(
-                photocraft_compose::flatten(&s.active().unwrap().doc).px,
-                photocraft_compose::flatten(&native.active().unwrap().doc).px,
+                patronusphoto_compose::flatten(&s.active().unwrap().doc).px,
+                patronusphoto_compose::flatten(&native.active().unwrap().doc).px,
                 "{id} {depth}-bit"
             );
             s.execute("edit.undo", json!({})).unwrap();
-            assert_eq!(photocraft_format::save_to_bytes(&s.active().unwrap().doc, &Default::default()).unwrap(), before);
+            assert_eq!(patronusphoto_format::save_to_bytes(&s.active().unwrap().doc, &Default::default()).unwrap(), before);
         }
     }
 }
@@ -106,7 +106,7 @@ fn fibers_missing_seed_is_stable_across_playback_and_save() {
         let mut s = fixture(8);
         s.actions.list = ActionList::from_file(ActionsFile::new(actions, Vec::new()));
         s.execute("actions.play", json!({"action":"Dialog"})).unwrap();
-        photocraft_compose::flatten(&s.active().unwrap().doc).px.clone()
+        patronusphoto_compose::flatten(&s.active().unwrap().doc).px.clone()
     };
     assert_eq!(render(imported.actions.clone()), render(saved.actions));
 }

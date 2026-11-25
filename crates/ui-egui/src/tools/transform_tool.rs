@@ -13,13 +13,13 @@ use craft::draw::ui::transform::{Interpolation, TransformPreset, TransformSettin
 use craft::imaging::ui::transform_preview::{PreviewPixels, PreviewTextures, StyledPreview};
 use craft::imaging::ui::warp::WarpSplit;
 use egui::Color32;
-use photocraft_algo::transform::Homography;
-use photocraft_doc::{DocId, Document, LayerContent, LayerId};
-use photocraft_engine::jobs::{JobEvent, JobId, JobOutcome};
-use photocraft_geom::warp::{BezierMesh, Warp, WarpStyle};
+use patronusphoto_algo::transform::Homography;
+use patronusphoto_doc::{DocId, Document, LayerContent, LayerId};
+use patronusphoto_engine::jobs::{JobEvent, JobId, JobOutcome};
+use patronusphoto_geom::warp::{BezierMesh, Warp, WarpStyle};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::{FreeTransform, MadeLayer, SessionWarp, Tool};
 
 mod begin;
@@ -51,7 +51,7 @@ use preview::{covering, preview_image};
 pub use warp::{edit_session_warp, split};
 
 /// Opens a prepared box once its job has landed (see [`Preparing`]).
-type FinishPrepared = Box<dyn FnOnce(&mut PhotocraftApp, begin::Prepared) -> Result<(), String>>;
+type FinishPrepared = Box<dyn FnOnce(&mut PatronusPhotoApp, begin::Prepared) -> Result<(), String>>;
 
 /// A large layer's box being prepared as a job (`begin::on_prepared` opens it when it lands).
 pub(crate) struct Preparing {
@@ -80,19 +80,19 @@ pub(crate) struct OpenArea {
     pub key: u64,
     /// The document revision the preview was built from.
     pub revision: u64,
-    pub area: photocraft_geom::Rect,
+    pub area: patronusphoto_geom::Rect,
 }
 
 /// The canvas damage between the document and an open box's preview of it, either way, at the
 /// revision the box opened on; on a commit (one revision later) also what the commit changed.
 /// `None` (redraw everything) for anything else, e.g. a box that followed an edit while open.
 pub(crate) fn damage(
-    app: &PhotocraftApp,
+    app: &PatronusPhotoApp,
     doc: DocId,
     seen: (u64, u64),
     now: (u64, u64),
-    last_damage: Option<photocraft_geom::Rect>,
-) -> Option<photocraft_geom::Rect> {
+    last_damage: Option<patronusphoto_geom::Rect>,
+) -> Option<patronusphoto_geom::Rect> {
     let o = app.transform_area.filter(|o| o.doc == doc)?;
     let opening = seen.1 == 0 && now.1 == o.key && seen.0 == o.revision && now.0 == o.revision;
     let canceled = seen.1 == o.key && now.1 == 0 && seen.0 == o.revision && now.0 == o.revision;
@@ -125,7 +125,7 @@ pub struct OpenPreview {
     /// The tool the session began with: picking another one applies the transform.
     tool: Tool,
     /// Free Transform Path: the path as it was, drawn through the box instead of pixels.
-    path: Option<photocraft_doc::vector::Path>,
+    path: Option<patronusphoto_doc::vector::Path>,
     /// A layer's session keeps `doc` and `opacity` up to date with edits made while the box is
     /// open ([`follow_edits`]); `None` for a lone mask or channel and Transform Selection.
     follow: Option<Follow>,
@@ -175,20 +175,20 @@ struct Several {
     /// The pixels a selection lifted out of moving pixel layers, as the box opened. Every other
     /// moving layer (groups, type, shapes, smart objects, pixel layers without a selection) moves
     /// whole, so the live document holds what it moves, children and their looks included.
-    lifted: Vec<(LayerId, photocraft_raster::Surface)>,
+    lifted: Vec<(LayerId, patronusphoto_raster::Surface)>,
     /// The document showing only the moving layers, as last composited.
     moving: Document,
     /// The box's frame.
-    frame: photocraft_geom::Rect,
+    frame: patronusphoto_geom::Rect,
     /// The document area the texture covers: the frame grown by the reach of the moving layers'
     /// styles, so a shadow, glow or outside stroke past their content moves with the box.
-    rect: photocraft_geom::Rect,
+    rect: patronusphoto_geom::Rect,
 }
 
 impl Several {
     /// `live` showing only the layers `ids`, with the `lifted` pixels in place of their layers'.
     /// Unclipped: a clipping base that isn't moving would clip them away (#5239).
-    fn shown(live: &Document, ids: &[LayerId], lifted: &[(LayerId, photocraft_raster::Surface)]) -> Document {
+    fn shown(live: &Document, ids: &[LayerId], lifted: &[(LayerId, patronusphoto_raster::Surface)]) -> Document {
         let mut d = live.clone();
         show_only(&mut d.layers, ids);
         for id in ids {
@@ -223,13 +223,14 @@ impl Several {
 /// own, the layers' inside them and the groups' around them, since a group's style draws around
 /// its children's composite and so adds to theirs.
 fn style_reach(doc: &Document, ids: &[LayerId]) -> i32 {
-    let reach_of =
-        |l: &photocraft_doc::Layer| if l.visible && photocraft_compose::effects::has_effects(l) { photocraft_compose::effects::margin(l).max(0) } else { 0 };
+    let reach_of = |l: &patronusphoto_doc::Layer| {
+        if l.visible && patronusphoto_compose::effects::has_effects(l) { patronusphoto_compose::effects::margin(l).max(0) } else { 0 }
+    };
     // The groups around each layer: everything on its path but itself.
     let around =
         |id: LayerId| doc.path_of(id).map_or(0, |p| (1..p.len()).filter_map(|n| doc.layer_at(p.get(..n)?)).fold(0i32, |r, g| r.saturating_add(reach_of(g))));
     // An explicit stack rather than recursion: documents can nest deeply.
-    let mut stack: Vec<(&photocraft_doc::Layer, i32)> = ids.iter().filter_map(|id| Some((doc.layer(*id)?, around(*id)))).collect();
+    let mut stack: Vec<(&patronusphoto_doc::Layer, i32)> = ids.iter().filter_map(|id| Some((doc.layer(*id)?, around(*id)))).collect();
     let mut reach = 0;
     while let Some((l, outer)) = stack.pop() {
         let here = outer.saturating_add(reach_of(l));
@@ -281,8 +282,8 @@ pub(crate) fn corners(r: [f64; 4]) -> [[f64; 2]; 4] {
 
 /// The interpolation a new session starts with: the General preference. The bar's own pick is
 /// `TransformSettings::interpolation`, which the session reads first.
-pub(crate) fn default_interpolation(app: &PhotocraftApp) -> Interpolation {
-    use photocraft_engine::prefs::Interpolation as General;
+pub(crate) fn default_interpolation(app: &PatronusPhotoApp) -> Interpolation {
+    use patronusphoto_engine::prefs::Interpolation as General;
     match app.session.prefs().general.image_interpolation {
         General::Nearest => Interpolation::NearestNeighbor,
         General::Bilinear => Interpolation::Bilinear,
@@ -328,7 +329,7 @@ pub fn split_for_command(id: &str) -> Option<WarpSplit> {
 pub(crate) const BOX_ID_SALT: &str = "transform-box";
 
 /// The persisted Free Transform settings: the stored section with Use Legacy Free Transform from the preferences.
-pub(crate) fn settings(app: &PhotocraftApp) -> TransformSettings {
+pub(crate) fn settings(app: &PatronusPhotoApp) -> TransformSettings {
     // PLAN: `ToolOptions::transform: TransformSettings` is written by tools-w71 (M14); the errors in this set come from it and from hub-w1's `state.rs` re-exports, not from this file.
     let mut settings = app.ui.tool_options.transform.clone();
     settings.legacy = app.session.prefs().general.use_legacy_free_transform;
@@ -342,7 +343,7 @@ pub fn canvas_tool(session: &FreeTransform, snapped: Vec<SnapLine>) -> Transform
 }
 
 /// Applies what the tool's keys asked for: `(apply, discard)` from `TransformTool::take_keys`.
-pub fn tool_keys(app: &mut PhotocraftApp, (apply, discard): (bool, bool)) {
+pub fn tool_keys(app: &mut PatronusPhotoApp, (apply, discard): (bool, bool)) {
     if discard {
         cancel(app);
     } else if apply {

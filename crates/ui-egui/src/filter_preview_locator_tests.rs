@@ -11,21 +11,21 @@ use egui::{Modifiers, PointerButton, Pos2, pos2, vec2};
 use egui_kittest::Harness;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 const SMART_SHARPEN: &str = "filter.sharpen.smartSharpen";
 
 /// A 400×300 document at 400 % (so it fills the window round the dialog) with the Brush selected,
 /// and the `command` filter dialog open over it when there is one.
-fn harness(command: Option<&str>, rotation: f32) -> Harness<'static, Box<PhotocraftApp>> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn harness(command: Option<&str>, rotation: f32) -> Harness<'static, Box<PatronusPhotoApp>> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
     app.sync_views();
     app.ui.extras.rulers = false;
     app.ui.tool = Tool::Brush;
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(vec2(1200.0, 800.0)).build_ui_state(
-        |ui, app: &mut Box<PhotocraftApp>| {
+        |ui, app: &mut Box<PatronusPhotoApp>| {
             let ctx = ui.ctx().clone();
             if !ctx.fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 return;
@@ -36,7 +36,7 @@ fn harness(command: Option<&str>, rotation: f32) -> Harness<'static, Box<Photocr
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     h.run_steps(4);
     // PLAN: assumed `ui.set` takes `rotation` beside `zoom` and `center` (it sets the active view).
     control(&mut h, "ui.set", json!({"zoom": 4.0, "center": [200.0, 150.0], "rotation": rotation}));
@@ -47,28 +47,28 @@ fn harness(command: Option<&str>, rotation: f32) -> Harness<'static, Box<Photocr
     h
 }
 
-fn control(h: &mut Harness<'static, Box<PhotocraftApp>>, method: &str, params: Value) {
+fn control(h: &mut Harness<'static, Box<PatronusPhotoApp>>, method: &str, params: Value) {
     crate::canvas::testing::control(h.state_mut(), method, params);
     h.run_steps(2);
 }
 
 /// The shown view's canvas rect.
-fn canvas_rect(h: &Harness<'static, Box<PhotocraftApp>>) -> egui::Rect {
+fn canvas_rect(h: &Harness<'static, Box<PatronusPhotoApp>>) -> egui::Rect {
     crate::canvas::testing::view(h.state()).expect("the canvas shows a view").rect
 }
 
 /// The document point under screen point `p` in the shown view.
-fn doc(h: &Harness<'static, Box<PhotocraftApp>>, p: Pos2) -> [f64; 2] {
+fn doc(h: &Harness<'static, Box<PatronusPhotoApp>>, p: Pos2) -> [f64; 2] {
     let at = crate::canvas::testing::view(h.state()).expect("the canvas shows a view").to_doc(p);
     [at.x, at.y]
 }
 
-fn dialog_id(h: &Harness<'static, Box<PhotocraftApp>>) -> DialogId {
+fn dialog_id(h: &Harness<'static, Box<PatronusPhotoApp>>) -> DialogId {
     h.state().framework.dialogs.stack().top().expect("a dialog is open")
 }
 
 /// The preview window's centre, in document pixels.
-fn centre(h: &Harness<'static, Box<PhotocraftApp>>) -> [f64; 2] {
+fn centre(h: &Harness<'static, Box<PatronusPhotoApp>>) -> [f64; 2] {
     let dialog = h.state().framework.dialogs.get_by_id::<HostedParamDialog>(dialog_id(h)).expect("the filter dialog");
     let p = dialog.preview_centre().expect("the preview pane has shown");
     [f64::from(p.x), f64::from(p.y)]
@@ -79,29 +79,29 @@ fn near(a: [f64; 2], b: [f64; 2]) -> bool {
 }
 
 /// The document's revision and undo depth: a click that reached a tool or ran a command moves them.
-fn edits(h: &Harness<'static, Box<PhotocraftApp>>) -> (u64, usize) {
+fn edits(h: &Harness<'static, Box<PatronusPhotoApp>>) -> (u64, usize) {
     let st = h.state().session.active().unwrap();
     (st.revision, st.history.past_len())
 }
 
 /// Whether any pixel of the active layer in the box was darkened by the Brush.
-fn painted(h: &Harness<'static, Box<PhotocraftApp>>, x: std::ops::Range<i32>, y: std::ops::Range<i32>) -> bool {
+fn painted(h: &Harness<'static, Box<PatronusPhotoApp>>, x: std::ops::Range<i32>, y: std::ops::Range<i32>) -> bool {
     let st = h.state().session.active().unwrap();
     let surface = st.doc.layer(st.active_layer.unwrap()).unwrap().surface().unwrap();
     y.flat_map(|y| x.clone().map(move |x| (x, y))).any(|(x, y)| surface.pixel(x, y)[0] < 0.99)
 }
 
-fn button(h: &mut Harness<'static, Box<PhotocraftApp>>, p: Pos2, down: bool) {
+fn button(h: &mut Harness<'static, Box<PatronusPhotoApp>>, p: Pos2, down: bool) {
     h.event(egui::Event::PointerButton { pos: p, button: PointerButton::Primary, pressed: down, modifiers: Modifiers::NONE });
     h.run_steps(1);
 }
 
-fn move_to(h: &mut Harness<'static, Box<PhotocraftApp>>, p: Pos2) {
+fn move_to(h: &mut Harness<'static, Box<PatronusPhotoApp>>, p: Pos2) {
     h.event(egui::Event::PointerMoved(p));
     h.run_steps(1);
 }
 
-fn click(h: &mut Harness<'static, Box<PhotocraftApp>>, p: Pos2) {
+fn click(h: &mut Harness<'static, Box<PatronusPhotoApp>>, p: Pos2) {
     move_to(h, p);
     button(h, p, true);
     button(h, p, false);
@@ -110,7 +110,7 @@ fn click(h: &mut Harness<'static, Box<PhotocraftApp>>, p: Pos2) {
 
 /// Sends `events` as one `ui.pointer` request, then runs frames until the window host has delivered them (one input per
 /// pass).
-fn pointer(h: &mut Harness<'static, Box<PhotocraftApp>>, events: Value) {
+fn pointer(h: &mut Harness<'static, Box<PatronusPhotoApp>>, events: Value) {
     crate::canvas::testing::control(h.state_mut(), "ui.pointer", json!({"events": events}));
     h.run_steps(2);
 }
@@ -196,7 +196,7 @@ fn a_tool_gesture_begun_before_the_dialog_still_ends_under_it() {
 #[test]
 fn a_crop_drag_begun_before_the_dialog_still_ends_under_it() {
     use crate::tools::crop_ui;
-    let extent = |h: &Harness<'static, Box<PhotocraftApp>>| {
+    let extent = |h: &Harness<'static, Box<PatronusPhotoApp>>| {
         let corners = crop_ui::frame(h.state()).expect("a crop frame").corners();
         // PLAN: assumed `Point { x, y }` fields of the behavior geometry point.
         (corners.iter().map(|p| p.x).fold(f64::MIN, f64::max), corners.iter().map(|p| p.y).fold(f64::MIN, f64::max))

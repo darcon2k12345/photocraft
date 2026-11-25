@@ -1,8 +1,8 @@
 //! #13862: a frame made around a layer is named "<layer name> Frame"; an empty frame keeps
 //! "Frame N", and an explicit `name` wins over both.
 use super::*;
-use photocraft_doc::Layer;
-use photocraft_geom::Rect;
+use patronusphoto_doc::Layer;
+use patronusphoto_geom::Rect;
 
 /// The issue's document: 600 x 400 px with a white Background, pixel layers Red (100 x 80 at
 /// 50,50) and Blue, and an empty pixel layer on top.
@@ -13,9 +13,9 @@ fn session() -> (Session, LayerId, LayerId) {
         .edit("setup", |doc, _| {
             let fmt = doc.pixel_format();
             let mut red = Layer::raster("Red", fmt);
-            red.surface_mut().unwrap().fill_rect(Rect::new(50, 50, 150, 130), &photocraft_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 1.0]));
+            red.surface_mut().unwrap().fill_rect(Rect::new(50, 50, 150, 130), &patronusphoto_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 1.0]));
             let mut blue = Layer::raster("Blue", fmt);
-            blue.surface_mut().unwrap().fill_rect(Rect::new(300, 200, 400, 280), &photocraft_raster::from_rgba(&fmt, [0.0, 0.0, 1.0, 1.0]));
+            blue.surface_mut().unwrap().fill_rect(Rect::new(300, 200, 400, 280), &patronusphoto_raster::from_rgba(&fmt, [0.0, 0.0, 1.0, 1.0]));
             let (r, b) = (red.id, blue.id);
             doc.layers.push(red);
             doc.layers.push(blue);

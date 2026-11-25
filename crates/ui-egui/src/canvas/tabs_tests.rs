@@ -5,20 +5,20 @@ use egui::accesskit::Role;
 use egui::vec2;
 use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
-use photocraft_engine::actions_cmds::ActionStep;
+use patronusphoto_engine::actions_cmds::ActionStep;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::theme::AppTheme;
 
 use super::tabs::tab_title_at;
 
 /// A real app window with `docs` documents named "ch1-pNN.png".
-fn harness(docs: usize) -> Harness<'static, Box<PhotocraftApp>> {
+fn harness(docs: usize) -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut h = Harness::builder().with_size(vec2(1000.0, 700.0)).with_max_steps(64).build_eframe(move |cc| {
         let theme = AppTheme::pro();
-        PhotocraftApp::setup_context(&cc.egui_ctx, theme.clone());
-        let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), crate::Services::default());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, theme.clone());
+        let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), crate::Services::default());
         // The theme is an interface preference, applied on the first frame: set the preference.
         app.save_theme(&theme).unwrap();
         for n in 1..=docs {
@@ -31,7 +31,7 @@ fn harness(docs: usize) -> Harness<'static, Box<PhotocraftApp>> {
 }
 
 /// How many tabs of the strip carry `name`. A tab's accessible name is its name, then its detail and modified mark.
-fn tabs_named(h: &Harness<'_, Box<PhotocraftApp>>, name: &str) -> usize {
+fn tabs_named(h: &Harness<'_, Box<PatronusPhotoApp>>, name: &str) -> usize {
     h.query_all_by_role(Role::Tab).filter(|n| n.accesskit_node().label().is_some_and(|label| label.contains(name))).count()
 }
 
@@ -39,7 +39,7 @@ fn tabs_named(h: &Harness<'_, Box<PhotocraftApp>>, name: &str) -> usize {
 // `ui-shell/src/shell/reveal.rs:95-99`) and the app harness does not hand the shell output to a trial; the panels'
 // visibility is read from the tree, by the Layers panel the default workspace docks.
 /// Whether the docked panels are drawn.
-fn panels_shown(h: &Harness<'_, Box<PhotocraftApp>>) -> bool {
+fn panels_shown(h: &Harness<'_, Box<PatronusPhotoApp>>) -> bool {
     h.query_all_by_label("Layers").next().is_some()
 }
 
@@ -79,9 +79,9 @@ fn ctrl() -> egui::Modifiers {
 #[test]
 fn ctrl_tab_cycles_through_the_document_tabs() {
     let mut h = harness(3);
-    let active = |h: &Harness<'_, Box<PhotocraftApp>>| h.state().session.active_index();
+    let active = |h: &Harness<'_, Box<PatronusPhotoApp>>| h.state().session.active_index();
     assert_eq!(active(&h), Some(2), "the last new document is active");
-    let press = |h: &mut Harness<'_, Box<PhotocraftApp>>, shift: bool| {
+    let press = |h: &mut Harness<'_, Box<PatronusPhotoApp>>, shift: bool| {
         h.key_press_modifiers(if shift { ctrl() | egui::Modifiers::SHIFT } else { ctrl() }, egui::Key::Tab);
         h.run_steps(2);
     };
@@ -120,7 +120,7 @@ fn ctrl_tab_records_a_relative_document_switch() {
 fn quick_mask_mode_names_the_quick_mask_in_the_tab() {
     let mut h = harness(1);
     h.state_mut().run("layer.new.layer", json!({})).unwrap();
-    let title = |h: &Harness<'_, Box<PhotocraftApp>>| tab_title_at(h.state(), 0, 100.0);
+    let title = |h: &Harness<'_, Box<PatronusPhotoApp>>| tab_title_at(h.state(), 0, 100.0);
 
     let detail = title(&h);
     assert!(detail.starts_with("ch1-p01.png @ 100%"), "{detail}");
@@ -151,10 +151,10 @@ fn a_tab_close_resolves_the_document_to_its_current_index() {
     assert_eq!(docs[0].doc.id, other);
 }
 
-fn tiled_app(width: f32) -> Harness<'static, Box<PhotocraftApp>> {
+fn tiled_app(width: f32) -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut h = Harness::builder().with_size(vec2(width, 720.0)).with_pixels_per_point(1.25).with_max_steps(64).build_eframe(|cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, AppTheme::pro());
-        let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), crate::Services::default());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, AppTheme::pro());
+        let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 180, "height": 120, "name": "Edited photograph with a long title.psd", "depth": 16})).unwrap();
         app.run("layer.new.layer", json!({"name": "Retouch"})).unwrap();
         app.run("file.new", json!({"width": 160, "height": 100, "name": "Reference photograph.psd"})).unwrap();
@@ -167,7 +167,7 @@ fn tiled_app(width: f32) -> Harness<'static, Box<PhotocraftApp>> {
     h
 }
 
-fn tiled_control<'a>(h: &'a Harness<'_, Box<PhotocraftApp>>, role: Role, label: &str) -> Option<egui_kittest::Node<'a>> {
+fn tiled_control<'a>(h: &'a Harness<'_, Box<PatronusPhotoApp>>, role: Role, label: &str) -> Option<egui_kittest::Node<'a>> {
     let area = h.state().last_canvas_rect;
     h.query_all_by_role(role).filter(|n| n.accesskit_node().label().is_some_and(|text| text.contains(label))).find(|n| area.contains(n.rect().center()))
 }

@@ -4,8 +4,8 @@
 //! doesn't build on an adapter that can run it fails. The shader itself is validated without a
 //! GPU ([`the_shader_validates_without_a_gpu`]), so a WGSL error fails on every runner.
 
-use photocraft_algo::camera_raw::{self as raw, CameraRaw, DevelopInputs, StoredVignetteStyle, Wheel};
-use photocraft_gpu::{CameraRawDevelop, DeviceHealth, Fault};
+use patronusphoto_algo::camera_raw::{self as raw, CameraRaw, DevelopInputs, StoredVignetteStyle, Wheel};
+use patronusphoto_gpu::{CameraRawDevelop, DeviceHealth, Fault};
 
 /// The settings and the job inputs (scale, grain seed, encoding) of one develop; `CameraRaw` is `#[non_exhaustive]`, so
 /// cases are built by [`cr!`].
@@ -79,9 +79,9 @@ struct Gpu {
 fn gpu() -> Option<Gpu> {
     let lock = crate::GPU_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let required = std::env::var_os("WGPU_BACKEND").is_some();
-    // `WGPU_BACKEND` picks the backend; `PHOTOCRAFT_TEST_FALLBACK_ADAPTER=1` the software one (WARP).
+    // `WGPU_BACKEND` picks the backend; `PATRONUSPHOTO_TEST_FALLBACK_ADAPTER=1` the software one (WARP).
     let instance = crate::instance();
-    let fallback = std::env::var_os("PHOTOCRAFT_TEST_FALLBACK_ADAPTER").is_some();
+    let fallback = std::env::var_os("PATRONUSPHOTO_TEST_FALLBACK_ADAPTER").is_some();
     let options = wgpu::RequestAdapterOptions { force_fallback_adapter: fallback, ..Default::default() };
     let adapter = match pollster::block_on(instance.request_adapter(&options)) {
         Ok(a) => a,
@@ -116,8 +116,8 @@ fn gpu() -> Option<Gpu> {
 /// appended to the tone shader, as the pass builds them.
 #[test]
 fn the_shaders_validate_without_a_gpu() {
-    let tone = format!("{}\n{}", photocraft_gpu::CAMERA_RAW_TONE_SHADER, photocraft_gpu::CAMERA_RAW_FILTERS_SHADER);
-    for src in [photocraft_gpu::CAMERA_RAW_SHADER, tone.as_str()] {
+    let tone = format!("{}\n{}", patronusphoto_gpu::CAMERA_RAW_TONE_SHADER, patronusphoto_gpu::CAMERA_RAW_FILTERS_SHADER);
+    for src in [patronusphoto_gpu::CAMERA_RAW_SHADER, tone.as_str()] {
         let module = wgpu::naga::front::wgsl::parse_str(src).unwrap_or_else(|e| panic!("{}", e.emit_to_string(src)));
         wgpu::naga::valid::Validator::new(wgpu::naga::valid::ValidationFlags::all(), wgpu::naga::valid::Capabilities::empty())
             .validate(&module)

@@ -11,9 +11,13 @@ use super::{BufferAlloc, InfallibleBufferAlloc, Layer, LayerContent, Rect, Surfa
 /// Pixels are identified by their copy-on-write tile pointers. `pin` sees every tile hashed: a
 /// cache entry keeps a [`std::sync::Weak`] to each, which reserves the tile's address (so no
 /// other tile can reuse it and match the key) without keeping its pixels alive (#4530).
-pub(crate) fn layer_identity(layer: &Layer, h: &mut std::collections::hash_map::DefaultHasher, pin: &mut dyn FnMut(&std::sync::Arc<photocraft_raster::Tile>)) {
+pub(crate) fn layer_identity(
+    layer: &Layer,
+    h: &mut std::collections::hash_map::DefaultHasher,
+    pin: &mut dyn FnMut(&std::sync::Arc<patronusphoto_raster::Tile>),
+) {
     use std::hash::{Hash, Hasher};
-    fn surface_fp(s: &Surface, pin: &mut dyn FnMut(&std::sync::Arc<photocraft_raster::Tile>)) -> u64 {
+    fn surface_fp(s: &Surface, pin: &mut dyn FnMut(&std::sync::Arc<patronusphoto_raster::Tile>)) -> u64 {
         let mut h = std::collections::hash_map::DefaultHasher::new();
         s.format().hash(&mut h);
         // Missing tiles read the default pixel, so tile identity alone is not pixel identity.
@@ -78,7 +82,7 @@ pub(crate) fn layer_identity(layer: &Layer, h: &mut std::collections::hash_map::
 struct FxEntry {
     maps: std::sync::Arc<effects::FxMaps>,
     /// The tiles the key identifies (see [`layer_identity`]): their addresses, not their pixels.
-    _pin: Vec<std::sync::Weak<photocraft_raster::Tile>>,
+    _pin: Vec<std::sync::Weak<patronusphoto_raster::Tile>>,
     bytes: usize,
 }
 
@@ -129,8 +133,8 @@ pub fn purge_effect_cache() -> usize {
 /// caches are not purged again on every call while one document stays unreadable.
 pub fn discard_unreadable_pixel_caches() {
     static SEEN: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-    let generation = photocraft_raster::spill::read_error_generation();
-    if SEEN.swap(generation, std::sync::atomic::Ordering::AcqRel) != generation && photocraft_raster::spill::any_failed() {
+    let generation = patronusphoto_raster::spill::read_error_generation();
+    if SEEN.swap(generation, std::sync::atomic::Ordering::AcqRel) != generation && patronusphoto_raster::spill::any_failed() {
         purge_effect_cache();
         super::bounds::purge();
         super::masks::purge();
@@ -223,7 +227,7 @@ pub(crate) fn effect_maps_with<A: BufferAlloc>(layer: &Layer, rect: Rect, cx: &C
         region = Rect::EMPTY;
     }
     static NO_CACHE: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    if *NO_CACHE.get_or_init(|| std::env::var_os("PHOTOCRAFT_FX_NOCACHE").is_some()) {
+    if *NO_CACHE.get_or_init(|| std::env::var_os("PATRONUSPHOTO_FX_NOCACHE").is_some()) {
         let shape = if region.is_empty() { Vec::new() } else { effect_shape_with(layer, region, cx, alloc)? };
         return Ok(std::sync::Arc::new(effects::build_maps_prepared(layer, shape, region, &cx.light, &texture_ctx(layer, region, cx), cx.patterns)));
     }
@@ -248,7 +252,7 @@ fn build_fx_slot_maps_with<A: BufferAlloc>(
     slot: &FxSlot,
     alloc: &A,
 ) -> Result<std::sync::Arc<effects::FxMaps>, A::Error> {
-    let generation = photocraft_raster::spill::read_error_generation();
+    let generation = patronusphoto_raster::spill::read_error_generation();
     let shape: Vec<f32> = if region.is_empty() { Vec::new() } else { effect_shape_with(layer, region, cx, alloc)? };
     let maps = effects::build_maps_prepared(layer, shape, region, &cx.light, &texture_ctx(layer, region, cx), cx.patterns);
     let mut pin = Vec::new();
@@ -258,9 +262,9 @@ fn build_fx_slot_maps_with<A: BufferAlloc>(
         pin.push(std::sync::Arc::downgrade(t));
     });
     // The maps, plus what each reserved tile address keeps allocated.
-    let bytes = maps.bytes().saturating_add(pin.len().saturating_mul(std::mem::size_of::<photocraft_raster::Tile>() + 2 * std::mem::size_of::<usize>()));
+    let bytes = maps.bytes().saturating_add(pin.len().saturating_mul(std::mem::size_of::<patronusphoto_raster::Tile>() + 2 * std::mem::size_of::<usize>()));
     let maps = std::sync::Arc::new(maps);
-    if !readable || photocraft_raster::spill::check_since(generation).is_err() {
+    if !readable || patronusphoto_raster::spill::check_since(generation).is_err() {
         // Built from a scratch placeholder: use it for this frame, never cache it.
         return Ok(maps);
     }

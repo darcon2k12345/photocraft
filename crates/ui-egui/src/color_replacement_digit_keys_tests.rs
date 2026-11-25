@@ -2,11 +2,11 @@
 
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
-fn app(tool: Tool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app(tool: Tool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     app.ui.tool = tool;
@@ -14,7 +14,7 @@ fn app(tool: Tool) -> Box<PhotocraftApp> {
 }
 
 /// Send a current typed digit command at the old fixture's millisecond timestamp.
-fn press(app: &mut PhotocraftApp, digit: u8, shift: bool, now_ms: f64) {
+fn press(app: &mut PatronusPhotoApp, digit: u8, shift: bool, now_ms: f64) {
     use craft::ui::canvas::OpacityDigit as D;
     let commands = if shift {
         [D::SecondZero, D::SecondOne, D::SecondTwo, D::SecondThree, D::SecondFour, D::SecondFive, D::SecondSix, D::SecondSeven, D::SecondEight, D::SecondNine]
@@ -38,13 +38,13 @@ fn press(app: &mut PhotocraftApp, digit: u8, shift: bool, now_ms: f64) {
 }
 
 /// Alt+5's current catalog command is ignored by Color Replacement; the app test below also sends the real chord.
-fn alt_digit(app: &mut PhotocraftApp, key: egui::Key) {
+fn alt_digit(app: &mut PatronusPhotoApp, key: egui::Key) {
     assert_eq!(key, egui::Key::Num5);
     let fired = crate::blend_keys::test_fired(craft::ui::runtime::commands::CommandRef::new("tools.smoothing.5"));
     assert!(!crate::opacity_keys::fired(app, &fired));
 }
 
-fn layer(app: &PhotocraftApp) -> (f32, f32) {
+fn layer(app: &PatronusPhotoApp) -> (f32, f32) {
     let st = app.session.active().unwrap();
     let l = st.doc.layer(st.active_layer.unwrap()).unwrap();
     (l.opacity, l.fill_opacity)
@@ -123,8 +123,8 @@ fn real_app_keys_set_tolerance_and_modifiers_leave_all_options_alone() {
     use egui::{Event, Key, Modifiers};
     use egui_kittest::Harness;
     let mut h = Harness::builder().with_size(egui::vec2(1200.0, 800.0)).with_step_dt(1.0 / 60.0).with_max_steps(64).build_eframe(|cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        let mut a = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), Default::default());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        let mut a = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), Default::default());
         a.run("file.new", json!({"width": 32, "height": 32})).unwrap();
         a.run("layer.new.layer", json!({})).unwrap();
         a.ui.tool = Tool::ColorReplacement;
@@ -132,7 +132,7 @@ fn real_app_keys_set_tolerance_and_modifiers_leave_all_options_alone() {
     });
     h.run_steps(4);
     let before = (h.state().ui.tool_options.clone(), h.state().session.tools.brush.clone(), layer(h.state()));
-    let key = |h: &mut Harness<'_, Box<PhotocraftApp>>, modifiers| {
+    let key = |h: &mut Harness<'_, Box<PatronusPhotoApp>>, modifiers| {
         h.event(Event::ModifiersChanged(modifiers));
         h.event(Event::Key { key: Key::Num5, physical_key: Some(Key::Num5), pressed: true, repeat: false, modifiers });
         h.event(Event::Key { key: Key::Num5, physical_key: Some(Key::Num5), pressed: false, repeat: false, modifiers });

@@ -6,10 +6,10 @@ use craft::ui::canvas::RasterSource;
 use craft::ui::primitives::Revision;
 use egui::{Pos2, vec2};
 use egui_kittest::Harness;
-use photocraft_doc::Document;
+use patronusphoto_doc::Document;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing;
 use crate::canvas::{CompositePrep, ToolEvent, canvas_display, damage_since, display_doc, tool_event};
 use crate::state::Tool;
@@ -17,37 +17,37 @@ use crate::state::Tool;
 const M: egui::Modifiers = egui::Modifiers::NONE;
 
 /// The revision of document `idx`'s canvas composite on `output` this pass, recorded as shown, as a display draws it.
-fn composite_revision(app: &mut PhotocraftApp, ctx: &egui::Context, idx: usize, output: Option<u32>) -> Revision {
+fn composite_revision(app: &mut PatronusPhotoApp, ctx: &egui::Context, idx: usize, output: Option<u32>) -> Revision {
     let prep = CompositePrep::new(app, ctx, idx, output, None).expect("an open document");
     prep.source(app).revision()
 }
 
 /// How many document pixels document 0's canvas composite redraws since it showed `seen`; `None` for all of them.
-fn redrawn_since(app: &mut PhotocraftApp, ctx: &egui::Context, seen: Revision) -> Option<i64> {
+fn redrawn_since(app: &mut PatronusPhotoApp, ctx: &egui::Context, seen: Revision) -> Option<i64> {
     let prep = CompositePrep::new(app, ctx, 0, None, None).expect("an open document");
     prep.source(app).damage(seen).map(|r| i64::from(r.width()) * i64::from(r.height()))
 }
 
 /// The messages of the open alerts.
-fn errors(app: &PhotocraftApp) -> Vec<String> {
+fn errors(app: &PatronusPhotoApp) -> Vec<String> {
     app.framework.dialogs.open_dialogs().iter().filter_map(|d| d.fields.as_ref()?.get("message")?.as_str().map(str::to_string)).collect()
 }
 
 /// The stroke the live paint gesture holds, as the points the engine's commit gets.
-fn stroke_points(app: &PhotocraftApp) -> Vec<photocraft_paint::StrokePoint> {
-    super::stroking(app).expect("a live gesture").points.iter().map(|p| photocraft_paint::StrokePoint::new(p[0], p[1], p[2] as f32)).collect()
+fn stroke_points(app: &PatronusPhotoApp) -> Vec<patronusphoto_paint::StrokePoint> {
+    super::stroking(app).expect("a live gesture").points.iter().map(|p| patronusphoto_paint::StrokePoint::new(p[0], p[1], p[2] as f32)).collect()
 }
 
 /// The live trail's coverage reader.
-fn trail(app: &PhotocraftApp) -> Option<&crate::tools::stroke_trail::Trail> {
+fn trail(app: &PatronusPhotoApp) -> Option<&crate::tools::stroke_trail::Trail> {
     app.trail.as_ref()
 }
 
 /// A whole-document canvas at 100 % in a harness, for tests that feed several moves in one pass.
-fn harness(mut app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
+fn harness(mut app: Box<PatronusPhotoApp>) -> Harness<'static, Box<PatronusPhotoApp>> {
     app.sync_views();
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(vec2(900.0, 600.0)).with_step_dt(1.0 / 60.0).build_app(
-        |ui, app: &mut PhotocraftApp| {
+        |ui, app: &mut PatronusPhotoApp| {
             let ctx = ui.ctx().clone();
             if !ctx.fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 return;
@@ -56,7 +56,7 @@ fn harness(mut app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> 
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     h.run_steps(4);
     let v = &mut h.state_mut().ui.views[0];
     v.zoom = 1.0;
@@ -66,12 +66,12 @@ fn harness(mut app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> 
     h
 }
 
-fn at(h: &Harness<'static, Box<PhotocraftApp>>, x: f64, y: f64) -> Pos2 {
+fn at(h: &Harness<'static, Box<PatronusPhotoApp>>, x: f64, y: f64) -> Pos2 {
     testing::to_screen(h.state(), [x, y])
 }
 
-fn mixer_app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn mixer_app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width":120,"height":60,"background":"#00ff00"})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     app.run("tools.setBrush", json!({"size":12,"pressureSize":false})).unwrap();
@@ -83,7 +83,7 @@ fn mixer_app() -> Box<PhotocraftApp> {
 fn smoothing_preview_redraws_the_tail_each_step() {
     // The tail drawn at one step must not linger once the brush moves on: a sharp turn would
     // leave a stale tail behind if it weren't restored.
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     testing::still_clock(&mut app);
     app.run("file.new", json!({"width": 200, "height": 120, "background": "transparent"})).unwrap();
     app.run("tools.setBrush", json!({"brush": {"size": 10, "hardness": 1.0, "smoothing": {"amount": 0.6}}})).unwrap();
@@ -105,7 +105,7 @@ fn retouch_drags_show_the_footprint_without_wedges() {
     // small the steps. The Remove Tool's is where the stroke's dabs reach at all, which is what it
     // removes, so a soft tip's whole reach past the radius is tinted.
     for hardness in [1.0, 0.0] {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
         app.run("file.new", json!({"width": 120, "height": 60})).unwrap();
         app.ui.tool = Tool::Remove;
         crate::paint_mouse::sync_tool_brush(&mut app);
@@ -117,8 +117,8 @@ fn retouch_drags_show_the_footprint_without_wedges() {
         }
         // The stroke the removal gets on release, and the pixels its hole takes.
         let points = stroke_points(&app);
-        let brush = photocraft_engine::retouch_cmds::stroke_brush(&app.session.tools.brush, &json!({}));
-        let (b, cov) = photocraft_paint::retouch::stroke_coverage(&photocraft_paint::Stroke { brush, points });
+        let brush = patronusphoto_engine::retouch_cmds::stroke_brush(&app.session.tools.brush, &json!({}));
+        let (b, cov) = patronusphoto_paint::retouch::stroke_coverage(&patronusphoto_paint::Stroke { brush, points });
         let shown = trail(&app).expect("the trail shows while dragging");
         assert_eq!(shown.scale(), 1.0);
         let mut beyond = 0;
@@ -141,7 +141,7 @@ fn retouch_drags_show_the_footprint_without_wedges() {
 #[test]
 fn spot_healing_trail_is_the_coverage_the_heal_uses() {
     // #2364: a soft brush with pen-pressure size showed as a hard footprint at full size.
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 120, "height": 60})).unwrap();
     let brush = json!({"size": 30, "hardness": 0.0, "shapeDynamics": {"enabled": true, "size": {"control": "penPressure"}}});
     app.run("tools.setBrush", json!({ "brush": brush })).unwrap();
@@ -152,8 +152,8 @@ fn spot_healing_trail_is_the_coverage_the_heal_uses() {
     }
     // The stroke the heal gets on release, and its coverage.
     let points = stroke_points(&app);
-    let brush = photocraft_engine::retouch_cmds::stroke_brush(&app.session.tools.brush, &json!({}));
-    let (b, cov) = photocraft_paint::retouch::stroke_coverage(&photocraft_paint::Stroke { brush, points });
+    let brush = patronusphoto_engine::retouch_cmds::stroke_brush(&app.session.tools.brush, &json!({}));
+    let (b, cov) = patronusphoto_paint::retouch::stroke_coverage(&patronusphoto_paint::Stroke { brush, points });
     let shown = trail(&app).expect("the trail shows while dragging");
     let mut soft = 0;
     for y in 0..60 {
@@ -166,14 +166,14 @@ fn spot_healing_trail_is_the_coverage_the_heal_uses() {
     }
     assert!(soft > 50, "a soft brush shows a soft edge");
     // Half pressure halves the 30 px tip: nothing past its (soft) reach.
-    let reach = photocraft_paint::tip_reach(7.5, app.session.tools.brush.hardness).ceil() as usize + 2;
+    let reach = patronusphoto_paint::tip_reach(7.5, app.session.tools.brush.hardness).ceil() as usize + 2;
     assert_eq!(shown.coverage(50, 30 + reach), 0, "half pressure halves the 30 px tip");
 }
 
 /// The held drag shows true mixed paint while Alt sampling remains separate from painting.
 #[test]
 fn mixer_drag_shows_actual_mixed_paint_before_release_and_alt_never_paints() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     testing::still_clock(&mut app);
     app.run("file.new", json!({"width":120,"height":60,"background":"#00ff00"})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
@@ -222,7 +222,7 @@ fn mixer_release_includes_a_new_endpoint_and_deferred_frame_samples() {
         app.run("tools.setBrush", json!({"brush": {"smoothing": {"amount": 0.0}}})).unwrap();
         let mut h = harness(app);
         let before = h.state().session.active().unwrap().doc.clone();
-        let p = |h: &Harness<'static, Box<PhotocraftApp>>, x: f64| at(h, x, 30.0);
+        let p = |h: &Harness<'static, Box<PatronusPhotoApp>>, x: f64| at(h, x, 30.0);
         let start = p(&h, 20.0);
         h.event(egui::Event::PointerMoved(start));
         h.run_steps(1);
@@ -288,13 +288,13 @@ fn mixer_cancel_without_an_edit() {
 /// Control-driven strokes remain live in a background window, matching the ordinary Brush.
 #[test]
 fn mixer_background_window_keeps_and_commits_control_strokes() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width":120,"height":60,"background":"transparent"})).unwrap();
     app.run("tools.setBrush", json!({"brush":{"size":12,"pressureSize":false}})).unwrap();
     let steps = app.session.active().unwrap().history.past_len();
     let mut h = harness(app);
     let ctx = h.ctx.clone();
-    let pointer = |h: &mut Harness<'static, Box<PhotocraftApp>>, events: serde_json::Value| {
+    let pointer = |h: &mut Harness<'static, Box<PatronusPhotoApp>>, events: serde_json::Value| {
         let (request, _reply) = crate::control::ControlRequest::new("ui.pointer", json!({"tool":"mixerBrush","events": events}));
         let _ = crate::control::handle(h.state_mut(), &ctx, &request);
         // Every pass of the unfocused window runs the queued input.
@@ -318,7 +318,7 @@ fn mixer_background_window_keeps_and_commits_control_strokes() {
 #[test]
 fn mixer_drag_above_the_preview_size_paints_on_release() {
     for locked in [false, true] {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
         app.run("file.new", json!({"width":120,"height":60,"background":"#00ff00"})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();
         if locked {
@@ -344,7 +344,7 @@ fn mixer_drag_above_the_preview_size_paints_on_release() {
 #[test]
 fn brush_drag_shows_the_real_stroke_and_commits_it() {
     // The drag shows the real soft stroke, not a hard flat stand-in.
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 120, "height": 60, "background": "transparent"})).unwrap();
     app.run("tools.setBrush", json!({"brush": {"size": 20, "hardness": 0.0}})).unwrap();
     app.ui.tool = Tool::Brush;
@@ -373,7 +373,7 @@ fn brush_drag_shows_the_real_stroke_and_commits_it() {
 fn live_stroke_uses_pen_tilt_and_redraws_partially() {
     // Pen tilt drives the size; the preview must use the tilt the commit gets, and each step
     // redraws only the pixels it touched.
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 4097, "height": 90, "background": "transparent"})).unwrap();
     // Smoothing off: the default 10 % lag (measured, #11888) on wall-clock times would leave the
@@ -404,8 +404,8 @@ fn live_stroke_uses_pen_tilt_and_redraws_partially() {
 /// Brush drag along y = 40 with one canvas frame per pointer move; returns the document the
 /// canvas showed at the last move, the committed one, and whether the release refreshed only
 /// the stroke's rectangle.
-fn drag_frames(smoothing: f32, xs: &[f64]) -> (std::sync::Arc<Document>, std::sync::Arc<Document>, bool, Box<PhotocraftApp>) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn drag_frames(smoothing: f32, xs: &[f64]) -> (std::sync::Arc<Document>, std::sync::Arc<Document>, bool, Box<PatronusPhotoApp>) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     let ctx = app.ctx().clone();
     testing::still_clock(&mut app);
     app.run("file.new", json!({"width": 200, "height": 80, "background": "transparent"})).unwrap();
@@ -460,7 +460,7 @@ fn smoothed_stroke_shows_its_catch_up_tail_while_drawing() {
     let (_, rough, _, _) = drag_frames(0.0, &xs);
     assert!(!same_pixels(&rough, &done), "smoothing changes the stroke");
     // And the commit is what `paint.stroke` gives with that smoothing.
-    let mut s = photocraft_engine::Session::new();
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 200, "height": 80, "background": "transparent"})).unwrap();
     s.execute("tools.setBrush", json!({"brush": {"size": 16, "hardness": 0.5, "smoothing": {"amount": 0.5, "catchUpOnEnd": true}}})).unwrap();
     let mut pts = vec![json!([10.0, 40.0, 1.0])];
@@ -480,10 +480,10 @@ fn within_a_level(a: &Document, b: &Document) -> bool {
 
 /// #10074: painting a group looked as if it worked (the stroke's trail followed the pointer) and
 /// vanished on release with only a status-bar note. Photoshop refuses at the press with a
-/// message; so does PhotoCraft, and nothing is painted or drawn.
+/// message; so does Patronus Photo, and nothing is painted or drawn.
 #[test]
 fn painting_a_group_is_refused_at_the_press_with_a_message() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 40, "height": 20, "background": "white"})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     app.run("layer.groupLayers", json!({})).unwrap();
@@ -526,7 +526,7 @@ fn painting_a_group_is_refused_at_the_press_with_a_message() {
     app.ui.mask_target = true;
     app.sync_mask_targets();
     assert_eq!(crate::canvas::paint_target(&app), json!("mask"));
-    let mask_at = |app: &PhotocraftApp, x: i32| {
+    let mask_at = |app: &PatronusPhotoApp, x: i32| {
         let st = app.session.active().unwrap();
         st.doc.layer(group).unwrap().mask.as_ref().unwrap().surface.sample_channel(x, 10, 0)
     };

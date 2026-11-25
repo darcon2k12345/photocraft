@@ -116,7 +116,7 @@ fn fill_paints_a_cmyk_pick_with_the_picked_inks() {
     let cyan = [1.0f32, 0.0, 0.0, 0.0];
     let mut s = session(16, 16);
     s.execute("image.mode.cmyk", json!({})).unwrap();
-    let rgb = photocraft_color::convert::cmyk_to_rgb(cyan).map(|c| c.clamp(0.0, 1.0));
+    let rgb = patronusphoto_color::convert::cmyk_to_rgb(cyan).map(|c| c.clamp(0.0, 1.0));
     s.execute("tools.setColors", json!({"foreground": rgb, "foregroundCmyk": cyan})).unwrap();
     s.execute("paint.stroke", json!({"points": [[2, 2], [14, 2], [14, 14], [2, 14]], "fill": true, "hardness": 1.0})).unwrap();
     let st = s.active().unwrap();
@@ -235,7 +235,7 @@ fn pencil_is_aliased_and_auto_erases() {
 #[test]
 fn pencil_auto_erase_probes_a_cmyk_pick_with_the_picked_inks() {
     let rich_black = [0.6f32, 0.4, 0.4, 1.0];
-    let rgb = photocraft_color::convert::cmyk_to_rgb(rich_black).map(|c| c.clamp(0.0, 1.0));
+    let rgb = patronusphoto_color::convert::cmyk_to_rgb(rich_black).map(|c| c.clamp(0.0, 1.0));
     let mut s = session(40, 20);
     s.execute("image.mode.cmyk", json!({})).unwrap();
     s.execute("tools.setColors", json!({"foreground": rgb, "foregroundCmyk": rich_black, "background": "#ffffff"})).unwrap();
@@ -285,7 +285,7 @@ fn color_replacement_modes() {
     let before = rgba(&s, 30, 20);
     s.execute("paint.colorReplacement", json!({"points": [[10, 20], [50, 20]], "size": 20, "mode": "color", "tolerance": 20})).unwrap();
     let c = rgba(&s, 30, 20);
-    let lum = |c: [f32; 4]| photocraft_color::blend::lum([c[0], c[1], c[2]]);
+    let lum = |c: [f32; 4]| patronusphoto_color::blend::lum([c[0], c[1], c[2]]);
     assert!(c[0] > c[1], "{c:?}");
     assert!((lum(c) - lum(before)).abs() < 0.02);
     s.execute("paint.colorReplacement", json!({"points": [[10, 5], [50, 5]], "size": 6, "mode": "luminosity", "sampling": "once", "limits": "discontiguous"}))
@@ -395,13 +395,13 @@ fn presets_save_captures_size_tool_settings_and_color_as_asked() {
     s.tools.foreground = [0.0, 0.0, 1.0, 1.0];
     s.execute("tools.setBrush", json!({"preset": "Legacy"})).unwrap();
     let b = &s.tools.brush;
-    assert_eq!((b.size, b.opacity, b.flow, b.mode, b.pressure_size), (40.0, 0.5, 0.25, photocraft_color::BlendMode::Multiply, false), "everything it saved");
+    assert_eq!((b.size, b.opacity, b.flow, b.mode, b.pressure_size), (40.0, 0.5, 0.25, patronusphoto_color::BlendMode::Multiply, false), "everything it saved");
     assert_eq!(s.tools.foreground, [0.0, 0.0, 1.0, 1.0], "a preset without Include Color leaves the foreground");
 
     s.execute("tools.setBrush", other.clone()).unwrap();
     s.execute("tools.setBrush", json!({"preset": "Bare"})).unwrap();
     let b = &s.tools.brush;
-    assert_eq!((b.size, b.opacity, b.flow, b.mode, b.pressure_size), (9.0, 1.0, 1.0, photocraft_color::BlendMode::Normal, true), "the tool's own");
+    assert_eq!((b.size, b.opacity, b.flow, b.mode, b.pressure_size), (9.0, 1.0, 1.0, patronusphoto_color::BlendMode::Normal, true), "the tool's own");
     assert_eq!(s.tools.current_preset.as_deref(), Some("Bare"));
 
     s.execute("tools.setBrush", json!({"preset": "Red"})).unwrap();
@@ -572,8 +572,8 @@ fn set_brush_keeps_untouched_bitmaps_and_replaces_touched_ones() {
     let tile = |w, h, k: u32| GrayTile::from_fn(w, h, move |x, y| ((x * k + y) % 5) as f32 / 4.0);
     let base = BrushSettings {
         tip: TipShape::Sampled(tile(900, 700, 3)),
-        dual_brush: photocraft_paint::DualBrush { tip: TipShape::Sampled(tile(30, 20, 2)), ..Default::default() },
-        texture: photocraft_paint::Texture { pattern: photocraft_paint::Pattern::Tile(tile(64, 64, 1)), ..Default::default() },
+        dual_brush: patronusphoto_paint::DualBrush { tip: TipShape::Sampled(tile(30, 20, 2)), ..Default::default() },
+        texture: patronusphoto_paint::Texture { pattern: patronusphoto_paint::Pattern::Tile(tile(64, 64, 1)), ..Default::default() },
         ..Default::default()
     };
     let cmd = "tools.setBrush";
@@ -592,7 +592,7 @@ fn set_brush_keeps_untouched_bitmaps_and_replaces_touched_ones() {
     )
     .unwrap();
     assert_eq!((&b.tip, &b.dual_brush.tip), (&TipShape::Round, &TipShape::Round));
-    assert!(matches!(b.texture.pattern, photocraft_paint::Pattern::Procedural { size: 32, .. }));
+    assert!(matches!(b.texture.pattern, patronusphoto_paint::Pattern::Procedural { size: 32, .. }));
     // A section replaced by a non-object is an error, not a silently kept bitmap.
     assert!(merge_brush(&base, &json!({"dualBrush": 3}), cmd).is_err());
     assert!(merge_brush(&base, &json!(null), cmd).is_err());
@@ -697,7 +697,7 @@ fn define_brush_from_selection_propagates_compositor_allocation_error_transactio
     let presets_before = s.tools.presets.clone();
     let history_before = s.active().unwrap().history.past_len();
     let result = define_from_selection_with_renderer(&mut s, &json!({"name": "Blob"}), |_, _, _| {
-        Err(photocraft_compose::RenderBandsError::Allocation(photocraft_raster::AllocationError::NotEnoughMemory { bytes: 64 }))
+        Err(patronusphoto_compose::RenderBandsError::Allocation(patronusphoto_raster::AllocationError::NotEnoughMemory { bytes: 64 }))
     });
     assert!(result.is_err_and(|e| e.to_string().contains("defining a brush from the selection")));
     assert!(std::sync::Arc::ptr_eq(&doc, &s.active().unwrap().doc));
@@ -867,7 +867,7 @@ fn live_pencil_matches_the_committed_pencil_and_auto_erases() {
 }
 
 /// Pencil latency on a 24 MP document: the time to start a live stroke, per pointer move, and
-/// to commit. `cargo test -p photocraft-engine --release --lib pencil_latency -- --ignored --nocapture`
+/// to commit. `cargo test -p patronusphoto-engine --release --lib pencil_latency -- --ignored --nocapture`
 #[test]
 #[ignore]
 fn pencil_latency_24mp() {
@@ -953,11 +953,11 @@ fn pose_axes_commands_keep_minimal_patches_legacy_alias_and_preset_replay() {
     let mut s = session(100, 80);
     let input = StrokePoint { tilt_x: 13.0, tilt_y: -27.0, pressure: 0.71, rotation: 67.0, ..Default::default() };
     s.execute("tools.setBrush", json!({"brush": {"pose": {"enabled": true, "tiltX": 45, "tiltY": -18, "overrideTilt": true}}})).unwrap();
-    assert_eq!(photocraft_paint::dynamics::apply_pose(&s.tools.brush, input), StrokePoint { tilt_x: 45.0, tilt_y: -18.0, ..input });
+    assert_eq!(patronusphoto_paint::dynamics::apply_pose(&s.tools.brush, input), StrokePoint { tilt_x: 45.0, tilt_y: -18.0, ..input });
     let before = s.tools.brush.clone();
     s.execute("tools.setBrush", json!({"pose": {"overrideTiltX": false}})).unwrap();
     assert_eq!(
-        photocraft_paint::dynamics::apply_pose(&s.tools.brush, input),
+        patronusphoto_paint::dynamics::apply_pose(&s.tools.brush, input),
         StrokePoint { tilt_y: -18.0, ..input },
         "turning X off retains Y override and live X input"
     );
@@ -969,12 +969,12 @@ fn pose_axes_commands_keep_minimal_patches_legacy_alias_and_preset_replay() {
     assert_eq!(wire["pose"]["overrideTilt"], false, "legacy readback reports whether both axes are overridden");
     s.execute("brush.presets.save", json!({"name": "Independent pose"})).unwrap();
     s.execute("tools.setBrush", json!({"brush": {"pose": {"overrideTilt": false}}})).unwrap();
-    assert_eq!(photocraft_paint::dynamics::apply_pose(&s.tools.brush, input), input, "legacy false clears both axes even after axis editing");
+    assert_eq!(patronusphoto_paint::dynamics::apply_pose(&s.tools.brush, input), input, "legacy false clears both axes even after axis editing");
     s.execute("tools.setBrush", json!({"preset": "Independent pose"})).unwrap();
     assert_eq!(s.tools.brush.pose, mixed.pose, "preset picking preserves independent state");
     // Explicit axis keys win over a legacy combined key in the same command.
     s.execute("tools.setBrush", json!({"brush": {"pose": {"overrideTilt": true, "overrideTiltY": false}}})).unwrap();
-    assert_eq!(photocraft_paint::dynamics::apply_pose(&s.tools.brush, input), StrokePoint { tilt_x: 45.0, ..input });
+    assert_eq!(patronusphoto_paint::dynamics::apply_pose(&s.tools.brush, input), StrokePoint { tilt_x: 45.0, ..input });
     let mut replay = Session::new();
     for (id, params) in &s.journal {
         replay.execute(id, params.clone()).unwrap();
@@ -1012,7 +1012,7 @@ fn new_brush_controls_round_trip_through_set_brush() {
     s.execute("tools.setBrush", json!({ "brush": patch })).unwrap();
     let b = &s.tools.brush;
     assert!(!b.spacing_enabled && b.shape_dynamics.brush_projection && b.shape_dynamics.tilt_scale == 1.5);
-    assert_eq!(b.transfer.wetness.control, photocraft_paint::Control::PenPressure);
+    assert_eq!(b.transfer.wetness.control, patronusphoto_paint::Control::PenPressure);
     assert_eq!((b.transfer.mix.jitter, b.transfer.mix.minimum), (0.6, 0.2));
     assert!(b.locks.shape_dynamics && b.locks.texture && b.locks.noise && !b.locks.scattering);
     assert_eq!((b.mixer.wet, b.mixer.load, b.mixer.mix, b.mixer.flow, b.mixer.sample_all_layers), (0.8, 0.25, 0.4, 0.9, true));
@@ -1371,7 +1371,7 @@ fn set_brush_takes_a_per_dynamic_curve_and_a_patch_resets_it() {
     assert!(with.transfer.opacity.curve.is_linear(), "other dynamics keep their own curve");
     // The panel's diff back to linear is a real patch, and applying it restores the linear curve.
     let mut linear = with.clone();
-    linear.shape_dynamics.size.curve = photocraft_paint::ResponseCurve::LINEAR;
+    linear.shape_dynamics.size.curve = patronusphoto_paint::ResponseCurve::LINEAR;
     let patch = brush_patch(&with, &linear);
     assert_eq!(patch["shapeDynamics"]["size"]["curve"], json!([[0.0, 0.0], [1.0, 1.0]]));
     s.execute("tools.setBrush", patch).unwrap();
@@ -1523,7 +1523,7 @@ fn brush_and_pencil_paint_a_cmyk_pick_with_the_picked_inks() {
     for cmd in ["paint.stroke", "paint.pencil"] {
         let mut s = session(16, 16);
         s.execute("image.mode.cmyk", json!({})).unwrap();
-        let rgb = photocraft_color::convert::cmyk_to_rgb(cyan).map(|c| c.clamp(0.0, 1.0));
+        let rgb = patronusphoto_color::convert::cmyk_to_rgb(cyan).map(|c| c.clamp(0.0, 1.0));
         s.execute("tools.setColors", json!({"foreground": rgb, "foregroundCmyk": cyan})).unwrap();
         s.execute(cmd, json!({"points": [[8.0, 8.0]], "size": 6.0, "hardness": 1.0})).unwrap();
         let st = s.active().unwrap();

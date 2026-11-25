@@ -1,10 +1,10 @@
-//! PDF export model mapping for PhotoCraft.
+//! PDF export model mapping for Patronus Photo.
 //!
 //! This module projects document rasters, vectors, spot channels and print policy into the
 //! neutral page records in craft-pdf. PDF object layout and serialization live in craft-pdf.
 
-use photocraft_color::{ColorMode, PixelFormat};
-use photocraft_doc::Document;
+use patronusphoto_color::{ColorMode, PixelFormat};
+use patronusphoto_doc::Document;
 
 use crate::{ExportResult, IoError};
 
@@ -12,7 +12,7 @@ mod shapes;
 mod text;
 
 /// Neutral page records and PDF syntax are owned by craft-pdf; this module only maps the
-/// PhotoCraft document to those records and supplies its product-level cancellation policy.
+/// Patronus Photo document to those records and supplies its product-level cancellation policy.
 pub use craft_pdf::write_raster::{ContentOp, Image as PrintImage, Marks, Page as PrintPage, SelectionFont, SpotPlate, VectorContent};
 
 /// A one-page PDF.
@@ -26,7 +26,7 @@ fn print_pdf_pages(
     vectors: &[VectorContent],
     selection_font: &SelectionFont,
     xmp: Option<&str>,
-    ctl: &photocraft_raster::Interrupt,
+    ctl: &patronusphoto_raster::Interrupt,
 ) -> std::result::Result<Vec<u8>, IoError> {
     ctl.check().map_err(|_| IoError::Cancelled)?;
     craft_pdf::write_raster::write_pages_with_vector_content(pages, vectors, selection_font, xmp)
@@ -38,7 +38,7 @@ pub const SPOT_PLATES_NS: &str = craft_pdf::write_raster::SPOT_PLATES_NAMESPACE;
 
 /// The channels of `doc` that leave as plates, in channel order (the first prints first,
 /// underneath): every channel of a Multichannel document, the spot channels of any other.
-fn plate_channels(doc: &Document) -> impl Iterator<Item = &photocraft_doc::AlphaChannel> {
+fn plate_channels(doc: &Document) -> impl Iterator<Item = &patronusphoto_doc::AlphaChannel> {
     let multichannel = doc.mode == ColorMode::Multichannel;
     doc.channels.iter().filter(move |ch| multichannel || ch.spot.is_some())
 }
@@ -47,18 +47,18 @@ fn plate_channels(doc: &Document) -> impl Iterator<Item = &photocraft_doc::Alpha
 ///
 /// In a Multichannel document every channel is a plate: its spot channels at the ink density
 /// they store (1 = solid), an alpha-type channel as the transparent black ink the composite shows
-/// it as (1 − value, as `photocraft_compose::multichannel` prints it). Any other document keeps
+/// it as (1 − value, as `patronusphoto_compose::multichannel` prints it). Any other document keeps
 /// its alpha channels as masks and exports only its spot channels. The alternate colour is the
 /// ink colour separated through the CMYK profile in use (`Color::in_mode`); it only previews the
 /// plate, as Photoshop's does. Solidity is a preview attribute too: it is not part of the plate
 /// image or its tint transform, and only the shared XMP description writer carries it.
-fn plates_of(doc: &Document, rect: photocraft_geom::Rect) -> Vec<SpotPlate> {
+fn plates_of(doc: &Document, rect: patronusphoto_geom::Rect) -> Vec<SpotPlate> {
     let to8 = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
     plate_channels(doc)
         .map(|ch| {
             let (ink, alpha_type) = match ch.spot {
                 Some((ink, _)) => (ink, false),
-                None => (photocraft_color::Color::BLACK, true),
+                None => (patronusphoto_color::Color::BLACK, true),
             };
             let n = ch.surface.channels().max(1);
             let values = ch.surface.read_region(rect);
@@ -67,7 +67,7 @@ fn plates_of(doc: &Document, rect: photocraft_geom::Rect) -> Vec<SpotPlate> {
             SpotPlate {
                 name: ch.name.clone(),
                 cmyk: ink.in_mode(ColorMode::Cmyk).c,
-                lab: photocraft_color::convert::srgb_to_lab(srgb),
+                lab: patronusphoto_color::convert::srgb_to_lab(srgb),
                 srgb,
                 solidity: ch.spot.map_or(0.0, |(_, s)| s.clamp(0.0, 1.0)),
                 width: rect.width(),
@@ -94,7 +94,7 @@ fn collect_vectors(doc: &Document) -> (Vec<(usize, Vec<ContentOp>)>, SelectionFo
             if !layer.visible {
                 continue;
             }
-            if layer.blend != photocraft_color::BlendMode::Normal
+            if layer.blend != patronusphoto_color::BlendMode::Normal
                 || layer.opacity != 1.0
                 || layer.fill_opacity != 1.0
                 || layer.clipped
@@ -109,11 +109,11 @@ fn collect_vectors(doc: &Document) -> (Vec<(usize, Vec<ContentOp>)>, SelectionFo
                 break;
             }
             let candidate = match &layer.content {
-                photocraft_doc::LayerContent::Shape(shape) => match shapes::shape_content(shape, doc.mode) {
+                patronusphoto_doc::LayerContent::Shape(shape) => match shapes::shape_content(shape, doc.mode) {
                     Some(path) => Candidate::Ops(vec![ContentOp::Path(path)]),
                     None => break,
                 },
-                photocraft_doc::LayerContent::Text(text_layer) => {
+                patronusphoto_doc::LayerContent::Text(text_layer) => {
                     let Some(prepared) = text::prepare(text_layer, doc.mode, doc.resolution_dpi) else { break };
                     for ch in text_layer.text.chars() {
                         repertoire.insert(ch);
@@ -151,7 +151,7 @@ fn collect_vectors(doc: &Document) -> (Vec<(usize, Vec<ContentOp>)>, SelectionFo
 }
 
 /// Pixels in `rect`, saturating on overflow.
-fn rect_pixels(rect: photocraft_geom::Rect) -> u64 {
+fn rect_pixels(rect: patronusphoto_geom::Rect) -> u64 {
     u64::from(rect.width()).saturating_mul(u64::from(rect.height()))
 }
 
@@ -167,7 +167,7 @@ fn rect_pixels(rect: photocraft_geom::Rect) -> u64 {
 /// overprinting `/Separation` plates (FILE-215-17), an artboard page carrying its own region of
 /// each, and a Multichannel document, which is nothing but its channels, is written as plates
 /// alone. Without it a Multichannel document has nothing to write and is refused.
-pub fn export(doc: &Document, spot_plates: bool, ctl: &photocraft_raster::Interrupt) -> std::result::Result<ExportResult, IoError> {
+pub fn export(doc: &Document, spot_plates: bool, ctl: &patronusphoto_raster::Interrupt) -> std::result::Result<ExportResult, IoError> {
     export_with(doc, spot_plates, doc.metadata.xmp.as_deref(), ctl)
 }
 
@@ -175,7 +175,12 @@ pub fn export(doc: &Document, spot_plates: bool, ctl: &photocraft_raster::Interr
 /// embeds no metadata). With spot plates the packet gains their description through the shared
 /// PDF writer;
 /// without plates it is written as it is, and nothing when there is none.
-pub fn export_with(doc: &Document, spot_plates: bool, doc_xmp: Option<&str>, ctl: &photocraft_raster::Interrupt) -> std::result::Result<ExportResult, IoError> {
+pub fn export_with(
+    doc: &Document,
+    spot_plates: bool,
+    doc_xmp: Option<&str>,
+    ctl: &patronusphoto_raster::Interrupt,
+) -> std::result::Result<ExportResult, IoError> {
     ctl.check().map_err(|_| IoError::Cancelled)?;
     let (w, h) = (usize::try_from(doc.size.width).unwrap_or(0), usize::try_from(doc.size.height).unwrap_or(0));
     if w == 0 || h == 0 {
@@ -207,7 +212,7 @@ pub fn export_with(doc: &Document, spot_plates: bool, doc_xmp: Option<&str>, ctl
     let plate_count = if spot_plates { plate_channels(doc).count() } else { 0 };
     // Straight alpha, composited here over paper: white in RGB/Gray (1 = full light), zero ink
     // in CMYK (0 = paper).
-    let image_of = |values: &[f32], rect: photocraft_geom::Rect, device: usize| {
+    let image_of = |values: &[f32], rect: patronusphoto_geom::Rect, device: usize| {
         let mut data = Vec::with_capacity((rect.width() as usize * rect.height() as usize).saturating_mul(device));
         for px in values.chunks(n) {
             let a = px.last().copied().unwrap_or(1.0).clamp(0.0, 1.0);
@@ -217,7 +222,7 @@ pub fn export_with(doc: &Document, spot_plates: bool, doc_xmp: Option<&str>, ctl
         }
         PrintImage { width: rect.width(), height: rect.height(), channels: device, data, icc: icc.clone() }
     };
-    let page_of = |image: Option<PrintImage>, rect: photocraft_geom::Rect, page_label: Option<String>| {
+    let page_of = |image: Option<PrintImage>, rect: patronusphoto_geom::Rect, page_label: Option<String>| {
         let (pw, ph) = (f64::from(rect.width()) * 72.0 / dpi, f64::from(rect.height()) * 72.0 / dpi);
         let plates = if spot_plates { plates_of(doc, rect) } else { Vec::new() };
         PrintPage { paper: (pw, ph), image, rect: (0.0, 0.0, pw, ph), marks: Marks::default(), description: None, label: None, page_label, plates }
@@ -267,7 +272,7 @@ pub fn export_with(doc: &Document, spot_plates: bool, doc_xmp: Option<&str>, ctl
                 one.layers.clear();
                 one.layers.push(group);
                 // Render only this artboard's rect; the surface never holds the whole document.
-                let surface = photocraft_compose::composite_to_surface(&one, rect, PixelFormat::new(fmt.mode, fmt.sample, true), None);
+                let surface = patronusphoto_compose::composite_to_surface(&one, rect, PixelFormat::new(fmt.mode, fmt.sample, true), None);
                 image_of(&surface.read_region(rect), rect, device)
             });
             pages.push(page_of(image, rect, Some((*name).to_string())));
@@ -279,7 +284,7 @@ pub fn export_with(doc: &Document, spot_plates: bool, doc_xmp: Option<&str>, ctl
         let vectors = vec![VectorContent::default(); pages.len()];
         (pages, vectors, SelectionFont::default())
     } else {
-        let canvas = photocraft_geom::Rect::new(0, 0, w as i32, h as i32);
+        let canvas = patronusphoto_geom::Rect::new(0, 0, w as i32, h as i32);
         // Simple topmost shapes and text layers can be drawn over the flattened backdrop without
         // changing compositing. Stop at the first unsupported visible layer, since it may depend
         // on the backdrop (adjustments, blend modes, masks, effects, or clipping). A Multichannel
@@ -292,7 +297,7 @@ pub fn export_with(doc: &Document, spot_plates: bool, doc_xmp: Option<&str>, ctl
                     layer.visible = false;
                 }
             }
-            let surface = photocraft_compose::flatten_to_surface(&backdrop, PixelFormat::new(fmt.mode, fmt.sample, true), None);
+            let surface = patronusphoto_compose::flatten_to_surface(&backdrop, PixelFormat::new(fmt.mode, fmt.sample, true), None);
             image_of(&surface.read_region(canvas), canvas, device)
         });
         // The vector layers, bottom to top, in the document's pixel space (y down), over the

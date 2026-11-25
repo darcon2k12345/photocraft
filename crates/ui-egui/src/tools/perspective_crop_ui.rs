@@ -22,10 +22,10 @@ use craft::ui::bars::BarOutput;
 use craft::ui::canvas::{CropShield, ToolHostResponse};
 use craft::ui::contract::Bind;
 use craft::ui::runtime::edit::cancel_all;
-use photocraft_engine::perspective_crop_cmds::{BITMAP_MODE_ERROR, UNSUPPORTED_LAYERS_ERROR};
+use patronusphoto_engine::perspective_crop_cmds::{BITMAP_MODE_ERROR, UNSUPPORTED_LAYERS_ERROR};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::document_display::CanvasHost;
 use crate::canvas::tools::{FamilyTool, ToolScope};
 use crate::state::Tool;
@@ -38,18 +38,18 @@ pub struct PerspectiveCrop {
 }
 
 /// A quad or corners clicked: what the options bar's Commit and Cancel end.
-pub fn pending(app: &PhotocraftApp) -> bool {
+pub fn pending(app: &PatronusPhotoApp) -> bool {
     app.canvas_tools.perspective.tool.pending()
 }
 
 /// The pending quad's corners (TL, TR, BR, BL; document px), for the control route.
-pub(crate) fn quad(app: &PhotocraftApp) -> Option<[[f64; 2]; 4]> {
+pub(crate) fn quad(app: &PatronusPhotoApp) -> Option<[[f64; 2]; 4]> {
     let quad = *app.canvas_tools.perspective.tool.quad();
     quad.map(|q| q.map(|p| [p.x, p.y]))
 }
 
 /// Drops the quad and the clicked corners.
-pub fn cancel(app: &mut PhotocraftApp) {
+pub fn cancel(app: &mut PatronusPhotoApp) {
     app.canvas_tools.perspective.tool.clear();
 }
 
@@ -61,7 +61,7 @@ pub(crate) fn tool<'a>(scope: &'a ToolScope<'a>, state: &'a mut PerspectiveCrop,
 
 /// What the pass is given each frame: the active document, whose pending quad the pass keeps and drops when another
 /// document becomes active, and the options bar's Show Grid.
-fn input<'a>(app: &PhotocraftApp) -> PerspectiveInput<'a> {
+fn input<'a>(app: &PatronusPhotoApp) -> PerspectiveInput<'a> {
     let mut input = PerspectiveInput::default();
     input.document = app.session.active().map(|st| CropDocKey::new(st.doc.id.0));
     input.show_grid = app.ui.tool_options.perspective_crop_grid;
@@ -72,8 +72,8 @@ fn input<'a>(app: &PhotocraftApp) -> PerspectiveInput<'a> {
 /// The alert this document gets instead of a perspective crop (#11799): `Some(text)` means the tool
 /// refuses the press. The check is the engine's, so the press and `image.perspectiveCrop` can never
 /// disagree about what is cropped.
-fn document_alert(app: &PhotocraftApp) -> Option<&'static str> {
-    app.session.active().and_then(|st| photocraft_engine::perspective_crop_cmds::refusal(&st.doc))
+fn document_alert(app: &PatronusPhotoApp) -> Option<&'static str> {
+    app.session.active().and_then(|st| patronusphoto_engine::perspective_crop_cmds::refusal(&st.doc))
 }
 
 /// The alert as `image.perspectiveCrop`'s error text (#11799), so ↵ shows what the press shows
@@ -83,7 +83,7 @@ fn error_alert(error: &str) -> Option<&'static str> {
 }
 
 /// Opens the alert: the message and an OK button, as a refused Move does (`move_lock::prompt`).
-fn refuse(app: &mut PhotocraftApp, message: &str) {
+fn refuse(app: &mut PatronusPhotoApp, message: &str) {
     crate::dialogs::alerts::alert(app, alert_text(message));
 }
 
@@ -105,7 +105,7 @@ fn alert_text(message: &str) -> &str {
 /// and the tool cleared, so it starts no quad.
 ///
 /// A second pass of a frame has no events of the first (they are taken here), so it runs no second Deselect.
-pub(crate) fn drain(app: &mut PhotocraftApp, state: &mut PerspectiveCrop, _response: &ToolHostResponse) {
+pub(crate) fn drain(app: &mut PatronusPhotoApp, state: &mut PerspectiveCrop, _response: &ToolHostResponse) {
     let events = state.tool.take_events();
     if app.ui.tool != Tool::PerspectiveCrop {
         return;
@@ -134,7 +134,7 @@ pub(crate) fn drain(app: &mut PhotocraftApp, state: &mut PerspectiveCrop, _respo
 ///
 /// The control reads the frame's keys itself and an applied quad is gone from the tool, so a second pass of the frame
 /// applies nothing of the first.
-pub fn body(app: &mut PhotocraftApp, ui: &mut egui::Ui, rect: egui::Rect) {
+pub fn body(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, rect: egui::Rect) {
     if app.ui.tool != Tool::PerspectiveCrop || app.session.active().is_none() {
         return;
     }
@@ -148,7 +148,7 @@ pub fn body(app: &mut PhotocraftApp, ui: &mut egui::Ui, rect: egui::Rect) {
 }
 
 /// The active document as the options fields and the crop size see it.
-fn document(app: &PhotocraftApp) -> Option<CropDocument> {
+fn document(app: &PatronusPhotoApp) -> Option<CropDocument> {
     let st = app.session.active()?;
     let size = Size::new(f64::from(st.doc.size.width), f64::from(st.doc.size.height));
     Some(CropDocument::new(CropDocKey::new(st.doc.id.0), size, f64::from(st.doc.resolution_dpi)))
@@ -156,7 +156,7 @@ fn document(app: &PhotocraftApp) -> Option<CropDocument> {
 
 /// ↵: crops to the pending quad. W and H come from the options fields (inches at the typed resolution; an empty side
 /// takes the perspective size), each at least 1 px. An invalid quad stays for fixing, with the engine's reason.
-pub fn apply(app: &mut PhotocraftApp) {
+pub fn apply(app: &mut PatronusPhotoApp) {
     let Some(corners) = quad(app) else { return };
     let mut params = json!({"corners": corners});
     if let Some(document) = document(app) {
@@ -187,12 +187,12 @@ pub fn apply(app: &mut PhotocraftApp) {
 }
 
 /// Whether the options bar shows Commit and Cancel: during a session, a quad or clicked corners (#11978).
-pub fn commit_shown(app: &PhotocraftApp) -> bool {
+pub fn commit_shown(app: &PatronusPhotoApp) -> bool {
     pending(app)
 }
 
 /// The bar's Commit or Cancel, when its button was pressed this pass.
-pub fn committed(app: &mut PhotocraftApp, out: &BarOutput) {
+pub fn committed(app: &mut PatronusPhotoApp, out: &BarOutput) {
     if out.committed {
         apply(app);
     } else if out.cancelled {
@@ -202,7 +202,7 @@ pub fn committed(app: &mut PhotocraftApp, out: &BarOutput) {
 
 /// Options bar: W, ⇄, H, the resolution, Front Image, Clear and Show Grid. A value typed out of range raises the
 /// range alert once.
-pub fn options(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn options(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let document = document(app).unwrap_or_else(|| CropDocument::new(CropDocKey::new(0), Size::ZERO, 72.0));
     let options = &mut app.ui.tool_options;
     let shown = PerspectiveCropBar::new(&mut options.perspective_crop, &document, Bind::bound(&mut options.perspective_crop_grid)).show(ui);
@@ -233,30 +233,30 @@ mod tests {
     use craft::draw::ui::CropLength;
     use craft::ui::runtime::env::UnitKind;
     use egui::Modifiers;
-    use photocraft_doc::{Color, ColorMode, Document, Layer, LayerContent, SampleType, ShapeLayer, Size as DocSize, SmartObject, SmartSource, TextLayer};
+    use patronusphoto_doc::{Color, ColorMode, Document, Layer, LayerContent, SampleType, ShapeLayer, Size as DocSize, SmartObject, SmartSource, TextLayer};
 
     use super::*;
     use crate::canvas::testing::{ToolEvent, tool_event};
 
-    fn app_with(documents: &[(&str, u32, u32)]) -> Box<PhotocraftApp> {
-        let mut s = photocraft_engine::Session::new();
+    fn app_with(documents: &[(&str, u32, u32)]) -> Box<PatronusPhotoApp> {
+        let mut s = patronusphoto_engine::Session::new();
         for (name, w, h) in documents {
             s.add_document(Document::with_background(*name, DocSize::new(*w, *h), ColorMode::Rgb, SampleType::U8, Color::WHITE), None);
         }
         s.set_active(0);
-        let mut app = PhotocraftApp::new(s, crate::Services::default());
+        let mut app = PatronusPhotoApp::new(s, crate::Services::default());
         app.sync_views();
         app.ui.tool = Tool::PerspectiveCrop;
         app
     }
 
-    fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2]) {
+    fn drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2]) {
         tool_event(app, ToolEvent::Down { x: from[0], y: from[1], pressure: 1.0 }, Modifiers::NONE);
         tool_event(app, ToolEvent::Move { x: to[0], y: to[1], pressure: 1.0 }, Modifiers::NONE);
         tool_event(app, ToolEvent::Up { x: to[0], y: to[1] }, Modifiers::NONE);
     }
 
-    fn size(app: &PhotocraftApp) -> (u32, u32) {
+    fn size(app: &PatronusPhotoApp) -> (u32, u32) {
         let size = app.session.active().unwrap().doc.size;
         (size.width, size.height)
     }
@@ -289,7 +289,7 @@ mod tests {
         fn smart(visible: bool) -> Layer {
             let mut l = Layer::new(
                 "Photo",
-                LayerContent::Smart(SmartObject::new(SmartSource::Linked { path: "photo.psd".into() }, photocraft_geom::Affine::IDENTITY, None)),
+                LayerContent::Smart(SmartObject::new(SmartSource::Linked { path: "photo.psd".into() }, patronusphoto_geom::Affine::IDENTITY, None)),
             );
             l.visible = visible;
             l
@@ -303,10 +303,10 @@ mod tests {
             ("Bitmap", doc(ColorMode::Bitmap, None), NOT_BITMAP),
         ];
         for (case, document, want) in cases {
-            let mut s = photocraft_engine::Session::new();
+            let mut s = patronusphoto_engine::Session::new();
             s.add_document(document, None);
             s.set_active(0);
-            let mut app = PhotocraftApp::new(s, crate::Services::default());
+            let mut app = PatronusPhotoApp::new(s, crate::Services::default());
             app.sync_views();
             app.ui.tool = Tool::PerspectiveCrop;
             let st = app.session.active().unwrap();
@@ -347,7 +347,7 @@ mod tests {
     }
 
     /// The message of the open alert, if any (the host keeps one alert at a time).
-    fn alert_message(app: &PhotocraftApp) -> Option<String> {
+    fn alert_message(app: &PatronusPhotoApp) -> Option<String> {
         use craft::ui::dialog::StackDialog;
         app.framework
             .dialogs
@@ -357,7 +357,7 @@ mod tests {
     }
 
     /// Closes every open dialog: OK closes the alert.
-    fn close_alerts(app: &mut PhotocraftApp) {
+    fn close_alerts(app: &mut PatronusPhotoApp) {
         let ctx = app.ctx().clone();
         let ids: Vec<_> = app.framework.dialogs.stack().ids().collect();
         for id in ids {
@@ -371,12 +371,12 @@ mod tests {
     #[test]
     fn a_press_on_a_cropable_document_still_draws_the_quad() {
         let mut d = Document::with_background("p", DocSize::new(200, 150), ColorMode::Rgb, SampleType::U8, Color::WHITE);
-        let path = photocraft_vector::shapes::rect(20.0, 20.0, 40.0, 30.0);
+        let path = patronusphoto_vector::shapes::rect(20.0, 20.0, 40.0, 30.0);
         d.insert_above(None, Layer::new("Rectangle 1", LayerContent::Shape(ShapeLayer { path, ..Default::default() })));
-        let mut s = photocraft_engine::Session::new();
+        let mut s = patronusphoto_engine::Session::new();
         s.add_document(d, None);
         s.set_active(0);
-        let mut app = PhotocraftApp::new(s, crate::Services::default());
+        let mut app = PatronusPhotoApp::new(s, crate::Services::default());
         app.sync_views();
         app.ui.tool = Tool::PerspectiveCrop;
         drag(&mut app, [20.0, 10.0], [120.0, 90.0]);

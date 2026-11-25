@@ -3,7 +3,7 @@
 //! The snap targets and the snapping itself are the framework's (`SnapTargets`); this module
 //! gives the app the layer bounds they are built from.
 
-use photocraft_doc::{Document, LayerContent, LayerId};
+use patronusphoto_doc::{Document, LayerContent, LayerId};
 
 /// Bounds of a layer for snapping: what Free Transform would show (`None` for empty layers,
 /// groups and maskless adjustment layers).
@@ -11,7 +11,7 @@ pub fn layer_rect(doc: &Document, id: LayerId) -> Option<[f64; 4]> {
     rect_of(doc, doc.layer(id)?)
 }
 
-fn rect_of(doc: &Document, l: &photocraft_doc::Layer) -> Option<[f64; 4]> {
+fn rect_of(doc: &Document, l: &patronusphoto_doc::Layer) -> Option<[f64; 4]> {
     snappable(l).then(|| crate::transform_cmds::transform_bounds(doc, l)).and_then(to_rect)
 }
 
@@ -19,18 +19,18 @@ fn rect_of(doc: &Document, l: &photocraft_doc::Layer) -> Option<[f64; 4]> {
 /// holds of it (#6290: clipped to the selection, every layer's edges and centre were the
 /// selection's, so a moved selection snapped back to where it started). An artboard is a group
 /// whose edges and centre are the board's own.
-pub fn target_rect_of(doc: &Document, l: &photocraft_doc::Layer) -> Option<[f64; 4]> {
+pub fn target_rect_of(doc: &Document, l: &patronusphoto_doc::Layer) -> Option<[f64; 4]> {
     if let Some(a) = l.artboard() {
         return to_rect(a.rect);
     }
     snappable(l).then(|| crate::transform_cmds::whole_layer_bounds(doc, l)).and_then(to_rect)
 }
 
-fn snappable(l: &photocraft_doc::Layer) -> bool {
+fn snappable(l: &patronusphoto_doc::Layer) -> bool {
     !(l.is_group() || (matches!(l.content, LayerContent::Adjustment(_)) && l.mask.is_none()))
 }
 
-fn to_rect(b: photocraft_geom::Rect) -> Option<[f64; 4]> {
+fn to_rect(b: patronusphoto_geom::Rect) -> Option<[f64; 4]> {
     (!b.is_empty()).then_some([b.x0 as f64, b.y0 as f64, b.x1 as f64, b.y1 as f64])
 }
 

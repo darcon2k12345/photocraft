@@ -6,32 +6,32 @@ use super::*;
 use egui_kittest::kittest::Queryable;
 
 /// The Color tab (Hue Cube) for `app` in a 300 x 200 pt group that it fills.
-fn color_tab(app: Box<PhotocraftApp>) -> egui_kittest::Harness<'static, Box<PhotocraftApp>> {
+fn color_tab(app: Box<PatronusPhotoApp>) -> egui_kittest::Harness<'static, Box<PatronusPhotoApp>> {
     // 60 fps steps, so two clicks a frame apart are a double-click.
     let mut h = egui_kittest::Harness::builder().with_context(app.ctx().clone()).with_size(vec2(300.0, 200.0)).with_step_dt(1.0 / 60.0).build_ui_state(
-        |ui, app: &mut Box<PhotocraftApp>| {
+        |ui, app: &mut Box<PatronusPhotoApp>| {
             if ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 crate::panels::color::panel(app, ui);
             }
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::studio());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::studio());
     h.run_steps(2);
     h
 }
 
 /// The foreground (0) or background (1) well: the pair's wells are radio buttons.
-fn well<'a>(h: &'a egui_kittest::Harness<'_, Box<PhotocraftApp>>, i: usize) -> egui_kittest::Node<'a> {
+fn well<'a>(h: &'a egui_kittest::Harness<'_, Box<PatronusPhotoApp>>, i: usize) -> egui_kittest::Node<'a> {
     h.query_all_by_role(egui::accesskit::Role::RadioButton).nth(i).expect("a well")
 }
 
 /// The Hue Cube's field.
-fn field(h: &egui_kittest::Harness<'_, Box<PhotocraftApp>>) -> Rect {
+fn field(h: &egui_kittest::Harness<'_, Box<PatronusPhotoApp>>) -> Rect {
     h.get_by_label("Saturation and brightness").rect()
 }
 
-fn click(h: &mut egui_kittest::Harness<'_, Box<PhotocraftApp>>, p: egui::Pos2) {
+fn click(h: &mut egui_kittest::Harness<'_, Box<PatronusPhotoApp>>, p: egui::Pos2) {
     h.hover_at(p);
     h.run_steps(1);
     for pressed in [true, false] {
@@ -40,7 +40,7 @@ fn click(h: &mut egui_kittest::Harness<'_, Box<PhotocraftApp>>, p: egui::Pos2) {
     }
 }
 
-fn drag(h: &mut egui_kittest::Harness<'_, Box<PhotocraftApp>>, from: egui::Pos2, to: egui::Pos2) {
+fn drag(h: &mut egui_kittest::Harness<'_, Box<PatronusPhotoApp>>, from: egui::Pos2, to: egui::Pos2) {
     h.hover_at(from);
     h.run_steps(1);
     h.drag_at(from);
@@ -54,22 +54,22 @@ fn drag(h: &mut egui_kittest::Harness<'_, Box<PhotocraftApp>>, from: egui::Pos2,
 }
 
 /// A document with one shape layer filled `fill`, selected, the Rectangle tool in hand.
-fn app_with_a_shape(fill: serde_json::Value) -> (Box<PhotocraftApp>, photocraft_doc::LayerId) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app_with_a_shape(fill: serde_json::Value) -> (Box<PatronusPhotoApp>, patronusphoto_doc::LayerId) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 64, "height": 48})).unwrap();
-    let id = photocraft_doc::LayerId(app.run("shape.create", json!({"rect": [8, 8, 40, 30], "fill": fill})).unwrap()["layer"].as_u64().unwrap());
+    let id = patronusphoto_doc::LayerId(app.run("shape.create", json!({"rect": [8, 8, 40, 30], "fill": fill})).unwrap()["layer"].as_u64().unwrap());
     app.ui.tool = crate::state::Tool::Rectangle;
     (app, id)
 }
 
-fn shape_fill(app: &PhotocraftApp, id: photocraft_doc::LayerId) -> Option<photocraft_doc::Fill> {
+fn shape_fill(app: &PatronusPhotoApp, id: patronusphoto_doc::LayerId) -> Option<patronusphoto_doc::Fill> {
     match &app.session.active().unwrap().doc.layer(id).unwrap().content {
-        photocraft_doc::LayerContent::Shape(sh) => sh.fill.clone(),
+        patronusphoto_doc::LayerContent::Shape(sh) => sh.fill.clone(),
         _ => panic!("not a shape layer"),
     }
 }
 
-fn steps(app: &PhotocraftApp) -> usize {
+fn steps(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.entries().len()
 }
 
@@ -81,9 +81,9 @@ fn steps(app: &PhotocraftApp) -> usize {
 fn field_gestures_recolour_the_selected_shape_in_separate_steps() {
     let (app, id) = app_with_a_shape(json!([0.2, 0.4, 0.6, 0.5]));
     let mut h = color_tab(app);
-    let takes_foreground = |app: &PhotocraftApp| {
+    let takes_foreground = |app: &PatronusPhotoApp| {
         let fg = app.session.tools.foreground;
-        shape_fill(app, id) == Some(photocraft_doc::Fill::Solid(photocraft_doc::Color::rgba(fg[0], fg[1], fg[2], 0.5)))
+        shape_fill(app, id) == Some(patronusphoto_doc::Fill::Solid(patronusphoto_doc::Color::rgba(fg[0], fg[1], fg[2], 0.5)))
     };
     let before = steps(h.state());
     let f = field(&h);
@@ -117,8 +117,8 @@ fn typing_an_rgb_value_recolours_the_selected_shape_in_one_step() {
     let (mut app, id) = app_with_a_shape(json!("#000000"));
     app.session.tools.foreground = [0.0, 0.0, 0.0, 1.0];
     let mut h = color_tab(app);
-    let rgb = |app: &PhotocraftApp| match shape_fill(app, id) {
-        Some(photocraft_doc::Fill::Solid(c)) => [c.c[0], c.c[1], c.c[2]].map(|v| (v * 255.0).round() as u8),
+    let rgb = |app: &PatronusPhotoApp| match shape_fill(app, id) {
+        Some(patronusphoto_doc::Fill::Solid(c)) => [c.c[0], c.c[1], c.c[2]].map(|v| (v * 255.0).round() as u8),
         _ => panic!("a solid fill"),
     };
     let before = steps(h.state());
@@ -163,7 +163,7 @@ fn background_edits_recolour_nothing() {
     let tools = &h.state().session.tools;
     assert_eq!(tools.foreground, [0.2, 0.4, 0.6, 1.0]);
     assert!(tools.background[..3].iter().all(|&v| v > 0.9), "{:?}", tools.background);
-    assert_eq!(shape_fill(h.state(), id), Some(photocraft_doc::Fill::Solid(photocraft_doc::Color::rgba(0.0, 0.0, 0.0, 1.0))));
+    assert_eq!(shape_fill(h.state(), id), Some(patronusphoto_doc::Fill::Solid(patronusphoto_doc::Color::rgba(0.0, 0.0, 0.0, 1.0))));
     assert_eq!(steps(h.state()), before, "no recolour step");
 }
 
@@ -172,10 +172,10 @@ fn background_edits_recolour_nothing() {
 /// they only change the tool colours, as before.
 #[test]
 fn swap_and_default_colors_recolour_selected_type() {
-    use photocraft_doc::LayerId;
-    let rgb = |app: &PhotocraftApp, id: LayerId, ci: usize| {
+    use patronusphoto_doc::LayerId;
+    let rgb = |app: &PatronusPhotoApp, id: LayerId, ci: usize| {
         let doc = &app.session.active().unwrap().doc;
-        let photocraft_doc::LayerContent::Text(t) = &doc.layer(id).unwrap().content else { panic!("not a type layer") };
+        let patronusphoto_doc::LayerContent::Text(t) = &doc.layer(id).unwrap().content else { panic!("not a type layer") };
         let b = t.text.char_indices().nth(ci).map_or(t.text.len(), |(b, _)| b);
         let mut at = 0;
         for r in t.char_runs() {
@@ -187,7 +187,7 @@ fn swap_and_default_colors_recolour_selected_type() {
         [0; 4]
     };
     for selected in [true, false] {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
         let made = app.run("type.create", json!({"text": "Hello world", "size": 40, "x": 50, "y": 150, "color": "#000000"})).unwrap();
         let id = LayerId(made["layer"].as_u64().unwrap());
@@ -195,13 +195,13 @@ fn swap_and_default_colors_recolour_selected_type() {
         let anchor = if selected { 6 } else { 11 };
         app.ui.text_edit = Some(crate::state::TextEdit { layer: id.0, document: None, caret: 11, anchor, session: "s".into(), created: false, mask: false });
         let mut h = egui_kittest::Harness::builder().with_context(app.ctx().clone()).with_size(vec2(80.0, 120.0)).build_ui_state(
-            |ui, app: &mut Box<PhotocraftApp>| {
+            |ui, app: &mut Box<PatronusPhotoApp>| {
                 let w = ui.available_width();
                 color_chips(app, ui, w)
             },
             app,
         );
-        PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::studio());
+        PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::studio());
         h.run_steps(2);
         h.get_by_label("Switch Foreground and Background Colors (X)").click();
         h.run_steps(2);
@@ -223,7 +223,7 @@ fn swap_and_default_colors_recolour_selected_type() {
 /// well only makes it the edited one.
 #[test]
 fn a_click_on_the_edited_well_opens_its_color_picker() {
-    let app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let mut h = color_tab(app);
     use crate::color_picker_ui::PickTarget;
     for (i, well_name, foreground) in [(1, "Background color", false), (0, "Foreground color", true)] {

@@ -5,7 +5,7 @@
 //! working (RGB, Grayscale, CMYK and Lab at 8 bits, RGB at 16 and 32 bits) still erase.
 
 use super::*;
-use photocraft_doc::{Color, SampleType, Size};
+use patronusphoto_doc::{Color, SampleType, Size};
 
 /// The reference's alert for an Indexed Color document, measured (#12032); the alert has one OK
 /// button. Spelled out here rather than taken from the command, so the test fails if the text the
@@ -16,7 +16,7 @@ const BITMAP: &str = "Could not use the magic eraser because it does not work wi
 
 /// A 64x48 document in `mode` at `depth`: a white Background - one flat colour, so a Magic Eraser
 /// click on it would wipe the canvas out - with a live selection. Both must survive a refusal.
-fn session(mode: photocraft_color::ColorMode, depth: SampleType) -> Session {
+fn session(mode: patronusphoto_color::ColorMode, depth: SampleType) -> Session {
     let d = Document::with_background("palette", Size::new(64, 48), mode, depth, Color::WHITE);
     let mut s = Session::new();
     s.add_document(d, None);
@@ -26,7 +26,7 @@ fn session(mode: photocraft_color::ColorMode, depth: SampleType) -> Session {
 
 /// What a refused click must leave exactly as it was: the document itself, the History depth, one
 /// pixel, and the selection.
-fn snapshot(s: &Session) -> (std::sync::Arc<Document>, usize, Vec<f32>, Option<photocraft_raster::Surface>) {
+fn snapshot(s: &Session) -> (std::sync::Arc<Document>, usize, Vec<f32>, Option<patronusphoto_raster::Surface>) {
     let st = s.active().unwrap();
     let pixels = st.doc.layer(st.active_layer.unwrap()).unwrap().surface().unwrap().rgba(2, 2).to_vec();
     (st.doc.clone(), st.history.past_len(), pixels, st.doc.selection.clone())
@@ -44,7 +44,7 @@ fn alert(s: &mut Session, case: &str, want: &str, p: Value) -> String {
 
 #[test]
 fn magic_eraser_refuses_indexed_and_bitmap_with_the_reference_alerts() {
-    for (case, mode, want) in [("Indexed", photocraft_color::ColorMode::Indexed, INDEXED), ("Bitmap", photocraft_color::ColorMode::Bitmap, BITMAP)] {
+    for (case, mode, want) in [("Indexed", patronusphoto_color::ColorMode::Indexed, INDEXED), ("Bitmap", patronusphoto_color::ColorMode::Bitmap, BITMAP)] {
         for depth in [SampleType::U8, SampleType::U16, SampleType::F32] {
             // The refusal is the same whatever else the click asks for: sampling every layer or
             // only this one, the whole canvas or one colour, inside the selection or not.
@@ -93,7 +93,7 @@ fn magic_eraser_still_erases_the_measured_modes_and_depths() {
 /// erases, and neither of the two alerts appears.
 #[test]
 fn duotone_and_multichannel_keep_todays_behaviour() {
-    for (case, mode) in [("Duotone", photocraft_color::ColorMode::Duotone), ("Multichannel", photocraft_color::ColorMode::Multichannel)] {
+    for (case, mode) in [("Duotone", patronusphoto_color::ColorMode::Duotone), ("Multichannel", patronusphoto_color::ColorMode::Multichannel)] {
         let mut s = session(mode, SampleType::U8);
         let id = s.active().unwrap().active_layer.unwrap();
         let r = s.execute("paint.magicEraser", json!({"x": 2, "y": 2, "antiAlias": false}));

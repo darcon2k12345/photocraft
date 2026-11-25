@@ -12,8 +12,8 @@ use super::history::{self, apply, can_delete, rows};
 use super::*;
 
 /// New (the opening state of File › New), then New Layer, Fill, New Layer, Fill.
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
     for (cmd, p) in
         [("layer.new.layer", json!({})), ("edit.fill", json!({"color": "#ff0000"})), ("layer.new.layer", json!({})), ("edit.fill", json!({"color": "#00ff00"}))]
@@ -24,8 +24,8 @@ fn app() -> Box<PhotocraftApp> {
 }
 
 /// New, New Layer, Fill red, a snapshot, Fill blue.
-fn with_snapshot() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn with_snapshot() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     app.run("edit.fill", json!({"color": "#ff0000"})).unwrap();
@@ -35,39 +35,39 @@ fn with_snapshot() -> Box<PhotocraftApp> {
 }
 
 /// (past states, redo states, revision) of the active document.
-fn state(app: &PhotocraftApp) -> (usize, usize, u64) {
+fn state(app: &PatronusPhotoApp) -> (usize, usize, u64) {
     let st = app.session.active().unwrap();
     (st.history.past_len(), st.history.redo_labels().count(), st.revision)
 }
 
-fn steps(app: &PhotocraftApp) -> usize {
+fn steps(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.entries().len()
 }
 
 /// The key of history row `row`: 0 is the oldest state, then the current one, then the redo states.
-fn state_key(app: &PhotocraftApp, row: usize) -> HistoryKey {
+fn state_key(app: &PatronusPhotoApp, row: usize) -> HistoryKey {
     HistoryKey::State(app.session.active().unwrap().history.row_id(row).expect("a row"))
 }
 
 /// The key of the current state's row.
-fn current_key(app: &PhotocraftApp) -> HistoryKey {
+fn current_key(app: &PatronusPhotoApp) -> HistoryKey {
     state_key(app, app.session.active().unwrap().history.past_len())
 }
 
-fn snapshots(app: &PhotocraftApp) -> usize {
+fn snapshots(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().snapshots().len()
 }
 
-fn last_snapshot(app: &PhotocraftApp) -> u64 {
+fn last_snapshot(app: &PatronusPhotoApp) -> u64 {
     app.session.active().unwrap().snapshots().last().unwrap().id
 }
 
-fn top_pixel(app: &PhotocraftApp) -> [f32; 4] {
+fn top_pixel(app: &PatronusPhotoApp) -> [f32; 4] {
     app.session.active().unwrap().doc.layers.last().unwrap().surface().unwrap().rgba(1, 1)
 }
 
 /// Whether the newest open dialog is New Snapshot.
-fn snapshot_dialog_open(app: &PhotocraftApp) -> bool {
+fn snapshot_dialog_open(app: &PatronusPhotoApp) -> bool {
     app.framework.dialogs.open_dialogs().last().is_some_and(|d| d.key.as_deref().is_some_and(crate::snapshot_dialog::owns))
 }
 
@@ -123,7 +123,7 @@ fn rows_list_snapshots_then_states_then_redo_states() {
 #[test]
 fn history_rows_wait_for_an_open_transform() {
     for transforming in [true, false] {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();
         app.run("select.rect", json!({"x": 20, "y": 20, "width": 60, "height": 40})).unwrap();
@@ -235,13 +235,13 @@ fn rows_dragged_onto_the_trash_are_deleted() {
 #[test]
 fn non_linear_trash_click_never_targets_the_oldest_state() {
     let mut app = with_snapshot();
-    let last = |app: &PhotocraftApp| state_key(app, steps(app) + app.session.active().unwrap().history.redo_labels().count() - 1);
+    let last = |app: &PatronusPhotoApp| state_key(app, steps(app) + app.session.active().unwrap().history.redo_labels().count() - 1);
     assert!(!can_delete(&app, &HistoryKey::State(u64::MAX)), "a state that is not held is not deletable");
     app.run("history.options", json!({"allowNonLinearHistory": true})).unwrap();
     for _ in 0..3 {
         app.run("edit.undo", json!({})).unwrap();
     }
-    let counts = |app: &PhotocraftApp| {
+    let counts = |app: &PatronusPhotoApp| {
         let st = app.session.active().unwrap();
         (st.history.past_len(), st.history.redo_labels().count())
     };
@@ -278,7 +278,7 @@ fn a_later_state_is_not_deletable_without_the_option() {
 }
 
 /// Runs a command the way the command dispatch does: a history mark before it, the reveal filed after.
-fn run_filed(app: &mut PhotocraftApp, cmd: &str, params: serde_json::Value) {
+fn run_filed(app: &mut PatronusPhotoApp, cmd: &str, params: serde_json::Value) {
     let before = history::mark(app);
     app.run(cmd, params).unwrap();
     history::file(app, before);
@@ -287,7 +287,7 @@ fn run_filed(app: &mut PhotocraftApp, cmd: &str, params: serde_json::Value) {
 /// Reveal asks for the current row when the history moved, never for a change that adds no state (#5909).
 #[test]
 fn scrolling_away_survives_a_change_that_adds_no_state() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     run_filed(&mut app, "file.new", json!({"width": 64, "height": 48}));
     assert_eq!(history::take(&mut app), Some(current_key(&app)), "a document that came up shows its current state");
     assert_eq!(history::take(&mut app), None, "the draw took it");
@@ -356,7 +356,7 @@ fn a_new_state_at_the_history_limit_deselects_the_snapshot() {
 /// taken before.
 #[test]
 fn alt_click_on_the_camera_opens_new_snapshot() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     app.run("edit.fill", json!({"color": "#ff0000"})).unwrap();
@@ -371,7 +371,7 @@ fn alt_click_on_the_camera_opens_new_snapshot() {
 #[test]
 fn show_new_snapshot_dialog_by_default_makes_a_click_open_the_dialog() {
     for (dialog_by_default, mods) in [(true, Mods::NONE), (true, Mods::ALT), (false, Mods::NONE)] {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
         app.run("history.options", json!({"showNewSnapshotDialogByDefault": dialog_by_default})).unwrap();
         apply(&mut app, HistoryEvent::new_snapshot(mods));
@@ -390,7 +390,7 @@ fn show_new_snapshot_dialog_by_default_makes_a_click_open_the_dialog() {
 /// on #2966: "History original file click does not work").
 #[test]
 fn the_top_row_returns_to_the_document_as_opened() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
     let opened = app.session.active().unwrap().doc.layers[0].surface().unwrap().rgba(1, 1);
     app.run("edit.fill", json!({"color": "#ff0000"})).unwrap();
@@ -408,7 +408,7 @@ fn the_top_row_returns_to_the_document_as_opened() {
 #[test]
 fn the_first_snapshot_row_follows_the_option() {
     for first in [true, false] {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("history.options", json!({"automaticallyCreateFirstSnapshot": first})).unwrap();
         app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
         let name = app.session.active().unwrap().doc.name.clone();
@@ -423,12 +423,12 @@ fn the_first_snapshot_row_follows_the_option() {
 fn snapshot_thumbnails_follow_their_document() {
     use crate::app::thumbs::SnapshotThumbs;
 
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
     let doc = (*app.session.active().unwrap().doc).clone();
     let doc_id = doc.id;
     let request = ThumbRequest::for_cell(32.0, 1.0);
-    let revision = |app: &PhotocraftApp| SnapshotThumbs::new(app, doc_id).revision(&0, &request);
+    let revision = |app: &PatronusPhotoApp| SnapshotThumbs::new(app, doc_id).revision(&0, &request);
     let first = revision(&app);
     assert_eq!(first, revision(&app), "the same picture keeps its revision");
     // The revision follows the snapshot document's `Arc` address, so each closed document stays alive for the

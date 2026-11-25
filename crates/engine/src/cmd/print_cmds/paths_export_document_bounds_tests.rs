@@ -3,7 +3,7 @@
 //! with or without paths.
 
 use super::*;
-use photocraft_doc::{NamedPath, Path, Subpath};
+use patronusphoto_doc::{NamedPath, Path, Subpath};
 
 const CMD: &str = "file.export.pathsToIllustrator";
 const BEGIN: &str = "%Adobe_Photoshop_Path_Begin";
@@ -71,7 +71,7 @@ fn the_bounding_box_is_the_canvas_in_points() {
 #[test]
 fn document_bounds_writes_the_file_and_reports_no_paths() {
     let mut s = plain(72.0);
-    let dir = std::env::temp_dir().join(format!("photocraft-paths-bounds-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("patronusphoto-paths-bounds-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let file = dir.join("Bounds.ai").to_string_lossy().replace('\\', "/");
     let r = s.execute(CMD, json!({"path": file, "paths": "documentBounds"})).unwrap();

@@ -5,10 +5,10 @@
 
 use std::sync::{Mutex, PoisonError};
 
-use photocraft_color::PixelFormat;
-use photocraft_doc::{SmartFilter, SmartObject};
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use patronusphoto_color::PixelFormat;
+use patronusphoto_doc::{SmartFilter, SmartObject};
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::Surface;
 
 /// blake3 of a stage's inputs: the source contents, the placement and the filters so far.
 pub(super) type StageKey = [u8; 32];
@@ -48,7 +48,7 @@ pub(super) fn placed_key(bytes: &[u8], fmt: PixelFormat, sm: &SmartObject, canva
 }
 
 /// The stage after applying `f` to stage `below`.
-pub(super) fn filter_key(below: &StageKey, f: &SmartFilter, mask: Option<&photocraft_doc::LayerMask>) -> StageKey {
+pub(super) fn filter_key(below: &StageKey, f: &SmartFilter, mask: Option<&patronusphoto_doc::LayerMask>) -> StageKey {
     let mut h = blake3::Hasher::new();
     h.update(below);
     h.update(format!("{}\0{}\0{:?}\0", f.command, f.params, f.blend).as_bytes());

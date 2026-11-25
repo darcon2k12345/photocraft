@@ -282,9 +282,9 @@ pub struct DocCtx<'a> {
     pub light: GlobalLight,
     pub patterns: &'a [Pattern],
     /// Colour mode (channel restrictions name its channels).
-    pub mode: photocraft_color::ColorMode,
+    pub mode: patronusphoto_color::ColorMode,
     /// Sample depth (adjustment results are rounded to it).
-    pub depth: photocraft_color::SampleType,
+    pub depth: patronusphoto_color::SampleType,
     /// The document (effect geometry the CPU computes, e.g. gradient stroke frames).
     pub doc: &'a Document,
 }

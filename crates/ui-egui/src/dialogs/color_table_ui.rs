@@ -14,7 +14,7 @@ use craft::ui::patterns::form_dialogs::{DialogFields, FieldValue, HostedParamDia
 use craft::ui::runtime::env::Label;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The pending table: colours and the transparent entry.
 type Table = (Vec<[u8; 3]>, Option<u16>);
@@ -35,7 +35,7 @@ fn loaded(fields: &DialogFields) -> Option<Vec<Option<[u8; 3]>>> {
     Some(list.iter().map(|v| if let FieldValue::Text(s) = v { unhex(s) } else { None }).collect())
 }
 
-fn doc_table(app: &PhotocraftApp) -> Option<Table> {
+fn doc_table(app: &PatronusPhotoApp) -> Option<Table> {
     let t = app.session.active()?.doc.color_table.clone()?;
     Some((t.colors, t.transparent.map(u16::from)))
 }
@@ -47,25 +47,25 @@ fn pending_over(fields: &DialogFields, document: Option<Table>) -> Option<Table>
         && let Some(colors) = loaded(fields)
     {
         let colors: Option<Vec<[u8; 3]>> = colors.into_iter().collect();
-        let colors = colors.filter(|c| !c.is_empty() && c.len() <= photocraft_engine::swatch_cmds::ACT_COLORS)?;
+        let colors = colors.filter(|c| !c.is_empty() && c.len() <= patronusphoto_engine::swatch_cmds::ACT_COLORS)?;
         let transparent = fields.int("transparent").and_then(|i| u16::try_from(i).ok());
         return Some((colors, transparent));
     }
     if let Some(name) = fields.text("table")
-        && let Some(colors) = photocraft_engine::mode_cmds::preset_table(name)
+        && let Some(colors) = patronusphoto_engine::mode_cmds::preset_table(name)
     {
         return Some((colors, None));
     }
     document
 }
 
-fn pending(app: &PhotocraftApp, fields: &DialogFields) -> Option<Table> {
+fn pending(app: &PatronusPhotoApp, fields: &DialogFields) -> Option<Table> {
     pending_over(fields, doc_table(app))
 }
 
 /// The Color Table row of the filter dialog: the pending table as touching swatches. The document's
 /// table is snapshotted here, as the row cannot read the app.
-pub fn rows(app: &PhotocraftApp) -> Vec<Param> {
+pub fn rows(app: &PatronusPhotoApp) -> Vec<Param> {
     let document = doc_table(app);
     vec![Param::custom("colors", tl!("Colors"), move |ui, fields, _cx| {
         let shown = pending_over(fields, document.clone()).map(|(colors, _)| colors).unwrap_or_default();
@@ -95,12 +95,12 @@ pub fn command_params(fields: &DialogFields, mut params: Value) -> Value {
 use crate::dialogs::alerts::report_error;
 
 /// A Load… or Save… footer button of the dialog `id` was pressed (`action` is `"load"` or `"save"`).
-pub fn footer_action(app: &mut PhotocraftApp, _ctx: &egui::Context, id: DialogId, action: &str) {
+pub fn footer_action(app: &mut PatronusPhotoApp, _ctx: &egui::Context, id: DialogId, action: &str) {
     match action {
         "load" => {
             if let Err(e) = app.pick_file_bytes_filtered(&["act"], move |app, name, bytes| {
                 let (colors, transparent) =
-                    photocraft_engine::swatch_cmds::act_table(&bytes).map_err(|e| format!("{}: {e}", crate::file_open::display_name(&name)))?;
+                    patronusphoto_engine::swatch_cmds::act_table(&bytes).map_err(|e| format!("{}: {e}", crate::file_open::display_name(&name)))?;
                 // The dialog may close while the picker is open; then there is nothing to fill.
                 let Some(d) = app.framework.dialogs.get_mut_by_id::<HostedParamDialog>(id) else { return Ok(Value::Null) };
                 d.set_field("table", FieldValue::Text("custom".into()));
@@ -120,7 +120,7 @@ pub fn footer_action(app: &mut PhotocraftApp, _ctx: &egui::Context, id: DialogId
             let Some((colors, transparent)) = pending(app, &fields) else {
                 return report_error(app, tl!("There is no color table to save."));
             };
-            let bytes = match photocraft_engine::swatch_cmds::act_bytes(&colors, transparent) {
+            let bytes = match patronusphoto_engine::swatch_cmds::act_bytes(&colors, transparent) {
                 Ok(bytes) => bytes,
                 Err(e) => return report_error(app, e),
             };
@@ -146,8 +146,8 @@ pub fn footer_action(app: &mut PhotocraftApp, _ctx: &egui::Context, id: DialogId
 mod tests {
     use super::*;
 
-    fn app() -> Box<PhotocraftApp> {
-        PhotocraftApp::new(photocraft_engine::Session::new(), Default::default())
+    fn app() -> Box<PatronusPhotoApp> {
+        PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default())
     }
 
     fn loaded_fields(table: &str) -> DialogFields {

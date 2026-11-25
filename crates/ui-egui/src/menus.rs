@@ -8,7 +8,7 @@ use craft::ui::contract::MemoProps;
 use craft::ui::runtime::commands::CommandGate;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 mod bar;
 pub mod enable_rules;
@@ -34,7 +34,7 @@ use state::translated_menu_label;
 /// What may run from the menus now: the gate (a dialog, the shortcut recorder) and the per-command
 /// rules (a full-window workspace, a pending crop). Both bars, the runtime's command gate and
 /// [`allows`] read this one function.
-pub(crate) fn menu_gate(app: &PhotocraftApp) -> (Gate, ModalRules) {
+pub(crate) fn menu_gate(app: &PatronusPhotoApp) -> (Gate, ModalRules) {
     let gate = Gate::default().modal(app.dialog_open() || crate::prefs_ui::shortcuts_open(app)).recording_shortcut(crate::prefs_ui::recording(app));
     let workspace = app.smart_svg.modal_open() || crate::distort_ui::modal_workspace(app).is_some();
     let pending = crate::crop_ui::pending(app);
@@ -45,11 +45,11 @@ pub(crate) fn menu_gate(app: &PhotocraftApp) -> (Gate, ModalRules) {
     (gate, rules)
 }
 
-/// The runtime's gate over commands. Only PhotoCraft's catalogue commands are gated here: framework
+/// The runtime's gate over commands. Only Patronus Photo's catalogue commands are gated here: framework
 /// command sets and dialog-scoped commands pass, and the runtime's own modal rule decides them. The shell's
 /// screen-mode commands are judged as their View › Screen Mode rows, and the rows' own rules
 /// ([`refused`]) apply to them: their keys and menu items are one command.
-pub(crate) fn command_gate(app: &PhotocraftApp) -> CommandGate {
+pub(crate) fn command_gate(app: &PatronusPhotoApp) -> CommandGate {
     let (gate, rules) = menu_gate(app);
     CommandGate::new(GateProps { gate, rules, refused: refused(app) }, |props, command| gated(&props.gate, &props.rules, &props.refused, command))
 }
@@ -63,7 +63,7 @@ struct GateProps {
 }
 
 /// [`command_gate`]'s test for one command, for callers that hold no gate.
-pub(crate) fn allows(app: &PhotocraftApp, command: &CommandRef) -> bool {
+pub(crate) fn allows(app: &PatronusPhotoApp, command: &CommandRef) -> bool {
     let (gate, rules) = menu_gate(app);
     gated(&gate, &rules, &refused(app), command)
 }
@@ -77,10 +77,10 @@ fn gated(gate: &Gate, rules: &ModalRules, refused: &[CommandRef], command: &Comm
     !is_live(&command.id) || gate.allows_under(rules, command)
 }
 
-/// The framework commands PhotoCraft's state turns off now: the shell's screen modes its View › Screen Mode rows
+/// The framework commands Patronus Photo's state turns off now: the shell's screen modes its View › Screen Mode rows
 /// grey (no full screen without a document, #9349; none while type is edited), and the canvas colour keys of the
 /// held Hand while type is edited.
-fn refused(app: &PhotocraftApp) -> Vec<CommandRef> {
+fn refused(app: &PatronusPhotoApp) -> Vec<CommandRef> {
     let screen_modes = crate::shortcut_dispatch::RUNTIME_COMMANDS
         .iter()
         .filter(|(id, _)| crate::shortcut_dispatch::is_screen_mode(id) && crate::view_cmds::is_enabled(app, id) == Some(false))
@@ -93,9 +93,9 @@ fn refused(app: &PhotocraftApp) -> Vec<CommandRef> {
 pub const TOP_MENUS: [&str; 10] = ["File", "Edit", "Image", "Layer", "Type", "Select", "Filter", "View", "Window", "Help"];
 
 /// UI-level commands (handled by the shell rather than the engine): id, label, menu, shortcut.
-/// The table is the engine's ([`photocraft_engine::shell_commands::SHELL_COMMANDS`]), so the
+/// The table is the engine's ([`patronusphoto_engine::shell_commands::SHELL_COMMANDS`]), so the
 /// commands and their keys exist without this UI (headless shortcut sets, lists, conflicts).
-pub const UI_COMMANDS: &[(&str, &str, &[&str], Option<&str>)] = photocraft_engine::shell_commands::SHELL_COMMANDS;
+pub const UI_COMMANDS: &[(&str, &str, &[&str], Option<&str>)] = patronusphoto_engine::shell_commands::SHELL_COMMANDS;
 
 /// Window › <document>: the open documents, listed at the end of the Window menu as in Photoshop.
 /// The id ends in the document's index, which is its tab's position.
@@ -114,7 +114,7 @@ mod open_recent_tests {
 
     #[test]
     fn tracks_dedupes_caps_and_lists() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.push_recent("/tmp/a.png");
         app.push_recent("/tmp/b.psd");
         app.push_recent("/tmp/a.png"); // de-dupe → moves to front
@@ -160,16 +160,16 @@ mod open_recent_tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn opening_a_file_records_it_as_recent() {
-        use photocraft_color::{ColorMode, SampleType};
-        use photocraft_geom::Size;
+        use patronusphoto_color::{ColorMode, SampleType};
+        use patronusphoto_geom::Size;
         let services = crate::Services {
-            import: Some(Box::new(|_n: &str, _b: &[u8], _opts: &photocraft_io::ImportOptions| {
-                Ok((photocraft_doc::Document::new("t", Size::new(4, 4), ColorMode::Rgb, SampleType::U8), Vec::new()))
+            import: Some(Box::new(|_n: &str, _b: &[u8], _opts: &patronusphoto_io::ImportOptions| {
+                Ok((patronusphoto_doc::Document::new("t", Size::new(4, 4), ColorMode::Rgb, SampleType::U8), Vec::new()))
             })),
             ..Default::default()
         };
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
-        let path = std::env::temp_dir().join("photocraft_recent_test.pcraft");
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
+        let path = std::env::temp_dir().join("patronusphoto_recent_test.pcraft");
         std::fs::write(&path, b"x").unwrap();
         let p = path.to_string_lossy().to_string();
         let ctx = app.ctx().clone();
@@ -193,7 +193,7 @@ mod quick_export_label_tests {
         if !crate::i18n::needs_catalogs() {
             return;
         }
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         for (value, expected) in [("png", "PNG"), ("jpg", "JPG"), ("gif", "GIF"), ("webp", "WebP"), ("exr", "EXR")] {
             app.run("prefs.set", json!({"values": {"export.quickExportFormat": value}})).unwrap();
             let rows = menu_rows(&app);
@@ -216,7 +216,7 @@ mod reveal_label_tests {
 
     #[test]
     fn smart_objects_reveal_item_names_the_platform_file_manager() {
-        let app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         let id = "layer.smartObjects.revealInFinder";
         let rows = menu_rows(&app);
         let reveal: Vec<_> = rows.iter().filter(|r| r.command.id == id).collect();
@@ -235,8 +235,8 @@ mod window_documents_tests {
     use super::*;
     use serde_json::json;
 
-    fn app(docs: usize) -> Box<PhotocraftApp> {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    fn app(docs: usize) -> Box<PatronusPhotoApp> {
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         for _ in 0..docs {
             app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
         }
@@ -245,7 +245,7 @@ mod window_documents_tests {
     }
 
     /// The rows after Window's last own item: a separator and the documents.
-    fn listed(app: &PhotocraftApp) -> Vec<(String, String, bool)> {
+    fn listed(app: &PatronusPhotoApp) -> Vec<(String, String, bool)> {
         let rows = menu_rows(app);
         let window: Vec<_> = rows.iter().filter(|r| r.path == ["Window"]).collect();
         let at = window.iter().position(|r| r.command.id.starts_with(DOCUMENT_ITEM)).unwrap_or(window.len());

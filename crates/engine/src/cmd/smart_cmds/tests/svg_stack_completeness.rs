@@ -2,12 +2,12 @@ use super::super::{source, stack_cache};
 use super::*;
 
 fn incomplete_svg() -> Vec<u8> {
-    let image = photocraft_codecs::Image::from_u8(1, 1, photocraft_codecs::ChannelLayout::Rgba, vec![0, 255, 0, 255]).unwrap();
-    let mut png = photocraft_codecs::encode(&image, photocraft_codecs::Format::Png, &Default::default()).unwrap();
+    let image = patronusphoto_codecs::Image::from_u8(1, 1, patronusphoto_codecs::ChannelLayout::Rgba, vec![0, 255, 0, 255]).unwrap();
+    let mut png = patronusphoto_codecs::encode(&image, patronusphoto_codecs::Format::Png, &Default::default()).unwrap();
     let idat = png.windows(4).position(|bytes| bytes == b"IDAT").unwrap();
     // Keep the complete IHDR and dimensions, but damage actual compressed pixels.
     *png.get_mut(idat + 4).unwrap() ^= 0xff;
-    assert_eq!(photocraft_codecs::probe_allocation_size(&png).unwrap(), (1, 1));
+    assert_eq!(patronusphoto_codecs::probe_allocation_size(&png).unwrap(), (1, 1));
     let data = png.iter().map(|byte| format!("%{byte:02X}")).collect::<String>();
     format!("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"2\" height=\"2\"><!--stack-completeness-review--><rect width=\"2\" height=\"2\" fill=\"red\"/><image width=\"2\" height=\"2\" href=\"data:image/png,{data}\"/></svg>").into_bytes()
 }
@@ -16,7 +16,7 @@ fn smart_svg(bytes: Vec<u8>) -> SmartObject {
     SmartObject::new(SmartSource::Embedded { file_name: "Stack completeness.svg".into(), bytes: Arc::new(bytes) }, Affine::IDENTITY, None)
 }
 
-fn old_stack_key(bytes: &[u8], fmt: PixelFormat, mode: photocraft_doc::StackMode) -> source::CacheKey {
+fn old_stack_key(bytes: &[u8], fmt: PixelFormat, mode: patronusphoto_doc::StackMode) -> source::CacheKey {
     let mut key = source::cache_key(bytes, fmt);
     key.0 = *blake3::hash(&[&key.0[..], b"stack:", mode.id().as_bytes()].concat()).as_bytes();
     key
@@ -41,7 +41,7 @@ fn gzipped_svg_stack_retains_ordinary_import_for_misnamed_sources() {
     for name in ["logo.gz", "without-extension"] {
         let mut smart = SmartObject::new(SmartSource::Embedded { file_name: name.into(), bytes: bytes.clone() }, Affine::IDENTITY, None);
         assert!(decode_source(name, &bytes).is_ok());
-        smart.stack_mode = Some(photocraft_doc::StackMode::Mean);
+        smart.stack_mode = Some(patronusphoto_doc::StackMode::Mean);
         let rendered = render(doc, &smart).unwrap().unwrap();
         assert_eq!(rendered.rgba(1, 1), [1., 0., 0., 1.]);
         assert_eq!(source_box(doc, &smart), Some([0., 0., 2., 2.]));
@@ -58,9 +58,9 @@ fn svg_stack_rejects_incomplete_pixels_repeatedly_but_ordinary_placement_keeps_w
     assert_eq!(ordinary.unwrap().rgba(1, 1), [1., 0., 0., 1.]);
     assert_eq!(warnings.len(), 1);
     assert!(warnings[0].contains("embedded image was omitted"));
-    smart.stack_mode = Some(photocraft_doc::StackMode::Mean);
+    smart.stack_mode = Some(patronusphoto_doc::StackMode::Mean);
     for _ in 0..2 {
-        assert!(stack_image("Stack completeness.svg", &bytes, PixelFormat::RGBA32F, photocraft_doc::StackMode::Mean).is_err());
+        assert!(stack_image("Stack completeness.svg", &bytes, PixelFormat::RGBA32F, patronusphoto_doc::StackMode::Mean).is_err());
         assert!(render(doc, &smart).is_err());
         assert!(render_with_warnings(doc, &smart).is_err());
         assert_eq!(source_box(doc, &smart), None);
@@ -75,12 +75,12 @@ fn svg_stack_does_not_reuse_incomplete_legacy_source_or_filter_stages() {
     let doc = &session.active().unwrap().doc;
     let bytes = incomplete_svg();
     let mut smart = smart_svg(bytes.clone());
-    smart.stack_mode = Some(photocraft_doc::StackMode::Mean);
+    smart.stack_mode = Some(patronusphoto_doc::StackMode::Mean);
     let mut poisoned = Surface::new(PixelFormat::RGBA32F);
     poisoned.fill_rect(Rect::new(0, 0, 2, 2), &[0., 1., 0., 1.]);
-    let key = old_stack_key(&bytes, PixelFormat::RGBA32F, photocraft_doc::StackMode::Mean);
+    let key = old_stack_key(&bytes, PixelFormat::RGBA32F, patronusphoto_doc::StackMode::Mean);
     source::cache_put(key, source::SourceImage { surface: Arc::new(poisoned), bounds: Rect::new(0, 0, 2, 2) });
-    assert!(stack_image("Stack completeness.svg", &bytes, PixelFormat::RGBA32F, photocraft_doc::StackMode::Mean).is_err());
+    assert!(stack_image("Stack completeness.svg", &bytes, PixelFormat::RGBA32F, patronusphoto_doc::StackMode::Mean).is_err());
 
     let mut poisoned = Surface::new(doc.pixel_format());
     poisoned.fill_rect(Rect::new(0, 0, 2, 2), &[0., 1., 0., 1.]);
@@ -108,12 +108,12 @@ fn complete_svg_stack_keeps_mean_pixels_across_source_stage_and_warning_render_c
     let mut doc = (*session.active().unwrap().doc).clone();
     doc.icc_profile = Some(craft_cms::Builtin::Srgb.profile().to_bytes());
     let mut smart = smart_svg(bytes.to_vec());
-    smart.stack_mode = Some(photocraft_doc::StackMode::Mean);
+    smart.stack_mode = Some(patronusphoto_doc::StackMode::Mean);
     // The red/blue Mean is 0.5 in the SVG's U8 encoding. Existing source
     // conversion rounds it to 128/255 before widening and decoding the sRGB
     // transfer for F32. The explicit sRGB destination keeps the rendered result
     // within ICC roundoff of that value (the matrix path is not bit-exact).
-    let expected = photocraft_color::convert::srgb_to_linear(128.0 / 255.0);
+    let expected = patronusphoto_color::convert::srgb_to_linear(128.0 / 255.0);
     let check_mean = |pixel: [f32; 4]| {
         assert!((pixel[0] - expected).abs() < 3e-5, "red Mean: {pixel:?}");
         assert!(pixel[1].abs() < 1e-6, "green Mean: {pixel:?}");
@@ -121,7 +121,7 @@ fn complete_svg_stack_keeps_mean_pixels_across_source_stage_and_warning_render_c
         assert_eq!(pixel[3], 1.0);
     };
     for _ in 0..2 {
-        let source = stack_image("Complete.svg", bytes, PixelFormat::RGBA32F, photocraft_doc::StackMode::Mean).unwrap();
+        let source = stack_image("Complete.svg", bytes, PixelFormat::RGBA32F, patronusphoto_doc::StackMode::Mean).unwrap();
         check_mean(source.surface.rgba(1, 1));
         let strict = render(&doc, &smart).unwrap().unwrap();
         check_mean(strict.rgba(1, 1));

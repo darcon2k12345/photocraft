@@ -6,21 +6,21 @@
 
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use photocraft_ui_egui::PhotocraftApp;
-use photocraft_ui_egui::control::{ControlRequest, Reply};
+use patronusphoto_ui_egui::PatronusPhotoApp;
+use patronusphoto_ui_egui::control::{ControlRequest, Reply};
 use serde_json::{Value, json};
 
-type H = Harness<'static, Box<PhotocraftApp>>;
+type H = Harness<'static, Box<PatronusPhotoApp>>;
 
 const SETS: [&str; 3] = ["Zed", "Data Set 2", "Data Set 3"];
 
 /// A document with a visibility and a pixel replacement variable on one layer, and three sets
 /// (not in name order) that only set the visibility: Zed hides it, Data Set 2 shows it, Data Set 3
 /// hides it. No set has an image for the pixel variable.
-fn app() -> Box<PhotocraftApp> {
+fn app() -> Box<PatronusPhotoApp> {
     #[cfg(not(target_arch = "wasm32"))]
-    photocraft_raster::spill::use_test_volume_space();
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), photocraft_ui_egui::Services::default());
+    patronusphoto_raster::spill::use_test_volume_space();
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), patronusphoto_ui_egui::Services::default());
     app.run("file.new", json!({"width": 64, "height": 64, "background": "white"})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     let layer = app.session.active().unwrap().active_layer.unwrap().0;
@@ -41,10 +41,10 @@ fn app() -> Box<PhotocraftApp> {
     app
 }
 
-fn harness(app: Box<PhotocraftApp>) -> H {
+fn harness(app: Box<PatronusPhotoApp>) -> H {
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(egui::vec2(900.0, 700.0)).build_ui_state(
-        |ui, app: &mut Box<PhotocraftApp>| {
-            photocraft_ui_egui::dialogs::run(app, ui);
+        |ui, app: &mut Box<PatronusPhotoApp>| {
+            patronusphoto_ui_egui::dialogs::run(app, ui);
         },
         app,
     );
@@ -56,7 +56,7 @@ fn harness(app: Box<PhotocraftApp>) -> H {
 fn control(h: &mut H, method: &str, params: Value) -> Value {
     let (request, _) = ControlRequest::new(method, params);
     let ctx = h.ctx.clone();
-    let reply = match photocraft_ui_egui::control::handle(h.state_mut(), &ctx, &request) {
+    let reply = match patronusphoto_ui_egui::control::handle(h.state_mut(), &ctx, &request) {
         Reply::Done(value) => value,
         _ => panic!("{method} did not answer at once"),
     };
@@ -71,7 +71,7 @@ fn refused(reply: &Value) -> bool {
 /// Image › Apply Data Set… as the menu runs it, then a few frames; the dialog's id.
 fn open(h: &mut H) -> String {
     let ctx = h.ctx.clone();
-    let reply = photocraft_ui_egui::menus::invoke(h.state_mut(), &ctx, "image.applyDataSet", json!({})).unwrap();
+    let reply = patronusphoto_ui_egui::menus::invoke(h.state_mut(), &ctx, "image.applyDataSet", json!({})).unwrap();
     h.run_steps(3);
     reply["dialog"].as_str().expect("the menu opens a dialog").to_string()
 }
@@ -107,7 +107,7 @@ fn history(h: &H) -> usize {
     h.state().session.active().unwrap().history.past_len() - base
 }
 
-fn variables(h: &H) -> photocraft_doc::Variables {
+fn variables(h: &H) -> patronusphoto_doc::Variables {
     h.state().session.active().unwrap().doc.variables.clone()
 }
 
@@ -144,7 +144,7 @@ fn menu_opens_the_apply_data_set_dialog_not_the_variables_editor() {
 fn variables_data_sets_page_keeps_its_own_dialog() {
     let mut h = harness(app());
     let ctx = h.ctx.clone();
-    photocraft_ui_egui::menus::invoke(h.state_mut(), &ctx, "image.variables.dataSets", json!({})).unwrap();
+    patronusphoto_ui_egui::menus::invoke(h.state_mut(), &ctx, "image.variables.dataSets", json!({})).unwrap();
     h.run_steps(3);
     let listed = dialogs(&mut h);
     assert_eq!(listed.len(), 1);
@@ -321,11 +321,11 @@ fn bad_index_from_the_control_channel_is_refused() {
 #[test]
 fn no_data_sets_shows_an_empty_list_and_apply_reports_it() {
     #[cfg(not(target_arch = "wasm32"))]
-    photocraft_raster::spill::use_test_volume_space();
-    let mut a = PhotocraftApp::new(photocraft_engine::Session::new(), photocraft_ui_egui::Services::default());
+    patronusphoto_raster::spill::use_test_volume_space();
+    let mut a = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), patronusphoto_ui_egui::Services::default());
     a.run("file.new", json!({"width": 8, "height": 8})).unwrap();
     let mut h = harness(a);
-    photocraft_ui_egui::panels::apply_data_set_ui::open(h.state_mut());
+    patronusphoto_ui_egui::panels::apply_data_set_ui::open(h.state_mut());
     h.run_steps(3);
     assert!(h.state().dialog_open());
     h.get_by_label("Apply").click();

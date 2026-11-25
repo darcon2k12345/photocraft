@@ -9,15 +9,15 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use eframe::egui_wgpu::RenderState;
 use eframe::wgpu::TextureFormat;
-use photocraft_color::{ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{Document, Layer, LayerContent, Size};
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
-use photocraft_ui_egui::PhotocraftApp;
-use photocraft_ui_egui::gpu_canvas::{self, GpuCanvas};
+use patronusphoto_color::{ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::{Document, Layer, LayerContent, Size};
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::Surface;
+use patronusphoto_ui_egui::PatronusPhotoApp;
+use patronusphoto_ui_egui::gpu_canvas::{self, GpuCanvas};
 use serde_json::json;
 
-use photocraft_testkit::gpu_lock;
+use patronusphoto_testkit::gpu_lock;
 
 /// A headless GPU canvas on a device created like the app's, if the adapter has a float canvas.
 fn canvas() -> Option<(GpuCanvas, RenderState)> {
@@ -27,7 +27,7 @@ fn canvas() -> Option<(GpuCanvas, RenderState)> {
         eprintln!("skipping: no GPU adapter");
         return None;
     };
-    if !gpu_canvas::supports_f16_canvas(&rs.adapter) || std::env::var("PHOTOCRAFT_CANVAS_F16").as_deref() == Ok("0") {
+    if !gpu_canvas::supports_f16_canvas(&rs.adapter) || std::env::var("PATRONUSPHOTO_CANVAS_F16").as_deref() == Ok("0") {
         eprintln!("skipping: adapter can't render/filter Rgba16Float");
         return None;
     }
@@ -54,7 +54,7 @@ fn levels(texels: &[[f32; 4]], w: u32, y: u32) -> usize {
 
 /// The stored texels of a document's canvas texture against its CPU composite (premultiplied).
 fn max_error(doc: &Document, texels: &[[f32; 4]]) -> f32 {
-    let buf = photocraft_compose::render(doc, doc.bounds());
+    let buf = patronusphoto_compose::render(doc, doc.bounds());
     buf.px.iter().zip(texels).map(|(c, t)| (0..4).map(|i| ((if i < 3 { c[i] * c[3] } else { c[3] }) - t[i]).abs()).fold(0.0, f32::max)).fold(0.0, f32::max)
 }
 
@@ -114,7 +114,7 @@ fn eight_bit_documents_keep_their_rgba8_texture() {
     g.upload_composite(doc.id.0, &doc, None);
     let (format, _, texels) = g.read_texels(doc.id.0).expect("read back");
     assert_eq!(format, TextureFormat::Rgba8Unorm);
-    let want = gpu_canvas::premultiply_rgba8(&photocraft_compose::render(&doc, doc.bounds()).px);
+    let want = gpu_canvas::premultiply_rgba8(&patronusphoto_compose::render(&doc, doc.bounds()).px);
     let got: Vec<u8> = texels.iter().flat_map(|p| p.map(|v| (v * 255.0).round() as u8)).collect();
     assert!(got == want, "8-bit texels changed");
     assert!(levels(&texels, 1024, 0) <= 256);
@@ -140,7 +140,7 @@ fn format_follows_depth_and_budget() {
     assert_eq!(g.format_for(SampleType::U16, [7360, 4912]), TextureFormat::Rgba16Float);
     assert_eq!(g.format_for(SampleType::F32, [7360, 4912]), TextureFormat::Rgba16Float);
     // Over the budget (a 14000² 16-bit document): 8-bit, so it stays on the GPU.
-    if std::env::var_os("PHOTOCRAFT_CANVAS_F16").is_none() {
+    if std::env::var_os("PATRONUSPHOTO_CANVAS_F16").is_none() {
         assert_eq!(g.format_for(SampleType::U16, [14000, 14000]), TextureFormat::Rgba8Unorm);
     }
 }
@@ -198,10 +198,13 @@ fn screens(cases: Vec<ScreenCase<'_>>) -> Option<Vec<Screen>> {
             .with_max_steps(64)
             .wgpu_setup(gpu_canvas::wgpu_setup())
             .build_eframe(move |cc| {
-                PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-                let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), Default::default());
+                PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+                let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), Default::default());
                 if let Some(rs) = cc.wgpu_render_state.as_ref() {
-                    ok2.store(gpu_canvas::supports_f16_canvas(&rs.adapter) && std::env::var("PHOTOCRAFT_CANVAS_F16").as_deref() != Ok("0"), Ordering::SeqCst);
+                    ok2.store(
+                        gpu_canvas::supports_f16_canvas(&rs.adapter) && std::env::var("PATRONUSPHOTO_CANVAS_F16").as_deref() != Ok("0"),
+                        Ordering::SeqCst,
+                    );
                     app.set_wgpu(rs.clone());
                 }
                 app.session.open_document(doc, None);
@@ -252,7 +255,7 @@ fn sixteen_bit_gradient_on_screen() {
     let _gpu = gpu_lock();
     // A 16-bit ramp drawn by the app's canvas: smooth, monotonic, no visible steps.
     let doc = gradient(SampleType::U16, 2048, 1024, 0.0, 1.0);
-    let Some(img) = screen(doc, &[], "photocraft-canvas-16f-gradient.png") else { return };
+    let Some(img) = screen(doc, &[], "patronusphoto-canvas-16f-gradient.png") else { return };
     let (n, step) = screen_levels(&img, img.h / 2, 150, 600);
     assert!(n > 100 && step <= 3, "{n} levels, max step {step}");
 }
@@ -271,7 +274,7 @@ fn thirty_two_bit_preview_exposes_values_above_one() {
     flat.layers.push(Layer::new("bright", LayerContent::Raster(s)));
     let brighten = [("view.thirtyTwoBitPreviewOptions", json!({"exposure": 4.0, "gamma": 1.0}))];
     let darken = [("view.thirtyTwoBitPreviewOptions", json!({"exposure": -3.0, "gamma": 1.0}))];
-    let Some(shown) = screens(vec![(doc, &brighten, "photocraft-canvas-16f-hdr-ramp.png"), (flat, &darken, "photocraft-canvas-16f-hdr-flat.png")]) else {
+    let Some(shown) = screens(vec![(doc, &brighten, "patronusphoto-canvas-16f-hdr-ramp.png"), (flat, &darken, "patronusphoto-canvas-16f-hdr-flat.png")]) else {
         return;
     };
     let [ramp, img] = &shown[..] else { panic!("two screens, got {}", shown.len()) };

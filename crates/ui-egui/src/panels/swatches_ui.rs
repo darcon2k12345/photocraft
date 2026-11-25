@@ -1,4 +1,4 @@
-//! Window › Swatches: the swatch library (`photocraft_engine::presets::swatches`) in the framework's
+//! Window › Swatches: the swatch library (`patronusphoto_engine::presets::swatches`) in the framework's
 //! `SwatchesPanel`: groups as folders, flat touching squares with name tooltips, a context menu (Rename, Delete,
 //! Move to) and the footer.
 //!
@@ -24,10 +24,10 @@ use craft::ui::menu::PanelRow;
 use craft::ui::patterns::presets::{PresetFileRequest, PresetWords};
 use craft::ui::runtime::commands::{CommandRef, CommandState};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// Runs engine command `cmd`; a failure goes to the status line and gives `None`.
-fn run(app: &mut PhotocraftApp, cmd: &str, params: Value) -> Option<Value> {
+fn run(app: &mut PatronusPhotoApp, cmd: &str, params: Value) -> Option<Value> {
     match app.run(cmd, params) {
         Ok(v) => Some(v),
         Err(e) => {
@@ -41,7 +41,7 @@ fn run(app: &mut PhotocraftApp, cmd: &str, params: Value) -> Option<Value> {
 }
 
 /// Set the foreground (or background) colour from a swatch.
-pub fn use_swatch(app: &mut PhotocraftApp, name: &str, background: bool) {
+pub fn use_swatch(app: &mut PatronusPhotoApp, name: &str, background: bool) {
     let target = if background { "background" } else { "foreground" };
     if run(app, "swatches.use", json!({"swatch": name, "target": target})).is_some() && !background {
         // Clicking a swatch recolours the selected characters (#364), or the selected type and
@@ -52,8 +52,8 @@ pub fn use_swatch(app: &mut PhotocraftApp, name: &str, background: bool) {
 
 /// The converter that shows CMYK swatches and the colour models behind them: the working CMYK profile's.
 /// `CmykConverter::new` shares the transforms of a profile, so building it per use costs a lookup.
-fn cmyk_converter(app: &PhotocraftApp) -> Option<CmykConverter> {
-    CmykConverter::new(app.session.color.working(photocraft_doc::ColorMode::Cmyk)).ok()
+fn cmyk_converter(app: &PatronusPhotoApp) -> Option<CmykConverter> {
+    CmykConverter::new(app.session.color.working(patronusphoto_doc::ColorMode::Cmyk)).ok()
 }
 
 /// The words of the panel and of its file entries, from the context's environment, so the names a menu command makes
@@ -64,7 +64,7 @@ fn words(ctx: &egui::Context) -> (std::sync::Arc<SwatchesWords>, std::sync::Arc<
 }
 
 /// The Swatches panel body.
-pub fn panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn panel(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let foreground = Srgba::from_array(app.session.tools.foreground);
     let converter = cmyk_converter(app);
     let out = {
@@ -83,7 +83,7 @@ pub fn panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 }
 
 /// A swatch was clicked: select it and set the foreground, or the background with Alt or Cmd/Ctrl held.
-pub(crate) fn apply_used(app: &mut PhotocraftApp, at: SwatchAt, background: bool) {
+pub(crate) fn apply_used(app: &mut PatronusPhotoApp, at: SwatchAt, background: bool) {
     let name = app.session.presets.swatches.get(at.group).and_then(|g| g.entries.get(at.index)).map(|e| e.name.clone());
     if let Some(name) = name {
         app.ui.swatches.selected = Some(SwatchKey::Swatch(name.clone()));
@@ -104,7 +104,7 @@ fn color_param(color: &SwatchColor, converter: Option<&CmykConverter>) -> Value 
 }
 
 /// Runs one edit the panel resolved.
-pub(crate) fn apply_edit(app: &mut PhotocraftApp, edit: SwatchEdit) {
+pub(crate) fn apply_edit(app: &mut PatronusPhotoApp, edit: SwatchEdit) {
     match edit {
         SwatchEdit::Add { group, name, color, .. } => new_swatch(app, group, name, &color),
         SwatchEdit::NewGroup { name, .. } => new_group(app, name),
@@ -139,7 +139,7 @@ pub(crate) fn apply_edit(app: &mut PhotocraftApp, edit: SwatchEdit) {
 }
 
 /// New Swatch: the colour named and selected in its group, then renamed in place (Photoshop asks for the name).
-fn new_swatch(app: &mut PhotocraftApp, group: Option<String>, name: String, color: &SwatchColor) {
+fn new_swatch(app: &mut PatronusPhotoApp, group: Option<String>, name: String, color: &SwatchColor) {
     let converter = cmyk_converter(app);
     let mut params = json!({"name": name, "color": color_param(color, converter.as_ref())});
     if let Some(group) = group {
@@ -152,7 +152,7 @@ fn new_swatch(app: &mut PhotocraftApp, group: Option<String>, name: String, colo
     }
 }
 
-fn new_group(app: &mut PhotocraftApp, name: String) {
+fn new_group(app: &mut PatronusPhotoApp, name: String) {
     if let Some(r) = run(app, "swatches.newGroup", json!({"name": name})) {
         let group = r["group"].as_str().unwrap_or_default().to_string();
         app.ui.swatches.rename = Some(SwatchKey::Group(group));
@@ -167,11 +167,11 @@ pub(crate) fn source(name: &str, bytes: &[u8]) -> Value {
         return json!({"path": name});
     }
     let _ = name;
-    json!({"data": photocraft_engine::paint::tile::b64_encode(bytes)})
+    json!({"data": patronusphoto_engine::paint::tile::b64_encode(bytes)})
 }
 
 /// Import an `.aco`/`.act`/`.ase` file's bytes (File › Open, drag and drop, the panel menu).
-pub fn import_bytes(app: &mut PhotocraftApp, name: &str, bytes: &[u8], replace: bool) -> Result<Value, String> {
+pub fn import_bytes(app: &mut PatronusPhotoApp, name: &str, bytes: &[u8], replace: bool) -> Result<Value, String> {
     let stem = std::path::Path::new(name).file_stem().map(|s| s.to_string_lossy().to_string()).filter(|s| !s.trim().is_empty());
     let mut p = source(name, bytes);
     p["mode"] = json!(if replace { "replace" } else { "append" });
@@ -205,14 +205,14 @@ pub fn import_bytes(app: &mut PhotocraftApp, name: &str, bytes: &[u8], replace: 
 }
 
 /// The status line shows a framework status message.
-fn show_status(app: &mut PhotocraftApp, status: &StatusMessage) {
+fn show_status(app: &mut PatronusPhotoApp, status: &StatusMessage) {
     app.ui.status = status.text.as_str().to_owned();
     app.ui.status_error = status.tone == Tone::Bad;
 }
 
 /// Answers a file dialog a menu command asked for through the app's pickers: a pick to read imports through the engine,
 /// a pick to write saves the export and says so in the status line.
-fn answer_file(app: &mut PhotocraftApp, request: PresetFileRequest) {
+fn answer_file(app: &mut PatronusPhotoApp, request: PresetFileRequest) {
     let started = match request {
         PresetFileRequest::Open { extensions, replace, .. } => {
             let extensions: Vec<&str> = extensions.iter().map(String::as_str).collect();
@@ -234,17 +234,17 @@ fn answer_file(app: &mut PhotocraftApp, request: PresetFileRequest) {
 }
 
 /// The Swatches entries of the panel menu ("…").
-pub(crate) fn panel_rows(_app: &PhotocraftApp) -> Vec<PanelRow> {
+pub(crate) fn panel_rows(_app: &PatronusPhotoApp) -> Vec<PanelRow> {
     SwatchesMenu::rows()
 }
 
 /// The state of each Swatches command: both exports wait for a swatch.
-pub(crate) fn command_states(app: &PhotocraftApp) -> Vec<(CommandRef, CommandState)> {
+pub(crate) fn command_states(app: &PatronusPhotoApp) -> Vec<(CommandRef, CommandState)> {
     SwatchesMenu::states(&app.session.presets.swatches).into_iter().map(|(command, state)| (CommandRef::from(command), state)).collect()
 }
 
 /// Runs a fired command of the Swatches menu; false for another set's command.
-pub(crate) fn run_fired(app: &mut PhotocraftApp, ctx: &egui::Context, command: &CommandRef) -> bool {
+pub(crate) fn run_fired(app: &mut PatronusPhotoApp, ctx: &egui::Context, command: &CommandRef) -> bool {
     let Some(command) = SwatchesCommand::from_ref(command) else { return false };
     let foreground = Srgba::from_array(app.session.tools.foreground);
     let (swatch_words, _) = words(ctx);
@@ -263,7 +263,7 @@ pub(crate) fn run_fired(app: &mut PhotocraftApp, ctx: &egui::Context, command: &
 
 /// The Color Picker's Add to Swatches: the picked colour, in the model the user typed it in
 /// (CMYK or Lab values kept by the picker), else RGB.
-pub fn add_from_picker(app: &mut PhotocraftApp, picked: PickedColor) {
+pub fn add_from_picker(app: &mut PatronusPhotoApp, picked: PickedColor) {
     let color = match picked.model {
         Some(m) if m.model == "cmyk" => json!({"model": "cmyk", "values": &m.values[..4]}),
         Some(m) if m.model == "lab" => json!({"model": "lab", "values": &m.values[..3]}),
@@ -283,8 +283,8 @@ mod tests {
     use super::*;
     use crate::state::Tool;
 
-    fn app() -> Box<PhotocraftApp> {
-        PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default())
+    fn app() -> Box<PatronusPhotoApp> {
+        PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default())
     }
 
     /// Bytes without a path (the browser) go by the file name: an `.act` whose first color is
@@ -303,25 +303,25 @@ mod tests {
     /// step each, a gradient fill included.
     #[test]
     fn swatch_click_fills_the_selected_shape() {
-        use photocraft_doc::{Fill, LayerContent, LayerId};
+        use patronusphoto_doc::{Fill, LayerContent, LayerId};
         let mut app = app();
         app.session.execute("file.new", json!({"width": 64, "height": 48})).unwrap();
         let id = LayerId(app.run("shape.create", json!({"rect": [8, 8, 40, 30], "fill": {"gradient": {}}})).unwrap()["layer"].as_u64().unwrap());
         app.ui.tool = crate::state::Tool::Rectangle;
-        let fill = |app: &PhotocraftApp| match &app.session.active().unwrap().doc.layer(id).unwrap().content {
+        let fill = |app: &PatronusPhotoApp| match &app.session.active().unwrap().doc.layer(id).unwrap().content {
             LayerContent::Shape(sh) => sh.fill.clone(),
             _ => panic!("not a shape layer"),
         };
-        let steps = |app: &PhotocraftApp| app.session.active().unwrap().history.entries().len();
+        let steps = |app: &PatronusPhotoApp| app.session.active().unwrap().history.entries().len();
         let before = steps(&app);
         let names: Vec<String> = app.session.presets.swatches[0].entries.iter().take(2).map(|s| s.name.clone()).collect();
         use_swatch(&mut app, &names[0], false);
         let fg = app.session.tools.foreground;
-        assert_eq!(fill(&app), Some(Fill::Solid(photocraft_doc::Color::rgba(fg[0], fg[1], fg[2], 1.0))), "{} filled the shape", names[0]);
+        assert_eq!(fill(&app), Some(Fill::Solid(patronusphoto_doc::Color::rgba(fg[0], fg[1], fg[2], 1.0))), "{} filled the shape", names[0]);
         assert_eq!(steps(&app), before + 1);
         use_swatch(&mut app, &names[1], false);
         let fg = app.session.tools.foreground;
-        assert_eq!(fill(&app), Some(Fill::Solid(photocraft_doc::Color::rgba(fg[0], fg[1], fg[2], 1.0))), "{} filled the shape", names[1]);
+        assert_eq!(fill(&app), Some(Fill::Solid(patronusphoto_doc::Color::rgba(fg[0], fg[1], fg[2], 1.0))), "{} filled the shape", names[1]);
         assert_eq!(steps(&app), before + 2, "each swatch click is its own undo step");
     }
 
@@ -337,7 +337,7 @@ mod tests {
         let red = [230.0 / 255.0, 40.0 / 255.0, 40.0 / 255.0, 1.0];
         assert_eq!(app.session.tools.foreground, red);
         let st = app.session.active().unwrap();
-        let Some(photocraft_doc::LayerContent::Text(t)) = st.doc.layer(photocraft_doc::LayerId(id)).map(|l| &l.content) else { panic!("type layer") };
+        let Some(patronusphoto_doc::LayerContent::Text(t)) = st.doc.layer(patronusphoto_doc::LayerId(id)).map(|l| &l.content) else { panic!("type layer") };
         let runs = t.char_runs();
         assert_eq!(runs[0].len, 5, "the selection is its own run");
         assert_eq!(runs[0].style.color.to_rgba8(), [230, 40, 40, 255]);
@@ -371,7 +371,7 @@ mod tests {
         assert_eq!(app.ui.swatches.rename, Some(SwatchKey::Swatch("Color Swatch 1".into())), "renamed in place");
         add_from_picker(&mut app, PickedColor::cmyk(Srgba::rgb(0.0, 1.0, 1.0), [100.0, 0.0, 0.0, 0.0]));
         let s = app.session.presets.swatches[0].entries.last().unwrap();
-        assert_eq!(s.color, photocraft_engine::presets::swatches::SwatchColor::Cmyk([1.0, 0.0, 0.0, 0.0]));
+        assert_eq!(s.color, patronusphoto_engine::presets::swatches::SwatchColor::Cmyk([1.0, 0.0, 0.0, 0.0]));
     }
 
     /// The menu's file requests go to the host file service: a read imports (a group named by the file, or a
@@ -385,7 +385,7 @@ mod tests {
             craft::host::Picked::Paths(vec!["Swatches.ase".into()]),
         ]));
         // The host takes its file service when the app is made.
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services { files: Some(files), ..Default::default() });
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services { files: Some(files), ..Default::default() });
         let ctx = app.ctx().clone();
         let written = std::sync::Arc::new(std::sync::Mutex::new(Vec::<(String, Vec<u8>)>::new()));
         let sink = written.clone();

@@ -3,14 +3,14 @@ use serde_json::{Value, json};
 use super::*;
 use crate::smart_filter_dialog::tests::{confirm, newest, open_count, set};
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 40, "height": 30, "background": "transparent"})).unwrap();
     app.run("tools.setColors", json!({"foreground": "#ff0000", "background": "#0000ff"})).unwrap();
     app
 }
 
-fn px(app: &PhotocraftApp, x: i32, y: i32) -> [f32; 4] {
+fn px(app: &PatronusPhotoApp, x: i32, y: i32) -> [f32; 4] {
     let st = app.session.active().unwrap();
     st.doc.layer(st.active_layer.unwrap()).unwrap().surface().unwrap().rgba(x, y)
 }
@@ -20,7 +20,7 @@ fn close(a: [f32; 4], b: [f32; 4]) -> bool {
 }
 
 /// Open the dialog, set `fields` (Contents first: the other rows show only for it), press OK.
-fn fill(app: &mut PhotocraftApp, fields: Value) {
+fn fill(app: &mut PatronusPhotoApp, fields: Value) {
     let id = open(app);
     let map = fields.as_object().unwrap();
     for (k, v) in map.iter().filter(|(k, _)| *k == "contents").chain(map.iter().filter(|(k, _)| *k != "contents")) {
@@ -79,7 +79,7 @@ fn shift_f5_fills_the_selected_area_of_a_smart_object_mask() {
     let layer_id = st.active_layer.unwrap();
     let original = st.doc.layer(layer_id).unwrap().clone();
     let history = st.history.past_len();
-    assert!(matches!(&original.content, photocraft_doc::LayerContent::Smart(_)));
+    assert!(matches!(&original.content, patronusphoto_doc::LayerContent::Smart(_)));
     assert_eq!(original.mask.as_ref().unwrap().surface.sample_channel(4, 5, 0), 1.0);
 
     let ctx = app.ctx().clone();
@@ -130,9 +130,9 @@ fn menu_and_context_fill_edit_non_raster_masks_and_undo() {
         let target = app.with_mask_target(COMMAND, json!({}));
         assert_eq!(target["target"], if kind == "filter" { "filterMask" } else { "mask" });
         assert!(crate::menus::is_enabled(&app, COMMAND), "{kind}");
-        let sample = |app: &PhotocraftApp, x, y| {
+        let sample = |app: &PatronusPhotoApp, x, y| {
             let st = app.session.active().unwrap();
-            photocraft_engine::channel_cmds::read_target_surface(&st.doc, st.active_layer, &target).unwrap().sample_channel(x, y, 0)
+            patronusphoto_engine::channel_cmds::read_target_surface(&st.doc, st.active_layer, &target).unwrap().sample_channel(x, y, 0)
         };
         let history = app.session.active().unwrap().history.past_len();
         let ctx = app.ctx().clone();
@@ -251,7 +251,7 @@ fn open_fill_preserves_channel_targets() {
         };
         let target_before = {
             let st = app.session.active().unwrap();
-            photocraft_engine::channel_cmds::read_target_surface(&st.doc, st.active_layer, &json!({"target": target})).unwrap().clone()
+            patronusphoto_engine::channel_cmds::read_target_surface(&st.doc, st.active_layer, &json!({"target": target})).unwrap().clone()
         };
         let id = open(&mut app);
         set(&mut app, id, "contents", json!("black"));
@@ -261,7 +261,7 @@ fn open_fill_preserves_channel_targets() {
         let color = st.doc.layer(st.active_layer.unwrap()).unwrap().surface().unwrap().rgba(4, 5);
         if matches!(kind, "alpha" | "quick") {
             let p = json!({"target": target});
-            assert_eq!(photocraft_engine::channel_cmds::read_target_surface(&st.doc, st.active_layer, &p).unwrap().sample_channel(4, 5, 0), 0.0);
+            assert_eq!(patronusphoto_engine::channel_cmds::read_target_surface(&st.doc, st.active_layer, &p).unwrap().sample_channel(4, 5, 0), 0.0);
             assert_eq!(color, [1.0; 4], "{kind} leaves layer pixels unchanged");
         } else {
             assert_eq!(color, if kind == "red" { [0.0, 1.0, 1.0, 1.0] } else { [0.0, 1.0, 0.0, 1.0] }, "{kind}");
@@ -271,7 +271,7 @@ fn open_fill_preserves_channel_targets() {
         assert_eq!(px(&app, 4, 5), [1.0; 4]);
         let st = app.session.active().unwrap();
         assert_eq!(
-            photocraft_engine::channel_cmds::read_target_surface(&st.doc, st.active_layer, &json!({"target": target})).unwrap(),
+            patronusphoto_engine::channel_cmds::read_target_surface(&st.doc, st.active_layer, &json!({"target": target})).unwrap(),
             &target_before,
             "Undo restores the {kind} samples too"
         );

@@ -14,7 +14,7 @@
 ## Adding a command
 
 1. **Find the id.** Search `crates/ui-egui/src/menu_catalog.rs` for the Photoshop menu item. Using its id makes the menu item live with no UI work. Commands without a Photoshop menu entry use a descriptive id in the same style (`layer.smartFilter.delete`) and an empty menu path.
-2. **Algorithm** goes in the lowest crate that fits (`algo` for imaging, `paint`, `vector`, `text`; colour management is `craft-cms` in craft-libs), with unit tests. It takes depth-agnostic surfaces (`photocraft-raster`), works per tile, and is deterministic (seeded randomness).
+2. **Algorithm** goes in the lowest crate that fits (`algo` for imaging, `paint`, `vector`, `text`; colour management is `craft-cms` in craft-libs), with unit tests. It takes depth-agnostic surfaces (`patronusphoto-raster`), works per tile, and is deterministic (seeded randomness).
 3. **Command** goes in an engine module (`crates/engine/src/<area>_cmds.rs`) exposing `specs()`, registered by adding `("<module>", crate::<module>::specs)` to `TABLES` in `crates/engine/src/install.rs` (after the table it follows in the menus) and its ids to `crates/engine/src/install/command_ids.txt` (the order test says how). A command in a core menu goes in the owner fragment `crates/engine/src/cmd/table/<owner>/<menu>.rs` instead. Fill in:
    - `id`, `label`, `menu` path and Photoshop's default `shortcut`,
    - a params doc string such as `{"radius":px=4,"mode":"a|b"="a"}` (this is what agents read through `commands` / `command_list`),
@@ -44,7 +44,7 @@
 | `docs/parity-checklist.md` | Generated list of every Photoshop menu item, live or missing |
 | `docs/scorecard.md` | Generated scorecard: performance budgets and numbers, corpus floors, per-area checklists (tools, files, UI, type, automation, reliability, distribution), settings that do nothing |
 | `crates/<name>/README.md` (where present) | Public API of that crate |
-| [photocraft-corpus](https://github.com/storytold/photocraft-corpus) + `docs/development.md` › Test corpora | Real-file test oracles (our Photoshop-authored PSDs and GIMP-authored XCFs); with psd-tools, ag-psd and PngSuite fetched into `corpus/` by `cargo xtask corpus --all` at the pins in `xtask/src/corpus_pins.rs` |
+| [patronusphoto-corpus](https://github.com/storytold/photocraft-corpus) + `docs/development.md` › Test corpora | Real-file test oracles (our Photoshop-authored PSDs and GIMP-authored XCFs); with psd-tools, ag-psd and PngSuite fetched into `corpus/` by `cargo xtask corpus --all` at the pins in `xtask/src/corpus_pins.rs` |
 
 ### Workspace map
 
@@ -61,10 +61,10 @@ crates/
   ui-egui automation         L6 egui shell (thin: all actions go through the engine); MCP server
   testkit oil-round-proof    test helpers
 apps/
-  photocraft                 desktop app (eframe/wgpu), TCP control server
-  photocraft-cli             headless CLI (convert/info/run/batch/commands/mcp)
-  photocraft-web             the same app in the browser (trunk + wasm-bindgen)
-  photocraft-web-boot        starts the packaged browser app from compressed parts of its wasm (no file over a host's size cap)
+  patronusphoto                 desktop app (eframe/wgpu), TCP control server
+  patronusphoto-cli             headless CLI (convert/info/run/batch/commands/mcp)
+  patronusphoto-web             the same app in the browser (trunk + wasm-bindgen)
+  patronusphoto-web-boot        starts the packaged browser app from compressed parts of its wasm (no file over a host's size cap)
 xtask/                       cargo xtask layers | wasm | ci | stats | corpus | test-corpus | parity | perf | scorecard
 ```
 
@@ -75,7 +75,7 @@ xtask/                       cargo xtask layers | wasm | ci | stats | corpus | t
 Priorities: important infrastructure first, then low-hanging parity, then the long tail.
 
 0. **Read `ROADMAP.md`, then `docs/gaps.md`.** `docs/target-app-parity.md` says, dimension by
-   dimension, where PhotoCraft is lacking; `docs/gaps.md` ranks the work. `docs/parity-checklist.md`
+   dimension, where Patronus Photo is lacking; `docs/gaps.md` ranks the work. `docs/parity-checklist.md`
    (menu wiring) is not a measure of behaviour. When your work moves a number or closes a gap,
    update the parity doc and gap entry it belongs to, with the date, and bump their status line
    and revision history.
@@ -97,7 +97,7 @@ cargo xtask layers
 cargo xtask panel-commands  # if you touched ui-egui: click handlers dispatch command ids (AGENTS.md rule 14)
 cargo xtask wasm            # if you touched L0–L6
 cargo xtask parity          # if you added commands; commit the regenerated docs/parity-checklist.md
-cargo test -p photocraft-engine --test panic_hunt -- --ignored   # hostile-input sweep over every command
+cargo test -p patronusphoto-engine --test panic_hunt -- --ignored   # hostile-input sweep over every command
 cargo xtask scorecard       # if you moved a number: flip the checklist row in scorecard/*.toml, raise a
                             # corpus floor, fix a dead preference, or meet a budget (then set enforce = true
                             # in perf/budgets.toml); commit the regenerated docs/scorecard.md (CI checks it)
@@ -107,9 +107,9 @@ cargo xtask test-corpus     # if you touched psd, io, codecs, compose, gpu, text
 
 While iterating, run less and keep the full commands above as the final gate: `cargo test -p <crate> --lib --tests` skips the examples and doctests plain `cargo test` builds every time (ui-egui has 11 examples), and `cargo test -p <crate> --test <file>` runs one integration-test file. `cargo nextest run` runs tests in parallel across binaries; see `docs/development.md` › Faster test loops.
 
-**MCP in tests and agent sessions: `photocraft-cli mcp --headless`.** Plain `photocraft-cli mcp` works in the open PhotoCraft window while the ArtCraft Launcher's agents switch is on, and then may start PhotoCraft on the developer's machine when it is closed. Scripts, tests and agents that want a session without a window pass `--headless` (or use `photocraft-cli serve`); a test that runs the CLI also gives it its own settings, launcher and flags folders (`PHOTOCRAFT_CONFIG_DIR`, `CRAFT_MCP_DIR`, `CRAFT_FLAGS_FILE`, as `crate::command()` in `apps/photocraft-cli/tests/it/main.rs` does). To drive the running app on purpose, use `--control` (`docs/development.md`).
+**MCP in tests and agent sessions: `patronusphoto-cli mcp --headless`.** Plain `patronusphoto-cli mcp` works in the open Patronus Photo window while the ArtCraft Launcher's agents switch is on, and then may start Patronus Photo on the developer's machine when it is closed. Scripts, tests and agents that want a session without a window pass `--headless` (or use `patronusphoto-cli serve`); a test that runs the CLI also gives it its own settings, launcher and flags folders (`PATRONUSPHOTO_CONFIG_DIR`, `CRAFT_MCP_DIR`, `CRAFT_FLAGS_FILE`, as `crate::command()` in `apps/patronusphoto-cli/tests/it/main.rs` does). To drive the running app on purpose, use `--control` (`docs/development.md`).
 
-**Test corpora.** Real-file corpora live in `corpus/` (gitignored, never committed), fetched at pinned commits and sha256-verified by `cargo xtask corpus --all`: our Photoshop- and GIMP-authored oracles from https://github.com/storytold/photocraft-corpus plus psd-tools, ag-psd and PngSuite from their upstreams. Pins: `xtask/src/corpus_pins.rs`. The corpus tests are opt-in (cargo feature `corpus`): plain `cargo test` skips them, and with the feature on a missing corpus fails ("run `cargo xtask corpus --all`"). `cargo xtask test-corpus` fetches and runs them all. CI always runs them (the `corpus` job, cached by pin). Never commit corpus files; new oracles go to photocraft-corpus (its `AGENTS.md`), then a pin bump here. Details: `docs/development.md` › Test corpora.
+**Test corpora.** Real-file corpora live in `corpus/` (gitignored, never committed), fetched at pinned commits and sha256-verified by `cargo xtask corpus --all`: our Photoshop- and GIMP-authored oracles from https://github.com/storytold/photocraft-corpus plus psd-tools, ag-psd and PngSuite from their upstreams. Pins: `xtask/src/corpus_pins.rs`. The corpus tests are opt-in (cargo feature `corpus`): plain `cargo test` skips them, and with the feature on a missing corpus fails ("run `cargo xtask corpus --all`"). `cargo xtask test-corpus` fetches and runs them all. CI always runs them (the `corpus` job, cached by pin). Never commit corpus files; new oracles go to patronusphoto-corpus (its `AGENTS.md`), then a pin bump here. Details: `docs/development.md` › Test corpora.
 
 The dev log is `log/devlog.md` (local, gitignored).
 
@@ -125,7 +125,7 @@ The dev log is `log/devlog.md` (local, gitignored).
 
 ### Native format
 
-`photocraft-format` deliberately fails to compile when a `photocraft-doc` struct gains a field, so
+`patronusphoto-format` deliberately fails to compile when a `patronusphoto-doc` struct gains a field, so
 nothing is silently dropped from `.pcraft` saves. When you add a doc field, add it to
 `crates/format/src/manifest.rs` and `convert.rs` with `#[serde(default)]` so older files still load.
 If the field has a PSD equivalent, map it in `crates/io` too, and keep unknown PSD blocks verbatim.

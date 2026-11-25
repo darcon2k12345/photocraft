@@ -2,14 +2,14 @@
 //! its actions against the engine.
 
 use craft::text::ui::spelling::{CheckSpellingDialog, SpellingAction, SpellingItem};
-use photocraft_doc::LayerId;
+use patronusphoto_doc::LayerId;
 use std::ops::Range;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::run;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The `dialog` that Check Spelling's results and a playback paused at its step name.
 pub const SPELLING: &str = "checkSpelling";
@@ -33,7 +33,7 @@ pub struct SpellDialog {
 /// The engine's misspellings, as the raw JSON items of `edit.checkSpelling`. A single-layer check without a layer
 /// lists nothing: an absent opening layer must not adopt the newly active one. Check All Layers starts at the opening
 /// layer, or top to bottom (null) without one (#14174).
-fn list(app: &mut PhotocraftApp, all_layers: bool, layer: Option<LayerId>, ignore: &[String]) -> Vec<Value> {
+fn list(app: &mut PatronusPhotoApp, all_layers: bool, layer: Option<LayerId>, ignore: &[String]) -> Vec<Value> {
     let mut p = json!({ "action": "list", "allLayers": all_layers, "ignore": ignore, "suggestions": 8 });
     if all_layers {
         p["from"] = json!(layer.map(|l| l.0));
@@ -45,10 +45,10 @@ fn list(app: &mut PhotocraftApp, all_layers: bool, layer: Option<LayerId>, ignor
 }
 
 /// The text of a text layer of the active document (empty for any other layer).
-fn text_of(app: &PhotocraftApp, id: u64) -> String {
+fn text_of(app: &PatronusPhotoApp, id: u64) -> String {
     let Some(layer) = app.session.active().and_then(|st| st.doc.layer(LayerId(id))) else { return String::new() };
     match &layer.content {
-        photocraft_doc::LayerContent::Text(text) => text.text.clone(),
+        patronusphoto_doc::LayerContent::Text(text) => text.text.clone(),
         _ => String::new(),
     }
 }
@@ -66,7 +66,7 @@ fn char_range(text: &str, bytes: Range<usize>) -> Range<usize> {
 }
 
 /// The dialog's items for the engine's JSON items. The engine counts characters; the items hold byte ranges.
-fn to_items(app: &PhotocraftApp, raw: &[Value]) -> Vec<SpellingItem> {
+fn to_items(app: &PatronusPhotoApp, raw: &[Value]) -> Vec<SpellingItem> {
     raw.iter()
         .map(|i| {
             let layer = i["layer"].as_u64().unwrap_or(0);
@@ -81,7 +81,7 @@ fn to_items(app: &PhotocraftApp, raw: &[Value]) -> Vec<SpellingItem> {
 
 /// Lists the misspellings again with the hosted dialog's Check All Layers and ignored words, and keeps the session's
 /// `all_layers` at what the dialog has. Single-layer checks stay on the opening layer.
-fn relist(app: &mut PhotocraftApp) -> Vec<SpellingItem> {
+fn relist(app: &mut PatronusPhotoApp) -> Vec<SpellingItem> {
     let Some(dialog) = app.framework.dialogs.get::<CheckSpellingDialog>() else { return Vec::new() };
     let (checked, ignored) = (dialog.all_layers_checked(), dialog.ignored().to_vec());
     let Some(spell) = app.ui.type_panels.spell.as_mut() else { return Vec::new() };
@@ -93,7 +93,7 @@ fn relist(app: &mut PhotocraftApp) -> Vec<SpellingItem> {
 
 /// Opens Edit › Check Spelling (returns the misspellings). Opening it again while an action waits
 /// at a Check Spelling step keeps that action's token, so Done still continues it.
-pub fn open_spelling(app: &mut PhotocraftApp, all_layers: bool) -> Result<Value, String> {
+pub fn open_spelling(app: &mut PatronusPhotoApp, all_layers: bool) -> Result<Value, String> {
     let resume = app.ui.type_panels.spell.as_ref().and_then(|d| d.resume);
     let layer = if resume.is_some() { app.ui.type_panels.spell.as_ref().and_then(|d| d.layer) } else { app.session.active().and_then(|st| st.active_layer) };
     let mut params = json!({ "action": "list", "allLayers": all_layers });
@@ -118,7 +118,7 @@ pub fn open_spelling(app: &mut PhotocraftApp, all_layers: bool) -> Result<Value,
 /// has it, and an action paused at a Check Spelling step continues on the document it was playing
 /// on. When recording the step fails, the status keeps that error with the playback's outcome.
 /// A dialog still open is cancelled through the host, which releases its layers.
-pub(crate) fn close_spelling(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(crate) fn close_spelling(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     if app.framework.dialogs.is_open::<CheckSpellingDialog>() {
         app.framework.dialogs.cancel::<CheckSpellingDialog>(ctx);
         let _ = app.framework.dialogs.take::<CheckSpellingDialog>();
@@ -138,7 +138,7 @@ pub(crate) fn close_spelling(app: &mut PhotocraftApp, ctx: &egui::Context) {
 }
 
 /// Reports an engine refusal in the status line.
-fn report(app: &mut PhotocraftApp, result: Result<Value, String>) {
+fn report(app: &mut PatronusPhotoApp, result: Result<Value, String>) {
     if let Err(error) = result {
         app.ui.status = error;
         app.ui.status_error = true;
@@ -146,7 +146,7 @@ fn report(app: &mut PhotocraftApp, result: Result<Value, String>) {
 }
 
 /// Replaces the one listed occurrence.
-fn change(app: &mut PhotocraftApp, item: &SpellingItem, to: &str) {
+fn change(app: &mut PatronusPhotoApp, item: &SpellingItem, to: &str) {
     let chars = char_range(&text_of(app, item.object), item.range.clone());
     let p = json!({ "action": "change", "layer": item.object, "start": chars.start, "end": chars.end, "word": item.word, "replace": to });
     let result = crate::actions::spelling_change(app, p);
@@ -154,7 +154,7 @@ fn change(app: &mut PhotocraftApp, item: &SpellingItem, to: &str) {
 }
 
 /// Replaces the listed item's word: in its own text object, or in every text object when `all_layers`.
-fn change_all(app: &mut PhotocraftApp, item: &SpellingItem, to: &str, all_layers: bool) {
+fn change_all(app: &mut PatronusPhotoApp, item: &SpellingItem, to: &str, all_layers: bool) {
     let mut p = json!({ "action": "changeAll", "word": item.word, "replace": to, "allLayers": all_layers });
     if !all_layers {
         p["layer"] = json!(item.object);
@@ -164,7 +164,7 @@ fn change_all(app: &mut PhotocraftApp, item: &SpellingItem, to: &str, all_layers
 }
 
 /// Carries out one button of the dialog. The list is read again by the caller.
-fn run_action(app: &mut PhotocraftApp, action: SpellingAction) {
+fn run_action(app: &mut PatronusPhotoApp, action: SpellingAction) {
     match action {
         SpellingAction::Change { item, to, .. } => change(app, &item, &to),
         SpellingAction::ChangeAll { item, to, all_layers, .. } => change_all(app, &item, &to, all_layers),
@@ -179,7 +179,7 @@ fn run_action(app: &mut PhotocraftApp, action: SpellingAction) {
 
 /// The result pump (`dialogs::TAKERS`): while the dialog is open, runs its actions and lists again; a result of any
 /// kind ends the session. A second pass in a frame finds no action left, so it applies nothing twice.
-pub(crate) fn take(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(crate) fn take(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     let mut acted = false;
     while let Some(action) = app.framework.dialogs.get_mut::<CheckSpellingDialog>().and_then(|d| d.take_action()) {
         run_action(app, action);
@@ -199,24 +199,24 @@ pub(crate) fn take(app: &mut PhotocraftApp, ctx: &egui::Context) {
 #[cfg(test)]
 mod tests {
     use craft::ui::dialog::StackDialog as _;
-    use photocraft_engine::actions_cmds::ActionStep;
+    use patronusphoto_engine::actions_cmds::ActionStep;
 
     use super::*;
 
-    fn app_with_text(text: &str) -> Box<PhotocraftApp> {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    fn app_with_text(text: &str) -> Box<PatronusPhotoApp> {
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 300, "height": 120, "background": "white"})).unwrap();
         app.run("type.create", json!({"x": 10, "y": 60, "text": text})).unwrap();
         app.sync_views();
         app
     }
 
-    fn items(app: &PhotocraftApp) -> Vec<SpellingItem> {
+    fn items(app: &PatronusPhotoApp) -> Vec<SpellingItem> {
         app.framework.dialogs.get::<CheckSpellingDialog>().unwrap().items().to_vec()
     }
 
-    fn layer_text(app: &PhotocraftApp, id: LayerId) -> String {
-        let photocraft_doc::LayerContent::Text(text) = &app.session.active().unwrap().doc.layer(id).unwrap().content else { panic!("not text") };
+    fn layer_text(app: &PatronusPhotoApp, id: LayerId) -> String {
+        let patronusphoto_doc::LayerContent::Text(text) = &app.session.active().unwrap().doc.layer(id).unwrap().content else { panic!("not text") };
         text.text.clone()
     }
 

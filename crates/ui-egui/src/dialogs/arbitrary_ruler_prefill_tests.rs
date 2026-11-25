@@ -9,13 +9,13 @@ use egui_kittest::kittest::Queryable;
 use serde_json::json;
 
 use super::filter_dialog::open;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 const COMMAND: &str = "image.rotation.arbitrary";
 
 /// A 318 px square document, a ruler from 100,100 to `end`, and the opened Arbitrary dialog.
-fn open_ruler(end: [i32; 2]) -> (Box<PhotocraftApp>, DialogId) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn open_ruler(end: [i32; 2]) -> (Box<PatronusPhotoApp>, DialogId) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 318, "height": 318})).unwrap();
     app.run("image.analysis.rulerTool", json!({"start": [100, 100], "end": end})).unwrap();
     let id = open(&mut app, COMMAND).expect("Arbitrary opens");
@@ -23,7 +23,7 @@ fn open_ruler(end: [i32; 2]) -> (Box<PhotocraftApp>, DialogId) {
 }
 
 /// The values the host holds for the dialog: angle and direction.
-fn shown(app: &PhotocraftApp, id: DialogId) -> (f64, String) {
+fn shown(app: &PatronusPhotoApp, id: DialogId) -> (f64, String) {
     let dialog = app.framework.dialogs.get_by_id::<HostedParamDialog>(id).expect("open dialog");
     let f = dialog.fields();
     (f.number("angle").expect("angle"), f.text("direction").expect("direction").to_string())
@@ -31,7 +31,7 @@ fn shown(app: &PhotocraftApp, id: DialogId) -> (f64, String) {
 
 /// OK answered with no pass in between: the angle the dialog files for the command. The dialog holds its OK
 /// for the app to answer, so the filed answer is read from its values.
-fn confirmed_angle(app: &mut PhotocraftApp, id: DialogId) -> Option<f64> {
+fn confirmed_angle(app: &mut PatronusPhotoApp, id: DialogId) -> Option<f64> {
     let ctx = app.ctx().clone();
     app.framework.dialogs.confirm_by_id(&ctx, id);
     assert_eq!(app.framework.dialogs.held_state(id), Some(HeldOk::Waiting), "OK files its answer");
@@ -64,8 +64,8 @@ fn the_ruler_angle_is_rounded_before_the_first_frame() {
     let mut h = Harness::builder()
         .with_context(app.ctx().clone())
         .with_size(egui::vec2(900.0, 700.0))
-        .build_ui_state(|ui, app: &mut Box<PhotocraftApp>| crate::dialogs::run(app, ui), app);
-    PhotocraftApp::setup_context(&h.ctx, Default::default());
+        .build_ui_state(|ui, app: &mut Box<PatronusPhotoApp>| crate::dialogs::run(app, ui), app);
+    PatronusPhotoApp::setup_context(&h.ctx, Default::default());
     h.run_steps(3);
     // Move off the pre-fill first, so only the reset can bring 32.12 back.
     let set_ctx = h.ctx.clone();

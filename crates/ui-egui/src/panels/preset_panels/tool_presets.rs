@@ -3,7 +3,7 @@
 use serde_json::{Value, json};
 
 use super::run;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// The engine's id of `t` (the tool's name with a lower-case first letter).
@@ -14,7 +14,7 @@ pub(crate) fn tool_id(t: Tool) -> String {
 }
 
 /// Apply a tool preset: the engine sets the brush/colour, the shell switches tool and options.
-pub fn select(app: &mut PhotocraftApp, name: &str) {
+pub fn select(app: &mut PatronusPhotoApp, name: &str) {
     // PLAN: assumes `ToolOptions::crop` is `Clone + PartialEq` (tools-w45).
     let crop_before = app.ui.tool_options.crop.clone();
     let Some(r) = run(app, "tool.presets.select", json!({"preset": name})) else { return };
@@ -58,7 +58,7 @@ pub fn select(app: &mut PhotocraftApp, name: &str) {
 
 /// The `tool.presets.new` params for the + button: `tool`'s own options only, so choosing the
 /// preset later leaves the other tools' settings alone.
-pub(crate) fn new_params(app: &PhotocraftApp, tool: Tool) -> Value {
+pub(crate) fn new_params(app: &PatronusPhotoApp, tool: Tool) -> Value {
     let all = serde_json::to_value(&app.ui.tool_options).unwrap_or_default();
     let mut own: serde_json::Map<String, Value> =
         crate::tool_reset::option_keys(tool).iter().filter_map(|k| Some(((*k).to_string(), all.get(*k)?.clone()))).collect();
@@ -75,8 +75,8 @@ pub(crate) fn new_params(app: &PhotocraftApp, tool: Tool) -> Value {
 mod tests {
     use super::*;
 
-    fn app() -> Box<PhotocraftApp> {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    fn app() -> Box<PatronusPhotoApp> {
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
         app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
         app.sync_views();
         app
@@ -105,7 +105,7 @@ mod tests {
         app.ui.tool = Tool::Crop;
         // The tool draws its default frame in its first pass.
         crate::canvas::testing::frame(&mut app);
-        let size = |app: &PhotocraftApp| crate::crop_ui::frame(app).and_then(|frame| frame.crop_size());
+        let size = |app: &PatronusPhotoApp| crate::crop_ui::frame(app).and_then(|frame| frame.crop_size());
         assert_eq!(size(&app), Some((64.0, 48.0)));
         app.run("tool.presets.new", json!({"name": "Square", "tool": "crop", "options": {"toolOptions": {"crop_ratio": "1:1"}}})).unwrap();
         select(&mut app, "Square");

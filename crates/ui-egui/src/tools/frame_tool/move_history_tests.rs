@@ -2,8 +2,8 @@
 use super::*;
 use crate::canvas::{ToolEvent, testing, tool_event};
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width":600,"height":400})).unwrap();
     app.sync_views();
     app.ui.extras.snap = false;
@@ -11,7 +11,7 @@ fn app() -> Box<PhotocraftApp> {
     app
 }
 
-fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2]) {
+fn drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2]) {
     let m = egui::Modifiers::NONE;
     // The frame's handles take presses from the pass that drew them: the state a test set is shown first.
     testing::frame(app);
@@ -20,16 +20,16 @@ fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2]) {
     tool_event(app, ToolEvent::Up { x: to[0], y: to[1] }, m);
 }
 
-fn entries(app: &PhotocraftApp) -> Vec<String> {
+fn entries(app: &PatronusPhotoApp) -> Vec<String> {
     app.session.active().unwrap().history.entries()
 }
 
-fn transform(app: &PhotocraftApp, id: LayerId) -> [f64; 6] {
+fn transform(app: &PatronusPhotoApp, id: LayerId) -> [f64; 6] {
     app.session.active().unwrap().doc.layer(id).unwrap().frame.as_ref().unwrap().transform.m
 }
 
 /// An empty 100 x 80 frame at 20,30, drawn with the Frame tool.
-fn empty_frame(app: &mut PhotocraftApp) -> LayerId {
+fn empty_frame(app: &mut PatronusPhotoApp) -> LayerId {
     drag(app, [20., 30.], [120., 110.]);
     selected(app).unwrap().id
 }

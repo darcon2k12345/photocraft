@@ -12,7 +12,7 @@ fn tile(name: &str, sc: &[[f32; 4]], sw: usize, x0: usize, w: usize, h: usize) -
     let n = fmt.channels();
     let mut data = vec![0.0f32; w * h * n];
     for (i, o) in data.chunks_exact_mut(n).enumerate() {
-        photocraft_raster::from_rgba_into(&fmt, sc[(i / w) * sw + x0 + i % w], o);
+        patronusphoto_raster::from_rgba_into(&fmt, sc[(i / w) * sw + x0 + i % w], o);
     }
     let mut surf = Surface::new(fmt);
     surf.write_region(Rect::new(0, 0, w as i32, h as i32), &data);
@@ -49,7 +49,7 @@ fn source_files() -> (tempfile::TempDir, Vec<String>) {
     let paths = [("a.png", 0usize), ("b.png", 200)]
         .into_iter()
         .map(|(file, x0)| {
-            let png = photocraft_io::export(&tile(file, &sc, sw, x0, 300, h), file, &Default::default()).unwrap().bytes;
+            let png = patronusphoto_io::export(&tile(file, &sc, sw, x0, 300, h), file, &Default::default()).unwrap().bytes;
             let path = dir.path().join(file);
             std::fs::write(&path, &png).unwrap();
             path.to_string_lossy().into_owned()

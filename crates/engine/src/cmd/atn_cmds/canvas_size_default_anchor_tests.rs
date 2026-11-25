@@ -1,5 +1,5 @@
-use photocraft_doc::Size;
-use photocraft_geom::Rect;
+use patronusphoto_doc::Size;
+use patronusphoto_geom::Rect;
 
 use super::*;
 
@@ -46,7 +46,7 @@ fn played(keys: &[(&str, &str, &str)]) -> Session {
         descriptor = descriptor.with(key, enm(ty, value));
     }
     let mut s = test_document();
-    let loaded = s.execute("actions.load", json!({"data":photocraft_paint::tile::b64_encode(&canvas_file(descriptor))})).unwrap();
+    let loaded = s.execute("actions.load", json!({"data":patronusphoto_paint::tile::b64_encode(&canvas_file(descriptor))})).unwrap();
     assert_eq!(loaded["unsupported"], json!([]));
     let result = s.execute("actions.play", json!({"action":loaded["actions"][0]})).unwrap();
     assert!(result.get("failed").is_none(), "{result}");

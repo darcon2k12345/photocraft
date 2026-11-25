@@ -63,12 +63,12 @@ The key words MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are used as in RFC 2119
 ## This repository
 <!-- craft-agents:end -->
 
-PhotoCraft is a native image editor in Rust (egui/eframe on wgpu; the web build is the same code compiled to WebAssembly). Product name: PhotoCraft; crates, binaries and ids stay lowercase (`photocraft-*`). Shared components are pinned from storytold/craft-libs by git revision.
+Patronus Photo is a native image editor in Rust (egui/eframe on wgpu; the web build is the same code compiled to WebAssembly). Product name: Patronus Photo; crates, binaries and ids stay lowercase (`patronusphoto-*`). Shared components are pinned from storytold/craft-libs by git revision.
 
 Layout, by layer (`cargo xtask layers` checks it; register new crates in `xtask/src/layers.rs`):
 
 - `crates/geom color raster`: L0, with the standalone L0 crates `ipp raw tablet` (no workspace dependencies). `doc`: L1. `ops paint algo text vector`: L2. `compose gpu format`: L3. `io plugins`: L4. `engine`: L5, the session and command registry. `ui-egui automation`: L6, the egui shell and MCP server. `testkit` and `oil-round-proof` are test helpers.
-- `apps/photocraft` (desktop), `apps/photocraft-cli` (headless CLI, MCP), `apps/photocraft-web`, `xtask/`.
+- `apps/patronusphoto` (desktop), `apps/patronusphoto-cli` (headless CLI, MCP), `apps/patronusphoto-web`, `xtask/`.
 - Every action is an engine command; ids match `crates/ui-egui/src/menu_catalog.rs`, which makes the menu item live. Panels dispatch command ids.
 
 Checks for the crates you changed:
@@ -80,7 +80,7 @@ cargo xtask layers
 cargo xtask panel-commands   # ui-egui
 cargo xtask wasm             # L0-L6
 cargo xtask parity           # new commands; commit docs/parity-checklist.md
-cargo test -p photocraft-engine --test panic_hunt -- --ignored   # command sweep
+cargo test -p patronusphoto-engine --test panic_hunt -- --ignored   # command sweep
 cargo xtask test-corpus      # psd, io, codecs, compose, gpu, text, format
 ```
 

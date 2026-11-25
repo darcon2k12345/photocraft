@@ -5,7 +5,7 @@ use super::*;
 use craft::automation::actions::ActionStep;
 use craft::host::{Picked, ScriptedFiles};
 use egui_kittest::kittest::Queryable;
-use photocraft_io::{DdsCompression, DdsOptions};
+use patronusphoto_io::{DdsCompression, DdsOptions};
 use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 /// Each write: the path, and the DDS options the export was asked for.
@@ -35,7 +35,7 @@ fn dds_app(to: &str) -> (Prompted, Writes) {
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     craft::ui::testing::windows::set_os(&h.ctx, craft::host::target::Os::Windows);
     (h, writes)
 }

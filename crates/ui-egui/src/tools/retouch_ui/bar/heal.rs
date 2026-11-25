@@ -10,7 +10,7 @@ use craft::ui::pickers::Select;
 use craft::ui::text::RangeAlert;
 use serde_json::Value as Json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::option_cells::{hint, number};
 
 /// The tooltip of the Structure field of Content-Aware Move.
@@ -73,7 +73,7 @@ fn first(a: Option<RangeAlert>, b: Option<RangeAlert>) -> Option<RangeAlert> {
 }
 
 /// Remove's options. The apply and cancel pair belongs to the bar's pending strip.
-pub(super) fn remove(ui: &mut egui::Ui, app: &mut PhotocraftApp) -> Option<RangeAlert> {
+pub(super) fn remove(ui: &mut egui::Ui, app: &mut PatronusPhotoApp) -> Option<RangeAlert> {
     let composite = crate::canvas::paint_target(app).as_str() == Some("pixels");
     let o = &mut app.ui.tool_options;
     // The reference's options bar, in its order and words (#12546).
@@ -84,7 +84,7 @@ pub(super) fn remove(ui: &mut egui::Ui, app: &mut PhotocraftApp) -> Option<Range
 }
 
 /// Patch's options: the lasso's operation, then Normal (Source / Destination) or Content-Aware.
-pub(super) fn patch(ui: &mut egui::Ui, app: &mut PhotocraftApp) -> Option<RangeAlert> {
+pub(super) fn patch(ui: &mut egui::Ui, app: &mut PatronusPhotoApp) -> Option<RangeAlert> {
     crate::panels::options_bar::selection::operation_segments(app, ui, true);
     Divider::vertical().show(ui);
     let o = &mut app.ui.tool_options;
@@ -105,7 +105,7 @@ pub(super) fn patch(ui: &mut egui::Ui, app: &mut PhotocraftApp) -> Option<RangeA
 }
 
 /// Content-Aware Move's options; every cell is disabled while the Transform On Drop box is up.
-pub(super) fn content_aware_move(ui: &mut egui::Ui, app: &mut PhotocraftApp) -> Option<RangeAlert> {
+pub(super) fn content_aware_move(ui: &mut egui::Ui, app: &mut PatronusPhotoApp) -> Option<RangeAlert> {
     let live = crate::cam_transform::active(app);
     crate::panels::options_bar::selection::operation_segments(app, ui, !live);
     Divider::vertical().show(ui);
@@ -125,7 +125,7 @@ pub(super) fn content_aware_move(ui: &mut egui::Ui, app: &mut PhotocraftApp) -> 
 }
 
 /// Spot Healing's options.
-pub(super) fn spot_healing(ui: &mut egui::Ui, app: &mut PhotocraftApp) -> Option<RangeAlert> {
+pub(super) fn spot_healing(ui: &mut egui::Ui, app: &mut PatronusPhotoApp) -> Option<RangeAlert> {
     let o = &mut app.ui.tool_options;
     radios(
         ui,
@@ -140,7 +140,7 @@ pub(super) fn spot_healing(ui: &mut egui::Ui, app: &mut PhotocraftApp) -> Option
 
 /// The options of Clone Stamp and Healing Brush. In an Indexed Color document the Clone Stamp's
 /// Sample greys at Current Layer and keeps the stored choice for other documents (#12613).
-pub(super) fn clone(ui: &mut egui::Ui, app: &mut PhotocraftApp) -> Option<RangeAlert> {
+pub(super) fn clone(ui: &mut egui::Ui, app: &mut PatronusPhotoApp) -> Option<RangeAlert> {
     let source_unset = app.session.presets.clone.active().source.is_none();
     let indexed = crate::retouch_ui::clone_stamp_indexed(app);
     let o = &mut app.ui.tool_options;

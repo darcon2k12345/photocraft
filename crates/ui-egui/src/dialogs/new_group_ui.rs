@@ -6,10 +6,10 @@
 use craft::ui::contract::Bind;
 use craft::ui::dialog::DialogId;
 use craft::ui::patterns::form_dialogs::{DialogFields, Param, ParamDialog, ParamKind, ParamResult};
-use photocraft_color::BlendMode;
+use patronusphoto_color::BlendMode;
 use serde_json::{Map, Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::dialogs::params;
 
 /// Layer › New › Group…; also the key of its dialog.
@@ -29,7 +29,7 @@ pub(crate) fn owns(key: &str) -> bool {
 
 /// Open the dialog for `command` with Photoshop's defaults: the next "Group N", no colour, Pass
 /// Through, 100 %. Unlike Stroke the choices are not remembered, as in Photoshop.
-pub fn open(app: &mut PhotocraftApp, command: &str) -> DialogId {
+pub fn open(app: &mut PatronusPhotoApp, command: &str) -> DialogId {
     let command = if command == FROM_LAYERS { FROM_LAYERS } else { NEW_GROUP };
     let name = app.session.active().map(|st| st.doc.next_layer_name("Group")).unwrap_or_else(|| "Group 1".into());
     // The window title, as in Photoshop.
@@ -60,7 +60,7 @@ pub fn params(f: &DialogFields) -> Value {
 }
 
 /// OK: runs the command the dialog's key names.
-pub(crate) fn run(app: &mut PhotocraftApp, _ctx: &egui::Context, result: ParamResult) {
+pub(crate) fn run(app: &mut PatronusPhotoApp, _ctx: &egui::Context, result: ParamResult) {
     let outcome = app.run(&result.key, params(&result.fields));
     super::alerts::report(app, outcome);
 }

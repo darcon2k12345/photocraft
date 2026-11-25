@@ -10,7 +10,7 @@ use serde_json::json;
 use super::reset_to_default;
 use super::tests::{app_with_layer, defaults, draft, edit, first_of, harness, ok};
 use super::{DialogId, open};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The numeric parameter of one instance of the draft's style.
 fn num(style: &LayerStyle, id: EffectId, key: &str) -> Option<f64> {
@@ -25,7 +25,7 @@ fn text(params: &StyleParams, key: &str) -> Option<String> {
     }
 }
 
-fn instance_text(app: &PhotocraftApp, id: DialogId, effect: EffectId, key: &str) -> Option<String> {
+fn instance_text(app: &PatronusPhotoApp, id: DialogId, effect: EffectId, key: &str) -> Option<String> {
     text(&draft(app, id).style.effect(effect).expect("the instance").params, key)
 }
 

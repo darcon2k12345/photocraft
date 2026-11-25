@@ -23,12 +23,12 @@
 
 use craft::draw::ui::pen::{BezierTool, EditPath, KnotRef, PathSelection, PathTool};
 use craft::keymap::Mods;
-use photocraft_doc::vector::Path;
-use photocraft_doc::{LayerContent, LayerId, Locks};
+use patronusphoto_doc::vector::Path;
+use patronusphoto_doc::{LayerContent, LayerId, Locks};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 pub(crate) mod edits;
@@ -54,7 +54,7 @@ pub enum PathRef {
 impl PathRef {
     /// The engine's target params for this path. A saved path goes by its name; one that is gone
     /// gets an empty name, which the engine refuses.
-    pub(crate) fn params(self, app: &PhotocraftApp) -> Value {
+    pub(crate) fn params(self, app: &PatronusPhotoApp) -> Value {
         match self {
             PathRef::Work => json!({"name": "work"}),
             PathRef::Layer(id) => json!({"name": "layer", "layer": id}),
@@ -147,10 +147,10 @@ struct SelectionValidation {
 /// Runtime selection ownership is never restored from settings onto another document.
 #[derive(Clone, Debug)]
 pub(crate) struct Owner {
-    document: photocraft_doc::DocId,
-    source: std::sync::Weak<photocraft_doc::Document>,
+    document: patronusphoto_doc::DocId,
+    source: std::sync::Weak<patronusphoto_doc::Document>,
     revision: u64,
-    layer: Option<photocraft_doc::LayerId>,
+    layer: Option<patronusphoto_doc::LayerId>,
     selected_path: Option<String>,
     vector_mask: bool,
     tool: Tool,
@@ -166,7 +166,7 @@ impl PartialEq for Owner {
 }
 
 impl Owner {
-    pub(crate) fn current(app: &PhotocraftApp) -> Option<Self> {
+    pub(crate) fn current(app: &PatronusPhotoApp) -> Option<Self> {
         let st = app.session.active()?;
         Some(Self {
             document: st.doc.id,
@@ -174,7 +174,7 @@ impl Owner {
             revision: st.revision,
             layer: st.active_layer,
             selected_path: app.ui.selected_path.clone(),
-            vector_mask: app.ui.vector_mask_target || st.channel_view.target == photocraft_engine::channel_cmds::ChannelTarget::VectorMask,
+            vector_mask: app.ui.vector_mask_target || st.channel_view.target == patronusphoto_engine::channel_cmds::ChannelTarget::VectorMask,
             tool: app.ui.tool,
             validation: Default::default(),
         })
@@ -185,23 +185,23 @@ impl Owner {
         self.validation.borrow().computations
     }
 
-    fn same_target(&self, app: &PhotocraftApp) -> bool {
+    fn same_target(&self, app: &PatronusPhotoApp) -> bool {
         self.same_path_target(app) && app.ui.tool == self.tool
     }
 
-    fn same_path_target(&self, app: &PhotocraftApp) -> bool {
+    fn same_path_target(&self, app: &PatronusPhotoApp) -> bool {
         app.session.active().is_some_and(|st| {
             st.doc.id == self.document
                 && st.active_layer == self.layer
-                && (app.ui.vector_mask_target || st.channel_view.target == photocraft_engine::channel_cmds::ChannelTarget::VectorMask) == self.vector_mask
+                && (app.ui.vector_mask_target || st.channel_view.target == patronusphoto_engine::channel_cmds::ChannelTarget::VectorMask) == self.vector_mask
         }) && app.ui.selected_path == self.selected_path
     }
 
-    fn valid(&self, app: &PhotocraftApp) -> bool {
+    fn valid(&self, app: &PatronusPhotoApp) -> bool {
         self.valid_path(app) && app.ui.tool == self.tool
     }
 
-    fn valid_path(&self, app: &PhotocraftApp) -> bool {
+    fn valid_path(&self, app: &PatronusPhotoApp) -> bool {
         self.same_path_target(app)
             && app.session.active().is_some_and(|st| st.revision == self.revision && self.source.ptr_eq(&std::sync::Arc::downgrade(&st.doc)))
     }
@@ -210,25 +210,25 @@ impl Owner {
 /// Is `ds` still about the document, revision and target it was made on? Convert Point works on
 /// the handles selected with Direct Selection, so an idle selection crosses those two tools; a
 /// gesture keeps its own tool.
-pub(crate) fn still_valid(app: &PhotocraftApp, ds: &DirectSelection) -> bool {
+pub(crate) fn still_valid(app: &PatronusPhotoApp, ds: &DirectSelection) -> bool {
     ds.owner.as_ref().is_some_and(|owner| owner.valid(app) || (ds.editing.is_none() && owns(owner.tool) && owns(app.ui.tool) && owner.valid_path(app)))
         || component_selection_matches(app, ds)
 }
 
 /// The live path `target` addresses on the active document, if it still exists. Existing paths
 /// are borrowed; only a Type Path is generated, and the revision cache limits how often.
-pub(crate) fn path_of<'a>(app: &'a PhotocraftApp, target: &PathRef) -> Option<std::borrow::Cow<'a, Path>> {
+pub(crate) fn path_of<'a>(app: &'a PatronusPhotoApp, target: &PathRef) -> Option<std::borrow::Cow<'a, Path>> {
     let st = app.session.active()?;
     match target {
-        PathRef::Layer(id) => st.doc.layer(photocraft_doc::LayerId(*id)).and_then(|l| match &l.content {
-            photocraft_doc::LayerContent::Shape(sh) => Some(std::borrow::Cow::Borrowed(&sh.path)),
+        PathRef::Layer(id) => st.doc.layer(patronusphoto_doc::LayerId(*id)).and_then(|l| match &l.content {
+            patronusphoto_doc::LayerContent::Shape(sh) => Some(std::borrow::Cow::Borrowed(&sh.path)),
             _ => l.vector_mask.as_ref().map(|m| std::borrow::Cow::Borrowed(&m.path)),
         }),
         PathRef::Work => st.doc.work_path.as_ref().map(std::borrow::Cow::Borrowed),
         PathRef::Saved(i) => st.doc.paths.get(*i).map(|p| std::borrow::Cow::Borrowed(&p.path)),
         // The stored id is the layer whose Type Path this is; resolving by it confirms the match.
-        PathRef::TypePath(id) => st.doc.layer(photocraft_doc::LayerId(*id)).and_then(|l| match &l.content {
-            photocraft_doc::LayerContent::Text(t) => photocraft_engine::type_extra_cmds::type_path(t).map(std::borrow::Cow::Owned),
+        PathRef::TypePath(id) => st.doc.layer(patronusphoto_doc::LayerId(*id)).and_then(|l| match &l.content {
+            patronusphoto_doc::LayerContent::Text(t) => patronusphoto_engine::type_extra_cmds::type_path(t).map(std::borrow::Cow::Owned),
             _ => None,
         }),
         PathRef::Pen => None,
@@ -238,7 +238,7 @@ pub(crate) fn path_of<'a>(app: &'a PhotocraftApp, target: &PathRef) -> Option<st
 /// A Path Selection component selection outlives history revisions: ordered subpath geometry and
 /// the component partition are what the stored indices address. Valid while the target path still
 /// exists on the same document and carries the same signature.
-fn component_selection_matches(app: &PhotocraftApp, ds: &DirectSelection) -> bool {
+fn component_selection_matches(app: &PatronusPhotoApp, ds: &DirectSelection) -> bool {
     if ds.editing.is_some() || app.ui.tool != Tool::PathSelection {
         return false;
     }
@@ -268,7 +268,7 @@ fn component_selection_matches(app: &PhotocraftApp, ds: &DirectSelection) -> boo
 }
 
 /// Clear stale anchors and gestures. True when a gesture was running and is cancelled with them.
-pub(crate) fn cancel_stale(app: &mut PhotocraftApp) -> bool {
+pub(crate) fn cancel_stale(app: &mut PatronusPhotoApp) -> bool {
     let ds = &app.ui.direct_selection;
     // A running gesture is held to the owner it began on, a selection to its own: a marquee begun with nothing
     // selected has a gesture and no selection yet.
@@ -286,7 +286,7 @@ pub(crate) fn cancel_stale(app: &mut PhotocraftApp) -> bool {
 }
 
 /// Rebind a selection to the revision its own command made; another target or tool drops it.
-pub(crate) fn keep_after_command(app: &mut PhotocraftApp, mut selection: DirectSelection) {
+pub(crate) fn keep_after_command(app: &mut PatronusPhotoApp, mut selection: DirectSelection) {
     if selection.owner.as_ref().is_some_and(|owner| owner.same_target(app)) {
         selection.owner = Owner::current(app);
         app.ui.direct_selection = selection;
@@ -294,7 +294,7 @@ pub(crate) fn keep_after_command(app: &mut PhotocraftApp, mut selection: DirectS
 }
 
 /// Is an overlay gesture of the path tools running? Esc and the modal gates read it.
-pub(crate) fn editing(app: &PhotocraftApp) -> bool {
+pub(crate) fn editing(app: &PatronusPhotoApp) -> bool {
     app.ui.direct_selection.editing.is_some()
 }
 
@@ -319,7 +319,7 @@ pub(crate) fn path_tool(tool: Tool, mods: Mods) -> Option<PathTool> {
 /// The selection the overlay shows for `bezier`: this selection while it still holds, else none.
 /// Path Selection's ⌘/Ctrl (Direct Selection) moves the anchor pressed alone, not the selected
 /// component it belongs to (#13284), so the component's anchors are not Direct Selection's.
-pub(crate) fn selection(app: &PhotocraftApp, bezier: BezierTool) -> PathSelection {
+pub(crate) fn selection(app: &PatronusPhotoApp, bezier: BezierTool) -> PathSelection {
     let ds = &app.ui.direct_selection;
     if !still_valid(app, ds) {
         return PathSelection::new(None, Vec::new(), None);
@@ -335,7 +335,7 @@ pub(crate) fn selection(app: &PhotocraftApp, bezier: BezierTool) -> PathSelectio
 /// The paths the overlay edits with `bezier`, back to front, and their refs in the same order. A
 /// locked layer's path is left out. The open pen draft comes last where it shows without sensing
 /// (`PathMode::draft_senses` is false: Direct Selection, Convert Point, the anchor tools).
-pub(crate) fn edit_paths(app: &PhotocraftApp, bezier: BezierTool) -> (Vec<EditPath>, Vec<PathRef>) {
+pub(crate) fn edit_paths(app: &PatronusPhotoApp, bezier: BezierTool) -> (Vec<EditPath>, Vec<PathRef>) {
     let draft_shown = matches!(bezier, BezierTool::Direct | BezierTool::Convert | BezierTool::AddAnchor | BezierTool::DeleteAnchor);
     let mut front: Vec<(PathRef, Path)> = match bezier {
         // ⌘/Ctrl on a Pen path being drawn edits only that path in place; a press anywhere else is a press off it,
@@ -378,7 +378,7 @@ pub(crate) fn edit_paths(app: &PhotocraftApp, bezier: BezierTool) -> (Vec<EditPa
 }
 
 /// The anchor tools ignore a click on a shape with only its own position lock set (#12730, #12825).
-pub(crate) fn ignores(app: &PhotocraftApp, r: &PathRef) -> bool {
+pub(crate) fn ignores(app: &PatronusPhotoApp, r: &PathRef) -> bool {
     if let PathRef::Layer(id) = *r
         && let Some(st) = app.session.active()
         && let Some(layer) = st.doc.layer(LayerId(id))
@@ -393,7 +393,7 @@ pub(crate) fn ignores(app: &PhotocraftApp, r: &PathRef) -> bool {
 }
 
 /// The Pen path being drawn, when it is on the active document and has an anchor.
-fn drafted(app: &PhotocraftApp) -> Option<&crate::vector_ui::PenPath> {
+fn drafted(app: &PatronusPhotoApp) -> Option<&crate::vector_ui::PenPath> {
     let active = app.session.active().map(|st| st.doc.id);
     app.ui.pen.as_ref().filter(|_| app.ui.pen_doc.is_none_or(|owner| Some(owner) == active)).filter(|p| !p.draft.knots.is_empty())
 }
@@ -401,7 +401,7 @@ fn drafted(app: &PhotocraftApp) -> Option<&crate::vector_ui::PenPath> {
 /// The selected anchor when it is the only one and an endpoint of an open subpath of the active
 /// path: where the Curvature Pen carries the path on from (#10726), as Photoshop does after a
 /// click, or ⌘/Ctrl-click, on the last point. The path, the subpath's index and the knot's.
-pub(crate) fn selected_open_end(app: &PhotocraftApp) -> Option<(PathRef, usize, usize)> {
+pub(crate) fn selected_open_end(app: &PatronusPhotoApp) -> Option<(PathRef, usize, usize)> {
     let ds = &app.ui.direct_selection;
     let ([[s, k]], Some(target)) = (ds.anchors.as_slice(), ds.target) else { return None };
     let (_, path) = active_paths(app).into_iter().find(|(r, _)| *r == target)?;
@@ -417,7 +417,7 @@ fn owns(tool: Tool) -> bool {
 
 /// The active paths, front first: the targeted vector mask, the active shape layer's path or the
 /// active type layer's Type Path (#9114), then the work path. The Pen's Auto Add/Delete edits these.
-pub(crate) fn active_paths(app: &PhotocraftApp) -> Vec<(PathRef, Path)> {
+pub(crate) fn active_paths(app: &PatronusPhotoApp) -> Vec<(PathRef, Path)> {
     let layer = crate::vector_ui::targeted_vector_mask(app)
         .or_else(|| crate::vector_ui::active_shape_path(app))
         .map(|(id, p)| (PathRef::Layer(id), p))
@@ -436,7 +436,7 @@ pub(crate) fn active_paths(app: &PhotocraftApp) -> Vec<(PathRef, Path)> {
 
 /// The paths Direct Selection edits, front first: the Pen path being drawn, the active paths, every
 /// visible shape layer, then the work path.
-pub(crate) fn candidates(app: &PhotocraftApp) -> Vec<(PathRef, Path)> {
+pub(crate) fn candidates(app: &PatronusPhotoApp) -> Vec<(PathRef, Path)> {
     let pen = drafted(app).map(|p| (PathRef::Pen, crate::vector_ui::pen_path(p)));
     let mut out: Vec<_> = pen.into_iter().chain(active_paths(app)).collect();
     if let Some(st) = app.session.active() {
@@ -444,7 +444,7 @@ pub(crate) fn candidates(app: &PhotocraftApp) -> Vec<(PathRef, Path)> {
             if !l.visible || !(1..=path.len()).all(|n| st.doc.layer_at(&path[..n]).is_some_and(|a| a.visible)) {
                 continue;
             }
-            if let photocraft_doc::LayerContent::Shape(sh) = &l.content
+            if let patronusphoto_doc::LayerContent::Shape(sh) = &l.content
                 && !out.iter().any(|(r, _)| *r == PathRef::Layer(l.id.0))
             {
                 out.push((PathRef::Layer(l.id.0), sh.path.clone()));
@@ -458,10 +458,10 @@ pub(crate) fn candidates(app: &PhotocraftApp) -> Vec<(PathRef, Path)> {
 }
 
 /// Can `target` be edited: a layer's path only while the layer is not locked.
-pub(crate) fn writable(app: &PhotocraftApp, target: &PathRef) -> bool {
+pub(crate) fn writable(app: &PatronusPhotoApp, target: &PathRef) -> bool {
     match target {
         PathRef::Layer(id) | PathRef::TypePath(id) => app.session.active().is_some_and(|st| {
-            let id = photocraft_doc::LayerId(*id);
+            let id = patronusphoto_doc::LayerId(*id);
             let locks = st.doc.effective_locks(id);
             // A hidden layer's path (or one in a hidden group) shows nothing to edit.
             let shown = st
@@ -479,7 +479,7 @@ pub(crate) fn writable(app: &PhotocraftApp, target: &PathRef) -> bool {
 /// The Pen draft (as `candidates` builds it), then the active paths, then (not measured, so as today,
 /// #12762, #12705) every shown, unlocked shape layer inside a group, front first. A top-level shape
 /// layer is a target only as the active layer.
-fn targeted(app: &PhotocraftApp) -> Vec<(PathRef, Path)> {
+fn targeted(app: &PatronusPhotoApp) -> Vec<(PathRef, Path)> {
     let Some(st) = app.session.active() else {
         return Vec::new();
     };
@@ -488,7 +488,7 @@ fn targeted(app: &PhotocraftApp) -> Vec<(PathRef, Path)> {
     let mut out: Vec<(PathRef, Path)> = pen.into_iter().chain(active_paths(app)).collect();
     let layers = st.doc.walk();
     let grouped = layers.iter().rev().filter(|(at, depth, _)| *depth > 0 && st.doc.shown_at(at)).filter_map(|(_, _, l)| match &l.content {
-        photocraft_doc::LayerContent::Shape(sh) => Some((PathRef::Layer(l.id.0), sh.path.clone())),
+        patronusphoto_doc::LayerContent::Shape(sh) => Some((PathRef::Layer(l.id.0), sh.path.clone())),
         _ => None,
     });
     for (r, path) in grouped {
@@ -529,8 +529,8 @@ mod freeform_command_tests {
     use crate::canvas::testing::{move_to, press, release};
     use egui::Modifiers;
 
-    fn app(tool: Tool) -> Box<PhotocraftApp> {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    fn app(tool: Tool) -> Box<PatronusPhotoApp> {
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 200, "height": 200})).unwrap();
         for name in ["work", "Saved drawing"] {
             app.run("path.set", json!({"name": name, "path":{"subpaths":[{"knots":[[20,20],[120,20]]}]}})).unwrap();
@@ -557,7 +557,7 @@ mod freeform_command_tests {
             release(&mut app, [30.0, 40.0], Modifiers::NONE);
             let st = app.session.active().unwrap();
             assert_eq!(st.doc.work_path, original.work_path, "{tool:?}: the Work Path stays");
-            assert_eq!(st.doc.paths[0].path.subpaths[0].knots[0].anchor, photocraft_geom::Point::new(30.0, 40.0));
+            assert_eq!(st.doc.paths[0].path.subpaths[0].knots[0].anchor, patronusphoto_geom::Point::new(30.0, 40.0));
             assert_eq!(st.history.past_len(), n + 1);
             assert!(!editing(&app), "{tool:?}: the release ends the gesture");
             assert!(app.session.undo());

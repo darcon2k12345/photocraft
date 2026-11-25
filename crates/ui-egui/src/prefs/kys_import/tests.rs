@@ -6,12 +6,12 @@ use craft::keymap::import::kys;
 use craft::keymap::{ImportPlan, Scope, plan};
 use craft::menu::shortcuts::{ImportOffer, OfferAnswer};
 use craft::ui::dialog::DialogHost;
-use photocraft_engine::Session;
-use photocraft_engine::prefs::{Preferences, normalize_shortcut};
+use patronusphoto_engine::Session;
+use patronusphoto_engine::prefs::{Preferences, normalize_shortcut};
 use serde_json::json;
 
 use super::{draft_keymap, import_options};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// A cut-down set in Photoshop's own layout: BOM, a dynamic (filter) row, static rows with
 /// their ids, a row with two shortcuts, an entity, scripts, and the tool keys.
@@ -59,18 +59,18 @@ const SAMPLE: &str = "\u{feff}<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 
 const PSP: &str = "/Users/me/Library/Preferences/Adobe Photoshop 2026 Settings/Keyboard Shortcuts.psp";
 
-fn app() -> Box<PhotocraftApp> {
-    PhotocraftApp::new(Session::new(), crate::Services::default())
+fn app() -> Box<PatronusPhotoApp> {
+    PatronusPhotoApp::new(Session::new(), crate::Services::default())
 }
 
 /// One pass of the Keyboard Shortcuts dialog.
-fn pass(app: &mut PhotocraftApp) {
+fn pass(app: &mut PatronusPhotoApp) {
     let ctx = app.ctx().clone();
     crate::testing::run_ui(&ctx, Default::default(), |ui| crate::prefs_ui::show_shortcuts(app, ui));
 }
 
 /// One pass of the dialog host: a queued startup prompt opens in it.
-fn host_pass(app: &mut PhotocraftApp) {
+fn host_pass(app: &mut PatronusPhotoApp) {
     let ctx = app.ctx().clone();
     crate::testing::run_ui(&ctx, Default::default(), |ui| app.framework.dialogs.run(ui));
 }
@@ -80,7 +80,7 @@ fn set_of(rows: &str) -> String {
 }
 
 /// The plan of `text` over the catalog the dialog edits.
-fn plan_of(app: &PhotocraftApp, text: &str) -> ImportPlan {
+fn plan_of(app: &PatronusPhotoApp, text: &str) -> ImportPlan {
     plan(&kys::read(text).unwrap(), &draft_keymap(app), &import_options(&Default::default()))
 }
 
@@ -92,7 +92,7 @@ fn keys(plan: &ImportPlan, id: &str) -> Vec<String> {
 }
 
 /// The set the dialog is asked to review: queued once, read by the dialog's next pass alone.
-fn review_pending(app: &PhotocraftApp) -> bool {
+fn review_pending(app: &PatronusPhotoApp) -> bool {
     app.prefs_rt.shortcuts.as_ref().is_some_and(|s| s.pending_import.is_some())
 }
 
@@ -121,7 +121,7 @@ fn an_opened_kys_file_opens_the_dialog_filled() {
 
 /// An app beside a Photoshop whose live set is `set`, with the preferences `prefs` made first, and
 /// the offer asked as it is at startup.
-fn with_photoshop(set: &'static str, prefs: impl FnOnce(&mut Preferences)) -> Box<PhotocraftApp> {
+fn with_photoshop(set: &'static str, prefs: impl FnOnce(&mut Preferences)) -> Box<PatronusPhotoApp> {
     let mut app = app();
     app.session.edit_prefs(prefs);
     app.services.photoshop_shortcuts = Some(Box::new(move || Some((PSP.to_owned(), set.to_owned()))));

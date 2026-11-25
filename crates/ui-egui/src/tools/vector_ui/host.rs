@@ -17,7 +17,7 @@ use super::freeform::{Admit, FreeformPenTool, freeform_locked_shape};
 use super::path_ops::{PathSelectionEvent, PathSelectionPass, PathSelectionTool};
 use super::pen::{self, pen_path};
 use super::pen_resume::{current_doc, draft_before_finish, remember_finish};
-use super::{PenPath, PhotocraftApp, VectorOwner, cancel_stale_pen, capture_pen_owner};
+use super::{PatronusPhotoApp, PenPath, VectorOwner, cancel_stale_pen, capture_pen_owner};
 use crate::canvas::document_display::CanvasHost;
 use crate::canvas::tools::{FamilyTool, ToolScope};
 use crate::direct_select::PathRef;
@@ -53,7 +53,7 @@ enum Which {
 }
 
 /// Configures the tool the app has selected from the app's options and returns which one it is.
-fn configure(app: &PhotocraftApp, state: &mut VectorTools) -> Which {
+fn configure(app: &PatronusPhotoApp, state: &mut VectorTools) -> Which {
     let tool = app.ui.tool;
     let o = &app.ui.tool_options;
     if super::shapes::is_shape_tool(tool) {
@@ -134,7 +134,7 @@ pub(crate) fn tool<'a>(scope: &'a ToolScope<'a>, state: &'a mut VectorTools, hos
 
 /// After the run: the owner check, then what each tool reported. Every tool is drained, whichever is selected: a tool
 /// switch ends the Pen's gesture with an event of the old tool.
-pub(crate) fn drain(app: &mut PhotocraftApp, state: &mut VectorTools, _response: &ToolHostResponse) {
+pub(crate) fn drain(app: &mut PatronusPhotoApp, state: &mut VectorTools, _response: &ToolHostResponse) {
     // A live shape layer that moved under its draft since the last pass (Undo, Redo, the History panel) gives the Pen
     // the draft it has now (#12909). Here the app holds stand-in tools, so the Pen is told directly.
     if let Some(draft) = pen::sync_live_draft_from_layer(app) {
@@ -209,7 +209,7 @@ pub(crate) fn drain(app: &mut PhotocraftApp, state: &mut VectorTools, _response:
 /// Gives back the open draft's last anchor (Edit › Undo while a draft is open). A resumed path's own anchors are not
 /// the draft's to take back: undoing past the ones added since drawing resumed drops the draft and leaves the path as it
 /// was (#6593). `false` with no draft.
-pub(crate) fn remove_last(app: &mut PhotocraftApp) -> bool {
+pub(crate) fn remove_last(app: &mut PatronusPhotoApp) -> bool {
     if cancel_stale_pen(app) || !super::cancel_stale(app) {
         return false;
     }
@@ -233,7 +233,7 @@ pub(crate) fn remove_last(app: &mut PhotocraftApp) -> bool {
 /// Replaces the open draft with `draft` (an edit of it with Direct Selection): the app's copy and the Pen's. A Curvature
 /// Pen draft keeps following its anchors. `false` with no draft or while a press is down. Called between passes: a call
 /// inside a run would reach the stand-in tools the run left in the app.
-pub(crate) fn replace_draft(app: &mut PhotocraftApp, draft: &EditSubpath) -> bool {
+pub(crate) fn replace_draft(app: &mut PatronusPhotoApp, draft: &EditSubpath) -> bool {
     let Some(pen) = app.ui.pen.as_mut() else { return false };
     let mut next = draft.clone();
     if pen.curvature {
@@ -245,7 +245,7 @@ pub(crate) fn replace_draft(app: &mut PhotocraftApp, draft: &EditSubpath) -> boo
 }
 
 /// Runs `f` on the Pen outside a pass and applies the events it raised.
-fn with_pen<R>(app: &mut PhotocraftApp, f: impl FnOnce(&mut PenTool) -> R) -> R {
+fn with_pen<R>(app: &mut PatronusPhotoApp, f: impl FnOnce(&mut PenTool) -> R) -> R {
     let mut tools = std::mem::take(&mut app.canvas_tools);
     let result = f(&mut tools.vector.pen);
     let events = tools.vector.pen.take_events();
@@ -255,13 +255,13 @@ fn with_pen<R>(app: &mut PhotocraftApp, f: impl FnOnce(&mut PenTool) -> R) -> R 
 }
 
 /// The shape the Shape tool is drawing and its kind, while a drag has begun: the outline the app paints as a preview.
-pub(crate) fn shape_preview(app: &PhotocraftApp) -> Option<(ShapeKind, &ShapeGeometry)> {
+pub(crate) fn shape_preview(app: &PatronusPhotoApp) -> Option<(ShapeKind, &ShapeGeometry)> {
     let shapes = &app.canvas_tools.vector.shapes;
     shapes.shape().map(|geometry| (shapes.kind(), geometry))
 }
 
 /// Applies one pass's Pen events in order. The Pen reports an edit's `Commit` before the `Finished` that follows it.
-fn apply_pen(app: &mut PhotocraftApp, events: Vec<PenEvent>) {
+fn apply_pen(app: &mut PatronusPhotoApp, events: Vec<PenEvent>) {
     let mut committed = false;
     for event in events {
         match event {
@@ -274,7 +274,7 @@ fn apply_pen(app: &mut PhotocraftApp, events: Vec<PenEvent>) {
 }
 
 /// The app's draft, created at the first edit with the destination captured then.
-fn ensure_draft(app: &mut PhotocraftApp) -> Option<&mut PenPath> {
+fn ensure_draft(app: &mut PatronusPhotoApp) -> Option<&mut PenPath> {
     if app.ui.pen.is_none() {
         let owner = capture_pen_owner(app)?;
         app.ui.pen_doc = app.session.active().map(|st| st.doc.id);
@@ -284,7 +284,7 @@ fn ensure_draft(app: &mut PhotocraftApp) -> Option<&mut PenPath> {
 }
 
 /// Drops the draft; the path stays as it was.
-pub(crate) fn drop_draft(app: &mut PhotocraftApp) {
+pub(crate) fn drop_draft(app: &mut PatronusPhotoApp) {
     app.ui.pen = None;
     app.ui.pen_doc = None;
     if app.ui.direct_selection.target == Some(PathRef::Pen) {
@@ -297,13 +297,13 @@ pub(crate) fn drop_draft(app: &mut PhotocraftApp) {
 /// owner): the Pen keeps the draft it is drawing until its run ends, so the next press would otherwise carry on the
 /// ended draft. Inside a pass the app holds stand-in tools and this does nothing; there the Pen reported the end
 /// itself.
-pub(crate) fn release_draft(app: &mut PhotocraftApp) {
+pub(crate) fn release_draft(app: &mut PatronusPhotoApp) {
     app.canvas_tools.vector.pen.draft(None);
 }
 
 /// Keeps the draft the Pen reports. Drawing on deselects an anchor Auto Add put on the draft, and a shorter draft loses
 /// the selection of the removed anchors. Returns whether the draft was committed (the pen ended it with anchors).
-fn edit_draft(app: &mut PhotocraftApp, edit: EditEvent<EditSubpath>) -> bool {
+fn edit_draft(app: &mut PatronusPhotoApp, edit: EditEvent<EditSubpath>) -> bool {
     match edit {
         EditEvent::Begin { .. } => {
             ensure_draft(app);
@@ -330,7 +330,7 @@ fn edit_draft(app: &mut PhotocraftApp, edit: EditEvent<EditSubpath>) -> bool {
     }
 }
 
-fn set_draft(app: &mut PhotocraftApp, value: EditSubpath) {
+fn set_draft(app: &mut PatronusPhotoApp, value: EditSubpath) {
     let n = value.knots.len();
     let selection_on_draft = app.ui.direct_selection.target == Some(PathRef::Pen);
     // A refused draft whose document changed since takes no press, only Delete and Backspace: it stays refused, or
@@ -371,7 +371,7 @@ fn set_draft(app: &mut PhotocraftApp, value: EditSubpath) {
 }
 
 /// The Pen ended the draft. A draft whose commit failed waits for the user: Enter or Escape on it commits again.
-fn finish(app: &mut PhotocraftApp, end: PenEnd, committed: bool) {
+fn finish(app: &mut PatronusPhotoApp, end: PenEnd, committed: bool) {
     let waiting = app.ui.pen.as_ref().is_some_and(|p| p.commit_failed);
     let has_draft = committed || waiting;
     match end {
@@ -390,7 +390,7 @@ fn finish(app: &mut PhotocraftApp, end: PenEnd, committed: bool) {
 /// Choosing a tool that does not work on the Pen's path finishes it, as the Pen's own end does. The tool host cancels
 /// only a gesture in progress, and an open path between presses is none, so the app ends it here once the Pen no
 /// longer runs.
-fn end_for_other_tool(app: &mut PhotocraftApp) {
+fn end_for_other_tool(app: &mut PatronusPhotoApp) {
     let Some(pen) = app.ui.pen.as_ref() else { return };
     let tool = crate::tool_memory::selected(app);
     let works_on_path = matches!(
@@ -411,8 +411,8 @@ fn end_for_other_tool(app: &mut PhotocraftApp) {
 /// ↩ with a Pen path in progress: finish it as an open path. Photoshop then deselects the Work Path it went into: still
 /// listed in the Paths panel, but not drawn, and the next path replaces it instead of joining it (#12892). Esc
 /// ([`end_keeping`]) keeps it selected. The Curvature Pen, which shares the draft, keeps its Work Path selected.
-fn submit(app: &mut PhotocraftApp) {
-    let work_path = |app: &PhotocraftApp| app.session.active().and_then(|st| st.doc.work_path.clone());
+fn submit(app: &mut PatronusPhotoApp) {
+    let work_path = |app: &PatronusPhotoApp| app.session.active().and_then(|st| st.doc.work_path.clone());
     let curvature = app.ui.pen.as_ref().is_some_and(|p| p.curvature);
     let before = work_path(app);
     if pen::pen_commit(app, false) && !curvature && work_path(app) != before {
@@ -423,7 +423,7 @@ fn submit(app: &mut PhotocraftApp) {
 /// End the Pen path for good (Esc, or switching to another tool): commit it, and when the document refuses that (a
 /// locked shape layer or vector mask to add to…) keep it as the Work Path instead, so what was drawn is neither lost nor
 /// retried on every frame. A draft even the Work Path refuses is dropped; the status bar says which happened.
-fn end_keeping(app: &mut PhotocraftApp) {
+fn end_keeping(app: &mut PatronusPhotoApp) {
     if pen::pen_commit(app, false) {
         return;
     }
@@ -437,7 +437,7 @@ fn end_keeping(app: &mut PhotocraftApp) {
     let draft = draft_before_finish(&pen);
     let refused = std::mem::take(&mut app.ui.status);
     let before = current_doc(app);
-    let path = photocraft_engine::vector_cmds::path_json(&pen_path(&pen));
+    let path = patronusphoto_engine::vector_cmds::path_json(&pen_path(&pen));
     let kept = app.run("path.set", json!({"name": "work", "op": "combine", "path": path})).is_ok();
     if kept {
         app.ui.selected_path = Some("work".into());
@@ -450,7 +450,7 @@ fn end_keeping(app: &mut PhotocraftApp) {
 }
 
 /// A press on the end of an open path carries it on: its subpath becomes the draft, which the next pass hands to the Pen.
-fn resume(app: &mut PhotocraftApp, key: u64, knot: KnotRef) {
+fn resume(app: &mut PatronusPhotoApp, key: u64, knot: KnotRef) {
     if app.ui.pen.as_ref().is_some_and(|p| !p.draft.knots.is_empty()) {
         return;
     }

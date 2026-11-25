@@ -4,7 +4,7 @@
 use craft::ui::contract::CommandSet;
 use craft::ui::contract::Tracked;
 use craft::ui::rails::{LastUsed, RailTool, SlotId, ToolSlot};
-use photocraft_engine::prefs::ToolbarCustomization;
+use patronusphoto_engine::prefs::ToolbarCustomization;
 
 use super::toolbar::layout_sections;
 use crate::state::Tool;
@@ -342,7 +342,7 @@ pub(crate) fn slots(toolbar: &ToolbarCustomization) -> Vec<ToolSlot<Tool>> {
 /// The rail's [`slots`] for the stored layout, built once per catalog revision ([`PrefsStore::catalog_rev`], which moves
 /// with the toolbar layout): the toolbar, its measure and the dock's grid read them several times a frame.
 ///
-/// [`PrefsStore::catalog_rev`]: photocraft_engine::prefs::PrefsStore::catalog_rev
+/// [`PrefsStore::catalog_rev`]: patronusphoto_engine::prefs::PrefsStore::catalog_rev
 ///
 /// It also holds the rail's remembered tools, written only when they change, so the rail's key stays while they do.
 #[derive(Default)]
@@ -356,7 +356,7 @@ pub(crate) type Remembered = std::sync::Arc<Tracked<LastUsed<Tool>>>;
 
 impl ToolbarSlots {
     /// The slots of `prefs`' toolbar layout.
-    pub(crate) fn get(&self, prefs: &photocraft_engine::prefs::PrefsStore) -> RailSlots {
+    pub(crate) fn get(&self, prefs: &patronusphoto_engine::prefs::PrefsStore) -> RailSlots {
         let mut held = self.0.borrow_mut();
         match &*held {
             Some((rev, slots)) if *rev == prefs.catalog_rev() => slots.clone(),

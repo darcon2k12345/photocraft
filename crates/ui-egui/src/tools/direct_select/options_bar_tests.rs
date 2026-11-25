@@ -6,18 +6,18 @@ use egui::accesskit::Toggled;
 use egui::vec2;
 use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
-use photocraft_doc::{Path, PathOp};
+use patronusphoto_doc::{Path, PathOp};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::{ToolEvent, tool_event};
 use crate::state::Tool;
 
 const SAVED: &str = "Path 1";
 
 /// A saved path of two squares (the second combined), targeted, with Direct Selection.
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
     app.sync_views();
     let square = |x: f64, op: &str| json!({"closed": true, "op": op, "knots": [[x, 50.0], [x + 80.0, 50.0], [x + 80.0, 130.0], [x, 130.0]]});
@@ -27,27 +27,27 @@ fn app() -> Box<PhotocraftApp> {
     app
 }
 
-fn saved(app: &PhotocraftApp) -> Path {
+fn saved(app: &PatronusPhotoApp) -> Path {
     app.session.active().unwrap().doc.paths.iter().find(|p| p.name == SAVED).unwrap().path.clone()
 }
 
 /// The vector tools' options bar for `tool`, laid out once.
-fn bar(app: Box<PhotocraftApp>, tool: Tool) -> Harness<'static, Box<PhotocraftApp>> {
+fn bar(app: Box<PatronusPhotoApp>, tool: Tool) -> Harness<'static, Box<PatronusPhotoApp>> {
     let ctx = app.ctx().clone();
     let mut h = Harness::builder().with_size(vec2(1400.0, 400.0)).with_context(ctx).build_ui_state(
-        move |ui, app: &mut Box<PhotocraftApp>| {
+        move |ui, app: &mut Box<PatronusPhotoApp>| {
             if ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 ui.horizontal(|ui| crate::vector_ui::options_bar(app, ui, tool));
             }
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     h.run_steps(4);
     h
 }
 
-fn open_path_operations(h: &mut Harness<'_, Box<PhotocraftApp>>) {
+fn open_path_operations(h: &mut Harness<'_, Box<PatronusPhotoApp>>) {
     h.get_by_label("Path operations").click();
     h.run_steps(3);
 }
@@ -87,17 +87,17 @@ fn the_bar_matches_path_selection_without_a_shape_layer() {
 }
 
 /// A shape layer of two squares at `y`, 80 px each, active; its id.
-fn two_component_shape(app: &mut PhotocraftApp, y: f64) -> u64 {
+fn two_component_shape(app: &mut PatronusPhotoApp, y: f64) -> u64 {
     app.run("shape.create", json!({"rect": [40, y, 80, 80], "stroke": null})).unwrap();
     let id = app.session.active().unwrap().active_layer.unwrap().0;
     app.run("shape.create", json!({"rect": [200, y, 80, 80], "addTo": id, "op": "combine"})).unwrap();
     id
 }
 
-fn shape_path(app: &PhotocraftApp, id: u64) -> Path {
+fn shape_path(app: &PatronusPhotoApp, id: u64) -> Path {
     let st = app.session.active().unwrap();
-    match &st.doc.layer(photocraft_doc::LayerId(id)).unwrap().content {
-        photocraft_doc::LayerContent::Shape(sh) => sh.path.clone(),
+    match &st.doc.layer(patronusphoto_doc::LayerId(id)).unwrap().content {
+        patronusphoto_doc::LayerContent::Shape(sh) => sh.path.clone(),
         _ => panic!("not a shape layer"),
     }
 }

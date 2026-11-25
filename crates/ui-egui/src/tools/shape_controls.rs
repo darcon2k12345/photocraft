@@ -7,7 +7,7 @@
 //! History step named "Transform Path"; no Free Transform session opens. The `CornerWidgets` come
 //! after the box in the canvas body, so a widget wins a press where both reach.
 //!
-//! Neither control keeps a drag in PhotoCraft: the box's id salt carries the document, its revision
+//! Neither control keeps a drag in Patronus Photo: the box's id salt carries the document, its revision
 //! and the tool, so a switch, an Undo or a tool change makes a new control and the library cancels
 //! the press of the one that is gone.
 
@@ -19,13 +19,13 @@ use craft::draw::ui::transform::{LineLook, RotateZone, TransformBox};
 use craft::ui::canvas::ToolHost;
 use craft::ui::canvas_controls::SelectionOutline;
 use craft::ui::contract::{Bind, Props, Show};
-use photocraft_doc::vector::{LiveShape, Path};
-use photocraft_doc::{DocId, LayerContent, LayerId};
-use photocraft_geom::Affine;
-use photocraft_vector::shapes;
+use patronusphoto_doc::vector::{LiveShape, Path};
+use patronusphoto_doc::{DocId, LayerContent, LayerId};
+use patronusphoto_geom::Affine;
+use patronusphoto_vector::shapes;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::CanvasHost;
 use crate::state::Tool;
 
@@ -46,7 +46,7 @@ const CORNERS_OUTLINE_LABEL: &str = "Rounded shape outlines";
 
 /// Shows the box and the corner widgets over the canvas of `ui`, and the outlines the running drag
 /// proposes. The box comes first so a widget wins a press where both reach.
-pub(crate) fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub(crate) fn show(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let rect = ui.max_rect();
     show_box(app, ui, rect);
     show_widgets(app, ui, rect);
@@ -55,13 +55,13 @@ pub(crate) fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 /// Whether the box or the corner widgets hold a press now. The framework's read covers every canvas
 /// control of the active document's canvas; only these two and the Direct Selection controls exist
 /// on a shape.
-pub(crate) fn editing(app: &PhotocraftApp) -> bool {
+pub(crate) fn editing(app: &PatronusPhotoApp) -> bool {
     let Some(idx) = app.session.active_index() else { return false };
     ToolHost::controls_pressing(app.ctx(), CanvasHost::primary(app, idx).canvas_id())
 }
 
 /// The salt that ends a control's press when the document, an edit under it or the tool changes.
-fn salt(app: &PhotocraftApp) -> Option<(DocId, u64, Tool)> {
+fn salt(app: &PatronusPhotoApp) -> Option<(DocId, u64, Tool)> {
     app.session.active().map(|st| (st.doc.id, st.revision, app.ui.tool))
 }
 
@@ -70,7 +70,7 @@ fn salt(app: &PhotocraftApp) -> Option<(DocId, u64, Tool)> {
 
 /// The tools that show the box, while View › Extras and View › Show › Target Path show paths
 /// (hidden handles take no press).
-fn box_shows(app: &PhotocraftApp) -> bool {
+fn box_shows(app: &PatronusPhotoApp) -> bool {
     app.ui.transform.is_none()
         && app.ui.view.shows(app.ui.view.show.target_path)
         && matches!(app.ui.tool, Tool::PathSelection | Tool::Rectangle | Tool::EllipseShape | Tool::Triangle | Tool::Polygon | Tool::Star | Tool::Line)
@@ -79,7 +79,7 @@ fn box_shows(app: &PhotocraftApp) -> bool {
 /// The selected shape layers and the box round their paths `[x0, y0, x1, y1]`. `None` unless at least
 /// one layer is selected and all are shape layers. A box with no extent along one axis counts only
 /// when `flat_ok` (a level or upright live line).
-fn selection(app: &PhotocraftApp, flat_ok: bool) -> Option<(Vec<u64>, [f64; 4])> {
+fn selection(app: &PatronusPhotoApp, flat_ok: bool) -> Option<(Vec<u64>, [f64; 4])> {
     let st = app.session.active()?;
     let ids = st.selected_layers();
     if ids.is_empty() {
@@ -102,7 +102,7 @@ fn selection(app: &PhotocraftApp, flat_ok: bool) -> Option<(Vec<u64>, [f64; 4])>
 
 /// With the Line tool, the active layer's live line when it is the whole selection: its ends and, with an
 /// arrowhead, the corners of the box aligned with the segment.
-fn live_line(app: &PhotocraftApp) -> Option<LineLook> {
+fn live_line(app: &PatronusPhotoApp) -> Option<LineLook> {
     if app.ui.tool != Tool::Line {
         return None;
     }
@@ -171,7 +171,7 @@ fn box_scale(start: [f64; 4], now: [f64; 4]) -> Option<([f64; 2], [f64; 2])> {
 }
 
 /// The box over the selected shapes, the scale a drag commits, and the outlines it proposes.
-fn show_box(app: &mut PhotocraftApp, ui: &mut egui::Ui, rect: egui::Rect) {
+fn show_box(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, rect: egui::Rect) {
     if !box_shows(app) {
         return;
     }
@@ -212,7 +212,7 @@ fn show_box(app: &mut PhotocraftApp, ui: &mut egui::Ui, rect: egui::Rect) {
 
 /// `edit.transform` for the box dragged from `bounds` to `after`: one step for every selected layer. A drag
 /// that scaled nothing runs nothing.
-fn commit_box(app: &mut PhotocraftApp, layers: &[u64], bounds: [f64; 4], after: &BoxState) {
+fn commit_box(app: &mut PatronusPhotoApp, layers: &[u64], bounds: [f64; 4], after: &BoxState) {
     let Some((scale, reference)) = box_scale(bounds, bounds_of(after)) else { return };
     let params = json!({
         "layers": layers,
@@ -222,13 +222,13 @@ fn commit_box(app: &mut PhotocraftApp, layers: &[u64], bounds: [f64; 4], after: 
         "reference": reference,
         // Named by the command: with background jobs on, the step lands after `run` returns, so a rename
         // here would rename the step before it.
-        "stepName": photocraft_engine::transform_cmds::TRANSFORM_PATH,
+        "stepName": patronusphoto_engine::transform_cmds::TRANSFORM_PATH,
     });
     run_or_report(app, "edit.transform", params);
 }
 
 /// The outlines of `layers` (shape layers) after `map`, for `SelectionOutline`.
-fn layers_paths(app: &PhotocraftApp, layers: &[u64], map: impl Fn(&Path) -> Path) -> Vec<BezPath> {
+fn layers_paths(app: &PatronusPhotoApp, layers: &[u64], map: impl Fn(&Path) -> Path) -> Vec<BezPath> {
     let Some(st) = app.session.active() else { return Vec::new() };
     layers
         .iter()
@@ -242,7 +242,7 @@ fn layers_paths(app: &PhotocraftApp, layers: &[u64], map: impl Fn(&Path) -> Path
 /// A document path as the framework's outline takes it.
 fn bez_path(path: &Path) -> BezPath {
     let mut out = BezPath::new();
-    let point = |p: photocraft_geom::Point| Point::new(p.x, p.y);
+    let point = |p: patronusphoto_geom::Point| Point::new(p.x, p.y);
     for sub in &path.subpaths {
         let Some(first) = sub.knots.first() else { continue };
         out.move_to(point(first.anchor));
@@ -263,7 +263,7 @@ fn bez_path(path: &Path) -> BezPath {
 // The corner radius widgets
 
 /// Do the widgets show with the current tool?
-fn corners_show(app: &PhotocraftApp) -> bool {
+fn corners_show(app: &PatronusPhotoApp) -> bool {
     app.ui.transform.is_none()
         && match app.ui.tool {
             Tool::PathSelection | Tool::Rectangle | Tool::Triangle | Tool::Polygon | Tool::Star => true,
@@ -328,7 +328,7 @@ fn corner_target(layer: u64, live: &LiveShape) -> Option<CornerTarget> {
 
 /// The selected layers that are live shapes with corners, front first: the widget of the topmost shape wins a
 /// press where two reach it. Empty when the widgets do not show.
-pub(crate) fn corner_targets(app: &PhotocraftApp) -> Vec<CornerTarget> {
+pub(crate) fn corner_targets(app: &PatronusPhotoApp) -> Vec<CornerTarget> {
     if !corners_show(app) {
         return Vec::new();
     }
@@ -366,7 +366,7 @@ fn rounded_path(live: &LiveShape, radii: &[f64]) -> Option<Path> {
 }
 
 /// The widgets of the selected live shapes, the radii a drag commits, and the outlines it proposes.
-fn show_widgets(app: &mut PhotocraftApp, ui: &mut egui::Ui, rect: egui::Rect) {
+fn show_widgets(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, rect: egui::Rect) {
     let targets = corner_targets(app);
     let Some(salt) = salt(app) else { return };
     if targets.is_empty() {
@@ -405,7 +405,7 @@ fn show_widgets(app: &mut PhotocraftApp, ui: &mut egui::Ui, rect: egui::Rect) {
 
 /// One `shape.edit` per changed target, all under `key` so they are one History step: `radii` for a
 /// rectangle, `cornerRadius` for a polygon or a triangle. A click without movement reports no change and runs nothing.
-fn commit_corners(app: &mut PhotocraftApp, targets: &[CornerTarget], change: Option<&craft::draw::ui::corner::CornerEdit>, key: &str) {
+fn commit_corners(app: &mut PatronusPhotoApp, targets: &[CornerTarget], change: Option<&craft::draw::ui::corner::CornerEdit>, key: &str) {
     let Some(change) = change else { return };
     for edit in &change.targets {
         let Some(target) = targets.iter().find(|t| t.key == edit.key) else { continue };
@@ -422,7 +422,7 @@ fn commit_corners(app: &mut PhotocraftApp, targets: &[CornerTarget], change: Opt
 }
 
 /// Runs `command`; on an error the status line shows it. Whether it succeeded.
-fn run_or_report(app: &mut PhotocraftApp, command: &str, params: serde_json::Value) -> bool {
+fn run_or_report(app: &mut PatronusPhotoApp, command: &str, params: serde_json::Value) -> bool {
     match app.run(command, params) {
         Ok(_) => true,
         Err(e) => {

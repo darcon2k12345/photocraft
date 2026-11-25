@@ -2,17 +2,17 @@
 //! and with no anchor selected deletes the Work Path, as the Pen does (#5702); never the layer.
 
 use egui::Modifiers;
-use photocraft_doc::vector::Path;
+use patronusphoto_doc::vector::Path;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing;
 use crate::state::Tool;
 
 /// 800 x 600 on white, pixel layer Red active, and a Work Path drawn with the Curvature Pen
 /// through (100,300), (250,150), (400,300), ended with Esc.
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 800, "height": 600, "background": "white"})).unwrap();
     app.sync_views();
     app.run("layer.new.layer", json!({"name": "Red"})).unwrap();
@@ -27,21 +27,21 @@ fn app() -> Box<PhotocraftApp> {
     app
 }
 
-fn work(app: &PhotocraftApp) -> Option<Path> {
+fn work(app: &PatronusPhotoApp) -> Option<Path> {
     app.session.active().unwrap().doc.work_path.clone()
 }
 
-fn layer_names(app: &PhotocraftApp) -> Vec<String> {
+fn layer_names(app: &PatronusPhotoApp) -> Vec<String> {
     app.session.active().unwrap().doc.layers.iter().map(|l| l.name.clone()).collect()
 }
 
-fn click(app: &mut PhotocraftApp, at: [f64; 2]) {
+fn click(app: &mut PatronusPhotoApp, at: [f64; 2]) {
     testing::click(app, at, Modifiers::NONE);
 }
 
 /// A key through the app's frame, as the canvas gets it: the overlay's session keys first, then
 /// the app's key route.
-fn press(app: &mut PhotocraftApp, key: egui::Key) {
+fn press(app: &mut PatronusPhotoApp, key: egui::Key) {
     testing::key(app, key, Modifiers::NONE);
 }
 

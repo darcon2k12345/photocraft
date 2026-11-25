@@ -11,13 +11,13 @@ use craft::behavior::kurbo::Rect as DocRect;
 use craft::ui::bars::StatusValues;
 use craft::ui::canvas::PageFrame;
 use craft::ui::patterns::panels::HistoryRow;
-use photocraft_doc::{DocId, LayerId};
-use photocraft_engine::{DocState, Session};
+use patronusphoto_doc::{DocId, LayerId};
+use patronusphoto_engine::{DocState, Session};
 
 use crate::i18n::Lang;
 
 /// The derived values of every open document. Held behind a lock because the chrome reads them through
-/// `&PhotocraftApp`.
+/// `&PatronusPhotoApp`.
 #[derive(Default)]
 pub(crate) struct DocQueries(Mutex<Entries>);
 
@@ -97,7 +97,7 @@ impl DocQueries {
     /// Whether File Info marks `st` Copyrighted, read from its XMP on the first read after a change.
     pub(crate) fn copyrighted(&self, session: &Session, st: &DocState) -> bool {
         self.with(session, st, |entry, builds| {
-            *cached(builds, &mut entry.copyrighted, || photocraft_engine::file_cmds::copyright_marked(st.doc.metadata.xmp.as_deref()))
+            *cached(builds, &mut entry.copyrighted, || patronusphoto_engine::file_cmds::copyright_marked(st.doc.metadata.xmp.as_deref()))
         })
     }
 
@@ -118,7 +118,7 @@ impl DocQueries {
 
     /// Whether `st` has linked smart objects, whose files the link watcher scans.
     pub(crate) fn has_linked_files(&self, session: &Session, st: &DocState) -> bool {
-        self.with(session, st, |entry, builds| *cached(builds, &mut entry.has_links, || !photocraft_engine::link_watch::linked_files(&st.doc).is_empty()))
+        self.with(session, st, |entry, builds| *cached(builds, &mut entry.has_links, || !patronusphoto_engine::link_watch::linked_files(&st.doc).is_empty()))
     }
 
     /// The canvas's page frames of `st`, `compute`d on the first read after a change (the active layer, and so the

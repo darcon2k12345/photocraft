@@ -18,11 +18,11 @@ def pkg(name, path, deps=()):
 # gpu builds on compose (directly) and raster (through compose, and as a dev-dependency kind:
 # cargo metadata lists every kind in one list); ui-egui builds on gpu, so it is not an input.
 PACKAGES = [
-    pkg('photocraft-raster', 'crates/raster'),
-    pkg('photocraft-compose', 'crates/compose', ['photocraft-raster', 'serde']),
-    pkg('photocraft-gpu', 'crates/gpu', ['photocraft-compose', 'wgpu']),
-    pkg('photocraft-ui-egui', 'crates/ui-egui', ['photocraft-gpu']),
-    pkg('photocraft', 'apps/photocraft', ['photocraft-ui-egui']),
+    pkg('patronusphoto-raster', 'crates/raster'),
+    pkg('patronusphoto-compose', 'crates/compose', ['patronusphoto-raster', 'serde']),
+    pkg('patronusphoto-gpu', 'crates/gpu', ['patronusphoto-compose', 'wgpu']),
+    pkg('patronusphoto-ui-egui', 'crates/ui-egui', ['patronusphoto-gpu']),
+    pkg('patronusphoto', 'apps/patronusphoto', ['patronusphoto-ui-egui']),
 ]
 
 
@@ -38,7 +38,7 @@ class Selection(unittest.TestCase):
                 self.assertTrue(needs(path))
 
     def test_packages_built_on_gpu_skip_them(self):
-        self.assertFalse(needs('crates/ui-egui/src/canvas.rs', 'apps/photocraft/src/main.rs'))
+        self.assertFalse(needs('crates/ui-egui/src/canvas.rs', 'apps/patronusphoto/src/main.rs'))
 
     def test_shared_build_inputs_run_them(self):
         for path in ['Cargo.toml', 'Cargo.lock', '.config/nextest.toml', '.github/workflows/ci.yml',
@@ -48,7 +48,7 @@ class Selection(unittest.TestCase):
 
     def test_any_package_manifest_runs_them(self):
         # A feature enabled in ui-egui's manifest unifies into the workspace build gpu is tested in.
-        for path in ['crates/ui-egui/Cargo.toml', 'apps/photocraft/Cargo.toml']:
+        for path in ['crates/ui-egui/Cargo.toml', 'apps/patronusphoto/Cargo.toml']:
             with self.subTest(path=path):
                 self.assertTrue(needs(path))
 
@@ -64,14 +64,14 @@ class Selection(unittest.TestCase):
         self.assertFalse(needs())
 
     def test_a_nested_package_belongs_to_itself(self):
-        packages = PACKAGES + [pkg('photocraft-gpu-fuzz', 'crates/gpu/fuzz', ['photocraft-gpu'])]
+        packages = PACKAGES + [pkg('patronusphoto-gpu-fuzz', 'crates/gpu/fuzz', ['patronusphoto-gpu'])]
         self.assertFalse(needs('crates/gpu/fuzz/src/main.rs', packages=packages))
         self.assertTrue(needs('crates/gpu/src/lib.rs', packages=packages))
 
     def test_a_new_dependency_is_followed_without_editing_the_script(self):
-        packages = PACKAGES + [pkg('photocraft-new', 'crates/new')]
+        packages = PACKAGES + [pkg('patronusphoto-new', 'crates/new')]
         self.assertFalse(needs('crates/new/src/lib.rs', packages=packages))
-        packages[2] = pkg('photocraft-gpu', 'crates/gpu', ['photocraft-compose', 'photocraft-new'])
+        packages[2] = pkg('patronusphoto-gpu', 'crates/gpu', ['patronusphoto-compose', 'patronusphoto-new'])
         self.assertTrue(needs('crates/new/src/lib.rs', packages=packages))
 
     def test_windows_paths_from_cargo_metadata(self):
@@ -100,26 +100,26 @@ class Selection(unittest.TestCase):
 
     def test_a_missing_gpu_package_is_an_error(self):
         with self.assertRaises(ValueError):
-            needs('crates/ui-egui/src/canvas.rs', packages=[p for p in PACKAGES if p['name'] != 'photocraft-gpu'])
+            needs('crates/ui-egui/src/canvas.rs', packages=[p for p in PACKAGES if p['name'] != 'patronusphoto-gpu'])
 
 
 class NeutralSelection(unittest.TestCase):
     PACKAGES = [
-        pkg('photocraft-geom', 'crates/geom'),
-        pkg('photocraft-algo', 'crates/algo', ['photocraft-geom']),
-        pkg('photocraft-compose', 'crates/compose', ['photocraft-geom']),
-        pkg('photocraft-engine', 'crates/engine', ['photocraft-compose']),
-        pkg('photocraft-ui-egui', 'crates/ui-egui', ['photocraft-engine']),
+        pkg('patronusphoto-geom', 'crates/geom'),
+        pkg('patronusphoto-algo', 'crates/algo', ['patronusphoto-geom']),
+        pkg('patronusphoto-compose', 'crates/compose', ['patronusphoto-geom']),
+        pkg('patronusphoto-engine', 'crates/engine', ['patronusphoto-compose']),
+        pkg('patronusphoto-ui-egui', 'crates/ui-egui', ['patronusphoto-engine']),
     ]
 
     def skipped(self, *changed):
         return select.neutral_to_skip(list(changed), self.PACKAGES, ROOT)
 
     def test_a_change_elsewhere_skips_every_neutral_package(self):
-        self.assertEqual(self.skipped('crates/ui-egui/src/lib.rs'), ['photocraft-algo', 'photocraft-compose', 'photocraft-geom'])
+        self.assertEqual(self.skipped('crates/ui-egui/src/lib.rs'), ['patronusphoto-algo', 'patronusphoto-compose', 'patronusphoto-geom'])
 
     def test_a_changed_package_and_its_dependents_are_not_skipped(self):
-        self.assertEqual(self.skipped('crates/compose/src/lib.rs'), ['photocraft-algo', 'photocraft-geom'])
+        self.assertEqual(self.skipped('crates/compose/src/lib.rs'), ['patronusphoto-algo', 'patronusphoto-geom'])
         # geom is a dependency of algo and compose, so its change keeps all three.
         self.assertEqual(self.skipped('crates/geom/src/lib.rs'), [])
 
@@ -129,7 +129,7 @@ class NeutralSelection(unittest.TestCase):
                 self.assertEqual(self.skipped('crates/ui-egui/src/lib.rs', path), [])
 
     def test_documentation_only_skips_all_of_them(self):
-        self.assertEqual(self.skipped('docs/a.md'), ['photocraft-algo', 'photocraft-compose', 'photocraft-geom'])
+        self.assertEqual(self.skipped('docs/a.md'), ['patronusphoto-algo', 'patronusphoto-compose', 'patronusphoto-geom'])
 
 
 if __name__ == '__main__':

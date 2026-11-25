@@ -1,5 +1,5 @@
 use super::*;
-use photocraft_doc::LayerId;
+use patronusphoto_doc::LayerId;
 
 fn text_of(s: &Session, id: LayerId) -> String {
     match &s.active().unwrap().doc.layer(id).unwrap().content {

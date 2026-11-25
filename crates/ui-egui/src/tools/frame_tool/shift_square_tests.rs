@@ -2,8 +2,8 @@
 use super::*;
 use crate::canvas::{ToolEvent, tool_event, tool_event_response};
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width":600,"height":400})).unwrap();
     app.sync_views();
     app.ui.extras.snap = false;
@@ -17,7 +17,7 @@ const SHIFT_ALT: egui::Modifiers = egui::Modifiers { shift: true, alt: true, ..e
 
 /// Press at `from` with `down`, move to `to` with `held`, and return the size the drag reads out beside the pointer
 /// (`W`, `H`) before releasing there and returning the new frame's transform.
-fn draw(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2], down: egui::Modifiers, held: egui::Modifiers) -> (Vec<String>, [f64; 6]) {
+fn draw(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2], down: egui::Modifiers, held: egui::Modifiers) -> (Vec<String>, [f64; 6]) {
     tool_event(app, ToolEvent::Down { x: from[0], y: from[1], pressure: 1.0 }, down);
     let r = tool_event_response(app, ToolEvent::Move { x: to[0], y: to[1], pressure: 1.0 }, held);
     let live = r.readout.expect("a frame is being drawn").rows.into_iter().map(|(_, v)| v).collect();

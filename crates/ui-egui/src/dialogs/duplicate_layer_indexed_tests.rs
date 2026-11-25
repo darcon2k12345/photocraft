@@ -2,9 +2,9 @@
 //! into, as Photoshop leaves out Indexed Color documents (#14612). The rest keep tab order and
 //! their own document on OK.
 use super::destinations;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::new_layer_ui::testing::{set, top};
-use photocraft_color::ColorMode;
+use patronusphoto_color::ColorMode;
 use serde_json::json;
 
 /// A command id and its params.
@@ -12,8 +12,8 @@ type Step = (&'static str, serde_json::Value);
 
 /// Poster (RGB, active, with an Ink layer), then one document per `(name, mode, steps)`: a new
 /// 8-bit document of `mode` with the mode commands in `steps` run on it.
-fn app_with(docs: &[(&str, &str, &[Step])]) -> Box<PhotocraftApp> {
-    let mut s = photocraft_engine::Session::new();
+fn app_with(docs: &[(&str, &str, &[Step])]) -> Box<PatronusPhotoApp> {
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 8, "height": 8, "name": "Poster"})).unwrap();
     s.execute("layer.new.layer", json!({"name": "Ink"})).unwrap();
     for (name, mode, steps) in docs {
@@ -23,19 +23,19 @@ fn app_with(docs: &[(&str, &str, &[Step])]) -> Box<PhotocraftApp> {
         }
     }
     s.set_active(0);
-    PhotocraftApp::new(s, crate::Services::default())
+    PatronusPhotoApp::new(s, crate::Services::default())
 }
 
 fn indexed() -> Step {
     ("image.mode.indexedColor", json!({"palette": "exact", "forced": "none", "dither": "none", "transparency": false}))
 }
 
-fn keys(app: &PhotocraftApp) -> Vec<String> {
+fn keys(app: &PatronusPhotoApp) -> Vec<String> {
     destinations(app).into_iter().map(|(key, _)| key).collect()
 }
 
 /// The keys the documents at these tab indices have: their ids.
-fn ids(app: &PhotocraftApp, tabs: &[usize]) -> Vec<String> {
+fn ids(app: &PatronusPhotoApp, tabs: &[usize]) -> Vec<String> {
     tabs.iter().map(|&i| app.session.documents()[i].doc.id.0.to_string()).collect()
 }
 

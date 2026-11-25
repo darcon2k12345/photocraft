@@ -1,5 +1,5 @@
 use super::*;
-use photocraft_doc::Layer;
+use patronusphoto_doc::Layer;
 
 const COMMANDS: [&str; 2] = ["edit.defineBrushPreset", "brush.defineFromSelection"];
 
@@ -210,7 +210,7 @@ fn sparse_budget_source(width: u32, height: u32, selected: bool) -> Session {
         surf.fill_rect(Rect::new(0, 0, 1, 1), &[0.0, 0.0, 0.0, 1.0]);
         assert_eq!(surf.tile_count(), 1);
         if selected {
-            let mut mask = Surface::new(photocraft_color::PixelFormat::GRAY8);
+            let mut mask = Surface::new(patronusphoto_color::PixelFormat::GRAY8);
             mask.fill_rect(Rect::new(0, 0, 1, 1), &[1.0]);
             mask.fill_rect(Rect::new(width as i32 - 1, height as i32 - 1, width as i32, height as i32), &[1.0]);
             assert_eq!(mask.tile_count(), 2);
@@ -283,7 +283,7 @@ fn compositor_allocation_boundary_failure_preserves_source_and_preset_state() {
 #[test]
 fn a_banded_capture_that_fits_the_budget_is_not_charged_for_a_full_rgba_canvas() {
     const WIDTH: u32 = 32768;
-    let band_rows = photocraft_compose::band_rows_for(WIDTH, 0) as u64;
+    let band_rows = patronusphoto_compose::band_rows_for(WIDTH, 0) as u64;
     let band_bytes = u64::from(WIDTH) * band_rows * 16;
     for command in COMMANDS {
         for selected in [false, true] {

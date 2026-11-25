@@ -1,4 +1,4 @@
-use super::{Map, PhotocraftApp, Show, SnapTo, Value, ViewOptions};
+use super::{Map, PatronusPhotoApp, Show, SnapTo, Value, ViewOptions};
 
 /// Pixel aspect ratio (width / height of a pixel) of a preset id.
 pub fn pixel_aspect_ratio(id: &str) -> f32 {
@@ -84,7 +84,7 @@ fn changed_flags<T: Copy>(now: T, def: T, keys: &[&str], slot: impl for<'a> Fn(&
 /// View › Extras, Show and Snap To as remembered across restarts (`Preferences::view_extras`):
 /// only what differs from the defaults, so a default changed in a later release still reaches
 /// users who never touched that item. `Null` when nothing differs.
-fn remembered(app: &PhotocraftApp) -> Value {
+fn remembered(app: &PatronusPhotoApp) -> Value {
     let (v, e, def) = (&app.ui.view, &app.ui.extras, crate::state::Extras::default());
     let mut m = Map::new();
     if v.extras != ViewOptions::default().extras {
@@ -112,7 +112,7 @@ fn remembered(app: &PhotocraftApp) -> Value {
 /// Remember View › Extras, Show and Snap To in the preferences once the user lets go of the
 /// pointer (#3762). Cheap: a small JSON compare per frame. Run every frame, so items set by the
 /// control channel or the Show Extras Options dialog are remembered too.
-pub fn persist(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub fn persist(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     if ctx.input(|i| i.pointer.any_down()) {
         return;
     }
@@ -124,7 +124,7 @@ pub fn persist(app: &mut PhotocraftApp, ctx: &egui::Context) {
 
 /// Restore the remembered View › Extras, Show and Snap To items at launch. A hand-edited file
 /// can't break them: an unknown key or a value that isn't a boolean keeps its default.
-pub fn restore(app: &mut PhotocraftApp) {
+pub fn restore(app: &mut PatronusPhotoApp) {
     let saved = app.session.prefs().view_extras.clone();
     if !saved.is_null() && !saved.is_object() {
         log::warn!("Preferences: the remembered View › Show items are not an object; using the defaults");

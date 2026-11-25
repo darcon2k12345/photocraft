@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
-use photocraft_doc::{LayerContent, SmartObject, SmartSource};
-use photocraft_engine::{EngineError, Session};
+use patronusphoto_doc::{LayerContent, SmartObject, SmartSource};
+use patronusphoto_engine::{EngineError, Session};
 use serde_json::{Value, json};
 
-fn deny_blur(id: &str, _: &Value) -> photocraft_engine::Result<()> {
+fn deny_blur(id: &str, _: &Value) -> patronusphoto_engine::Result<()> {
     if id == "filter.blur.gaussianBlur" { Err(EngineError::Other("denied".into())) } else { Ok(()) }
 }
 

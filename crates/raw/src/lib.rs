@@ -1,4 +1,4 @@
-//! `photocraft-raw`: a clean-room, pure-Rust camera raw decoder and developer.
+//! `patronusphoto-raw`: a clean-room, pure-Rust camera raw decoder and developer.
 //!
 //! Implemented only from public specifications and papers: TIFF 6.0,
 //! TIFF/EP (ISO 12234-2), the Adobe DNG Specification 1.7, ITU-T T.81
@@ -130,7 +130,7 @@ impl RawFormat {
 pub const EXTENSIONS: &[&str] = &["dng", "cr2", "cr3", "nef", "nrw", "arw", "srf", "sr2", "pef", "orf", "rw2", "raf", "3fr", "fff"];
 
 /// Decompression-bomb guards, checked on header values before allocating
-/// (the same shape and defaults as `photocraft-codecs`' limits).
+/// (the same shape and defaults as `patronusphoto-codecs`' limits).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Limits {
     pub max_width: u32,
@@ -187,7 +187,7 @@ pub fn decode(bytes: &[u8], limits: &Limits) -> Result<Sensor, RawError> {
     // A three-component sample allowance is not a pixel allowance: a CFA plane
     // must still obey the caller's max_pixels before any sample allocation.
     limits.check(info.width as u64, info.height as u64, (info.cpp as u64).saturating_mul(4))?;
-    // The shared parser supports additional component layouts; PhotoCraft's developer
+    // The shared parser supports additional component layouts; Patronus Photo's developer
     // currently accepts only one CFA/monochrome plane or three RGB planes.
     if !matches!(info.cpp, 1 | 3) {
         return Err(RawError::unsupported(format!("{} samples per pixel", info.cpp)));

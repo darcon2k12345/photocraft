@@ -3,7 +3,7 @@
 
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::i18n::{Lang, tr_id};
 use crate::menu_catalog::CATALOG;
 
@@ -24,7 +24,7 @@ fn the_menu_entry_has_no_ellipsis_and_sits_between_artboard_and_artboard_from_la
 
 #[test]
 fn the_command_label_has_no_ellipsis() {
-    let specs = photocraft_engine::cmd::command_specs();
+    let specs = patronusphoto_engine::cmd::command_specs();
     let spec = specs.iter().find(|s| s.id == ID).expect("command spec");
     assert_eq!(spec.label, LABEL);
 }
@@ -45,7 +45,7 @@ fn no_language_shows_an_ellipsis() {
 
 #[test]
 fn running_the_menu_command_opens_no_dialog() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 100, "background": "white"})).unwrap();
     app.run("layer.new.group", json!({})).unwrap();
     let ctx = egui::Context::default();

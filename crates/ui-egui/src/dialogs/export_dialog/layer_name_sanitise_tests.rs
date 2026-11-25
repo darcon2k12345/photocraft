@@ -12,7 +12,7 @@ use craft::host::ScriptedFiles;
 fn suggested_for(name: &str) -> (String, String) {
     let files = Arc::new(ScriptedFiles::held());
     let services = crate::Services { files: Some(files.clone()), ..Default::default() };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     app.run("file.new", json!({"width": 20, "height": 20})).unwrap();
     app.run("layer.new.layer", json!({"name": name})).unwrap();
     app.run("select.rect", json!({"x": 2, "y": 2, "width": 6, "height": 6})).unwrap();

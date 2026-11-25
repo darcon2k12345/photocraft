@@ -8,12 +8,12 @@ use egui_kittest::Harness;
 use serde_json::{Value, json};
 
 use super::tests::{drag, harness, press};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::control::{ControlRequest, Reply, handle};
 use crate::state::Tool;
 
 /// The Remove tool with Remove after each stroke off, nothing painted yet.
-fn remove_harness() -> Harness<'static, Box<PhotocraftApp>> {
+fn remove_harness() -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut h = harness(None);
     h.state_mut().ui.tool = Tool::Remove;
     h.state_mut().ui.tool_options.remove_after_each_stroke = false;
@@ -22,7 +22,7 @@ fn remove_harness() -> Harness<'static, Box<PhotocraftApp>> {
 }
 
 /// One Remove stroke painted with the mouse, waiting.
-fn waiting() -> Harness<'static, Box<PhotocraftApp>> {
+fn waiting() -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut h = remove_harness();
     drag(&mut h, PointerButton::Primary);
     assert_eq!(h.state().remove_pending.len(), 1, "one stroke waits");
@@ -31,18 +31,18 @@ fn waiting() -> Harness<'static, Box<PhotocraftApp>> {
 }
 
 /// The waiting strokes, their tint along the stroke's row, the history and the journal.
-fn snapshot(app: &PhotocraftApp) -> (Vec<Value>, Option<Vec<u8>>, usize, usize) {
+fn snapshot(app: &PatronusPhotoApp) -> (Vec<Value>, Option<Vec<u8>>, usize, usize) {
     let st = app.session.active().unwrap();
     let row = st.doc.size.height as usize / 2;
     let tint = app.remove_trail.as_ref().map(|t| (0..st.doc.size.width as usize).map(|x| t.coverage(x, row)).collect());
     (app.remove_pending.clone(), tint, st.history.past_len(), app.session.journal.len())
 }
 
-fn nothing_open(app: &PhotocraftApp) -> bool {
+fn nothing_open(app: &PatronusPhotoApp) -> bool {
     crate::brush_picker::opened_at(app).is_none() && app.ui.canvas_tool_menu.is_none() && !crate::color_hud::is_open(&app.ui)
 }
 
-fn mouse_right_click(h: &mut Harness<'static, Box<PhotocraftApp>>) -> Pos2 {
+fn mouse_right_click(h: &mut Harness<'static, Box<PatronusPhotoApp>>) -> Pos2 {
     let c = h.state().last_canvas_rect.center();
     h.event(egui::Event::PointerMoved(c));
     h.run_steps(1);
@@ -52,7 +52,7 @@ fn mouse_right_click(h: &mut Harness<'static, Box<PhotocraftApp>>) -> Pos2 {
 }
 
 /// `ui.pointer` with `"button": "secondary"`: a down and an up on the image's centre.
-fn pointer_right_click(h: &mut Harness<'static, Box<PhotocraftApp>>) {
+fn pointer_right_click(h: &mut Harness<'static, Box<PatronusPhotoApp>>) {
     let ctx = h.ctx.clone();
     let events = json!([{"kind": "down", "x": 200, "y": 150}, {"kind": "up", "x": 200, "y": 150}]);
     let (req, _rx) = ControlRequest::new("ui.pointer", json!({"button": "secondary", "events": events}));

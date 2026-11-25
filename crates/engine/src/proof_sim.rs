@@ -17,9 +17,9 @@
 //!   to compress.
 
 use craft_cms::{Builtin, Intent, Lut3d, Transform};
-use photocraft_color::SampleType;
-use photocraft_color::convert::{linear_to_srgb, srgb_to_linear};
-use photocraft_doc::Document;
+use patronusphoto_color::SampleType;
+use patronusphoto_color::convert::{linear_to_srgb, srgb_to_linear};
+use patronusphoto_doc::Document;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
@@ -238,7 +238,7 @@ pub fn set_kind(s: &mut Session, kind: ProofKind) -> Result<Value> {
     let st = s.active().ok_or(EngineError::NoDocument)?;
     let (id, doc) = (st.doc.id, st.doc.clone());
     let plates = matches!(kind, ProofKind::Plate(_) | ProofKind::CmyPlate);
-    let working = if plates { Some(s.color.resolve("working-cmyk", Some(&doc), Some(photocraft_color::ColorMode::Cmyk))?) } else { None };
+    let working = if plates { Some(s.color.resolve("working-cmyk", Some(&doc), Some(patronusphoto_color::ColorMode::Cmyk))?) } else { None };
     let pv = s.color.proof_mut(id);
     if let Some(w) = working {
         pv.setup.profile = w;

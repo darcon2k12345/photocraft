@@ -16,10 +16,10 @@ use craft::behavior::kurbo::Rect;
 use craft::draw::ui::measure::box_distances;
 use craft::ui::canvas_controls::SmartGuides;
 use craft::ui::contract::Show as _;
-use photocraft_doc::{DocId, LayerId};
-use photocraft_engine::snap::union;
+use patronusphoto_doc::{DocId, LayerId};
+use patronusphoto_engine::snap::union;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// The last answer: the boxes measured with the pointer at `at` on that revision and selection.
@@ -34,7 +34,7 @@ pub(crate) struct Cache {
 
 /// The selected layers' box and the box to measure it to with the pointer at `at` (document px):
 /// the layer a click there would Auto-Select, or the canvas where that is no other layer.
-fn boxes(app: &mut PhotocraftApp, at: [f64; 2]) -> Option<([f64; 4], [f64; 4])> {
+fn boxes(app: &mut PatronusPhotoApp, at: [f64; 2]) -> Option<([f64; 4], [f64; 4])> {
     if !at[0].is_finite() || !at[1].is_finite() {
         return None;
     }
@@ -49,7 +49,7 @@ fn boxes(app: &mut PhotocraftApp, at: [f64; 2]) -> Option<([f64; 4], [f64; 4])> 
     let d = &st.doc;
     let a = union(selected.iter().filter(|id| !d.is_background(**id)).filter_map(|id| crate::snap_ui::tree_rect(d, *id)));
     let canvas = [0.0, 0.0, d.size.width as f64, d.size.height as f64];
-    let hovered = photocraft_engine::pick_cmds::move_auto_select_target(d, at[0], at[1], group).filter(|id| {
+    let hovered = patronusphoto_engine::pick_cmds::move_auto_select_target(d, at[0], at[1], group).filter(|id| {
         // The selection itself (or a layer in a selected group) isn't another layer.
         !d.is_background(*id) && !selected.iter().any(|s| *s == *id || d.path_of(*id).zip(d.path_of(*s)).is_some_and(|(p, q)| p.starts_with(&q)))
     });
@@ -65,7 +65,7 @@ fn rect([x0, y0, x1, y1]: [f64; 4]) -> Rect {
 /// What to measure now: the ⌥-drag's original and copy while it duplicates, else, with ⌘ held
 /// (`command`) and no button down (`pressed`), the selection and what's under the pointer `at`.
 /// `None` when Smart Guides are off or another tool is current.
-pub(crate) fn current(app: &mut PhotocraftApp, at: Option<[f64; 2]>, command: bool, pressed: bool) -> Option<(Rect, Rect)> {
+pub(crate) fn current(app: &mut PatronusPhotoApp, at: Option<[f64; 2]>, command: bool, pressed: bool) -> Option<(Rect, Rect)> {
     if app.ui.tool != Tool::Move || !app.ui.view.shows(app.ui.view.show.smart_guides) || app.ui.transform.is_some() {
         return None;
     }
@@ -81,7 +81,7 @@ pub(crate) fn current(app: &mut PhotocraftApp, at: Option<[f64; 2]>, command: bo
 }
 
 /// An ⌥-drag that has duplicated the layers: the original's box and the copy's where it is now.
-fn duplicate_drag(app: &PhotocraftApp) -> Option<(Rect, Rect)> {
+fn duplicate_drag(app: &PatronusPhotoApp) -> Option<(Rect, Rect)> {
     if !crate::move_mods::duplicated(app) {
         return None;
     }
@@ -91,7 +91,7 @@ fn duplicate_drag(app: &PhotocraftApp) -> Option<(Rect, Rect)> {
 
 /// Shows the measurements over the canvas `rect`, in the Smart Guides colour. `pointer` is the
 /// screen hover position.
-pub(crate) fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui, canvas: egui::Rect, pointer: Option<egui::Pos2>) {
+pub(crate) fn show(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, canvas: egui::Rect, pointer: Option<egui::Pos2>) {
     let command = craft::ui::runtime::pointer::frame(ui.ctx()).mods.cmd;
     let pressed = crate::canvas::tools::in_gesture(app);
     let at = pointer.and_then(|p| crate::canvas::document_display::doc_point_at(app, p)).map(|p| [p.x, p.y]);
@@ -122,8 +122,8 @@ mod tests {
 
     /// The `snap_ui` test document: a target box at (300..350, 200..260) and the selected mover
     /// at (40..90, 40..80) on a 400×300 canvas.
-    fn app_with_boxes() -> Box<PhotocraftApp> {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    fn app_with_boxes() -> Box<PatronusPhotoApp> {
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
         app.run("layer.new.layer", json!({"name": "target"})).unwrap();
         app.run("select.rect", json!({"x": 300, "y": 200, "width": 50, "height": 60})).unwrap();

@@ -1,12 +1,12 @@
 use craft::behavior::PixelSize;
 use egui::{Color32, ColorImage};
 use egui_kittest::Harness;
-use photocraft_geom::Rect;
+use patronusphoto_geom::Rect;
 
 use super::*;
 
-fn app_with_layer() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app_with_layer() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.session.execute("file.new", json!({"width": 240, "height": 160, "depth": 16})).unwrap();
     app.session.execute("layer.new.layer", json!({})).unwrap();
     app.session.execute("edit.fill", json!({"color": "#4080c0"})).unwrap();
@@ -15,12 +15,12 @@ fn app_with_layer() -> Box<PhotocraftApp> {
 }
 
 /// The dialog host's pass; it runs the `TAKERS`, which include this module's `take`.
-fn draw(ui: &mut egui::Ui, app: &mut Box<PhotocraftApp>) {
+fn draw(ui: &mut egui::Ui, app: &mut Box<PatronusPhotoApp>) {
     crate::dialogs::run(app, ui);
 }
 
 /// Vanishing Point opened on the active layer of `app`, as the window shows it.
-fn open(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
+fn open(app: Box<PatronusPhotoApp>) -> Harness<'static, Box<PatronusPhotoApp>> {
     let app_ctx = app.ctx().clone();
     let mut h = Harness::builder().with_context(app_ctx).with_size(egui::vec2(1200.0, 800.0)).build_ui_state(draw, app);
     let ctx = h.ctx.clone();
@@ -31,7 +31,7 @@ fn open(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
 
 /// Sets workspace fields as `ui.dialog.set` would, then runs the passes that report them and waits for the preview job the
 /// revision schedules (the stamp preview is painted by that job, as `ui.waitPreview` waits for it).
-fn set(h: &mut Harness<'static, Box<PhotocraftApp>>, ui: Value) {
+fn set(h: &mut Harness<'static, Box<PatronusPhotoApp>>, ui: Value) {
     let ctx = h.ctx.clone();
     crate::control::dialogs::workspace_ui(h.state_mut(), &ctx, VP, &ui).unwrap();
     h.run_steps(4);
@@ -39,12 +39,12 @@ fn set(h: &mut Harness<'static, Box<PhotocraftApp>>, ui: Value) {
     h.run_steps(2);
 }
 
-fn source(h: &Harness<'static, Box<PhotocraftApp>>) -> Arc<PcVanishingSource> {
+fn source(h: &Harness<'static, Box<PatronusPhotoApp>>) -> Arc<PcVanishingSource> {
     h.state().vanishing.as_ref().expect("Vanishing Point is open").source.clone()
 }
 
 /// The stamp preview's pixel at `(x, y)`.
-fn shown(h: &Harness<'static, Box<PhotocraftApp>>, x: i32, y: i32) -> [u8; 4] {
+fn shown(h: &Harness<'static, Box<PatronusPhotoApp>>, x: i32, y: i32) -> [u8; 4] {
     let source = source(h);
     let picture = source.stamp_preview().expect("a stamp preview");
     let mut out = ColorImage::new([1, 1], vec![Color32::TRANSPARENT]);
@@ -57,7 +57,7 @@ fn close(a: [u8; 4], b: [f32; 4]) -> bool {
 }
 
 /// OK through the automation surface, with the passes that answer it and close the workspace.
-fn ok(h: &mut Harness<'static, Box<PhotocraftApp>>) {
+fn ok(h: &mut Harness<'static, Box<PatronusPhotoApp>>) {
     let ctx = h.ctx.clone();
     crate::control::dialogs::workspace_ui(h.state_mut(), &ctx, VP, &json!({"commit": true})).unwrap();
     h.run_steps(4);
@@ -65,7 +65,7 @@ fn ok(h: &mut Harness<'static, Box<PhotocraftApp>>) {
 }
 
 /// What the committed command left: the layer's pixels, or the visible image when the result went to a new layer.
-fn committed(app: &PhotocraftApp, layer: LayerId, new_layer: bool) -> Surface {
+fn committed(app: &PatronusPhotoApp, layer: LayerId, new_layer: bool) -> Surface {
     let st = app.session.active().unwrap();
     if new_layer { visible_image(&st.doc) } else { st.doc.layer(layer).unwrap().surface().unwrap().clone() }
 }
@@ -79,7 +79,7 @@ fn full_plane() -> Value {
 }
 
 /// A red square on the clipboard (copied from the layer's top-left corner).
-fn copy_red_square(app: &mut PhotocraftApp) {
+fn copy_red_square(app: &mut PatronusPhotoApp) {
     app.session.execute("select.rect", json!({"x": 0, "y": 0, "width": 40, "height": 40})).unwrap();
     app.session.execute("edit.fill", json!({"color": "#ff0000"})).unwrap();
     app.session.execute("edit.copy", json!({})).unwrap();

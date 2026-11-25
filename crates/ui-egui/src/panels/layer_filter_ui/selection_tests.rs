@@ -4,32 +4,32 @@
 
 use egui::vec2;
 use egui_kittest::Harness;
-use photocraft_doc::LayerId;
+use patronusphoto_doc::LayerId;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// "Red" and "Deep Pixel" (pixel layers) and "Hello" (type) over the Background, in the panel.
-fn harness() -> Harness<'static, Box<PhotocraftApp>> {
-    let mut s = photocraft_engine::Session::new();
+fn harness() -> Harness<'static, Box<PatronusPhotoApp>> {
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 64, "height": 48})).unwrap();
     s.execute("layer.new.layer", json!({"name": "Red"})).unwrap();
     s.execute("layer.new.layer", json!({"name": "Deep Pixel"})).unwrap();
     let text = s.execute("type.create", json!({"text": "Hello", "x": 4, "y": 20, "size": 12})).unwrap()["layer"].as_u64().unwrap();
     s.execute("layer.setProps", json!({"layer": text, "name": "Hello"})).unwrap();
     let mut h = Harness::builder().with_size(vec2(1440.0, 900.0)).with_max_steps(64).build_eframe(move |cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::with_context(cc.egui_ctx.clone(), s, crate::Services::default())
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        PatronusPhotoApp::with_context(cc.egui_ctx.clone(), s, crate::Services::default())
     });
     h.run_steps(8);
     h
 }
 
-fn id(h: &Harness<'_, Box<PhotocraftApp>>, name: &str) -> LayerId {
+fn id(h: &Harness<'_, Box<PatronusPhotoApp>>, name: &str) -> LayerId {
     h.state().session.active().unwrap().doc.walk().into_iter().find(|(_, _, l)| l.name == name).map(|(_, _, l)| l.id).unwrap()
 }
 
-fn select(h: &mut Harness<'_, Box<PhotocraftApp>>, names: &[&str]) {
+fn select(h: &mut Harness<'_, Box<PatronusPhotoApp>>, names: &[&str]) {
     for (i, name) in names.iter().enumerate() {
         let layer = id(h, name).0;
         h.state_mut().session.execute("layer.select", json!({"layer": layer, "mode": if i == 0 { "replace" } else { "add" }})).unwrap();
@@ -38,7 +38,7 @@ fn select(h: &mut Harness<'_, Box<PhotocraftApp>>, names: &[&str]) {
 }
 
 /// The selected layers' names, bottom to top, and the active layer's.
-fn selection(h: &Harness<'_, Box<PhotocraftApp>>) -> (Vec<String>, Option<String>) {
+fn selection(h: &Harness<'_, Box<PatronusPhotoApp>>) -> (Vec<String>, Option<String>) {
     let st = h.state().session.active().unwrap();
     let name = |id: LayerId| st.doc.layer(id).unwrap().name.clone();
     (st.selected_layers().iter().copied().map(name).collect(), st.active_layer.map(name))

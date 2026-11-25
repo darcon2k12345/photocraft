@@ -1,16 +1,16 @@
-//! `photocraft-cli mcp`: tools go to the open desktop app when the person lets agents use it,
+//! `patronusphoto-cli mcp`: tools go to the open desktop app when the person lets agents use it,
 //! found through its connection file, and otherwise to a session without a window, as `mcp`
 //! always did (`--headless` forces that). The file is looked up again on every tool call, so the
 //! app may start, quit or move to another port while the MCP client stays connected, and the MCP
 //! client's own start never opens a window.
 //!
-//! While agents may use the app but it is closed, When PhotoCraft Is Closed (or `--when-closed`)
+//! While agents may use the app but it is closed, When Patronus Photo Is Closed (or `--when-closed`)
 //! decides: start the app and wait for it, serve a headless session with the folders chosen in
 //! the app, or report an error that says what to do. A session that went headless stays headless
 //! for the rest of the MCP session, so documents don't move under the agent.
 //!
 //! The lookup itself is the framework's, shared by every Craft app
-//! (`craft::automation::agents::Live`); this module supplies PhotoCraft's parts: its saved
+//! (`craft::automation::agents::Live`); this module supplies Patronus Photo's parts: its saved
 //! preferences, its window client ([`BridgeClient`]) and its headless session ([`Headless`]).
 
 use std::path::{Path, PathBuf};
@@ -18,7 +18,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use craft::automation::agents::{self, Consent, HeadlessFolders, Route, Window};
-use photocraft_engine::prefs::WhenAppClosed;
+use patronusphoto_engine::prefs::WhenAppClosed;
 
 use crate::AuthorizedWorkspace;
 use crate::agent_link;
@@ -31,9 +31,9 @@ pub use craft::automation::agents::{LAUNCH_TIMEOUT, LaunchFn};
 pub type PrepareFn = Box<dyn Fn(&mut Headless) + Send + Sync>;
 
 /// The app's name in the lookup's messages.
-const APP_NAME: &str = "PhotoCraft";
+const APP_NAME: &str = "Patronus Photo";
 /// The desktop app's file name beside the CLI (without `.exe`).
-const APP_EXE: &str = "photocraft";
+const APP_EXE: &str = "patronusphoto";
 
 pub struct LiveConfig {
     /// The app's settings folder: connection file, token and preferences.
@@ -49,10 +49,10 @@ pub struct LiveConfig {
     pub launch_timeout: Duration,
     /// Whether the person lets agents use the open app, given its saved preferences
     /// ([`agent_link::agents_allowed_now`]: the ArtCraft Launcher's switch); tests replace it.
-    pub allowed: fn(&photocraft_engine::prefs::Integrations) -> bool,
+    pub allowed: fn(&patronusphoto_engine::prefs::Integrations) -> bool,
     /// Prepares a headless session before its first call (the CLI's `--gpu` / `--no-gpu`).
     pub prepare_headless: Option<PrepareFn>,
-    /// The default agent folder for an empty folder setting: `Documents/ArtCraft/Agents/PhotoCraft`
+    /// The default agent folder for an empty folder setting: `Documents/ArtCraft/Agents/Patronus Photo`
     /// (`craft::control::agents::default_folder`); tests replace it.
     pub default_folder: Option<PathBuf>,
 }

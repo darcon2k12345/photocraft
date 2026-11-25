@@ -1,28 +1,28 @@
 use super::bars::count_size_params;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::ToolEvent;
 use crate::state::Tool;
 
-fn app() -> (Box<PhotocraftApp>, egui::Context) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> (Box<PatronusPhotoApp>, egui::Context) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
     let ctx = app.ctx().clone();
     (app, ctx)
 }
 
-fn down(app: &mut PhotocraftApp, x: f64, y: f64, m: egui::Modifiers) {
+fn down(app: &mut PatronusPhotoApp, x: f64, y: f64, m: egui::Modifiers) {
     crate::canvas::tool_event(app, ToolEvent::Down { x, y, pressure: 1.0 }, m);
 }
-fn mv(app: &mut PhotocraftApp, x: f64, y: f64, m: egui::Modifiers) {
+fn mv(app: &mut PatronusPhotoApp, x: f64, y: f64, m: egui::Modifiers) {
     crate::canvas::tool_event(app, ToolEvent::Move { x, y, pressure: 1.0 }, m);
 }
-fn up(app: &mut PhotocraftApp, x: f64, y: f64) {
+fn up(app: &mut PatronusPhotoApp, x: f64, y: f64) {
     crate::canvas::tool_event(app, ToolEvent::Up { x, y }, egui::Modifiers::NONE);
 }
 
-fn ruler(app: &PhotocraftApp) -> Option<photocraft_doc::Ruler> {
+fn ruler(app: &PatronusPhotoApp) -> Option<patronusphoto_doc::Ruler> {
     app.session.active().unwrap().doc.measurement.ruler
 }
 
@@ -31,7 +31,7 @@ fn arbitrary_rotation_starts_at_the_ruler_angle() {
     let (mut app, ctx) = app();
     // The dialog opens on the host; its values are what the prefill rule produced. Closing it keeps
     // the next open from replacing a dialog that is still up.
-    let open = |app: &mut PhotocraftApp| {
+    let open = |app: &mut PatronusPhotoApp| {
         crate::menus::invoke(app, &ctx, "image.rotation.arbitrary", json!({})).unwrap();
         let shown = app.framework.dialogs.open_dialogs();
         let dialog = shown.last().expect("the Arbitrary rotation dialog is open on the host");
@@ -56,9 +56,9 @@ fn count_tool_add_move_remove() {
     up(&mut app, 20.0, 20.0);
     down(&mut app, 50.0, 50.0, egui::Modifiers::NONE);
     up(&mut app, 50.0, 50.0);
-    let pts = |app: &PhotocraftApp| app.session.active().unwrap().doc.measurement.count_groups[0].points.clone();
+    let pts = |app: &PatronusPhotoApp| app.session.active().unwrap().doc.measurement.count_groups[0].points.clone();
     assert_eq!(pts(&app).len(), 2);
-    let past = |app: &PhotocraftApp| app.session.active().unwrap().history.past_len();
+    let past = |app: &PatronusPhotoApp| app.session.active().unwrap().history.past_len();
     // A move under half a pixel sends no `count.move`: the marker and the history stay.
     let before = past(&app);
     down(&mut app, 20.0, 20.0, egui::Modifiers::NONE);
@@ -185,7 +185,7 @@ fn color_sampler_is_per_document_and_inert_without_one() {
     app.run("document.activate", json!({"document": 0})).unwrap();
     assert_eq!(app.session.active().unwrap().color_samplers, vec![[10.5, 10.5]]);
     // With no document no sampler is found and the commands error.
-    let mut empty = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut empty = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     empty.ui.tool = Tool::ColorSampler;
     assert_eq!(super::sampler_at(&empty, [5.0, 5.0]), None);
     assert!(empty.run("view.colorSamplers.add", json!({"x": 1, "y": 1})).is_err());
@@ -208,12 +208,12 @@ fn count_size_fields_send_whole_numbers_the_engine_applies() {
 // ---------------------------------------------------------------- Straighten Layer button (#12033)
 
 /// The Ruler options bar, drawn wide enough for its buttons to show.
-fn ruler_bar(mut app: Box<PhotocraftApp>) -> egui_kittest::Harness<'static, Box<PhotocraftApp>> {
+fn ruler_bar(mut app: Box<PatronusPhotoApp>) -> egui_kittest::Harness<'static, Box<PatronusPhotoApp>> {
     use egui::vec2;
     app.ui.tool = Tool::Ruler;
     let ctx = app.ctx().clone();
     let mut h = egui_kittest::Harness::builder().with_context(ctx).with_size(vec2(1400.0, 60.0)).build_ui_state(
-        |ui: &mut egui::Ui, app: &mut Box<PhotocraftApp>| {
+        |ui: &mut egui::Ui, app: &mut Box<PatronusPhotoApp>| {
             if !ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 return;
             }
@@ -221,31 +221,31 @@ fn ruler_bar(mut app: Box<PhotocraftApp>) -> egui_kittest::Harness<'static, Box<
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     h.run_steps(4);
     h
 }
 
 /// A ruler line to straighten by, without one the button is off for every target.
-fn rule(app: &mut PhotocraftApp) {
+fn rule(app: &mut PatronusPhotoApp) {
     app.run("image.analysis.rulerTool", json!({"start": [10, 30], "end": [150, 25]})).unwrap();
 }
 
 /// How many dialogs are open on the host.
-fn open_dialogs(app: &PhotocraftApp) -> usize {
+fn open_dialogs(app: &PatronusPhotoApp) -> usize {
     app.framework.dialogs.open_dialogs().len()
 }
 
 /// A new layer on top of the plain document `app()` makes.
-fn add_layer(app: &mut PhotocraftApp, name: &str) -> u64 {
+fn add_layer(app: &mut PatronusPhotoApp, name: &str) -> u64 {
     app.run("layer.new.layer", json!({"name": name})).unwrap()["layer"].as_u64().unwrap()
 }
 
-fn on_a_layer(app: &mut PhotocraftApp) {
+fn on_a_layer(app: &mut PatronusPhotoApp) {
     add_layer(app, "Paint");
 }
 
-/// A refused click says so. `PhotocraftApp::run` reports what the *command* answered in the status
+/// A refused click says so. `PatronusPhotoApp::run` reports what the *command* answered in the status
 /// line, but a refusal raised before it runs - the automation gate a control/MCP-driven click goes
 /// through - returns early, so the button has to report it itself. As the toolbar flyout does
 /// (`a_failed_edit_toolbar_from_the_flyout_reports_its_error_in_the_status_bar`).

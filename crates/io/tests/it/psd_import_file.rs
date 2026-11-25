@@ -2,14 +2,14 @@
 //! open the same document, with the same warnings, as importing the file's bytes.
 
 use craft_psd::testgen;
-use photocraft_io::{ImportResult, import, import_file};
-use photocraft_raster::Interrupt;
+use patronusphoto_io::{ImportResult, import, import_file};
+use patronusphoto_raster::Interrupt;
 
 struct TempDir(std::path::PathBuf);
 
 impl TempDir {
     fn new(tag: &str) -> Self {
-        let dir = std::env::temp_dir().join(format!("photocraft-import-file-{tag}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("patronusphoto-import-file-{tag}-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         TempDir(dir)
     }
@@ -28,7 +28,7 @@ impl Drop for TempDir {
 }
 
 /// The document's debug form with every `…Id(n)` number blanked.
-fn without_ids(doc: &photocraft_doc::Document) -> String {
+fn without_ids(doc: &patronusphoto_doc::Document) -> String {
     let s = format!("{doc:?}");
     let mut out = String::with_capacity(s.len());
     let mut rest = s.as_str();
@@ -40,8 +40,8 @@ fn without_ids(doc: &photocraft_doc::Document) -> String {
     out
 }
 
-fn open(name: &str, path: &std::path::Path) -> Result<ImportResult, photocraft_io::IoError> {
-    import_file(name, path, &photocraft_io::ImportOptions::default(), &Interrupt::NONE)
+fn open(name: &str, path: &std::path::Path) -> Result<ImportResult, patronusphoto_io::IoError> {
+    import_file(name, path, &patronusphoto_io::ImportOptions::default(), &Interrupt::NONE)
 }
 
 // Every generated case still runs once, with the same document and warning comparisons.
@@ -96,8 +96,9 @@ fn import_file_opens_what_importing_the_bytes_opens_part_3() {
 #[test]
 fn import_file_reads_other_formats_whole() {
     let dir = TempDir::new("other");
-    let doc = photocraft_doc::Document::new("x", photocraft_geom::Size::new(3, 2), photocraft_color::ColorMode::Rgb, photocraft_color::SampleType::U8);
-    let png = photocraft_io::export(&doc, "x.png", &Default::default()).unwrap().bytes;
+    let doc =
+        patronusphoto_doc::Document::new("x", patronusphoto_geom::Size::new(3, 2), patronusphoto_color::ColorMode::Rgb, patronusphoto_color::SampleType::U8);
+    let png = patronusphoto_io::export(&doc, "x.png", &Default::default()).unwrap().bytes;
     let path = dir.write("x.png", &png);
     let r = open("x.png", &path).unwrap();
     assert_eq!(r.document.size, doc.size);
@@ -129,7 +130,7 @@ fn a_cancelled_import_file_reports_cancelled() {
     let path = dir.write("c.psd", &bytes);
     let cancel = || true;
     let ctl = Interrupt::cancel_only(&cancel);
-    assert!(matches!(import_file("c.psd", &path, &photocraft_io::ImportOptions::default(), &ctl), Err(photocraft_io::IoError::Cancelled)));
+    assert!(matches!(import_file("c.psd", &path, &patronusphoto_io::ImportOptions::default(), &ctl), Err(patronusphoto_io::IoError::Cancelled)));
 }
 
 /// A read that fails while the layers are decoded from the file (it is truncated or rewritten,
@@ -170,9 +171,9 @@ fn a_read_failing_while_layers_decode_fails_the_open() {
         assert!(!data.is_empty());
         // Opening the same file whole succeeds: only the failed reads fail the open.
         assert!(import("x.psd", &bytes).is_ok());
-        let r = photocraft_io::import_source_for_open_with("x.psd", craft_psd::Source::new(Failing { bytes, data }), &Interrupt::NONE);
+        let r = patronusphoto_io::import_source_for_open_with("x.psd", craft_psd::Source::new(Failing { bytes, data }), &Interrupt::NONE);
         match r {
-            Err(photocraft_io::IoError::Read(msg)) => assert!(msg.contains("the drive went away"), "{c:?}: {msg}"),
+            Err(patronusphoto_io::IoError::Read(msg)) => assert!(msg.contains("the drive went away"), "{c:?}: {msg}"),
             r => panic!("{c:?}: the open didn't fail: {:?}", r.map(|(r, damaged)| (r.warnings, damaged))),
         }
     }

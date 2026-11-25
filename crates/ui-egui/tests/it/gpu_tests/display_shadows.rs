@@ -7,12 +7,12 @@
 use std::sync::Arc;
 
 use craft::cms::{Builtin, Profile, curve::Curve};
-use photocraft_color::{ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{Document, Layer, LayerContent, Size};
-use photocraft_engine::display_color::Display;
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
-use photocraft_ui_egui::{PhotocraftApp, gpu_canvas};
+use patronusphoto_color::{ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::{Document, Layer, LayerContent, Size};
+use patronusphoto_engine::display_color::Display;
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::Surface;
+use patronusphoto_ui_egui::{PatronusPhotoApp, gpu_canvas};
 
 // D50-adapted sRGB and Display P3 colourants. ICC stores them as signed 15.16 values.
 const SOURCE_MATRIX: [[f64; 3]; 3] =
@@ -137,7 +137,7 @@ fn chart(depth: SampleType, icc: Arc<Vec<u8>>) -> Document {
 
 #[test]
 fn gpu_display_shadows_match_independent_icc_reference_at_all_depths() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     // Catch only device discovery: a shader or application failure must fail the regression.
     let Ok(rs) =
         std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| egui_kittest::wgpu::create_render_state(gpu_canvas::wgpu_setup(), Default::default())))
@@ -145,7 +145,7 @@ fn gpu_display_shadows_match_independent_icc_reference_at_all_depths() {
         eprintln!("skipping: no GPU adapter");
         return;
     };
-    if !gpu_canvas::supports_f16_canvas(&rs.adapter) || std::env::var("PHOTOCRAFT_CANVAS_F16").as_deref() == Ok("0") {
+    if !gpu_canvas::supports_f16_canvas(&rs.adapter) || std::env::var("PATRONUSPHOTO_CANVAS_F16").as_deref() == Ok("0") {
         eprintln!("skipping: adapter can't render/filter Rgba16Float");
         return;
     }
@@ -157,8 +157,8 @@ fn gpu_display_shadows_match_independent_icc_reference_at_all_depths() {
     let mut harness =
         egui_kittest::Harness::builder().with_size(egui::vec2(1000.0, 700.0)).with_pixels_per_point(1.0).with_max_steps(64).renderer(renderer).build_eframe(
             move |cc| {
-                PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-                let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), Default::default());
+                PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+                let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), Default::default());
                 app.set_wgpu(cc.wgpu_render_state.as_ref().expect("render state").clone());
                 app.session.color.set_displays(Ok(vec![Display {
                     id: 1,
@@ -176,10 +176,10 @@ fn gpu_display_shadows_match_independent_icc_reference_at_all_depths() {
         harness.state_mut().sync_views();
         harness.run_steps(6);
         assert!(harness.state().gpu_active(), "the regression must exercise the GPU canvas");
-        let xform = photocraft_ui_egui::canvas::active_view(harness.state()).expect("canvas mapping");
+        let xform = patronusphoto_ui_egui::canvas::active_view(harness.state()).expect("canvas mapping");
         let image = harness.render().expect("render GPU canvas");
         // Optional local diagnostic artifact: entirely synthetic, never a user's document.
-        if let Some(dir) = std::env::var_os("PHOTOCRAFT_DISPLAY_TEST_OUTPUT") {
+        if let Some(dir) = std::env::var_os("PATRONUSPHOTO_DISPLAY_TEST_OUTPUT") {
             let path = std::path::PathBuf::from(dir).join(format!("display-shadows-{depth:?}.png"));
             image.save(&path).expect("save requested synthetic chart");
             eprintln!("synthetic chart: {}", path.display());
@@ -204,10 +204,10 @@ fn gpu_display_shadows_match_independent_icc_reference_at_all_depths() {
 #[ignore = "manual 24 MP GPU timing; run with --release --ignored --nocapture"]
 fn compare_display_paths_24mp() {
     use craft::cms::{Intent, Lut3d, Transform};
-    use photocraft_ui_egui::gpu_canvas::{GpuCanvas, ViewParams};
+    use patronusphoto_ui_egui::gpu_canvas::{GpuCanvas, ViewParams};
     use std::time::Instant;
 
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let rs = egui_kittest::wgpu::create_render_state(gpu_canvas::wgpu_setup(), Default::default());
     let info = rs.adapter.get_info();
     let gpu = GpuCanvas::new(&rs);

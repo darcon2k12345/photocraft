@@ -2,11 +2,11 @@ use egui::Modifiers;
 use serde_json::json;
 
 use super::delete_anchor_targeted_path_tests::{click, group_shape, select_layer, setup, shape_path, steps};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing;
 use crate::state::Tool;
 
-pub(super) fn click_with_modifiers(app: &mut PhotocraftApp, at: [f64; 2], mods: Modifiers) {
+pub(super) fn click_with_modifiers(app: &mut PatronusPhotoApp, at: [f64; 2], mods: Modifiers) {
     testing::click(app, at, mods);
 }
 

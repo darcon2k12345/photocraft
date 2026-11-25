@@ -2,15 +2,15 @@
 //! Right once the mask text is toggled horizontal (the target beats the tool for mask text).
 
 use egui_kittest::kittest::Queryable;
-use photocraft_doc::LayerId;
+use patronusphoto_doc::LayerId;
 
 use super::super::vertical_align_buttons_tests::{HORIZONTAL, VERTICAL, bar, new_app, shown};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing::{ToolEvent, tool_event};
 use crate::state::Tool;
 
 /// The Vertical Type Mask tool typing a new mask; returns its hidden working layer.
-fn typing_a_mask(app: &mut PhotocraftApp) -> LayerId {
+fn typing_a_mask(app: &mut PatronusPhotoApp) -> LayerId {
     tool_event(app, ToolEvent::Down { x: 400.0, y: 100.0, pressure: 1.0 }, egui::Modifiers::NONE);
     tool_event(app, ToolEvent::Up { x: 400.0, y: 100.0 }, egui::Modifiers::NONE);
     let ed = app.ui.text_edit.as_ref().filter(|ed| ed.mask).expect("typing a mask");

@@ -13,7 +13,7 @@ use std::sync::Arc;
 
 use craft_psd::source::{ReadAt, Source, Stored};
 use craft_psd::{ChannelData, ImageData, PsdError};
-use photocraft_raster::stage_file::StageFile;
+use patronusphoto_raster::stage_file::StageFile;
 
 /// Encoded data shorter than this stays in memory: a range costs more than it saves.
 const MIN_STAGED_BYTES: usize = 64 << 10;

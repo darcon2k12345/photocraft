@@ -1,5 +1,5 @@
 //! Fonts a host serves next to the app, for the platform shell that fetches them (the web build;
-//! see `photocraft_text::served`): reading the manifest, the families to fetch, and installing
+//! see `patronusphoto_text::served`): reading the manifest, the families to fetch, and installing
 //! what arrived, which registers the files for documents and re-renders the type layers drawn
 //! without them. Runtime-manifest deliveries also populate owned UI fallbacks. A build-generated
 //! UI font stack takes its served faces through `UiFonts::served_faces`
@@ -13,11 +13,11 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use craft::ui::fonts::{FontFetcher, ServedFace};
 
-use photocraft_doc::{LayerContent, TextLayer};
-use photocraft_engine::TypeLayerRef;
-pub use photocraft_text::served::{ServedFont, add_families, add_fonts, is_relative_path, parse_manifest, request_for_languages, take_requests};
+use patronusphoto_doc::{LayerContent, TextLayer};
+use patronusphoto_engine::TypeLayerRef;
+pub use patronusphoto_text::served::{ServedFont, add_families, add_fonts, is_relative_path, parse_manifest, request_for_languages, take_requests};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// Layers whose document was busy with a background job when their font arrived.
 static PENDING: Mutex<Vec<TypeLayerRef>> = Mutex::new(Vec::new());
@@ -51,7 +51,7 @@ pub struct Served {
 }
 
 fn served_id() -> egui::Id {
-    egui::Id::unique("photocraft-served-fonts")
+    egui::Id::unique("patronusphoto-served-fonts")
 }
 
 /// Gives the UI's font stack `faces`, fetched by `fetcher` when text needs them, and installs the stack again. Every
@@ -73,7 +73,7 @@ pub(crate) fn served(ctx: &egui::Context) -> Option<Served> {
 /// from the start. Successful host deliveries also populate `ctx`'s UI fallbacks. The caller
 /// must apply the manifest's integrity check before delivery. Call it every frame: it also retries
 /// the layers of a document that was busy.
-pub fn install(app: &mut PhotocraftApp, ctx: &egui::Context, delivered: Vec<(String, Vec<u8>)>) {
+pub fn install(app: &mut PatronusPhotoApp, ctx: &egui::Context, delivered: Vec<(String, Vec<u8>)>) {
     let mut ui_changed = false;
     let mut layers = std::mem::take(&mut *PENDING.lock().unwrap_or_else(PoisonError::into_inner));
     if !delivered.is_empty() {
@@ -81,7 +81,7 @@ pub fn install(app: &mut PhotocraftApp, ctx: &egui::Context, delivered: Vec<(Str
         // Decided before the fonts are in: "shows our own layout" compares the layer's pixels
         // with what the engine draws now, that is with the fallback font.
         pick(&app.session, &families, &mut layers);
-        let mut eng = photocraft_text::shared().lock().unwrap_or_else(PoisonError::into_inner);
+        let mut eng = patronusphoto_text::shared().lock().unwrap_or_else(PoisonError::into_inner);
         for (family, bytes) in delivered {
             ui_changed |= loaded::cache(ctx, &bytes);
             let added = eng.fonts.register_font_data(bytes);
@@ -102,7 +102,7 @@ pub fn install(app: &mut PhotocraftApp, ctx: &egui::Context, delivered: Vec<(Str
 /// Adds to `layers` the type layers to redraw once `families` arrive, in every open document and
 /// in its first History snapshot (the document as opened), which is checked on its own: since
 /// then its layers may have been edited (a PSD layer re-rendered) or deleted (#6087).
-fn pick(session: &photocraft_engine::Session, families: &[String], layers: &mut Vec<TypeLayerRef>) {
+fn pick(session: &patronusphoto_engine::Session, families: &[String], layers: &mut Vec<TypeLayerRef>) {
     for st in session.documents() {
         let first = st.snapshots().iter().find(|s| s.id == 0).map(|s| &s.doc);
         // While it still is the open document, a layer picked there is picked in the snapshot too
@@ -132,14 +132,14 @@ fn pick(session: &photocraft_engine::Session, families: &[String], layers: &mut 
 /// Should the layer be redrawn when `families` arrive: it uses one of them, or its text is in a
 /// script one of them is the served fallback for?
 fn redraws_for(t: &TextLayer, families: &[String]) -> bool {
-    uses_family(t, families) || families.iter().any(|f| photocraft_text::served::falls_back_to(&t.text, f))
+    uses_family(t, families) || families.iter().any(|f| patronusphoto_text::served::falls_back_to(&t.text, f))
 }
 
 /// Does the layer use one of `families`, by name or through the PostScript name a PSD gave?
 fn uses_family(t: &TextLayer, families: &[String]) -> bool {
     t.char_runs().iter().any(|r| {
         families.contains(&r.style.font_family)
-            || r.style.postscript_name.as_deref().is_some_and(|ps| families.contains(&photocraft_text::fonts::guess_from_postscript(ps).family))
+            || r.style.postscript_name.as_deref().is_some_and(|ps| families.contains(&patronusphoto_text::fonts::guess_from_postscript(ps).family))
     })
 }
 
@@ -153,9 +153,9 @@ mod tests {
         assert!(uses_family(&t, &["Open Sans".into()]));
         assert!(!uses_family(&t, &["Lato".into()]));
         let mut psd = TextLayer { text: "Hi".into(), font_family: "Inter".into(), ..Default::default() };
-        psd.runs = vec![photocraft_doc::text::TextRun {
+        psd.runs = vec![patronusphoto_doc::text::TextRun {
             len: 2,
-            style: photocraft_doc::text::CharStyle { font_family: "Inter".into(), postscript_name: Some("Lato-Bold".into()), ..Default::default() },
+            style: patronusphoto_doc::text::CharStyle { font_family: "Inter".into(), postscript_name: Some("Lato-Bold".into()), ..Default::default() },
         }];
         assert!(uses_family(&psd, &["Lato".into()]));
     }
@@ -165,17 +165,17 @@ mod tests {
     /// picked in both without being checked twice.
     #[test]
     fn the_first_snapshot_is_picked_on_its_own() {
-        use photocraft_doc::LayerId;
+        use patronusphoto_doc::LayerId;
         use serde_json::json;
         let family = "Served Test Pick";
-        let mut s = photocraft_engine::Session::new();
+        let mut s = patronusphoto_engine::Session::new();
         s.execute("file.new", json!({"width": 200, "height": 100, "background": "transparent"})).unwrap();
         let id = LayerId(s.execute("type.create", json!({"text": "Hello", "size": 24, "font": family})).unwrap()["layer"].as_u64().unwrap());
         let doc = (*s.active().unwrap().doc).clone();
         s.add_document(doc, None);
         let doc_id = s.active().unwrap().doc.id;
         let key = |first_snapshot| TypeLayerRef { doc: doc_id, layer: id, first_snapshot };
-        let picked = |s: &photocraft_engine::Session| {
+        let picked = |s: &patronusphoto_engine::Session| {
             let mut layers = Vec::new();
             pick(s, &[family.into()], &mut layers);
             layers.retain(|l| l.doc == doc_id);
@@ -194,7 +194,7 @@ mod tests {
         let thai = "Served Test Thai";
         {
             let _catalog = changing_catalog();
-            photocraft_text::served::add_fonts(&parse_manifest(&format!("{thai} | Regular | fonts/t/T.ttf | Thai\n")).0);
+            patronusphoto_text::served::add_fonts(&parse_manifest(&format!("{thai} | Regular | fonts/t/T.ttf | Thai\n")).0);
         }
         let layer = |text: &str| TextLayer { text: text.into(), font_family: "Inter".into(), ..Default::default() };
         assert!(redraws_for(&layer("สวัสดี"), &[thai.into()]), "Thai text set in Inter falls back to it");

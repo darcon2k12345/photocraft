@@ -2,10 +2,10 @@
 //! lands in a running shell when such a language is chosen.
 
 use super::*;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::i18n::{self, Lang};
 use egui_kittest::Harness;
-use photocraft_text::scripts;
+use patronusphoto_text::scripts;
 use serde_json::json;
 
 #[test]
@@ -18,14 +18,14 @@ fn right_to_left_scripts_by_language_code() {
     }
 }
 
-fn harness() -> Harness<'static, Box<PhotocraftApp>> {
+fn harness() -> Harness<'static, Box<PatronusPhotoApp>> {
     harness_with(Harness::builder())
 }
 
-fn harness_with(builder: egui_kittest::HarnessBuilder<Box<PhotocraftApp>>) -> Harness<'static, Box<PhotocraftApp>> {
+fn harness_with(builder: egui_kittest::HarnessBuilder<Box<PatronusPhotoApp>>) -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut h = builder.with_size(egui::vec2(1200.0, 800.0)).with_max_steps(64).build_eframe(|cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, crate::theme::AppTheme::pro_medium());
-        let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), crate::Services::default());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, crate::theme::AppTheme::pro_medium());
+        let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 64, "height": 64})).expect("new document");
         app
     });
@@ -34,7 +34,7 @@ fn harness_with(builder: egui_kittest::HarnessBuilder<Box<PhotocraftApp>>) -> Ha
 }
 
 /// The middle of the Layers group across the window.
-fn dock_x(h: &Harness<'static, Box<PhotocraftApp>>) -> f32 {
+fn dock_x(h: &Harness<'static, Box<PatronusPhotoApp>>) -> f32 {
     crate::panel_docking::probe::group_rect(h, "layers").expect("Layers docked").center().x
 }
 
@@ -77,5 +77,5 @@ fn hebrew_and_urdu_mirror_the_shell_and_draw_their_letters() {
 /// eager provider); installed fonts arrive a frame later through the lazy loader, which the
 /// harness's strict missing-glyph policy doesn't wait for (`cjk_fonts` tests).
 fn craft_font_covers(letter: char) -> bool {
-    photocraft_text::craft_fonts::CRAFT_FONTS.iter().any(|f| !f.bytes.is_empty() && scripts::covering_face(f.bytes, letter).is_some())
+    patronusphoto_text::craft_fonts::CRAFT_FONTS.iter().any(|f| !f.bytes.is_empty() && scripts::covering_face(f.bytes, letter).is_some())
 }

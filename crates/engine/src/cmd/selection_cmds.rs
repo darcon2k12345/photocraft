@@ -2,10 +2,10 @@
 //! (expand/contract/border/smooth/feather), Grow, Similar, Lasso.
 //! Selections are grayscale coverage surfaces clipped to the canvas.
 
-use photocraft_algo::selection::{self as sel, SelectionMode};
-use photocraft_doc::Document;
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use patronusphoto_algo::selection::{self as sel, SelectionMode};
+use patronusphoto_doc::Document;
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::Surface;
 use serde_json::{Value, json};
 
 use crate::commands::CommandSpec;
@@ -75,7 +75,7 @@ fn sample_pixels(s: &Session, all_layers: bool, window: Option<Rect>) -> Result<
         _ => {
             // The composite allocates inside compose; report a failure at its boundary.
             crate::allocation::checkpoint("sampling pixels for a selection")?;
-            Ok((area, photocraft_compose::render(&d.doc, area).into_px()))
+            Ok((area, patronusphoto_compose::render(&d.doc, area).into_px()))
         }
     }
 }
@@ -130,7 +130,7 @@ pub(crate) fn sample_rgba8(s: &Session, all_layers: bool) -> Result<(Rect, Vec<[
         (false, Some(surf)) => Ok((area, sel::rgba8_image(surf, area))),
         _ => {
             let q = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
-            Ok((area, photocraft_compose::render(&d.doc, area).px.iter().map(|p| p.map(q)).collect()))
+            Ok((area, patronusphoto_compose::render(&d.doc, area).px.iter().map(|p| p.map(q)).collect()))
         }
     }
 }
@@ -248,7 +248,7 @@ impl ColorRangeSamples {
                 };
                 let px = match pixel {
                     Some(px) => px,
-                    None => photocraft_compose::render(doc, r).px.first().copied().unwrap_or([0.0; 4]),
+                    None => patronusphoto_compose::render(doc, r).px.first().copied().unwrap_or([0.0; 4]),
                 };
                 samples.push(sel::RangeSample { color: [px[0], px[1], px[2]], at: Some(((x - area.x0) as f32, (y - area.y0) as f32)) });
             }
@@ -303,7 +303,7 @@ impl ColorRangeSamples {
         // "Subtract from Sample" reshapes it (sel::LabRange::subtract).
         let to_lab = lab_transform(s)?;
         // 8-bit documents are compared on the 8-bit Lab grid, samples and pixels alike.
-        let grid = s.active().is_some_and(|d| d.doc.depth == photocraft_doc::SampleType::U8);
+        let grid = s.active().is_some_and(|d| d.doc.depth == patronusphoto_doc::SampleType::U8);
         let q = |c: [f32; 3]| if grid { sel::quantize_lab8(c) } else { c };
         let colour_to_lab = |t: &craft_cms::Transform, c: [f32; 3]| q(colour_to_lab(t, c));
         let foreground = || {
@@ -353,7 +353,7 @@ fn color_range_area(doc: &Document, m: SelectionMode) -> Rect {
     }
     // content_bounds orders raw tile coordinates by their differences. Reject coordinates
     // outside the pixel-addressable range before those differences can overflow.
-    let valid = (i32::MIN / photocraft_geom::TILE_SIZE)..=(i32::MAX / photocraft_geom::TILE_SIZE);
+    let valid = (i32::MIN / patronusphoto_geom::TILE_SIZE)..=(i32::MAX / patronusphoto_geom::TILE_SIZE);
     if selection.tiles().any(|(tile, _)| !valid.contains(&tile.tx) || !valid.contains(&tile.ty)) {
         return canvas;
     }
@@ -649,14 +649,14 @@ fn lasso(s: &mut Session, p: &Value) -> Result<Value> {
 
 /// The History step name for `historyName` `n`: refused when it has a control or line-break
 /// character anywhere; otherwise without its invisible end padding (see
-/// [`photocraft_plugins::manifest::trim_name`]), so a name that looks like "Patch Tool" is "Patch Tool",
+/// [`patronusphoto_plugins::manifest::trim_name`]), so a name that looks like "Patch Tool" is "Patch Tool",
 /// and then held to the plug-in menu-label rule.
 fn history_name(n: &str) -> Option<&str> {
     if n.chars().any(|c| c.is_control() || matches!(c, '\u{2028}' | '\u{2029}')) {
         return None;
     }
-    let t = photocraft_plugins::manifest::trim_name(n);
-    photocraft_plugins::manifest::printable_name(t).then_some(t)
+    let t = patronusphoto_plugins::manifest::trim_name(n);
+    patronusphoto_plugins::manifest::printable_name(t).then_some(t)
 }
 
 /// Selects the polygon `pts` with the lasso tools' `mode`, `antiAlias` and `feather` params, as

@@ -18,11 +18,11 @@ use craft::ui::pickers::Select;
 use craft::ui::runtime::env::UnitKind;
 use craft::ui::text::NumberField;
 use egui::ColorImage;
-use photocraft_engine::edit_menu_cmds::ContentAwareScalePreview;
-use photocraft_engine::jobs::JobCtx;
+use patronusphoto_engine::edit_menu_cmds::ContentAwareScalePreview;
+use patronusphoto_engine::jobs::JobCtx;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::{ContentAwareOptions, FreeTransform};
 
 pub const COMMAND: &str = "edit.contentAwareScale";
@@ -83,7 +83,7 @@ impl Live {
 }
 
 /// Edit › Content-Aware Scale from the menu: open the box (`Err` says why it can't).
-pub fn begin(app: &mut PhotocraftApp, ctx: &egui::Context) -> Result<Value, String> {
+pub fn begin(app: &mut PatronusPhotoApp, ctx: &egui::Context) -> Result<Value, String> {
     if app.ui.transform.is_some() {
         return Err("Commit or cancel the transform first".into());
     }
@@ -134,7 +134,7 @@ pub(crate) fn params(t: &FreeTransform, o: &ContentAwareOptions, place: bool) ->
 }
 
 /// ↩: run the command for the box. An untouched box changes nothing and adds no step.
-pub(crate) fn commit(app: &mut PhotocraftApp, t: &FreeTransform, o: &ContentAwareOptions) {
+pub(crate) fn commit(app: &mut PatronusPhotoApp, t: &FreeTransform, o: &ContentAwareOptions) {
     if t.session.is_untouched() {
         return;
     }
@@ -146,7 +146,7 @@ pub(crate) fn commit(app: &mut PhotocraftApp, t: &FreeTransform, o: &ContentAwar
 
 /// Once per frame while the box is open: take a finished preview, cancel one gone stale and start
 /// one for the box as it is now.
-pub fn tick(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub fn tick(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     let Some(t) = app.ui.transform.as_ref() else { return };
     let Some(o) = t.content_aware.as_ref() else { return };
     let unscaled = box_size(t) == source_size(t);
@@ -204,7 +204,7 @@ pub fn tick(app: &mut PhotocraftApp, ctx: &egui::Context) {
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             let surf = preview.run(&work).map_err(|e| e.to_string())?;
             let [w, h] = preview.size();
-            Ok(crate::transform_tool::read_surface(&surf, photocraft_geom::Rect::from_xywh(0, 0, w, h), usize::MAX).image)
+            Ok(crate::transform_tool::read_surface(&surf, patronusphoto_geom::Rect::from_xywh(0, 0, w, h), usize::MAX).image)
         }))
         .unwrap_or_else(|_| Err("Content-Aware Scale preview failed".into()));
         let _ = tx.send(result);
@@ -228,7 +228,7 @@ pub fn tick(app: &mut PhotocraftApp, ctx: &egui::Context) {
 /// Tones. It reports and applies only what the user changed in this pass (the controls hold the
 /// session's values and a second pass of a frame gets no input), writing the options to the open
 /// session's `content_aware`.
-pub fn fields(app: &mut PhotocraftApp, ui: &mut egui::Ui, t: &FreeTransform) {
+pub fn fields(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, t: &FreeTransform) {
     let Some(o) = t.content_aware.clone() else { return };
     let mut next = o.clone();
     let caption = FieldLayout::Beside;
@@ -268,7 +268,7 @@ mod tests {
 
     #[test]
     fn partial_colour_sets_cannot_start_content_aware_or_mesh_transform_previews() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         let ctx = app.ctx().clone();
         app.run("file.new", json!({"width":32,"height":24})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();
@@ -289,7 +289,7 @@ mod tests {
 
     #[test]
     fn menu_opens_a_scale_box_and_enter_commits_one_step() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         let ctx = app.ctx().clone();
         app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();
@@ -334,7 +334,7 @@ mod tests {
     #[test]
     fn on_the_background_the_preview_vacates_to_the_background_colour() {
         for depth in [8, 16] {
-            let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
             let ctx = app.ctx().clone();
             app.run("file.new", json!({"width": 64, "height": 48, "depth": depth, "background": "white"})).unwrap();
             app.session.tools.background = [0.0, 0.0, 1.0, 1.0];

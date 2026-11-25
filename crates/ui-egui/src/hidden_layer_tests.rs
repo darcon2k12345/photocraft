@@ -2,17 +2,17 @@
 //! and painting on or moving a hidden target layer is refused at the press with Photoshop's
 //! "the target layer is hidden" instead of changing pixels nobody can see.
 
-use photocraft_doc::LayerId;
-use photocraft_geom::Rect;
+use patronusphoto_doc::LayerId;
+use patronusphoto_geom::Rect;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::{ToolEvent, tool_event};
 use crate::state::Tool;
 
 /// A 64×64 document with a painted layer covering (8..24)², hidden and active.
-fn app(tool: Tool) -> (Box<PhotocraftApp>, LayerId) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app(tool: Tool) -> (Box<PatronusPhotoApp>, LayerId) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 64, "height": 64})).unwrap();
     app.sync_views();
     app.session.execute("layer.new.layer", json!({})).unwrap();
@@ -29,7 +29,7 @@ fn app(tool: Tool) -> (Box<PhotocraftApp>, LayerId) {
     (app, id)
 }
 
-fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2]) {
+fn drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2]) {
     let m = egui::Modifiers::NONE;
     tool_event(app, ToolEvent::Down { x: from[0], y: from[1], pressure: 1.0 }, m);
     tool_event(app, ToolEvent::Move { x: to[0], y: to[1], pressure: 1.0 }, m);
@@ -37,7 +37,7 @@ fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2]) {
 }
 
 /// The messages of the alerts open on the dialog host.
-fn alerts(app: &PhotocraftApp) -> Vec<String> {
+fn alerts(app: &PatronusPhotoApp) -> Vec<String> {
     app.framework
         .dialogs
         .open_dialogs()
@@ -47,11 +47,11 @@ fn alerts(app: &PhotocraftApp) -> Vec<String> {
         .collect()
 }
 
-fn steps(app: &PhotocraftApp) -> usize {
+fn steps(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.entries().len()
 }
 
-fn bounds(app: &PhotocraftApp, id: LayerId) -> Rect {
+fn bounds(app: &PatronusPhotoApp, id: LayerId) -> Rect {
     app.session.active().unwrap().doc.layer(id).unwrap().surface().unwrap().content_bounds()
 }
 

@@ -8,8 +8,8 @@ use std::hash::{Hash, Hasher};
 
 use craft::draw::ui::brush_settings::PreviewStroke;
 use egui::Color32;
-use photocraft_engine::BrushSettings;
-use photocraft_engine::paint::{self, Pattern, StrokePoint, TipShape};
+use patronusphoto_engine::BrushSettings;
+use patronusphoto_engine::paint::{self, Pattern, StrokePoint, TipShape};
 
 fn js<T: serde::Serialize>(h: &mut DefaultHasher, v: &T) {
     serde_json::to_vec(v).unwrap_or_default().hash(h);
@@ -69,7 +69,7 @@ pub fn tip_sig(tip: &TipShape, hardness: f32, angle: f32, roundness: f32, flip: 
 /// A stroke rendered with the brush (scaled down to fit), as straight RGBA8: the framework's
 /// [`PreviewStroke`] (Photoshop's S-curve with the pressure tapering in and out).
 pub fn preview_pixels(b: &BrushSettings, w: u32, h: u32, color: [f32; 4]) -> Vec<u8> {
-    use photocraft_color::{ColorMode, PixelFormat, SampleType};
+    use patronusphoto_color::{ColorMode, PixelFormat, SampleType};
     let shape = PreviewStroke::new(w, h);
     let mut brush = b.clone();
     let k = shape.fit(f64::from(brush.size)) as f32;
@@ -82,9 +82,9 @@ pub fn preview_pixels(b: &BrushSettings, w: u32, h: u32, color: [f32; 4]) -> Vec
     brush.build_up = false;
     let points: Vec<StrokePoint> = shape.samples().into_iter().map(|s| StrokePoint::new(s.x, s.y, s.pressure)).collect();
     let fmt = PixelFormat::new(ColorMode::Rgb, SampleType::U8, true);
-    let mut s = photocraft_raster::Surface::new(fmt);
+    let mut s = patronusphoto_raster::Surface::new(fmt);
     paint::apply_stroke(&mut s, &paint::Stroke { brush, points }, None, false);
-    let r = photocraft_geom::Rect::new(0, 0, w as i32, h as i32);
+    let r = patronusphoto_geom::Rect::new(0, 0, w as i32, h as i32);
     let mut px = vec![[0.0f32; 4]; (w * h) as usize];
     s.read_rgba_into(r, &mut px);
     px.iter().flat_map(|p| p.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8)).collect()

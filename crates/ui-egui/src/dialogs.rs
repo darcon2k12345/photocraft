@@ -7,11 +7,11 @@
 use craft::host::Host;
 use craft::settings::Remembered;
 use craft::ui::dialog::{DialogId, DialogResult, HeldOk, PromptAnswer, StandardPrompt};
-use photocraft_doc::DocId;
-use photocraft_engine::prefs::Preferences;
+use patronusphoto_doc::DocId;
+use patronusphoto_engine::prefs::Preferences;
 use serde_json::Value;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// What a family of the hosted dialogs does with each result, and who owns which dialog key.
 pub(crate) mod params {
@@ -24,18 +24,18 @@ pub(crate) mod params {
     use craft::ui::runtime::env::Label;
     use craft::ui::runtime::memory::SaveKey;
     use craft::ui::runtime::requests::{PathKind, PathRequest};
-    use photocraft_doc::DocId;
+    use patronusphoto_doc::DocId;
     use serde_json::Value;
 
     use super::{
-        PhotocraftApp, alerts, brush_preset_dialog, canvas_input, channel_options_ui, color_picker_ui, color_table_ui, count_group_name_ui, duplicate_layer_ui,
-        equalize_ui, file_forms, fill_ui, filter_dialog, history_options_ui, image_processor_ui, merge_channels_ui, new_group_ui, new_layer_ui,
-        smart_filter_dialog, snapshot_dialog, stack_dialog, stroke_ui,
+        PatronusPhotoApp, alerts, brush_preset_dialog, canvas_input, channel_options_ui, color_picker_ui, color_table_ui, count_group_name_ui,
+        duplicate_layer_ui, equalize_ui, file_forms, fill_ui, filter_dialog, history_options_ui, image_processor_ui, merge_channels_ui, new_group_ui,
+        new_layer_ui, smart_filter_dialog, snapshot_dialog, stack_dialog, stroke_ui,
     };
     use crate::canvas::document_display::CanvasHost;
 
     /// Judges a held OK: a refusal's label, or `Ok`.
-    type OkCheck = fn(&mut PhotocraftApp, &ParamResult) -> Result<(), Label>;
+    type OkCheck = fn(&mut PatronusPhotoApp, &ParamResult) -> Result<(), Label>;
 
     /// One family of parameter dialogs: the dialogs whose key it owns, and what it does with their answers.
     #[derive(Clone, Copy)]
@@ -44,22 +44,22 @@ pub(crate) mod params {
         pub owns: fn(&str) -> bool,
         /// What OK does: runs the family's command with the confirmed values. The family reads its per-open state with
         /// [`captured`].
-        pub run: fn(&mut PhotocraftApp, &egui::Context, ParamResult),
+        pub run: fn(&mut PatronusPhotoApp, &egui::Context, ParamResult),
         /// Judges a held OK before the dialog closes; a refusal shows under the rows and keeps the dialog open.
         pub check: Option<OkCheck>,
         /// The files of a folder, for a files row of the family's dialogs.
-        pub listing: Option<fn(&PhotocraftApp, &Path) -> Vec<PathBuf>>,
+        pub listing: Option<fn(&PatronusPhotoApp, &Path) -> Vec<PathBuf>>,
         /// A footer button the dialog reported (the button's id comes last).
-        pub footer: Option<fn(&mut PhotocraftApp, &egui::Context, DialogId, &str)>,
+        pub footer: Option<fn(&mut PatronusPhotoApp, &egui::Context, DialogId, &str)>,
         /// What a cancelled dialog of the family leaves to undo (a live preview, a guide edit).
-        pub cancel: Option<fn(&mut PhotocraftApp, &egui::Context, DialogId)>,
+        pub cancel: Option<fn(&mut PatronusPhotoApp, &egui::Context, DialogId)>,
         /// The document a dialog is about, read from its captured value: the dialog closes with the document.
         pub document: Option<fn(&Value) -> Option<DocId>>,
     }
 
     impl ParamFamily {
         /// A family with only the two required hooks.
-        pub(crate) const fn new(owns: fn(&str) -> bool, run: fn(&mut PhotocraftApp, &egui::Context, ParamResult)) -> Self {
+        pub(crate) const fn new(owns: fn(&str) -> bool, run: fn(&mut PatronusPhotoApp, &egui::Context, ParamResult)) -> Self {
             ParamFamily { owns, run, check: None, listing: None, footer: None, cancel: None, document: None }
         }
     }
@@ -122,7 +122,7 @@ pub(crate) mod params {
 
     /// The scope a family's dialog remembers its values under, and the scope [`move_memories`] moves the old value to.
     pub(super) fn memory_scope(key: &str) -> String {
-        format!("photocraft.{key}")
+        format!("patronusphoto.{key}")
     }
 
     /// Opens the parameter dialog `key` over `fields`, built by `build`. The dialog edits its own history (Cmd+Z steps
@@ -131,7 +131,7 @@ pub(crate) mod params {
     /// Duplicate's layer; `Value::Null` for none): it stays in the app until [`take`] has run the family on the result or
     /// the dialog was cancelled, and the family reads it with [`captured`].
     pub(crate) fn open_param(
-        app: &mut PhotocraftApp,
+        app: &mut PatronusPhotoApp,
         key: &str,
         fields: DialogFields,
         captured: Value,
@@ -142,7 +142,7 @@ pub(crate) mod params {
 
     /// [`open_param`] for a dialog that remembers nothing (a spec dialog, a smart edit).
     pub(crate) fn open_param_unsaved(
-        app: &mut PhotocraftApp,
+        app: &mut PatronusPhotoApp,
         key: &str,
         fields: DialogFields,
         captured: Value,
@@ -153,7 +153,7 @@ pub(crate) mod params {
 
     /// The one body of the two openers: `save` is the remember key, when the dialog has one.
     fn open_with(
-        app: &mut PhotocraftApp,
+        app: &mut PatronusPhotoApp,
         key: &str,
         fields: DialogFields,
         captured: Value,
@@ -178,13 +178,13 @@ pub(crate) mod params {
     }
 
     /// The per-open state the dialog `key` was opened with, `Value::Null` when it had none.
-    pub(crate) fn captured(app: &PhotocraftApp, key: &str) -> Value {
+    pub(crate) fn captured(app: &PatronusPhotoApp, key: &str) -> Value {
         app.framework.captured.get(key).cloned().unwrap_or(Value::Null)
     }
 
     /// Runs the families on the parameter dialogs that finished, then answers the held OKs and the requests the open
     /// dialogs filed. A result is taken once, so a second pass of a frame finds nothing to run.
-    pub(crate) fn take(app: &mut PhotocraftApp, ctx: &egui::Context) {
+    pub(crate) fn take(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
         while let Some((result, key)) = app.framework.dialogs.take_keyed::<HostedParamDialog>() {
             let key = key.unwrap_or_default();
             let family = family_for(&key);
@@ -214,21 +214,21 @@ pub(crate) mod params {
     }
 
     /// The ids of the open hosted parameter dialogs.
-    fn hosted(app: &PhotocraftApp) -> Vec<DialogId> {
+    fn hosted(app: &PatronusPhotoApp) -> Vec<DialogId> {
         let dialogs = &app.framework.dialogs;
         dialogs.stack().ids().filter(|id| dialogs.get_by_id::<HostedParamDialog>(*id).is_some()).collect()
     }
 
-    fn dialog_mut(app: &mut PhotocraftApp, id: DialogId) -> Option<&mut HostedParamDialog> {
+    fn dialog_mut(app: &mut PatronusPhotoApp, id: DialogId) -> Option<&mut HostedParamDialog> {
         app.framework.dialogs.get_mut_by_id::<HostedParamDialog>(id)
     }
 
-    fn key_of(app: &PhotocraftApp, id: DialogId) -> Option<String> {
+    fn key_of(app: &PatronusPhotoApp, id: DialogId) -> Option<String> {
         app.framework.dialogs.get_by_id::<HostedParamDialog>(id).and_then(|dialog| StackDialog::key(dialog).map(str::to_owned))
     }
 
     /// Judges the OK each held dialog filed with its family's `check` (no check accepts) and answers the dialog.
-    fn answer_held(app: &mut PhotocraftApp) {
+    fn answer_held(app: &mut PatronusPhotoApp) {
         for id in hosted(app) {
             let Some(result) = dialog_mut(app, id).and_then(HostedParamDialog::take_ok) else { continue };
             let answer = if crate::actions::is_editor(app, id) {
@@ -259,7 +259,7 @@ pub(crate) mod params {
     /// Answers the dialogs' requests of this pass: colours through a Color Picker child, paths through the host's file
     /// service, the eyedropper through the canvas, listings and footer buttons through the family. Each request is filed
     /// by the pass that took the input, so a second pass of the frame answers nothing twice.
-    pub(crate) fn answer_requests(app: &mut PhotocraftApp, ctx: &egui::Context) {
+    pub(crate) fn answer_requests(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
         settle_picks(app, ctx);
         for id in hosted(app) {
             let key = key_of(app, id);
@@ -303,7 +303,7 @@ pub(crate) mod params {
     }
 
     /// Starts the picker a path row asked for, in the folder the row's current path names.
-    fn start_pick(app: &mut PhotocraftApp, ctx: &egui::Context, id: DialogId, request: PathRequest) {
+    fn start_pick(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: DialogId, request: PathRequest) {
         const PURPOSE: &str = "dialog";
         let current = app.framework.dialogs.get_by_id::<HostedParamDialog>(id).and_then(|dialog| match dialog.fields().get(&request.key) {
             Some(FieldValue::Text(text)) if !text.is_empty() => Some(PathBuf::from(text)),
@@ -341,7 +341,7 @@ pub(crate) mod params {
 
     /// Hands each answered pick to its dialog. A cancelled or unavailable picker answers nothing; a pick of a dialog that
     /// closed is forgotten.
-    fn settle_picks(app: &mut PhotocraftApp, ctx: &egui::Context) {
+    fn settle_picks(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
         let waiting = ctx.data_mut(|data| std::mem::take(&mut data.get_temp_mut_or_default::<Picks>(picks_id()).0));
         if waiting.is_empty() {
             return;
@@ -368,7 +368,7 @@ pub(crate) mod params {
     }
 
     /// Forgets the picks of the dialog `id`, which closed.
-    fn drop_picks(app: &mut PhotocraftApp, ctx: &egui::Context, id: DialogId) {
+    fn drop_picks(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: DialogId) {
         let waiting = ctx.data_mut(|data| std::mem::take(&mut data.get_temp_mut_or_default::<Picks>(picks_id()).0));
         if waiting.is_empty() {
             return;
@@ -384,7 +384,7 @@ pub(crate) mod params {
     }
 
     /// A bare command form: a dialog without rows that the generic filter family runs.
-    pub(super) fn open_bare(app: &mut PhotocraftApp, command: &str, label: &str) -> DialogId {
+    pub(super) fn open_bare(app: &mut PatronusPhotoApp, command: &str, label: &str) -> DialogId {
         let (key, title) = (command.to_owned(), label.to_owned());
         open_param(app, command, DialogFields::new(), Value::Null, move |fields| {
             ParamDialog::command(key.clone(), title.clone(), Vec::<Param>::new()).values(Bind::bound(fields))
@@ -393,7 +393,7 @@ pub(crate) mod params {
 }
 
 /// One entry of [`PROMPTS`]: answers the prompt when the answer's tag is its own, and says whether it did.
-pub(crate) type PromptRow = fn(&mut PhotocraftApp, &egui::Context, &mut PromptAnswer) -> bool;
+pub(crate) type PromptRow = fn(&mut PatronusPhotoApp, &egui::Context, &mut PromptAnswer) -> bool;
 
 /// The prompts' answers, one row per family: the first row whose tag type matches takes the answer (A11). A prompt
 /// family gives an `answer` function, never a `take`: the host keeps one plain result per dialog type, so a second taker
@@ -415,7 +415,7 @@ pub(crate) const PROMPTS: &[PromptRow] = &[
 ];
 
 /// [`prompts_take`] over the rows `rows`.
-fn take_prompts_from(app: &mut PhotocraftApp, ctx: &egui::Context, rows: &[PromptRow]) {
+fn take_prompts_from(app: &mut PatronusPhotoApp, ctx: &egui::Context, rows: &[PromptRow]) {
     while let Some(result) = app.framework.dialogs.take::<StandardPrompt>() {
         // Only an `Ok` carries an answer: a host Cancel (a replaced prompt, a parent closed over it) reaches no row.
         let DialogResult::Ok(mut answer) = result else { continue };
@@ -428,12 +428,12 @@ fn take_prompts_from(app: &mut PhotocraftApp, ctx: &egui::Context, rows: &[Promp
 }
 
 /// Hands each prompt answer to the family it is for.
-pub(crate) fn prompts_take(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(crate) fn prompts_take(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     take_prompts_from(app, ctx, PROMPTS);
 }
 
 /// The families that take their own results (one `take(app, ctx)` each), in order.
-pub(crate) const TAKERS: &[fn(&mut PhotocraftApp, &egui::Context)] = &[
+pub(crate) const TAKERS: &[fn(&mut PatronusPhotoApp, &egui::Context)] = &[
     alerts::take,
     discard_ui::take,
     open_prompt::take,
@@ -475,7 +475,7 @@ pub(crate) const TAKERS: &[fn(&mut PhotocraftApp, &egui::Context)] = &[
 /// Runs the answers of every dialog that finished: parameter dialogs, prompts, then each family's own results. It runs
 /// after every host pass and at once after [`confirm`], [`cancel`] and an automation edit, so an answer acts inside the
 /// request that caused it.
-pub(crate) fn take_results(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(crate) fn take_results(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     params::take(app, ctx);
     prompts_take(app, ctx);
     for taker in TAKERS {
@@ -486,7 +486,7 @@ pub(crate) fn take_results(app: &mut PhotocraftApp, ctx: &egui::Context) {
 /// One pass of the dialogs: the guide edit follows its dialog, the palette shows, the filter preview and the Preferences window are fed, the
 /// framework's host runs every open dialog, and the results are taken. A frame that runs a second pass runs this again;
 /// the host applies only a pass's own input and a result is taken once, so nothing acts twice.
-pub fn run(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn run(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     if crate::guide_edit::sync(app) {
         ui.ctx().request_repaint();
     }
@@ -502,7 +502,7 @@ pub fn run(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 /// Answers dialog `id` with OK, as its default button would, and runs what OK does. A held OK is answered at once by the
 /// family that holds it: an accepted one closes the dialog in this call, a refusal comes back as the error text, and one
 /// that waits on a pick (Export's save dialog) is answered by the pick.
-pub fn confirm(app: &mut PhotocraftApp, ctx: &egui::Context, id: DialogId) -> Result<(), String> {
+pub fn confirm(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: DialogId) -> Result<(), String> {
     if app.framework.dialogs.get_dyn(id).is_none() {
         return Err(format!("no dialog {}", id.value()));
     }
@@ -540,7 +540,7 @@ pub fn confirm(app: &mut PhotocraftApp, ctx: &egui::Context, id: DialogId) -> Re
 }
 
 /// Cancels dialog `id`, as Cancel or Escape would, and runs what a cancel leaves to do.
-pub fn cancel(app: &mut PhotocraftApp, ctx: &egui::Context, id: DialogId) -> Result<(), String> {
+pub fn cancel(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: DialogId) -> Result<(), String> {
     // A prompt answers Escape with its escape button, as an answer its family takes; the host's own cancel is a result
     // that reaches no family (it stands for a replaced prompt).
     let escape = app.framework.dialogs.get_dyn_mut(id).and_then(|dialog| dialog.downcast_mut::<StandardPrompt>()).and_then(|prompt| {
@@ -561,7 +561,7 @@ pub fn cancel(app: &mut PhotocraftApp, ctx: &egui::Context, id: DialogId) -> Res
 
 /// Cancels every open parameter dialog whose family reports one of the `closed` documents from the dialog's captured
 /// value: a dialog about a document does not outlive it.
-pub(crate) fn cancel_for_closed(app: &mut PhotocraftApp, ctx: &egui::Context, closed: &[DocId]) {
+pub(crate) fn cancel_for_closed(app: &mut PatronusPhotoApp, ctx: &egui::Context, closed: &[DocId]) {
     let doomed: Vec<DialogId> = app
         .framework
         .dialogs
@@ -586,7 +586,7 @@ pub(crate) fn cancel_for_closed(app: &mut PhotocraftApp, ctx: &egui::Context, cl
 /// Open the parameter dialog of `command`: the guide layout, Stroke, Equalize (when it asks), New Group, Color Range,
 /// Slice options and Divide, the adjustment editor for `image.adjustments.*`, the schema dialog for filters, otherwise a
 /// bare command form. The error is an opener's refusal text.
-pub fn open_command_dialog(app: &mut PhotocraftApp, command: &str, label: &str) -> Result<DialogId, String> {
+pub fn open_command_dialog(app: &mut PatronusPhotoApp, command: &str, label: &str) -> Result<DialogId, String> {
     if command == "view.newGuideLayout" {
         return guide_layout_ui::open(app).ok_or_else(|| "no document".to_string());
     }
@@ -627,7 +627,7 @@ fn dont_show_again_keys() -> [&'static str; 4] {
 }
 
 /// Where the remembered value of the preference entry `key` goes: `None` keeps it in `Preferences.dialogs`, else the
-/// scope it moves to. Order: keep, then route, then the generic `photocraft.<key>`.
+/// scope it moves to. Order: keep, then route, then the generic `patronusphoto.<key>`.
 fn memory_destination(key: &str) -> Option<String> {
     if ENGINE_READ.contains(&key) || dont_show_again_keys().contains(&key) {
         return None;
@@ -639,7 +639,7 @@ fn memory_destination(key: &str) -> Option<String> {
         "filter.cameraRaw.scope" => Some("craft_imaging.raw_develop.scope".to_owned()),
         _ => key
             .strip_prefix("image.adjustments.")
-            .map(|kind| format!("photocraft.adjust.last.{kind}"))
+            .map(|kind| format!("patronusphoto.adjust.last.{kind}"))
             .or_else(|| key.strip_prefix("shape.create.").map(|kind| format!("craft_draw.shape.create.{kind}"))),
     };
     Some(routed.unwrap_or_else(|| params::memory_scope(key)))
@@ -773,23 +773,23 @@ pub mod wide_angle_ui;
 pub(crate) mod testing {
     use craft::ui::dialog::DialogId;
 
-    use crate::PhotocraftApp;
+    use crate::PatronusPhotoApp;
 
     /// Answers dialog `id` with OK and takes the results.
-    pub(crate) fn confirm(app: &mut PhotocraftApp, id: DialogId) -> Result<(), String> {
+    pub(crate) fn confirm(app: &mut PatronusPhotoApp, id: DialogId) -> Result<(), String> {
         let ctx = app.ctx().clone();
         super::confirm(app, &ctx, id)
     }
 
     /// Cancels dialog `id` and takes the results.
-    pub(crate) fn cancel(app: &mut PhotocraftApp, id: DialogId) -> Result<(), String> {
+    pub(crate) fn cancel(app: &mut PatronusPhotoApp, id: DialogId) -> Result<(), String> {
         let ctx = app.ctx().clone();
         super::cancel(app, &ctx, id)
     }
 
     /// Runs one pass of the dialog host, as a frame does. A hosted parameter form loads its remembered values and
     /// defaults when it first shows, so its fields read empty until a pass has run.
-    pub(crate) fn show(app: &mut PhotocraftApp) {
+    pub(crate) fn show(app: &mut PatronusPhotoApp) {
         let ctx = app.ctx().clone();
         crate::testing::run_ui(&ctx, Default::default(), |ui| super::run(app, ui));
     }

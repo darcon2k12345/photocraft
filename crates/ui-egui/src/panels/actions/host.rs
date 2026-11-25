@@ -1,8 +1,8 @@
-//! What the framework Actions panel asks of PhotoCraft while it draws.
+//! What the framework Actions panel asks of Patronus Photo while it draws.
 
 use craft::automation::actions::{Action, ActionStep};
 use craft::automation::ui::actions::{ActionsHost, ShortcutChoice};
-use photocraft_engine::{Session, actions_cmds};
+use patronusphoto_engine::{Session, actions_cmds};
 use serde_json::Value;
 
 use super::{label_of, shortcut_id};
@@ -47,12 +47,12 @@ impl ActionsHost for PhotoActions<'_> {
             let cond = params.get("if").and_then(Value::as_str).unwrap_or("?");
             let branch = |k: &str| params.get(k).and_then(Value::as_str).unwrap_or("–").to_string();
             format!("{}: {cond} → {} / {}", label_of(id), branch("then"), branch("else"))
-        } else if id == photocraft_engine::atn_cmds::MENU_ITEM {
-            photocraft_engine::atn_cmds::menu_item_command(params).map_or_else(|_| label_of(id), label_of)
-        } else if id == photocraft_engine::atn_cmds::STOP_MESSAGE {
+        } else if id == patronusphoto_engine::atn_cmds::MENU_ITEM {
+            patronusphoto_engine::atn_cmds::menu_item_command(params).map_or_else(|_| label_of(id), label_of)
+        } else if id == patronusphoto_engine::atn_cmds::STOP_MESSAGE {
             format!("{}: {}", label_of(id), params.get("message").and_then(Value::as_str).unwrap_or_default())
-        } else if id == photocraft_engine::atn_cmds::PHOTOSHOP_STEP {
-            // A step from a .atn file PhotoCraft can't play yet: its Photoshop name, marked.
+        } else if id == patronusphoto_engine::atn_cmds::PHOTOSHOP_STEP {
+            // A step from a .atn file Patronus Photo can't play yet: its Photoshop name, marked.
             let name = params.get("name").and_then(Value::as_str).filter(|n| !n.is_empty()).unwrap_or("?");
             crate::i18n::fmt(tl!("{name} (Photoshop)"), &[("name", name)])
         } else {
@@ -62,7 +62,7 @@ impl ActionsHost for PhotoActions<'_> {
 
     fn shortcut(&self, action: &Action) -> Option<ShortcutChoice> {
         let text = self.session.prefs().shortcuts.get(&shortcut_id(&action.name))?;
-        let (key, shift, command) = photocraft_engine::atn_cmds::parse_function_key(text)?;
+        let (key, shift, command) = patronusphoto_engine::atn_cmds::parse_function_key(text)?;
         // The framework's chord names F1 to F12 only.
         u8::try_from(key).ok().filter(|k| *k <= 12).map(|key| ShortcutChoice::new(key, shift, command))
     }

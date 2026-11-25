@@ -4,7 +4,7 @@
 use craft::keymap::{Binding, CommandDef, CommandKind, Scope};
 use craft::ui::runtime::commands::CommandRef;
 
-use crate::{PhotocraftApp, state::Tool};
+use crate::{PatronusPhotoApp, state::Tool};
 
 /// The id of the command that selects `tool`.
 pub(crate) fn id(tool: Tool) -> String {
@@ -21,12 +21,12 @@ pub(crate) fn default(tool: Tool) -> Option<String> {
 }
 
 #[cfg(test)]
-pub(crate) fn shortcut(app: &PhotocraftApp, tool: Tool) -> Option<String> {
+pub(crate) fn shortcut(app: &PatronusPhotoApp, tool: Tool) -> Option<String> {
     crate::shortcuts::effective_shortcut(app, &id(tool), default(tool).as_deref())
 }
 
 /// Whether the user left `tool`'s key alone: a tool the user gave its own key leaves its letter's group.
-pub(crate) fn uses_default(app: &PhotocraftApp, tool: Tool) -> bool {
+pub(crate) fn uses_default(app: &PatronusPhotoApp, tool: Tool) -> bool {
     !app.session.prefs().shortcuts.contains_key(&id(tool))
 }
 
@@ -34,7 +34,7 @@ pub(crate) fn uses_default(app: &PhotocraftApp, tool: Tool) -> bool {
 /// letter as the default key.
 // The runtime's own definition of each tool (`panels::tool_commands::ToolCommand`) carries the same letter and group, which is what binds the key
 // and shows in tooltips; these rows keep the Keyboard Shortcuts dialog's tool pages.
-pub(crate) fn defs(_app: &PhotocraftApp) -> Vec<CommandDef> {
+pub(crate) fn defs(_app: &PatronusPhotoApp) -> Vec<CommandDef> {
     Tool::ALL
         .into_iter()
         .map(|t| {
@@ -72,7 +72,7 @@ mod tests {
 
     #[test]
     fn every_toolbar_tool_has_a_unique_live_shortcut_row() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
         let ctx = app.ctx().clone();
         let rows = crate::shortcut_dispatch::command_rows(&app);
         let mut ids = std::collections::HashSet::new();
@@ -109,8 +109,8 @@ mod engine_table_tests {
     fn the_engines_tool_table_matches_the_tools() {
         let ours: Vec<(String, &str, Option<String>)> = Tool::ALL.into_iter().map(|t| (id(t), t.label(), default(t))).collect();
         let engine: Vec<(String, &str, Option<String>)> =
-            photocraft_engine::shell_commands::TOOLS.iter().map(|(i, n, k)| (i.to_string(), *n, k.map(str::to_string))).collect();
-        assert_eq!(ours, engine, "update photocraft_engine::shell_commands::TOOLS");
+            patronusphoto_engine::shell_commands::TOOLS.iter().map(|(i, n, k)| (i.to_string(), *n, k.map(str::to_string))).collect();
+        assert_eq!(ours, engine, "update patronusphoto_engine::shell_commands::TOOLS");
     }
 }
 

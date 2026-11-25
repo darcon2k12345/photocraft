@@ -7,13 +7,13 @@
 //! 0,0-200,150 (white, pixel layer `Red`), `Blue Board` 120,30-320,230 (white, pixel layer
 //! `Blue`) and `Empty Board` 600,0-700,100 (white, no layers). At 72 ppi a page's MediaBox is the
 //! board's size in pixels, so it tells the pages apart.
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use craft::ui::dialog::DialogId;
 use craft::ui::patterns::form_dialogs::HostedParamDialog;
 use egui::accesskit::{Role, Toggled};
 use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
-use photocraft_doc::LayerId;
+use patronusphoto_doc::LayerId;
 use serde_json::{Value, json};
 
 const ARTBOARDS_TO_PDF: &str = "file.export.artboardsToPdf";
@@ -22,7 +22,7 @@ const RED: &str = "/MediaBox [0 0 200.000 150.000]";
 const BLUE: &str = "/MediaBox [0 0 200.000 200.000]";
 const EMPTY: &str = "/MediaBox [0 0 100.000 100.000]";
 
-type H = Harness<'static, Box<PhotocraftApp>>;
+type H = Harness<'static, Box<PatronusPhotoApp>>;
 
 struct Boards {
     red: u64,
@@ -32,7 +32,7 @@ struct Boards {
 
 /// Adds a white artboard `name` at `rect` ([x, y, w, h]), optionally with a pixel layer filled
 /// with `color` over `fill`; returns the board's and the layer's ids.
-fn board(app: &mut PhotocraftApp, name: &str, rect: [i32; 4], layer: Option<(&str, [i32; 4], &str)>) -> (u64, Option<u64>) {
+fn board(app: &mut PatronusPhotoApp, name: &str, rect: [i32; 4], layer: Option<(&str, [i32; 4], &str)>) -> (u64, Option<u64>) {
     let id = app.run("layer.new.artboard", json!({"rect": rect, "name": name, "background": "white"})).unwrap()["layer"].as_u64().unwrap();
     let inner = layer.map(|(layer, [x, y, width, height], color)| {
         app.run("layer.select", json!({"layer": id})).unwrap();
@@ -46,7 +46,7 @@ fn board(app: &mut PhotocraftApp, name: &str, rect: [i32; 4], layer: Option<(&st
 }
 
 fn harness() -> (H, Boards) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 800, "height": 400, "background": "transparent", "name": "abpdf-test"})).unwrap();
     let (red, red_layer) = board(&mut app, "Red Board", [0, 0, 200, 150], Some(("Red", [20, 20, 100, 80], "#DC1E1E")));
     let (blue, _) = board(&mut app, "Blue Board", [120, 30, 200, 200], Some(("Blue", [130, 40, 100, 100], "#1E1EDC")));
@@ -60,8 +60,8 @@ fn harness() -> (H, Boards) {
         .with_size(egui::vec2(1440.0, 900.0))
         .with_max_steps(64)
         .with_context(app.ctx().clone())
-        .build_ui_state(|ui, app: &mut Box<PhotocraftApp>| crate::dialogs::run(app, ui), app);
-    PhotocraftApp::setup_context(&h.ctx, Default::default());
+        .build_ui_state(|ui, app: &mut Box<PatronusPhotoApp>| crate::dialogs::run(app, ui), app);
+    PatronusPhotoApp::setup_context(&h.ctx, Default::default());
     (h, Boards { red, blue, red_layer })
 }
 

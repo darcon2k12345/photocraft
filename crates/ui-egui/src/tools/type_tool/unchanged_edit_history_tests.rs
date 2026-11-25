@@ -9,15 +9,15 @@
 
 use craft::behavior::SelectionChange;
 use craft::layers::ui::panel::{LayerSelect, LayersEvent};
-use photocraft_doc::{LayerContent, LayerId};
+use patronusphoto_doc::{LayerContent, LayerId};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// A 400x200 document with one committed type layer: that layer active and the Type tool picked.
-fn app() -> (Box<PhotocraftApp>, LayerId) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> (Box<PatronusPhotoApp>, LayerId) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 400, "height": 200})).unwrap();
     app.sync_views();
     let id = LayerId(app.run("type.create", json!({"text": "Hello", "size": 24, "x": 40, "y": 100})).unwrap()["layer"].as_u64().unwrap());
@@ -26,11 +26,11 @@ fn app() -> (Box<PhotocraftApp>, LayerId) {
     (app, id)
 }
 
-fn history(app: &PhotocraftApp) -> Vec<String> {
+fn history(app: &PatronusPhotoApp) -> Vec<String> {
     app.session.active().unwrap().history.entries()
 }
 
-fn text_of(app: &PhotocraftApp, id: LayerId) -> String {
+fn text_of(app: &PatronusPhotoApp, id: LayerId) -> String {
     let LayerContent::Text(t) = &app.session.active().unwrap().doc.layer(id).unwrap().content else {
         panic!("the layer is not a type layer");
     };
@@ -38,20 +38,20 @@ fn text_of(app: &PhotocraftApp, id: LayerId) -> String {
 }
 
 /// [`text_of`] in document `doc`, active or not.
-fn text_of_in(app: &PhotocraftApp, doc: usize, id: LayerId) -> String {
+fn text_of_in(app: &PatronusPhotoApp, doc: usize, id: LayerId) -> String {
     let LayerContent::Text(t) = &app.session.documents()[doc].doc.layer(id).unwrap().content else {
         panic!("the layer is not a type layer");
     };
     t.text.clone()
 }
 
-fn first_size(app: &PhotocraftApp, id: LayerId) -> f32 {
+fn first_size(app: &PatronusPhotoApp, id: LayerId) -> f32 {
     let LayerContent::Text(t) = &app.session.active().unwrap().doc.layer(id).unwrap().content else { return 0.0 };
     t.char_runs().first().map(|r| r.style.size_pt).unwrap_or_default()
 }
 
 /// Click into the existing layer: an edit session with nothing changed yet.
-fn click_into(app: &mut PhotocraftApp, id: LayerId) {
+fn click_into(app: &mut PatronusPhotoApp, id: LayerId) {
     let ctx = crate::canvas::testing::ctx(app);
     crate::type_tool::edit_active(app, &ctx).unwrap();
     let ed = app.ui.text_edit.as_ref().expect("the edit session is open");
@@ -61,7 +61,7 @@ fn click_into(app: &mut PhotocraftApp, id: LayerId) {
 
 /// The Layers panel selecting several rows at once (its Shift-click range): one pass of panel
 /// events, which sends `layer.select` with a `layers` list rather than a single `layer`.
-fn select_rows(app: &mut PhotocraftApp, ids: &[LayerId]) {
+fn select_rows(app: &mut PatronusPhotoApp, ids: &[LayerId]) {
     let ctx = app.ctx().clone();
     let event = LayersEvent::Select(LayerSelect::new(SelectionChange::Set(ids.to_vec()), None));
     crate::panels::layers_events::apply_layers_events(app, &ctx, vec![event]);
@@ -69,7 +69,7 @@ fn select_rows(app: &mut PhotocraftApp, ids: &[LayerId]) {
 
 /// What ending the session with `how` left behind: exactly one state, named like any other edit
 /// of an existing type layer, on an unchanged layer.
-fn ended(app: &PhotocraftApp, id: LayerId, before: &[String], how: &str) {
+fn ended(app: &PatronusPhotoApp, id: LayerId, before: &[String], how: &str) {
     let after = history(app);
     assert!(app.ui.text_edit.is_none(), "{how}: the session ended");
     assert_eq!(after.len(), before.len() + 1, "{how}: exactly one new history state, in {after:?}");

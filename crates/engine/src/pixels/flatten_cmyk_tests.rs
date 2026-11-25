@@ -2,10 +2,10 @@
 //! of round-tripping them through RGB.
 
 use craft_cms::synth::{CmykParams, cmyk_profile};
-use photocraft_color::{ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{Document, Layer, LayerContent, Size};
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use patronusphoto_color::{ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::{Document, Layer, LayerContent, Size};
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::Surface;
 use serde_json::json;
 
 use crate::Session;
@@ -151,15 +151,17 @@ fn compositor_flatten_separates_through_the_documents_profile() {
     }
     let before = doc.layers[0].surface().unwrap().read_region(canvas());
     let mut empty = Layer::new("Layer 1", LayerContent::Raster(Surface::new(PixelFormat::new(ColorMode::Cmyk, SampleType::U16, true))));
-    empty.blend = photocraft_color::blend::BlendMode::Multiply;
+    empty.blend = patronusphoto_color::blend::BlendMode::Multiply;
     doc.layers.push(empty);
     let mut s = session(doc);
     s.execute("layer.flattenImage", json!({})).unwrap();
     // Compare what the inks print as (a CMYK colour has many separations): RGB through the profile.
     let d = &s.active().unwrap().doc;
-    let space = photocraft_compose::cmyk_space(d);
+    let space = patronusphoto_compose::cmyk_space(d);
     let shown = |v: &[f32]| -> Vec<[f32; 3]> {
-        photocraft_color::convert::with_cmyk_space(space.as_ref(), || v.as_chunks::<4>().0.iter().map(|p| photocraft_color::convert::cmyk_to_rgb(*p)).collect())
+        patronusphoto_color::convert::with_cmyk_space(space.as_ref(), || {
+            v.as_chunks::<4>().0.iter().map(|p| patronusphoto_color::convert::cmyk_to_rgb(*p)).collect()
+        })
     };
     let (a, b) = (shown(&pixels(&s)), shown(&before));
     let diffs: Vec<f32> = a.iter().zip(&b).flat_map(|(p, q)| (0..3).map(move |c| (p[c] - q[c]).abs())).collect();

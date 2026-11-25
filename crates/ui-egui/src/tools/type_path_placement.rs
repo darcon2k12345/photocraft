@@ -1,7 +1,7 @@
 //! Placement markers for the active layer's type path: the app side of the framework's
 //! `PathTextMarkers` (the track the markers sit on, the glyph body, the proposed range shown live, and
 //! the one command that commits a placement).
-use crate::{PhotocraftApp, state::Tool};
+use crate::{PatronusPhotoApp, state::Tool};
 use std::{
     collections::VecDeque,
     sync::{Arc, Weak},
@@ -12,12 +12,12 @@ use craft::behavior::kurbo::{Point as Pt, Vec2 as Dir};
 use craft::text::ui::editor::TextEditorHost as _;
 use craft::text::ui::path_text::{PathRange, PathTextMarkers, PathTrack};
 use craft::ui::contract::{Bind, Show as _};
-use photocraft_doc::{Affine, DocId, Document, LayerContent, LayerId, TextLayer, text::TextShape};
-use photocraft_geom::{Point, Rect};
-use photocraft_text::warp::PathGeometry;
+use patronusphoto_doc::{Affine, DocId, Document, LayerContent, LayerId, TextLayer, text::TextShape};
+use patronusphoto_geom::{Point, Rect};
+use patronusphoto_text::warp::PathGeometry;
 
 /// Returns the active text layer when a path selection tool is active and targeted at the type path.
-pub(crate) fn active_text(app: &PhotocraftApp) -> Option<&TextLayer> {
+pub(crate) fn active_text(app: &PatronusPhotoApp) -> Option<&TextLayer> {
     if !matches!(app.ui.tool, Tool::PathSelection | Tool::DirectSelection)
         || app.ui.transform.is_some()
         || app.ui.vector_mask_target
@@ -26,7 +26,7 @@ pub(crate) fn active_text(app: &PhotocraftApp) -> Option<&TextLayer> {
         return None;
     }
     let st = app.session.active()?;
-    if st.channel_view.target == photocraft_engine::channel_cmds::ChannelTarget::VectorMask {
+    if st.channel_view.target == patronusphoto_engine::channel_cmds::ChannelTarget::VectorMask {
         return None;
     }
     let id = st.active_layer?;
@@ -41,8 +41,8 @@ pub(crate) fn active_text(app: &PhotocraftApp) -> Option<&TextLayer> {
 }
 
 /// Returns the normalized paragraph alignment weight (0.0 for left, 0.5 for center, 1.0 for right).
-fn alignment_factor(align: photocraft_doc::text::TextAlign) -> f64 {
-    use photocraft_doc::text::TextAlign;
+fn alignment_factor(align: patronusphoto_doc::text::TextAlign) -> f64 {
+    use patronusphoto_doc::text::TextAlign;
     match align {
         TextAlign::Center | TextAlign::JustifyCenter => 0.5,
         TextAlign::Right | TextAlign::JustifyRight => 1.0,
@@ -105,8 +105,8 @@ fn effective_range(text: &TextLayer, geometry: &PathGeometry) -> Option<[f64; 2]
 #[derive(Clone, Debug)]
 pub struct CachedGeometry {
     pub(crate) doc: Weak<Document>,
-    pub(crate) layer: photocraft_doc::LayerId,
-    pub(crate) path: photocraft_doc::vector::Subpath,
+    pub(crate) layer: patronusphoto_doc::LayerId,
+    pub(crate) path: patronusphoto_doc::vector::Subpath,
     pub(crate) flip: bool,
     pub(crate) geometry: Arc<PathGeometry>,
     pub(crate) reversed: Arc<PathGeometry>,
@@ -133,7 +133,7 @@ impl Eq for GeometryCache {}
 
 /// The text's path geometry as its `flip` reads it, and the same path read the other way, from the
 /// single-entry cache.
-fn cached_geometries(app: &PhotocraftApp, text: &TextLayer) -> Option<(Arc<PathGeometry>, Arc<PathGeometry>)> {
+fn cached_geometries(app: &PatronusPhotoApp, text: &TextLayer) -> Option<(Arc<PathGeometry>, Arc<PathGeometry>)> {
     let TextShape::Path { path, flip, .. } = &text.shape else { return None };
     let st = app.session.active()?;
     let layer = st.active_layer?;
@@ -163,7 +163,7 @@ fn cached_geometries(app: &PhotocraftApp, text: &TextLayer) -> Option<(Arc<PathG
 }
 
 /// Retrieves or creates cached path geometry for the text's own direction.
-pub(crate) fn active_path_geometry(app: &PhotocraftApp, text: &TextLayer) -> Option<Arc<PathGeometry>> {
+pub(crate) fn active_path_geometry(app: &PatronusPhotoApp, text: &TextLayer) -> Option<Arc<PathGeometry>> {
     cached_geometries(app, text).map(|(geometry, _)| geometry)
 }
 
@@ -179,7 +179,7 @@ struct Track {
 impl Track {
     /// The track of `text`'s path; `None` for a text that is not on a path, a degenerate path or a
     /// singular text transform.
-    fn new(app: &PhotocraftApp, text: &TextLayer) -> Option<Self> {
+    fn new(app: &PatronusPhotoApp, text: &TextLayer) -> Option<Self> {
         let TextShape::Path { path, flip, .. } = &text.shape else { return None };
         let (own, other) = cached_geometries(app, text)?;
         Some(Track { geometry: if *flip { other } else { own }, transform: text.transform, inverse: text.transform.inverse()?, closed: path.closed })
@@ -215,7 +215,7 @@ impl PathTrack for Track {
 }
 
 /// Checks whether text glyphs exceed the current path range, caching by document snapshot, revision, and placement.
-fn overflows(app: &PhotocraftApp, ctx: &egui::Context, text: &TextLayer) -> bool {
+fn overflows(app: &PatronusPhotoApp, ctx: &egui::Context, text: &TextLayer) -> bool {
     let Some(st) = app.session.active() else { return false };
     let TextShape::Path { start, end, flip, .. } = &text.shape else { return false };
     let key = (st.revision, start.to_bits(), end.map(f32::to_bits), *flip);
@@ -227,15 +227,15 @@ fn overflows(app: &PhotocraftApp, ctx: &egui::Context, text: &TextLayer) -> bool
     {
         return value;
     }
-    let mut engine = photocraft_text::shared().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let mut engine = patronusphoto_text::shared().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let layout = engine.layout(text, st.doc.resolution_dpi);
-    let value = photocraft_text::render::path_overflows(&layout, &text.shape);
+    let value = patronusphoto_text::render::path_overflows(&layout, &text.shape);
     ctx.data_mut(|data| data.insert_temp(id, (key, source, value)));
     value
 }
 
 /// Whether the layer takes no placement: a lock on its position or on everything.
-fn locked(app: &PhotocraftApp, layer: LayerId) -> bool {
+fn locked(app: &PatronusPhotoApp, layer: LayerId) -> bool {
     app.session.active().is_some_and(|st| {
         let locks = st.doc.effective_locks(layer);
         locks.all || locks.position
@@ -245,7 +245,7 @@ fn locked(app: &PhotocraftApp, layer: LayerId) -> bool {
 /// The layer's glyph body: one quad per glyph shown on the path, in document units. These are the
 /// quads the type tool highlights for a selection of the whole text, so glyphs past the path's end
 /// are not part of the body.
-fn body_quads(app: &mut PhotocraftApp, layer: LayerId) -> Vec<[Pt; 4]> {
+fn body_quads(app: &mut PatronusPhotoApp, layer: LayerId) -> Vec<[Pt; 4]> {
     let mut host = crate::type_tool::LayerHost::new(app, layer);
     let chars = host.text().chars().count();
     host.selection_quads(0..chars)
@@ -265,7 +265,7 @@ struct Markers {
 impl Markers {
     /// The markers' inputs for the active layer, or `None` when no markers show: no path text under a
     /// path tool, Target Path hidden, or a path with no usable range.
-    fn of(app: &mut PhotocraftApp, ctx: &egui::Context) -> Option<Self> {
+    fn of(app: &mut PatronusPhotoApp, ctx: &egui::Context) -> Option<Self> {
         if !app.ui.view.shows(app.ui.view.show.target_path) {
             return None;
         }
@@ -295,7 +295,7 @@ impl Markers {
 ///
 /// The control's updates become this pass's proposal and its commit places the text; a second pass of
 /// a frame applies only its own output, and the control proposes the same range again.
-pub(crate) fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui, rect: egui::Rect) {
+pub(crate) fn show(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, rect: egui::Rect) {
     let Some(markers) = Markers::of(app, ui.ctx()) else {
         propose(app, None);
         return;
@@ -334,7 +334,7 @@ pub(crate) struct Preview {
 }
 
 /// Writes this pass's proposed placement of the active layer (`None`: no proposal).
-pub(crate) fn propose(app: &mut PhotocraftApp, range: Option<PathRange>) {
+pub(crate) fn propose(app: &mut PatronusPhotoApp, range: Option<PathRange>) {
     let Some(range) = range else {
         app.type_path_preview = None;
         return;
@@ -360,7 +360,7 @@ pub(crate) fn propose(app: &mut PhotocraftApp, range: Option<PathRange>) {
 }
 
 /// The proposal, while it still belongs to the active document snapshot, layer and revision.
-fn valid_proposal(app: &PhotocraftApp) -> Option<&Preview> {
+fn valid_proposal(app: &PatronusPhotoApp) -> Option<&Preview> {
     let p = app.type_path_preview.as_ref()?;
     let st = app.session.active()?;
     let valid = active_text(app).is_some()
@@ -374,7 +374,7 @@ fn valid_proposal(app: &PhotocraftApp) -> Option<&Preview> {
 /// Commits the placement of `layer`'s text as one History step. Nothing happens for a range the layer
 /// already has (a click that moved nothing), for a locked or hidden layer, or when the layer is not the
 /// path text the markers show.
-pub(crate) fn place(app: &mut PhotocraftApp, layer: LayerId, range: PathRange) {
+pub(crate) fn place(app: &mut PatronusPhotoApp, layer: LayerId, range: PathRange) {
     if app.session.active().and_then(|st| st.active_layer) != Some(layer) || locked(app, layer) {
         return;
     }
@@ -399,14 +399,14 @@ pub(crate) fn place(app: &mut PhotocraftApp, layer: LayerId, range: PathRange) {
 }
 
 pub(crate) struct Damage {
-    document: photocraft_doc::DocId,
+    document: patronusphoto_doc::DocId,
     revision: u64,
     original_area: Rect,
     areas: VecDeque<(u64, Rect)>,
 }
 
 /// Calculates canvas invalidation damage bounding the union of preview text regions across display revisions.
-pub(crate) fn damage(app: &PhotocraftApp, doc: photocraft_doc::DocId, revision: u64, before: u64, after: u64) -> Option<Rect> {
+pub(crate) fn damage(app: &PatronusPhotoApp, doc: patronusphoto_doc::DocId, revision: u64, before: u64, after: u64) -> Option<Rect> {
     let p = app.type_path_damage.as_ref().filter(|p| p.document == doc && p.revision == revision)?;
     let area = |key| if key == 0 { Some(p.original_area) } else { p.areas.iter().find(|(k, _)| *k == key).map(|(_, r)| *r) };
     Some(area(before)?.union(&area(after)?))
@@ -414,7 +414,7 @@ pub(crate) fn damage(app: &PhotocraftApp, doc: photocraft_doc::DocId, revision: 
 
 /// Returns a transient document snapshot with live placement preview modifications and tracks damage bounding boxes.
 /// `None` without a proposal of this pass for document `idx`, or for one that equals the layer's placement.
-pub(crate) fn display_doc(app: &mut PhotocraftApp, idx: usize) -> Option<(Arc<Document>, u64)> {
+pub(crate) fn display_doc(app: &mut PatronusPhotoApp, idx: usize) -> Option<(Arc<Document>, u64)> {
     let p = valid_proposal(app)?;
     let st = app.session.documents().get(idx)?;
     if st.doc.id != p.document {
@@ -437,9 +437,9 @@ pub(crate) fn display_doc(app: &mut PhotocraftApp, idx: usize) -> Option<(Arc<Do
     *start = range[0] as f32;
     *end = Some(range[1] as f32);
     *side = flip;
-    photocraft_engine::type_cmds::refresh(&source, text);
+    patronusphoto_engine::type_cmds::refresh(&source, text);
     let area = text.cache.as_ref().map_or(Rect::EMPTY, |s| s.tile_bounds());
-    let shown = Arc::new(photocraft_engine::mode_cmds::display_document(&shown).unwrap_or(shown));
+    let shown = Arc::new(patronusphoto_engine::mode_cmds::display_document(&shown).unwrap_or(shown));
     const BASE: u64 = 1 << 50;
     let key = BASE | (app.ui.alloc_id() & (BASE - 1));
     let mut damage = app.type_path_damage.take().filter(|p| p.document == source.id && p.revision == revision).unwrap_or_else(|| Damage {
@@ -464,8 +464,8 @@ mod tests {
     use serde_json::json;
 
     /// Sets up a test harness with a document, path, and attached type layer for placement tests.
-    fn app(tool: Tool) -> Box<PhotocraftApp> {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    fn app(tool: Tool) -> Box<PatronusPhotoApp> {
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.session.execute("file.new", json!({"width": 200, "height": 200})).unwrap();
         app.sync_views();
         app.ui.tool = tool;
@@ -479,7 +479,7 @@ mod tests {
     }
 
     /// The active layer.
-    fn layer(app: &PhotocraftApp) -> LayerId {
+    fn layer(app: &PatronusPhotoApp) -> LayerId {
         app.session.active().unwrap().active_layer.unwrap()
     }
 
@@ -489,18 +489,18 @@ mod tests {
     }
 
     /// Returns the text shape of the active text layer in test assertions.
-    fn shape(app: &PhotocraftApp) -> TextShape {
+    fn shape(app: &PatronusPhotoApp) -> TextShape {
         active_text(app).unwrap().shape.clone()
     }
 
     /// Returns the (start, end, flip) placement parameters of the active path text layer.
-    fn placement(app: &PhotocraftApp) -> (f32, Option<f32>, bool) {
+    fn placement(app: &PatronusPhotoApp) -> (f32, Option<f32>, bool) {
         let TextShape::Path { start, end, flip, .. } = shape(app) else { panic!("expected path") };
         (start, end, flip)
     }
 
     /// Returns the count of committed history entries in the active session.
-    fn steps(app: &PhotocraftApp) -> usize {
+    fn steps(app: &PatronusPhotoApp) -> usize {
         app.session.active().unwrap().history.entries().len()
     }
 
@@ -512,10 +512,10 @@ mod tests {
         assert!(active_text(&app).is_some());
         let source = app.session.active().unwrap().doc.work_path.clone();
         app.ui.selected_path = Some("work".into());
-        app.session.active_mut().unwrap().channel_view.target = photocraft_engine::channel_cmds::ChannelTarget::VectorMask;
+        app.session.active_mut().unwrap().channel_view.target = patronusphoto_engine::channel_cmds::ChannelTarget::VectorMask;
         assert!(active_text(&app).is_none());
         app.run("type.attachToPath", json!({"start":20})).unwrap();
-        assert_eq!(app.session.active().unwrap().channel_view.target, photocraft_engine::channel_cmds::ChannelTarget::Composite);
+        assert_eq!(app.session.active().unwrap().channel_view.target, patronusphoto_engine::channel_cmds::ChannelTarget::Composite);
         assert_eq!(app.ui.selected_path.as_deref(), Some("layer"));
         assert!(active_text(&app).is_some());
         let id = layer(&app);
@@ -527,10 +527,10 @@ mod tests {
     /// Verifies converting legacy single-point anchor alignment to explicit ranges preserves exact glyph rasterization coordinates.
     #[test]
     fn legacy_alignment_conversion_preserves_glyph_positions() {
-        use photocraft_doc::text::{ParagraphStyle, TextAlign};
-        use photocraft_doc::vector::Subpath;
-        use photocraft_text::warp::Warp;
-        let mut engine = photocraft_text::TextEngine::new();
+        use patronusphoto_doc::text::{ParagraphStyle, TextAlign};
+        use patronusphoto_doc::vector::Subpath;
+        use patronusphoto_text::warp::Warp;
+        let mut engine = patronusphoto_text::TextEngine::new();
         for closed in [false, true] {
             for flip in [false, true] {
                 for align in [TextAlign::Left, TextAlign::Center, TextAlign::Right] {
@@ -541,7 +541,7 @@ mod tests {
                     };
                     let mut text = TextLayer {
                         text: "ABC".into(),
-                        paragraphs: vec![photocraft_doc::text::ParagraphRun { len: 3, style: ParagraphStyle { align, ..Default::default() } }],
+                        paragraphs: vec![patronusphoto_doc::text::ParagraphRun { len: 3, style: ParagraphStyle { align, ..Default::default() } }],
                         ..Default::default()
                     };
                     text.shape = TextShape::Path { path: path.clone(), start: 200.0, end: None, flip };
@@ -582,7 +582,7 @@ mod tests {
     }
 
     /// The shape of the layer `id` read from the document, for a layer `active_text` does not show.
-    fn doc_shape(app: &PhotocraftApp, id: LayerId) -> TextShape {
+    fn doc_shape(app: &PatronusPhotoApp, id: LayerId) -> TextShape {
         let LayerContent::Text(text) = &app.session.active().unwrap().doc.layer(id).unwrap().content else { panic!("expected text") };
         text.shape.clone()
     }
@@ -752,7 +752,7 @@ mod tests {
         let layer = Arc::make_mut(st.doc_mut()).layer_mut(id).unwrap();
         let LayerContent::Text(text) = &mut layer.content else { panic!("expected text") };
         text.shape = TextShape::Path {
-            path: photocraft_doc::vector::Subpath::polygon(&[(20.0, 20.0), (180.0, 20.0), (180.0, 180.0), (20.0, 180.0)]),
+            path: patronusphoto_doc::vector::Subpath::polygon(&[(20.0, 20.0), (180.0, 20.0), (180.0, 180.0), (20.0, 180.0)]),
             start: 20.0,
             end: Some(700.0),
             flip: false,
@@ -857,7 +857,7 @@ mod tests {
     /// Proves non-integer path lengths whose `f32` conversion rounds upward keep both markers on the track, flipped too.
     #[test]
     fn type_path_placement_noninteger_line_rounding_upward_keeps_markers_visible() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.session.execute("file.new", json!({"width": 200, "height": 200})).unwrap();
         app.sync_views();
         app.ui.tool = Tool::PathSelection;
@@ -868,12 +868,12 @@ mod tests {
         app.run("type.attachToPath", json!({"start":0})).unwrap();
         app.ui.views[0].zoom = 1.0;
 
-        let geom = PathGeometry::new(&photocraft_doc::vector::Subpath::polyline(&[(20.0, 20.0), (27.0, 27.0)]), false).unwrap();
+        let geom = PathGeometry::new(&patronusphoto_doc::vector::Subpath::polyline(&[(20.0, 20.0), (27.0, 27.0)]), false).unwrap();
         let length_f32 = geom.length() as f32;
         assert!(f64::from(length_f32) > geom.length(), "scale 7 * sqrt2 must round up in f32");
 
         // Both marks of the layer's range sit on the track, as the control reads them (a flipped range on the reversed path).
-        let on_track = |app: &PhotocraftApp| {
+        let on_track = |app: &PatronusPhotoApp| {
             let text = active_text(app).unwrap();
             let track = Track::new(app, text).unwrap();
             let [start, end] = effective_range(text, &track.geometry).unwrap();
@@ -938,7 +938,7 @@ mod tests {
         let mut app = app(Tool::PathSelection);
         let id = layer(&app);
         // Shorten path from length 160 (20 to 180) to length 60 (20 to 80).
-        let shortened = photocraft_doc::vector::Subpath::polyline(&[(20.0, 100.0), (80.0, 100.0)]);
+        let shortened = patronusphoto_doc::vector::Subpath::polyline(&[(20.0, 100.0), (80.0, 100.0)]);
         app.session
             .edit("shorten path", |doc, _| {
                 let LayerContent::Text(text) = &mut doc.layer_mut(id).unwrap().content else { panic!("expected text") };
@@ -981,7 +981,7 @@ mod tests {
         let mut app = app(Tool::PathSelection);
         let id = layer(&app);
         // Shorten path to length 40 (20 to 60) and place stale start at 50.0 and end at 80.0.
-        let shortened = photocraft_doc::vector::Subpath::polyline(&[(20.0, 100.0), (60.0, 100.0)]);
+        let shortened = patronusphoto_doc::vector::Subpath::polyline(&[(20.0, 100.0), (60.0, 100.0)]);
         app.session
             .edit("shorten path beyond start", |doc, _| {
                 let LayerContent::Text(text) = &mut doc.layer_mut(id).unwrap().content else { panic!("expected text") };
@@ -1018,7 +1018,7 @@ mod tests {
     /// Verifies malformed, non-finite, and inverted ranges continue to be rejected by effective_range.
     #[test]
     fn effective_range_safeguards_reject_malformed_and_inverted_ranges() {
-        use photocraft_doc::vector::Subpath;
+        use patronusphoto_doc::vector::Subpath;
         let path = Subpath::polyline(&[(0.0, 0.0), (100.0, 0.0)]);
         let geometry = PathGeometry::new(&path, false).unwrap();
         let make_text = |start: f32, end: Option<f32>| TextLayer {

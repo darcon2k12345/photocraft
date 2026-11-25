@@ -2,8 +2,8 @@
 //! does, for a full copy and a merged-layers-only copy. The source keeps its selection, and the
 //! copy keeps the source's alpha channels, guides and paths.
 
-use photocraft_doc::Document;
-use photocraft_geom::Rect;
+use patronusphoto_doc::Document;
+use patronusphoto_geom::Rect;
 use serde_json::json;
 
 use crate::Session;

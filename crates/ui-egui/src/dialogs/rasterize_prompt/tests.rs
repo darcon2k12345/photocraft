@@ -1,15 +1,15 @@
 use craft::ui::dialog::{DialogId, StackDialog as _};
 use craft::ui::patterns::form_dialogs::HostedParamDialog;
 use egui::Modifiers;
-use photocraft_doc::LayerContent;
+use patronusphoto_doc::LayerContent;
 use serde_json::json;
 
 use super::*;
 use crate::canvas::testing::{ToolEvent, tool_event};
 
 /// A document whose active layer is a `kind` layer over a white Background.
-pub(super) fn app_with(kind: Kind) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+pub(super) fn app_with(kind: Kind) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     // Strokes and filters finish in the pass that asks for them, so the history counts are settled at once.
     app.background_jobs = false;
     app.run("file.new", json!({"width": 120, "height": 80})).unwrap();
@@ -32,47 +32,47 @@ pub(super) fn app_with(kind: Kind) -> Box<PhotocraftApp> {
     app
 }
 
-pub(super) fn active_content(app: &PhotocraftApp) -> &'static str {
+pub(super) fn active_content(app: &PatronusPhotoApp) -> &'static str {
     let st = app.session.active().unwrap();
     st.doc.layer(st.active_layer.unwrap()).unwrap().content.kind_name()
 }
 
-pub(super) fn past(app: &PhotocraftApp) -> usize {
+pub(super) fn past(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.past_len()
 }
 
-pub(super) fn click(app: &mut PhotocraftApp, x: f64, y: f64) {
+pub(super) fn click(app: &mut PatronusPhotoApp, x: f64, y: f64) {
     tool_event(app, ToolEvent::Down { x, y, pressure: 1.0 }, Modifiers::NONE);
     tool_event(app, ToolEvent::Up { x, y }, Modifiers::NONE);
 }
 
 /// The open rasterize prompt.
-pub(super) fn prompt(app: &PhotocraftApp) -> Option<DialogId> {
+pub(super) fn prompt(app: &PatronusPhotoApp) -> Option<DialogId> {
     alerts::prompt_tagged::<Rasterize>(app)
 }
 
 /// Answers the open prompt `id` with its default button, as `ui.dialog.confirm` does: the answer
 /// acts inside the call.
-pub(super) fn answer(app: &mut PhotocraftApp, id: DialogId) {
+pub(super) fn answer(app: &mut PatronusPhotoApp, id: DialogId) {
     let ctx = app.ctx().clone();
     crate::dialogs::confirm(app, &ctx, id).unwrap();
 }
 
 /// Picks `choice` ("proceed", "alternate", "cancel") on the prompt `id`; the error says the prompt has
 /// no such button.
-pub(super) fn choose(app: &mut PhotocraftApp, id: DialogId, choice: &str) -> Result<(), String> {
+pub(super) fn choose(app: &mut PatronusPhotoApp, id: DialogId, choice: &str) -> Result<(), String> {
     let ctx = app.ctx().clone();
     app.framework.dialogs.set_json_field(&ctx, id, "choice", json!(choice))
 }
 
 /// The open parameter dialog of `filter`.
-pub(super) fn filter_dialog(app: &PhotocraftApp, filter: &str) -> Option<DialogId> {
+pub(super) fn filter_dialog(app: &PatronusPhotoApp, filter: &str) -> Option<DialogId> {
     app.framework.dialogs.get::<HostedParamDialog>().filter(|d| d.key() == Some(filter)).map(|d| d.id())
 }
 
 pub(super) const BLUR: &str = "filter.blur.gaussianBlur";
 
-pub(super) fn menu(app: &mut PhotocraftApp, id: &str) -> Result<serde_json::Value, String> {
+pub(super) fn menu(app: &mut PatronusPhotoApp, id: &str) -> Result<serde_json::Value, String> {
     let ctx = app.ctx().clone();
     crate::menus::invoke(app, &ctx, id, json!({}))
 }
@@ -190,7 +190,7 @@ fn the_control_channel_sees_and_confirms_the_prompt() {
     app.ui.tool = Tool::Pencil;
     // The canvas shows once before a pointer event can be mapped onto the document.
     crate::canvas::testing::frame(&mut app);
-    let call = |app: &mut PhotocraftApp, method: &str, params: serde_json::Value| {
+    let call = |app: &mut PatronusPhotoApp, method: &str, params: serde_json::Value| {
         let (req, _rx) = crate::control::ControlRequest::new(method, params);
         match crate::control::handle(app, &ctx, &req) {
             crate::control::Reply::Done(v) => v,
@@ -295,7 +295,7 @@ fn filters_stay_grey_where_rasterizing_would_not_help() {
 #[test]
 fn the_filter_prompt_offers_convert_rasterize_and_cancel() {
     // (filter, offers Convert to Smart Object, what shows the filter opened)
-    type Opened = fn(&PhotocraftApp) -> bool;
+    type Opened = fn(&PatronusPhotoApp) -> bool;
     let table: [(&str, bool, Opened); 2] =
         [(BLUR, true, |app| filter_dialog(app, BLUR).is_some()), ("filter.vanishingPoint", false, |app| crate::distort_ui::modal_workspace(app).is_some())];
     for (filter, convert, opened) in table {

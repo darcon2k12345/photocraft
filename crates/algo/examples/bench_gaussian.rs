@@ -1,10 +1,10 @@
 //! Timing: Gaussian Blur radius 10 on a 6016×6016 RGBA8 layer, as a document layer filling the
 //! canvas is filtered (edges repeated at the canvas edge).
-//! `cargo run --release -p photocraft-algo --example bench_gaussian [-- <size> <radius>]`
-use photocraft_algo::{FilterParams, apply_in, output_area};
-use photocraft_color::PixelFormat;
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+//! `cargo run --release -p patronusphoto-algo --example bench_gaussian [-- <size> <radius>]`
+use patronusphoto_algo::{FilterParams, apply_in, output_area};
+use patronusphoto_color::PixelFormat;
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::Surface;
 
 fn main() {
     let n: i32 = std::env::args().nth(1).and_then(|v| v.parse().ok()).unwrap_or(6016);

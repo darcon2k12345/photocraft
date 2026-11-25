@@ -6,20 +6,20 @@
 use egui::Modifiers;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::{ToolEvent, tool_event};
 use crate::state::Tool;
 
 /// A 200 x 100 white document with nothing selected and the Content-Aware Move tool.
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 200, "height": 100, "background": "white"})).unwrap();
     app.ui.tool = Tool::ContentAwareMove;
     app
 }
 
 /// A drag through `points` (the first is the press), released at the last.
-pub(crate) fn drag(app: &mut PhotocraftApp, points: &[[f64; 2]]) {
+pub(crate) fn drag(app: &mut PatronusPhotoApp, points: &[[f64; 2]]) {
     let m = Modifiers::NONE;
     let [x, y] = points[0];
     tool_event(app, ToolEvent::Down { x, y, pressure: 1.0 }, m);
@@ -35,17 +35,17 @@ const DIAGONAL: &[[f64; 2]] = &[[20.0, 20.0], [50.0, 35.0], [80.0, 50.0], [110.0
 const AREA: &[[f64; 2]] = &[[20.0, 20.0], [80.0, 20.0], [80.0, 80.0], [20.0, 80.0]];
 
 /// The ids of the open alerts: this tool opens no other, so any alert is the "No pixels are selected." one.
-fn alerts(app: &PhotocraftApp) -> Vec<craft::ui::dialog::DialogId> {
+fn alerts(app: &PatronusPhotoApp) -> Vec<craft::ui::dialog::DialogId> {
     crate::dialogs::alerts::alerts(app)
 }
 
 /// Whether the document has a selection.
-pub(crate) fn selected(app: &PhotocraftApp) -> bool {
+pub(crate) fn selected(app: &PatronusPhotoApp) -> bool {
     app.session.active().unwrap().doc.selection.is_some()
 }
 
 /// The number of History states.
-pub(crate) fn steps(app: &PhotocraftApp) -> usize {
+pub(crate) fn steps(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.past_len()
 }
 

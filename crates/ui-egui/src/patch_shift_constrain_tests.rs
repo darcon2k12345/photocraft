@@ -4,13 +4,13 @@
 use egui::Modifiers;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::{ToolEvent, tool_event};
 use crate::state::Tool;
 
 /// A 500 x 400 document with 100..200 square selected, the Patch tool active.
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 500, "height": 400, "background": "white"})).unwrap();
     app.run("select.rect", json!({"x": 100, "y": 100, "width": 100, "height": 100, "mode": "replace"})).unwrap();
     app.ui.tool = Tool::Patch;
@@ -18,13 +18,13 @@ fn app() -> Box<PhotocraftApp> {
     app
 }
 
-fn mv(app: &mut PhotocraftApp, x: f64, y: f64, m: Modifiers) {
+fn mv(app: &mut PatronusPhotoApp, x: f64, y: f64, m: Modifiers) {
     tool_event(app, ToolEvent::Move { x, y, pressure: 1.0 }, m);
 }
 
 /// Press at 140,140 without ⇧, move past the first 60 px, then to `to` with `m` held. Returns the press as
 /// captured at the Down, the last point and whether ⇧ is held there.
-fn drag_to(app: &mut PhotocraftApp, to: [f64; 2], m: Modifiers) -> (crate::retouch_ui::PatchPress, [f64; 2], bool) {
+fn drag_to(app: &mut PatronusPhotoApp, to: [f64; 2], m: Modifiers) -> (crate::retouch_ui::PatchPress, [f64; 2], bool) {
     let press = crate::retouch_ui::PatchPress::new(Tool::Patch, [140.0, 140.0], craft::keymap::Mods::default());
     tool_event(app, ToolEvent::Down { x: 140.0, y: 140.0, pressure: 1.0 }, Modifiers::NONE);
     mv(app, 200.0, 145.0, Modifiers::NONE);
@@ -32,12 +32,12 @@ fn drag_to(app: &mut PhotocraftApp, to: [f64; 2], m: Modifiers) -> (crate::retou
     (press, to, m.shift)
 }
 
-fn patch_offsets(app: &PhotocraftApp) -> Vec<serde_json::Value> {
+fn patch_offsets(app: &PatronusPhotoApp) -> Vec<serde_json::Value> {
     app.session.journal.iter().filter(|(id, _)| id == "paint.patch").map(|(_, p)| p["offset"].clone()).collect()
 }
 
 /// The offset the outline shows for the press `drag_to` made, ending at `last`.
-fn outline_offset(app: &mut PhotocraftApp, (press, last, shift): (crate::retouch_ui::PatchPress, [f64; 2], bool)) -> [i32; 2] {
+fn outline_offset(app: &mut PatronusPhotoApp, (press, last, shift): (crate::retouch_ui::PatchPress, [f64; 2], bool)) -> [i32; 2] {
     let end = crate::retouch_ui::patch_end(&press, last, shift);
     crate::retouch_ui::patch_offset(app, press.start, end)
 }

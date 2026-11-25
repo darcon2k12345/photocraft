@@ -10,7 +10,7 @@ use craft::behavior::kurbo::{Point, Rect};
 use craft::draw::ui::transform::{ApplyBy, TransformOverlay, TransformSession};
 use craft::imaging::ui::selection::{PointMap, SelectionOverlay};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::outline::SurfaceMask;
 use crate::state::{CamTransform, Tool};
 
@@ -31,12 +31,12 @@ impl Placement {
 }
 
 /// Whether a Transform On Drop box is up.
-pub(crate) fn active(app: &PhotocraftApp) -> bool {
+pub(crate) fn active(app: &PatronusPhotoApp) -> bool {
     app.ui.cam_transform.is_some()
 }
 
 /// Put the box on the selection dropped `offset` away. False when there is no selection to box.
-pub(crate) fn begin(app: &mut PhotocraftApp, offset: [i32; 2]) -> bool {
+pub(crate) fn begin(app: &mut PatronusPhotoApp, offset: [i32; 2]) -> bool {
     let Some((document, revision, canvas, sel)) =
         app.session.active().and_then(|st| Some((st.doc.id.0, st.revision, st.doc.bounds(), st.doc.selection.clone()?)))
     else {
@@ -93,7 +93,7 @@ fn placement_of(offset: [i32; 2], rect: Rect, quad: [Point; 4]) -> Option<Placem
 }
 
 /// Drops the box and its status hint.
-pub(crate) fn cancel(app: &mut PhotocraftApp) {
+pub(crate) fn cancel(app: &mut PatronusPhotoApp) {
     if app.ui.cam_transform.take().is_some() && !app.ui.status_error {
         // The box's hint is done with.
         app.ui.status.clear();
@@ -101,7 +101,7 @@ pub(crate) fn cancel(app: &mut PhotocraftApp) {
 }
 
 /// Drop the box when what it was made for changed: another tool, document or edit.
-pub(crate) fn cancel_stale(app: &mut PhotocraftApp) {
+pub(crate) fn cancel_stale(app: &mut PatronusPhotoApp) {
     let Some(t) = &app.ui.cam_transform else { return };
     let valid = app.ui.tool == Tool::ContentAwareMove
         && app.session.active().is_some_and(|st| st.doc.id.0 == t.document && st.revision == t.revision && st.doc.selection.is_some());
@@ -111,7 +111,7 @@ pub(crate) fn cancel_stale(app: &mut PhotocraftApp) {
 }
 
 /// `paint.contentAwareMove`'s params for the box's placement and the options bar.
-pub(crate) fn params(app: &PhotocraftApp, place: &Placement) -> serde_json::Value {
+pub(crate) fn params(app: &PatronusPhotoApp, place: &Placement) -> serde_json::Value {
     let mut p = crate::retouch_ui::content_aware_move_params(app, place.offset);
     if !place.is_plain_move() {
         p["scaleX"] = place.scale[0].into();
@@ -122,7 +122,7 @@ pub(crate) fn params(app: &PhotocraftApp, place: &Placement) -> serde_json::Valu
 }
 
 /// ↩ / ✓: the move with the transformed patch, as one background job and History step.
-pub(crate) fn commit(app: &mut PhotocraftApp) {
+pub(crate) fn commit(app: &mut PatronusPhotoApp) {
     cancel_stale(app);
     let Some(t) = app.ui.cam_transform.clone() else { return };
     cancel(app);
@@ -144,7 +144,7 @@ pub(crate) fn commit(app: &mut PhotocraftApp) {
 ///
 /// A second pass of a frame shows the box again from the session as the first pass left it and applies
 /// only its own output; after a commit or discard there is no box and the pass returns at once.
-pub(crate) fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui, rect: egui::Rect) {
+pub(crate) fn show(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, rect: egui::Rect) {
     cancel_stale(app);
     if app.ui.cam_transform.is_none() {
         return;

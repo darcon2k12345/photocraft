@@ -3,16 +3,16 @@
 //! on; Esc and the Stop button end them keeping the steps applied. Measured in the reference
 //! application 2026-11-05.
 use super::*;
-use photocraft_engine::actions_cmds::ActionStep;
+use patronusphoto_engine::actions_cmds::ActionStep;
 use web_time::{Duration, Instant};
 
-fn names(app: &PhotocraftApp) -> Vec<String> {
+fn names(app: &PatronusPhotoApp) -> Vec<String> {
     app.session.active().unwrap().doc.walk().iter().map(|(_, _, l)| l.name.clone()).filter(|n| n != "Background").collect()
 }
 
 /// `Three` makes layers A, B and C.
-fn app_with(performance: &str, seconds: u8, single: bool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app_with(performance: &str, seconds: u8, single: bool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 8, "height": 6})).unwrap();
     app.run("actions.setPlayback", json!({"performance": performance, "seconds": seconds, "singleState": single})).unwrap();
     let steps = ["A", "B", "C"].map(|n| ActionStep::new("layer.new.layer", json!({"name": n}))).to_vec();
@@ -21,13 +21,13 @@ fn app_with(performance: &str, seconds: u8, single: bool) -> Box<PhotocraftApp> 
 }
 
 /// One frame of the app's loop as far as pacing goes, with `events` as its input.
-fn frame(app: &mut PhotocraftApp, ctx: &egui::Context, events: Vec<egui::Event>) {
+fn frame(app: &mut PatronusPhotoApp, ctx: &egui::Context, events: Vec<egui::Event>) {
     let raw = egui::RawInput { events, ..Default::default() };
     ctx.run_ui(raw, |ui| playback::tick(app, ui.ctx())).drop_without_applying_deltas();
 }
 
 /// Let the wait run out, then one frame.
-fn next_step(app: &mut PhotocraftApp, ctx: &egui::Context) {
+fn next_step(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     if let Some(t) = app.paused_playbacks.timer.as_mut() {
         t.due = Instant::now();
     }
@@ -38,7 +38,7 @@ fn esc() -> egui::Event {
     egui::Event::Key { key: egui::Key::Escape, physical_key: None, pressed: true, repeat: false, modifiers: egui::Modifiers::NONE }
 }
 
-fn assert_idle(app: &PhotocraftApp) {
+fn assert_idle(app: &PatronusPhotoApp) {
     assert_eq!(app.session.actions.playing, 0);
     assert!(app.session.actions.playback_stack.is_empty());
     assert!(app.paused_playbacks.paused.is_empty());
@@ -46,7 +46,7 @@ fn assert_idle(app: &PhotocraftApp) {
 }
 
 /// No continuation keeps the history policy leased once a playback ended.
-fn assert_released(app: &mut PhotocraftApp) {
+fn assert_released(app: &mut PatronusPhotoApp) {
     let single = app.session.prefs().actions.create_single_history_state;
     app.run("actions.setHistory", json!({"singleState": single})).unwrap();
 }
@@ -244,8 +244,8 @@ fn a_paced_play_clears_an_earlier_playback_error() {
 
 #[test]
 fn playback_options_ok_refuses_values_automation_set_that_the_dialog_cannot_show() {
-    use photocraft_engine::prefs::PlaybackPerformance;
-    let control = |app: &mut PhotocraftApp, method: &str, params: Value| {
+    use patronusphoto_engine::prefs::PlaybackPerformance;
+    let control = |app: &mut PatronusPhotoApp, method: &str, params: Value| {
         let (request, _) = crate::control::ControlRequest::new(method, params);
         let ctx = app.ctx().clone();
         match crate::control::handle(app, &ctx, &request) {

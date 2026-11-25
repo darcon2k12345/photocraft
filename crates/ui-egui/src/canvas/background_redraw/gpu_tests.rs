@@ -4,7 +4,7 @@ use super::*;
 use serde_json::json;
 
 struct Gpu {
-    harness: egui_kittest::Harness<'static, Box<PhotocraftApp>>,
+    harness: egui_kittest::Harness<'static, Box<PatronusPhotoApp>>,
     observer: GpuCanvas,
 }
 
@@ -19,8 +19,8 @@ fn gpu_app() -> Option<Gpu> {
             .with_max_steps(64)
             .wgpu_setup(crate::gpu_canvas::wgpu_setup())
             .build_eframe(move |cc| {
-                PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-                let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), Default::default());
+                PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+                let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), Default::default());
                 if let Some(rs) = cc.wgpu_render_state.as_ref() {
                     *observer_out.lock().expect("observer") = Some(GpuCanvas::new(rs));
                     app.set_wgpu(rs.clone());
@@ -39,7 +39,7 @@ fn gpu_app() -> Option<Gpu> {
 
 /// A document the wgpu compositor leaves to the CPU (knockout on its top layer, which also has
 /// Blend If).
-fn cpu_only_document(app: &mut PhotocraftApp, w: u32, h: u32) -> DocId {
+fn cpu_only_document(app: &mut PatronusPhotoApp, w: u32, h: u32) -> DocId {
     app.run("file.new", json!({"width": w, "height": h, "background": "#336699"})).expect("new");
     app.run("layer.new.layer", json!({})).expect("layer");
     app.run("edit.fill", json!({"color": "#cc8844"})).expect("fill");
@@ -90,7 +90,7 @@ fn assert_matches_synchronous(g: &mut Gpu, doc: DocId) {
 
 #[test]
 fn a_full_cpu_refresh_draws_in_the_background_with_the_synchronous_pixels() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut g) = gpu_app() else { return };
     let doc = cpu_only_document(g.harness.state_mut(), 2600, 1700);
     // Held, so the frame's later runs can't see the redraw already finished.
@@ -107,7 +107,7 @@ fn a_full_cpu_refresh_draws_in_the_background_with_the_synchronous_pixels() {
 
 #[test]
 fn an_edit_during_a_redraw_is_not_overwritten_by_blocks_drawn_before_it() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut g) = gpu_app() else { return };
     // Hold the worker before its first batch and wait until this very worker acknowledges that
     // hold: when the fill lands, all 12 blocks of this 4×3 document are still to draw by it.
@@ -144,7 +144,7 @@ fn an_edit_during_a_redraw_is_not_overwritten_by_blocks_drawn_before_it() {
 
 #[test]
 fn an_edit_damaging_most_of_a_large_document_is_drawn_in_the_background_too() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut g) = gpu_app() else { return };
     let doc = cpu_only_document(g.harness.state_mut(), 2600, 1700);
     settle(&mut g);
@@ -163,7 +163,7 @@ fn an_edit_damaging_most_of_a_large_document_is_drawn_in_the_background_too() {
 
 #[test]
 fn showing_a_hidden_layer_again_reuses_the_redraw_from_before_it_was_hidden() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut g) = gpu_app() else { return };
     let doc = cpu_only_document(g.harness.state_mut(), 2600, 1700);
     let layer = g.harness.state().session.active().and_then(|st| st.active_layer).expect("layer");
@@ -191,7 +191,7 @@ fn showing_a_hidden_layer_again_reuses_the_redraw_from_before_it_was_hidden() {
 /// now, not what it left when the redraw began.
 #[test]
 fn a_redraw_finishing_after_memory_usage_drops_keeps_nothing_over_it() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut g) = gpu_app() else { return };
     let doc = cpu_only_document(g.harness.state_mut(), 4096, 3072);
     let held = start_held_redraw(&mut g, doc);
@@ -208,7 +208,7 @@ fn a_redraw_finishing_after_memory_usage_drops_keeps_nothing_over_it() {
 /// gamma compose reads, so tests compositing type layers at the same time aren't affected.
 #[test]
 fn a_state_drawn_before_the_text_gamma_changed_is_composited_again() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut g) = gpu_app() else { return };
     let doc = cpu_only_document(g.harness.state_mut(), 2600, 1700);
     let layer = g.harness.state().session.active().and_then(|st| st.active_layer).expect("layer");
@@ -227,7 +227,7 @@ fn a_state_drawn_before_the_text_gamma_changed_is_composited_again() {
 /// The text gamma changing while a redraw runs: its blocks were drawn with both, so it isn't kept.
 #[test]
 fn a_redraw_across_a_text_gamma_change_is_not_kept() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut g) = gpu_app() else { return };
     let doc = cpu_only_document(g.harness.state_mut(), 4096, 3072);
     let held = start_held_redraw(&mut g, doc);
@@ -240,7 +240,7 @@ fn a_redraw_across_a_text_gamma_change_is_not_kept() {
 /// Changed and changed back while a redraw runs: blocks drawn in between still mix both.
 #[test]
 fn a_redraw_across_a_text_gamma_change_and_back_is_not_kept() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut g) = gpu_app() else { return };
     let doc = cpu_only_document(g.harness.state_mut(), 4096, 3072);
     let gamma = g.harness.state().session.color.settings.blend_text_gamma;
@@ -258,7 +258,7 @@ fn a_redraw_across_a_text_gamma_change_and_back_is_not_kept() {
 /// change is seen every frame, not only when it shows again.
 #[test]
 fn a_hidden_documents_redraw_across_a_text_gamma_change_and_back_is_not_kept() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut g) = gpu_app() else { return };
     let doc = cpu_only_document(g.harness.state_mut(), 4096, 3072);
     let gamma = g.harness.state().session.color.settings.blend_text_gamma;
@@ -281,7 +281,7 @@ fn a_hidden_documents_redraw_across_a_text_gamma_change_and_back_is_not_kept() {
 /// only when the next redraw starts.
 #[test]
 fn kept_composites_go_when_memory_usage_drops_between_redraws() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut g) = gpu_app() else { return };
     cpu_only_document(g.harness.state_mut(), 2600, 1700);
     settle(&mut g);
@@ -297,7 +297,7 @@ fn kept_composites_go_when_memory_usage_drops_between_redraws() {
 /// only the cap can drop it, not History letting go of the state.
 #[test]
 fn kept_composites_go_when_a_small_edit_grows_the_document_past_the_cap() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut g) = gpu_app() else { return };
     cpu_only_document(g.harness.state_mut(), 2600, 1700);
     settle(&mut g);
@@ -327,7 +327,7 @@ fn kept_composites_go_when_a_small_edit_grows_the_document_past_the_cap() {
 /// not only the newest one's.
 #[test]
 fn an_older_kept_composite_goes_when_its_document_grows_past_the_cap() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut g) = gpu_app() else { return };
     let a = cpu_only_document(g.harness.state_mut(), 2600, 1700);
     settle(&mut g);
@@ -358,7 +358,7 @@ fn an_older_kept_composite_goes_when_its_document_grows_past_the_cap() {
 /// some later redraw.
 #[test]
 fn a_kept_state_history_purged_goes_at_the_next_frame() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut g) = gpu_app() else { return };
     cpu_only_document(g.harness.state_mut(), 2600, 1700);
     let layer = g.harness.state().session.active().and_then(|st| st.active_layer).expect("layer");
@@ -375,7 +375,7 @@ fn a_kept_state_history_purged_goes_at_the_next_frame() {
 
 #[test]
 fn closing_the_document_stops_its_redraw() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut g) = gpu_app() else { return };
     let doc = cpu_only_document(g.harness.state_mut(), 4096, 3072);
     // Held: the close lands while the redraw runs, and a cancelled worker leaves the hold.
@@ -387,7 +387,7 @@ fn closing_the_document_stops_its_redraw() {
 
 #[test]
 fn hiding_a_large_layer_over_the_gpu_budget_redraws_in_the_background() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut g) = gpu_app() else { return };
     // A layer covering most, but not all, of the document: hiding it damages a large rect that
     // isn't the whole canvas.
@@ -445,7 +445,7 @@ fn on_gpu_canvas(g: &Gpu) -> bool {
 #[test]
 fn advanced_blending_fallback_is_shown_in_the_status_bar() {
     use egui_kittest::kittest::Queryable;
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut g) = gpu_app() else { return };
     cpu_only_document(g.harness.state_mut(), 800, 600);
     g.harness.step();
@@ -460,7 +460,7 @@ fn advanced_blending_fallback_is_shown_in_the_status_bar() {
 
 #[test]
 fn completed_compositor_build_refreshes_an_unchanged_cached_document() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     for success in [true, false] {
         let Some(mut g) = gpu_app() else { return };
         let gpu = g.harness.state().gpu.as_ref().expect("GPU canvas").clone();
@@ -488,7 +488,7 @@ fn completed_compositor_build_refreshes_an_unchanged_cached_document() {
 
 #[test]
 fn a_canvas_over_the_texture_budget_records_its_reason() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut g) = gpu_app() else { return };
     // The app's canvas, not the observer: each `GpuCanvas::new` shares a new budget.
     g.harness.state().gpu.as_ref().expect("gpu canvas").set_canvas_budget(1);
@@ -526,7 +526,7 @@ fn centre_pixel(g: &mut Gpu) -> [u8; 4] {
 /// re-renders only the pages, and closing it frees them.
 #[test]
 fn a_canvas_over_the_texture_budget_draws_its_viewport_pages_on_the_gpu() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut g) = gpu_app() else { return };
     g.harness.state_mut().run("file.new", json!({"width": 3000, "height": 2000, "background": "#336699"})).expect("new");
     g.harness.run_steps(3);
@@ -599,7 +599,7 @@ fn arrange(g: &mut Gpu, command: &str) {
 /// a document over its share drawing from viewport pages.
 #[test]
 fn open_documents_share_one_texture_budget_with_the_shown_ones_first() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut g) = gpu_app() else { return };
     let gpu = g.harness.state().gpu.clone().expect("gpu canvas");
     let new = |g: &mut Gpu| {
@@ -650,7 +650,7 @@ fn open_documents_share_one_texture_budget_with_the_shown_ones_first() {
 
 #[test]
 fn a_flipped_view_records_why_it_draws_on_the_cpu() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut g) = gpu_app() else { return };
     g.harness.state_mut().run("file.new", json!({"width": 400, "height": 300, "background": "#336699"})).expect("new");
     g.harness.run_steps(3);

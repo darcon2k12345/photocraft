@@ -6,8 +6,8 @@ use craft::keymap::Key;
 use craft::ui::runtime::windows::{Released, WindowHost};
 use egui::Modifiers;
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width":600,"height":400})).unwrap();
     app.sync_views();
     app.ui.extras.snap = false;
@@ -15,21 +15,21 @@ fn app() -> Box<PhotocraftApp> {
     app
 }
 
-fn entries(app: &PhotocraftApp) -> Vec<String> {
+fn entries(app: &PatronusPhotoApp) -> Vec<String> {
     app.session.active().unwrap().history.entries()
 }
 
-fn frames(app: &PhotocraftApp) -> Vec<[f64; 6]> {
+fn frames(app: &PatronusPhotoApp) -> Vec<[f64; 6]> {
     let st = app.session.active().unwrap();
     st.doc.walk().into_iter().filter_map(|(_, _, l)| l.frame.as_ref().map(|f| f.transform.m)).collect()
 }
 
-fn mv(app: &mut PhotocraftApp, x: f64, y: f64, m: Modifiers) {
+fn mv(app: &mut PatronusPhotoApp, x: f64, y: f64, m: Modifiers) {
     tool_event(app, ToolEvent::Move { x, y, pressure: 1.0 }, m);
 }
 
 /// Space goes down (held) or comes up, through the window as the real key does.
-fn space(app: &mut PhotocraftApp, down: bool) {
+fn space(app: &mut PatronusPhotoApp, down: bool) {
     let host = WindowHost::of(app.ctx());
     if down {
         host.inject_key(egui::ViewportId::ROOT, Key::Space, craft::keymap::Mods::default(), true);

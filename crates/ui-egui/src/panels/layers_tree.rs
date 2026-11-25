@@ -18,16 +18,16 @@ use craft::ui::list::ThumbSize;
 use craft::ui::patterns::blend_keys::{BlendKeyEntry, blend_entries};
 use craft::ui::primitives::textures::{Revision, ThumbRender, ThumbRequest, ThumbSource, thumb_image};
 use craft::ui::runtime::env::Label;
-use photocraft_color::BlendMode;
-use photocraft_doc::{Document, Effect, Fill, LabelColor, Layer, LayerContent, LayerId};
-use photocraft_engine::DocState;
+use patronusphoto_color::BlendMode;
+use patronusphoto_doc::{Document, Effect, Fill, LabelColor, Layer, LayerContent, LayerId};
+use patronusphoto_engine::DocState;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The blend mode a panel key names.
 pub(crate) fn blend_of(key: &str) -> Option<BlendMode> {
-    photocraft_engine::commands::parse_blend(key)
+    patronusphoto_engine::commands::parse_blend(key)
 }
 
 /// A document label colour as the framework's (`None` for none), matched by name.
@@ -70,7 +70,7 @@ fn effect_kind(e: &Effect) -> Option<EffectKind> {
 
 /// The Smart Filter row selected on its own, while its smart object is active and the row is listed in the Layers
 /// panel in front: a row nobody sees highlighted (the panel closed, minimized or behind another tab) is not selected.
-pub(crate) fn listed_filter(app: &PhotocraftApp) -> Option<crate::smart_ui::FilterDrag> {
+pub(crate) fn listed_filter(app: &PatronusPhotoApp) -> Option<crate::smart_ui::FilterDrag> {
     if !super::panel_docking::is_front(app, "layers") {
         return None;
     }
@@ -124,7 +124,7 @@ impl PartialEq for PhotoLayers {
 }
 
 impl PhotoLayers {
-    pub(crate) fn new(app: &PhotocraftApp, st: &DocState, filter: &LayerFilter, foreign_drag: bool, picked: Option<crate::smart_ui::FilterDrag>) -> Self {
+    pub(crate) fn new(app: &PatronusPhotoApp, st: &DocState, filter: &LayerFilter, foreign_drag: bool, picked: Option<crate::smart_ui::FilterDrag>) -> Self {
         let working_text = app.ui.text_edit.as_ref().filter(|ed| ed.mask).map(|ed| ed.layer);
         let empty = match (filter.by, filter.attribute) {
             (FilterBy::Attribute, LayerAttribute::Empty | LayerAttribute::NotEmpty) => crate::layer_filter_ui::attribute::empty_layers(app),
@@ -199,7 +199,7 @@ impl PhotoLayers {
         let layer = LayerId(picked.0);
         let mut at = Some(layer);
         while let Some(id) = at {
-            if !photocraft_engine::select_extra_cmds::isolation_shows(self.doc(), &self.isolated_layers, id) {
+            if !patronusphoto_engine::select_extra_cmds::isolation_shows(self.doc(), &self.isolated_layers, id) {
                 return None;
             }
             at = self.parent(&id);
@@ -240,7 +240,7 @@ impl LayerTree for PhotoLayers {
         list.iter()
             .rev()
             .filter(|l| Some(l.id.0) != self.working_text)
-            .filter(|l| photocraft_engine::select_extra_cmds::isolation_shows(self.doc(), &self.isolated_layers, l.id))
+            .filter(|l| patronusphoto_engine::select_extra_cmds::isolation_shows(self.doc(), &self.isolated_layers, l.id))
             .map(|l| l.id)
             .collect()
     }
@@ -297,7 +297,7 @@ impl LayerTree for PhotoLayers {
         info.advanced_blending = l.excluded_channels != 0 || l.advanced != Default::default() || !l.blend_if.is_default();
         if let LayerContent::Smart(sm) = &l.content {
             info.smart = Some(match sm.source {
-                photocraft_doc::SmartSource::Linked { .. } => SmartSource::Linked,
+                patronusphoto_doc::SmartSource::Linked { .. } => SmartSource::Linked,
                 _ => SmartSource::Embedded,
             });
             info.has_smart_filters = !sm.smart_filters.is_empty();
@@ -335,9 +335,9 @@ impl LayerTree for PhotoLayers {
             }
             FilterBy::SmartObject => match &l.content {
                 LayerContent::Smart(sm) => filter.smart.iter().any(|k| match (k, &sm.source) {
-                    (SmartKind::Linked, photocraft_doc::SmartSource::Linked { .. }) => true,
-                    (SmartKind::Missing, photocraft_doc::SmartSource::Linked { path }) => self.missing.contains(path),
-                    (SmartKind::Embedded, photocraft_doc::SmartSource::Embedded { .. }) => true,
+                    (SmartKind::Linked, patronusphoto_doc::SmartSource::Linked { .. }) => true,
+                    (SmartKind::Missing, patronusphoto_doc::SmartSource::Linked { path }) => self.missing.contains(path),
+                    (SmartKind::Embedded, patronusphoto_doc::SmartSource::Embedded { .. }) => true,
                     _ => false,
                 }),
                 _ => false,
@@ -456,7 +456,7 @@ impl LayerTree for PhotoLayers {
         type FooterMenus = (Vec<Entry<String>>, Vec<Entry<String>>);
         static MENUS: crate::i18n::LangCache<(), FooterMenus> = crate::i18n::LangCache::new();
         let (adjustments, styles) = MENUS.get_or_build((), || {
-            let mut adjustments: Vec<Entry<String>> = photocraft_engine::command_specs()
+            let mut adjustments: Vec<Entry<String>> = patronusphoto_engine::command_specs()
                 .iter()
                 .filter(|c| c.id.starts_with("layer.newAdjustmentLayer."))
                 .map(|c| Entry::new(c.id.to_string(), tl!(c.label).trim_end_matches('…').to_string()))
@@ -569,7 +569,7 @@ pub(crate) const MASK_OPTIONS: &str = "layersPanel:maskOptions";
 
 /// The row menu at `target` as entries: the layer menu (Photoshop's order, trimmed to the kind),
 /// a mask thumbnail's menu, a pixel thumbnail's, an effects row's, or the empty space's.
-pub(crate) fn row_menu(app: &PhotocraftApp, tree: &PhotoLayers, target: &MenuTarget<LayerId>) -> Vec<Entry<String>> {
+pub(crate) fn row_menu(app: &PatronusPhotoApp, tree: &PhotoLayers, target: &MenuTarget<LayerId>) -> Vec<Entry<String>> {
     let has_selection = tree.doc().selection.is_some();
     let commands = |entries: Vec<crate::layer_menu_ui::Entry>, on_set: bool| -> Vec<Entry<String>> {
         let mut out: Vec<Entry<String>> = Vec::new();
@@ -581,7 +581,7 @@ pub(crate) fn row_menu(app: &PhotocraftApp, tree: &PhotoLayers, target: &MenuTar
                     }
                 }
                 Some((label, id)) => {
-                    if photocraft_engine::commands::find(id).is_none() && !crate::menu_catalog::CATALOG.iter().any(|m| m.3 == id) {
+                    if patronusphoto_engine::commands::find(id).is_none() && !crate::menu_catalog::CATALOG.iter().any(|m| m.3 == id) {
                         continue;
                     }
                     let enabled = !(on_set && crate::layer_menu_ui::single_layer_only(id)) && crate::menus::is_enabled(app, id);
@@ -652,12 +652,12 @@ pub(crate) fn row_menu(app: &PhotocraftApp, tree: &PhotoLayers, target: &MenuTar
 
 /// The thumbnails of the active document's rows.
 pub(crate) struct PhotoThumbs<'a> {
-    app: &'a PhotocraftApp,
+    app: &'a PatronusPhotoApp,
     doc: &'a Document,
 }
 
 impl<'a> PhotoThumbs<'a> {
-    pub(crate) fn new(app: &'a PhotocraftApp, doc: &'a Document) -> Self {
+    pub(crate) fn new(app: &'a PatronusPhotoApp, doc: &'a Document) -> Self {
         Self { app, doc }
     }
 
@@ -679,7 +679,7 @@ impl ThumbSource<LayerThumb<LayerId>> for PhotoThumbs<'_> {
     fn revision(&self, key: &LayerThumb<LayerId>, _request: &ThumbRequest) -> Revision {
         let Some(l) = self.source(key) else { return Revision::new(0) };
         let clip = key.contents == ThumbContents::LayerBounds;
-        let generation = |s: &photocraft_raster::Surface| s.generation();
+        let generation = |s: &patronusphoto_raster::Surface| s.generation();
         let shown = match key.kind {
             LayerThumbKind::Pixels | LayerThumbKind::FrameContent => match &l.content {
                 LayerContent::Fill(Fill::Solid(color)) => {
@@ -703,8 +703,8 @@ impl ThumbSource<LayerThumb<LayerId>> for PhotoThumbs<'_> {
     fn render(&self, key: &LayerThumb<LayerId>, request: &ThumbRequest) -> ThumbRender {
         let Some(l) = self.source(key) else { return ThumbRender::Blank };
         let canvas = self.doc.bounds();
-        let size = |r: photocraft_geom::Rect| craft::behavior::PixelSize::new(r.width().max(1), r.height().max(1));
-        let gray = |surface: &photocraft_raster::Surface| {
+        let size = |r: patronusphoto_geom::Rect| craft::behavior::PixelSize::new(r.width().max(1), r.height().max(1));
+        let gray = |surface: &patronusphoto_raster::Surface| {
             let mut v = [0.0f32; 1];
             thumb_image(size(canvas), request.side, |x, y| {
                 surface.read_pixel(canvas.x0 + x as i32, canvas.y0 + y as i32, &mut v);
@@ -743,7 +743,7 @@ impl ThumbSource<LayerThumb<LayerId>> for PhotoThumbs<'_> {
                     ThumbRender::Ready(thumb_image(size(frame), request.side, |x, y| {
                         let Some(px) = px.get_mut(..n) else { return [0; 4] };
                         surface.read_pixel(frame.x0 + x as i32, frame.y0 + y as i32, px);
-                        rgba8(photocraft_raster::to_rgba(&surface.format(), px))
+                        rgba8(patronusphoto_raster::to_rgba(&surface.format(), px))
                     }))
                 }
             },

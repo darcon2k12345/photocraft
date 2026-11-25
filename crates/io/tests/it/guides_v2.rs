@@ -2,12 +2,12 @@
 
 use craft_psd::testgen;
 use craft_psd::{Compression, ImageResource, PsdFile, Version};
-use photocraft_io::guides_map::{DEFAULT_GUIDE_RGB, GUIDE_IDS, GUIDES_V2};
-use photocraft_io::*;
+use patronusphoto_io::guides_map::{DEFAULT_GUIDE_RGB, GUIDE_IDS, GUIDES_V2};
+use patronusphoto_io::*;
 
 const RED: [u8; 3] = [0xff, 0x00, 0x00];
 
-type Edit = fn(&mut photocraft_doc::Document);
+type Edit = fn(&mut patronusphoto_doc::Document);
 
 fn guides_v1(guides: &[(i32, u8)]) -> Vec<u8> {
     let mut v = Vec::new();

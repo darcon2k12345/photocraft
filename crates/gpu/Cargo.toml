@@ -1,5 +1,5 @@
 [package]
-name = "photocraft-gpu"
+name = "patronusphoto-gpu"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -18,13 +18,13 @@ workspace = true
 [dependencies]
 half = "2"
 thiserror = { workspace = true }
-photocraft-geom = { workspace = true }
-photocraft-color = { workspace = true }
-photocraft-raster = { workspace = true }
-photocraft-doc = { workspace = true }
-photocraft-compose = { workspace = true }
+patronusphoto-geom = { workspace = true }
+patronusphoto-color = { workspace = true }
+patronusphoto-raster = { workspace = true }
+patronusphoto-doc = { workspace = true }
+patronusphoto-compose = { workspace = true }
 # Camera Raw's per-pixel stages (`camera_raw.rs`) take their constants from the CPU develop.
-photocraft-algo = { workspace = true }
+patronusphoto-algo = { workspace = true }
 bytemuck = { workspace = true }
 # Same major version as eframe's wgpu so the app's device can be shared.
 wgpu = { version = "30", default-features = false, features = ["std", "wgsl"] }
@@ -39,6 +39,6 @@ pollster = "1"
 wgpu = { version = "30" }
 pollster = "1"
 # Shape layers in the effect parity tests.
-photocraft-vector = { workspace = true }
+patronusphoto-vector = { workspace = true }
 # A document-tagged CMYK profile in the tile conversion test.
 craft-cms = { workspace = true }

@@ -3,11 +3,11 @@
 
 use craft::ui::patterns::form_dialogs::{Param, ParamKind};
 use craft::ui::runtime::env::Label;
-use photocraft_color::{BlendMode, ColorMode, SampleType};
+use patronusphoto_color::{BlendMode, ColorMode, SampleType};
 use serde_json::json;
 
 use super::{COMMAND, greyed, param};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The reference application's Fade Mode list, a group per row.
 const GROUPS: [&[&str]; 6] = [
@@ -19,8 +19,8 @@ const GROUPS: [&[&str]; 6] = [
     &["Hue", "Saturation", "Color", "Luminosity"],
 ];
 
-fn app(mode: &str, depth: u32) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app(mode: &str, depth: u32) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 16, "height": 12, "mode": mode, "depth": depth})).unwrap();
     app
 }
@@ -31,7 +31,7 @@ fn labels(modes: &[BlendMode]) -> Vec<&'static str> {
 
 /// The `mode` keys of `edit.fade`'s parameter notation.
 fn spec_modes() -> Vec<String> {
-    let spec = photocraft_engine::commands::find(COMMAND).unwrap();
+    let spec = patronusphoto_engine::commands::find(COMMAND).unwrap();
     let p = Param::parse_list(spec.params).into_iter().find(|p| p.key == "mode").unwrap();
     let ParamKind::Choice { options, .. } = p.kind else { panic!("mode is not a choice") };
     options.into_iter().map(|(id, _)| id).collect()
@@ -45,7 +45,7 @@ fn the_list_is_the_27_modes_in_the_reference_order() {
 #[test]
 fn the_params_doc_lists_all_27_modes_and_the_old_names_still_work() {
     let options = spec_modes();
-    let modes: Vec<Option<BlendMode>> = options.iter().map(|o| photocraft_engine::commands::parse_blend(o)).collect();
+    let modes: Vec<Option<BlendMode>> = options.iter().map(|o| patronusphoto_engine::commands::parse_blend(o)).collect();
     assert_eq!(modes, BlendMode::LAYER_MODES.map(Some).to_vec());
     for old in ["normal", "multiply", "screen", "overlay", "softLight", "hardLight", "darken", "lighten", "difference", "color", "luminosity"] {
         assert!(options.iter().any(|o| o == old), "{old} is still listed");
@@ -56,11 +56,11 @@ fn the_params_doc_lists_all_27_modes_and_the_old_names_still_work() {
 #[test]
 fn every_listed_mode_fades() {
     for key in BlendMode::LAYER_MODES.map(|mode| mode.key().to_string()) {
-        let mut s = photocraft_engine::Session::new();
+        let mut s = patronusphoto_engine::Session::new();
         s.execute("file.new", json!({"width": 8, "height": 8, "background": "white"})).unwrap();
         s.execute("edit.fill", json!({"color": "#336699"})).unwrap();
         let out = s.execute(COMMAND, json!({"opacity": 50, "mode": key})).unwrap();
-        assert_eq!(out["mode"], json!(photocraft_engine::commands::parse_blend(&key).unwrap().label()), "{key}");
+        assert_eq!(out["mode"], json!(patronusphoto_engine::commands::parse_blend(&key).unwrap().label()), "{key}");
     }
 }
 

@@ -5,17 +5,17 @@ use craft::behavior::kurbo::Size;
 use craft::behavior::{EditEvent, EditEvents, GestureId};
 use craft::draw::ui::artboard::ArtboardBackground as Shown;
 use egui::Modifiers;
-use photocraft_doc::{ArtboardBackground, LayerId};
-use photocraft_geom::Rect;
+use patronusphoto_doc::{ArtboardBackground, LayerId};
+use patronusphoto_geom::Rect;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::artboard_tool::bar;
 use crate::canvas::{ToolEvent, tool_event};
 use crate::state::Tool;
 
-fn app_with_depth(depth: u32) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app_with_depth(depth: u32) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 800, "height": 600, "depth": depth})).unwrap();
     app.sync_views();
     app.ui.extras.snap = false;
@@ -24,11 +24,11 @@ fn app_with_depth(depth: u32) -> Box<PhotocraftApp> {
     app
 }
 
-fn app() -> Box<PhotocraftApp> {
+fn app() -> Box<PatronusPhotoApp> {
     app_with_depth(8)
 }
 
-fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2]) {
+fn drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2]) {
     let m = Modifiers::NONE;
     tool_event(app, ToolEvent::Down { x: from[0], y: from[1], pressure: 1.0 }, m);
     tool_event(app, ToolEvent::Move { x: to[0], y: to[1], pressure: 1.0 }, m);
@@ -36,7 +36,7 @@ fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2]) {
 }
 
 /// A click with the placing mode on.
-fn place(app: &mut PhotocraftApp, x: f64, y: f64) {
+fn place(app: &mut PatronusPhotoApp, x: f64, y: f64) {
     app.ui.artboard_tool.adding = true;
     let m = Modifiers::NONE;
     tool_event(app, ToolEvent::Down { x, y, pressure: 1.0 }, m);
@@ -44,7 +44,7 @@ fn place(app: &mut PhotocraftApp, x: f64, y: f64) {
     assert!(!app.ui.status_error, "{}", app.ui.status);
 }
 
-fn boards(app: &PhotocraftApp) -> Vec<(LayerId, Rect, ArtboardBackground)> {
+fn boards(app: &PatronusPhotoApp) -> Vec<(LayerId, Rect, ArtboardBackground)> {
     app.session.active().unwrap().doc.artboards().iter().map(|b| (b.0, b.2.rect, b.2.background)).collect()
 }
 
@@ -53,11 +53,11 @@ fn size_event(w: f64, h: f64) -> EditEvents<Size> {
     EditEvents::from(EditEvent::update(GestureId::new(1), Size::new(w, h)))
 }
 
-fn steps(app: &PhotocraftApp) -> usize {
+fn steps(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.past_len()
 }
 
-fn last_label(app: &PhotocraftApp) -> Option<String> {
+fn last_label(app: &PatronusPhotoApp) -> Option<String> {
     app.session.active().unwrap().history.entries().last().cloned()
 }
 
@@ -156,7 +156,7 @@ fn ok_in_the_picker_without_a_change_leaves_the_boards_alone() {
 }
 
 /// Two boards, both selected.
-fn two_boards(app: &mut PhotocraftApp) -> (u64, u64) {
+fn two_boards(app: &mut PatronusPhotoApp) -> (u64, u64) {
     let a = app.run("layer.new.artboard", json!({"rect": [0, 0, 100, 100]})).unwrap()["layer"].as_u64().unwrap();
     let b = app.run("layer.new.artboard", json!({"rect": [300, 0, 100, 100]})).unwrap()["layer"].as_u64().unwrap();
     app.run("layer.select", json!({"layer": a})).unwrap();
@@ -165,7 +165,7 @@ fn two_boards(app: &mut PhotocraftApp) -> (u64, u64) {
 }
 
 /// Two selected boards with different custom colours; the first board's colour is the swatch's.
-fn two_coloured_boards(app: &mut PhotocraftApp) -> (u64, u64) {
+fn two_coloured_boards(app: &mut PatronusPhotoApp) -> (u64, u64) {
     let (a, b) = two_boards(app);
     app.run("layer.artboard.set", json!({"layer": a, "background": "custom", "color": "#336699"})).unwrap();
     app.run("layer.artboard.set", json!({"layer": b, "background": "custom", "color": "#cc3300"})).unwrap();
@@ -173,7 +173,7 @@ fn two_coloured_boards(app: &mut PhotocraftApp) -> (u64, u64) {
 }
 
 /// Open the Color Picker from the swatch (as the bar does) and OK it with `color`, or as opened.
-fn pick_from_swatch(app: &mut PhotocraftApp, color: Option<&str>) {
+fn pick_from_swatch(app: &mut PatronusPhotoApp, color: Option<&str>) {
     let hex = bar::shown_background(app).1;
     let id =
         crate::color_picker_ui::open_for_target(app, "artboardBackground", "Color Picker (Color)", crate::color_picker_ui::parse_hex(&hex).unwrap()).unwrap();
@@ -183,7 +183,7 @@ fn pick_from_swatch(app: &mut PhotocraftApp, color: Option<&str>) {
     crate::dialogs::testing::confirm(app, id).unwrap();
 }
 
-fn colours(app: &PhotocraftApp) -> Vec<ArtboardBackground> {
+fn colours(app: &PatronusPhotoApp) -> Vec<ArtboardBackground> {
     boards(app).iter().map(|b| b.2).collect()
 }
 
@@ -267,7 +267,7 @@ fn other_opens_the_color_picker_and_ok_sets_the_option() {
 #[test]
 fn auto_nest_layers_turns_the_move_tools_nesting_on_and_off() {
     for (nest, joins) in [(true, true), (false, false)] {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
         app.session.execute("file.new", json!({"width": 300, "height": 100, "background": "transparent"})).unwrap();
         app.sync_views();
         app.session.execute("layer.new.layer", json!({})).unwrap();

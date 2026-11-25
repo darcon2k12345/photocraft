@@ -12,7 +12,7 @@ use crate::canvas::testing;
 use crate::direct_select::{PathRef, active_paths, candidates, editing};
 
 /// Esc as a frame delivers it: the overlay's session keys first, then the app's Escape order.
-fn escape(app: &mut crate::PhotocraftApp) {
+fn escape(app: &mut crate::PatronusPhotoApp) {
     press(app, Key::Escape);
 }
 

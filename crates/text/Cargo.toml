@@ -1,5 +1,5 @@
 [package]
-name = "photocraft-text"
+name = "patronusphoto-text"
 description = "Font database, text shaping/layout (parley) and text-layer rasterization"
 version.workspace = true
 edition.workspace = true
@@ -10,10 +10,10 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
-photocraft-geom = { workspace = true }
-photocraft-color = { workspace = true }
-photocraft-raster = { workspace = true }
-photocraft-doc = { workspace = true }
+patronusphoto-geom = { workspace = true }
+patronusphoto-color = { workspace = true }
+patronusphoto-raster = { workspace = true }
+patronusphoto-doc = { workspace = true }
 craft-psd = { workspace = true }
 craft-plist = { workspace = true }
 # No `system` feature: fontique's system backend links fontconfig on Linux. The installed fonts

@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::prefs_ui::{apply_window, open_preferences, set_draft, window_open};
-use crate::{PhotocraftApp, Services};
+use crate::{PatronusPhotoApp, Services};
 use craft::settings::testing::MemoryFiles;
 use craft::settings::{Location, OpenOptions, SettingsStore};
 use craft::ui::patterns::preferences::PrefValue;
@@ -11,13 +11,13 @@ use std::sync::Arc;
 use std::time::Duration;
 
 /// The folder of the scratch settings store; its file lives in memory.
-const DIR: &str = "/memory/photocraft";
+const DIR: &str = "/memory/patronusphoto";
 
 /// Services whose preferences store reads and writes `files`. A zero debounce makes the first frame after a
 /// change write it.
 fn services_on(files: &Arc<MemoryFiles>) -> Services {
     let options = OpenOptions::new(Location::Dir(DIR.into())).debounce(Duration::ZERO).files(files.clone());
-    Services { settings: Some(SettingsStore::<photocraft_engine::prefs::SavedPrefs>::open_with(options)), ..Default::default() }
+    Services { settings: Some(SettingsStore::<patronusphoto_engine::prefs::SavedPrefs>::open_with(options)), ..Default::default() }
 }
 
 /// The saved `interface.language`.
@@ -32,11 +32,11 @@ fn file_title(lang: Lang) -> String {
     use egui::accesskit::Role;
     use egui_kittest::kittest::{NodeT, Queryable};
     with_language(lang, || {
-        let app = PhotocraftApp::new(photocraft_engine::Session::new(), Services::default());
+        let app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Services::default());
         let mut h = egui_kittest::Harness::builder()
             .with_size(egui::vec2(1200.0, 80.0))
             .with_context(app.ctx().clone())
-            .build_ui_state(|ui, app: &mut Box<PhotocraftApp>| crate::menus::menu_bar(app, ui), app);
+            .build_ui_state(|ui, app: &mut Box<PatronusPhotoApp>| crate::menus::menu_bar(app, ui), app);
         h.run_steps(2);
         h.query_all_by_role(Role::MenuItem).next().and_then(|node| node.accesskit_node().label()).expect("the bar's first title")
     })
@@ -161,7 +161,7 @@ fn korean_glyphs_remain_available_after_repeated_language_switches() {
     if !needs_catalogs() {
         return;
     }
-    use photocraft_text::cjk::{self, CjkChar, CjkScript};
+    use patronusphoto_text::cjk::{self, CjkChar, CjkScript};
     #[cfg(target_os = "linux")]
     assert!(crate::cjk_fonts::wait_for_fontconfig_cjk_scan(), "Fontconfig CJK lookup did not finish within 10 seconds");
     if !cjk::font_files(CjkScript::Korean).iter().any(|font| font.path.is_file()) {
@@ -189,14 +189,14 @@ fn korean_glyphs_remain_available_after_repeated_language_switches() {
     });
 }
 
-fn harness() -> egui_kittest::Harness<'static, Box<PhotocraftApp>> {
+fn harness() -> egui_kittest::Harness<'static, Box<PatronusPhotoApp>> {
     harness_with_services(Services::default())
 }
 
-fn harness_with_services(services: Services) -> egui_kittest::Harness<'static, Box<PhotocraftApp>> {
+fn harness_with_services(services: Services) -> egui_kittest::Harness<'static, Box<PatronusPhotoApp>> {
     let mut harness = egui_kittest::Harness::builder().with_size(egui::vec2(1200.0, 800.0)).with_max_steps(64).build_eframe(move |cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), services);
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), services);
         app.run("file.new", json!({"name": "User layer name", "width": 64, "height": 64})).expect("new document");
         app
     });
@@ -325,13 +325,13 @@ fn preferences_preview_does_not_commit_until_applied_and_survives_reload() {
         h.step();
         assert_eq!(current(), lang("ko"));
         let saved = h.state().session.prefs_to_json();
-        let mut restored = photocraft_engine::Session::new();
+        let mut restored = patronusphoto_engine::Session::new();
         restored.load_prefs_json(&saved).expect("reload preferences");
         assert_eq!(restored.prefs().interface.language, "ko");
     });
 }
 
-fn drawn_text(h: &egui_kittest::Harness<'_, Box<PhotocraftApp>>) -> Vec<String> {
+fn drawn_text(h: &egui_kittest::Harness<'_, Box<PatronusPhotoApp>>) -> Vec<String> {
     fn collect(shape: &egui::Shape, text: &mut Vec<String>) {
         match shape {
             egui::Shape::Text(shape) => text.push(shape.galley.job.text.clone()),

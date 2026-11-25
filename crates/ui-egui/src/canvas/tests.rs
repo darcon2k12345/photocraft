@@ -20,12 +20,13 @@ fn display_image_matches_egui_unmultiplied_conversion() {
             [v, (i % 257) as f32 / 256.0, 1.0 - (i % 113) as f32 / 112.0, (i % 6) as f32 / 5.0]
         })
         .collect();
-    let buf = photocraft_compose::Buffer { rect: photocraft_geom::Rect::new(0, 0, n as i32, 1), px };
-    let reference = |img: photocraft_raster::Rgba8Image| egui::ColorImage::from_rgba_unmultiplied([img.width as usize, img.height as usize], &img.pixels);
+    let buf = patronusphoto_compose::Buffer { rect: patronusphoto_geom::Rect::new(0, 0, n as i32, 1), px };
+    let reference = |img: patronusphoto_raster::Rgba8Image| egui::ColorImage::from_rgba_unmultiplied([img.width as usize, img.height as usize], &img.pixels);
     assert_eq!(super::display_image(None, &buf).pixels, reference(buf.to_rgba8()).pixels);
-    let mut doc = photocraft_doc::Document::new("t", photocraft_geom::Size::new(1, 1), photocraft_doc::ColorMode::Rgb, photocraft_doc::SampleType::U8);
+    let mut doc =
+        patronusphoto_doc::Document::new("t", patronusphoto_geom::Size::new(1, 1), patronusphoto_doc::ColorMode::Rgb, patronusphoto_doc::SampleType::U8);
     doc.icc_profile = Some(craft::cms::Builtin::AdobeRgbCompat.profile().to_bytes());
-    let mut color = photocraft_engine::color_cmds::ColorState::default();
+    let mut color = patronusphoto_engine::color_cmds::ColorState::default();
     color.settings.monitor_profile = "srgb".into();
     let d = color.canvas_display(&doc).unwrap();
     assert!(!d.is_identity());
@@ -34,10 +35,10 @@ fn display_image_matches_egui_unmultiplied_conversion() {
 
 /// #569: displays 1 (sRGB) and 4 (Display P3) side by side, and a document filled with an
 /// sRGB colour.
-fn app_on_two_displays() -> Box<PhotocraftApp> {
-    use photocraft_engine::color_cmds::resolve_profile;
-    use photocraft_engine::display_color::Display;
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app_on_two_displays() -> Box<PatronusPhotoApp> {
+    use patronusphoto_engine::color_cmds::resolve_profile;
+    use patronusphoto_engine::display_color::Display;
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 64, "height": 64})).unwrap();
     app.run("edit.fill", json!({"color": "#cc8040"})).unwrap();
     let icc = |id: &str| Some(resolve_profile(id, None, None).unwrap().to_bytes());
@@ -71,13 +72,13 @@ fn closed_documents_release_navigator_and_canvas_records() {
 }
 
 /// The revision of document `idx`'s canvas composite on `output` this pass, recorded as shown, as a display draws it.
-fn composite_revision(app: &mut PhotocraftApp, ctx: &egui::Context, idx: usize, output: Option<u32>) -> Revision {
+fn composite_revision(app: &mut PatronusPhotoApp, ctx: &egui::Context, idx: usize, output: Option<u32>) -> Revision {
     let prep = CompositePrep::new(app, ctx, idx, output, None).expect("an open document");
     prep.source(app).revision()
 }
 
 /// How many document pixels document 0's canvas composite redraws since it showed `seen`; `None` for all of them.
-fn redrawn_since(app: &mut PhotocraftApp, ctx: &egui::Context, seen: Revision) -> Option<i64> {
+fn redrawn_since(app: &mut PatronusPhotoApp, ctx: &egui::Context, seen: Revision) -> Option<i64> {
     let prep = CompositePrep::new(app, ctx, 0, None, None).expect("an open document");
     prep.source(app).damage(seen).map(|r| i64::from(r.width()) * i64::from(r.height()))
 }
@@ -87,8 +88,8 @@ fn redrawn_since(app: &mut PhotocraftApp, ctx: &egui::Context, seen: Revision) -
 #[test]
 fn gpu_texture_key_follows_the_ink_preview() {
     use super::display::ink_preview_key;
-    use photocraft_color::{ColorMode, SampleType};
-    let size = photocraft_doc::Size::new(2, 2);
+    use patronusphoto_color::{ColorMode, SampleType};
+    let size = patronusphoto_doc::Size::new(2, 2);
     let inks = Document::new("m", size, ColorMode::Multichannel, SampleType::U8);
     let rgb = Document::new("r", size, ColorMode::Rgb, SampleType::U8);
     assert_ne!(ink_preview_key(&inks), 0);
@@ -100,8 +101,8 @@ fn gpu_texture_key_follows_the_ink_preview() {
 /// effect reach, rendered over it) equals a new thumbnail of the edited document.
 #[test]
 fn navigator_damage_updates_match_a_full_thumbnail() {
-    use photocraft_compose::{render_reduced_damage, thumbnail_buffer, thumbnail_size};
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    use patronusphoto_compose::{render_reduced_damage, thumbnail_buffer, thumbnail_size};
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 1500, "height": 900, "background": "white"})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     app.run("select.rect", json!({"x": 200, "y": 150, "width": 300, "height": 200})).unwrap();
@@ -136,8 +137,8 @@ fn navigator_damage_updates_match_a_full_thumbnail() {
 }
 
 /// An app with a 64 × 64 white document, a clone source and the Clone Stamp at `size` px.
-fn clone_overlay_app(size: f32) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn clone_overlay_app(size: f32) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 64, "height": 64})).unwrap();
     app.run("cloneSource.set", json!({"source": [16, 16]})).unwrap();
     app.ui.tool = Tool::CloneStamp;
@@ -147,7 +148,7 @@ fn clone_overlay_app(size: f32) -> Box<PhotocraftApp> {
 
 /// The Clone Source image for the brush at (32, 32) as a function from a document pixel to its colour
 /// (transparent outside the image); `None` when no image shows.
-fn clone_source_image(app: &mut PhotocraftApp) -> Option<impl Fn(i32, i32) -> Color32 + use<>> {
+fn clone_source_image(app: &mut PatronusPhotoApp) -> Option<impl Fn(i32, i32) -> Color32 + use<>> {
     let source = super::strokes::clone_source(app, [32.0, 32.0])?;
     let size = source.size();
     let mut image = egui::ColorImage::filled([size.width as usize, size.height as usize], Color32::TRANSPARENT);
@@ -201,7 +202,7 @@ fn clone_overlay_follows_the_brush_hardness() {
 }
 
 /// The overlay's alpha at the brush centre, 0..1.
-fn clone_overlay_centre_alpha(app: &mut PhotocraftApp) -> f32 {
+fn clone_overlay_centre_alpha(app: &mut PatronusPhotoApp) -> f32 {
     f32::from(clone_source_image(app).expect("the Clone Source image shows")(32, 32).a()) / 255.0
 }
 
@@ -211,7 +212,7 @@ fn clone_overlay_centre_alpha(app: &mut PhotocraftApp) -> f32 {
 fn clone_overlay_opacity_and_flow_match_a_stamp_on_another_layer() {
     for depth in [8, 16, 32] {
         for clipped in [true, false] {
-            let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+            let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
             app.run("file.new", json!({"width": 64, "height": 64, "depth": depth})).unwrap();
             crate::retouch_ui::set_source(&mut app, 16.0, 16.0);
             app.run("layer.new.layer", json!({})).unwrap();
@@ -282,7 +283,7 @@ fn clone_overlay_repicking_on_the_original_layer_updates_preview_and_both_layers
     let target = app.session.active().unwrap().active_layer.unwrap();
     app.run("tools.setBrush", json!({"size": 6, "hardness": 1, "opacity": 1, "flow": 1})).unwrap();
     assert_eq!(clone_source_image(&mut app).unwrap()(32, 32), Color32::RED);
-    let stamp = |app: &mut PhotocraftApp| {
+    let stamp = |app: &mut PatronusPhotoApp| {
         let mut params = crate::retouch_ui::clone_params(app).unwrap();
         params["points"] = json!([[32, 32]]);
         app.run("paint.cloneStamp", params).unwrap();
@@ -428,7 +429,7 @@ fn clone_healing_overlay_wraps_with_the_live_texture_at_source_edges() {
     app.ui.view.pattern_preview = true;
     assert_eq!(crate::retouch_ui::clone_params(&app).unwrap()["wrap"], true);
     assert_eq!(clone_source_image(&mut app).unwrap()(30, 32).a(), 255, "the repeated source is visible before painting");
-    let live = photocraft_engine::retouch_cmds::LiveRetouch::begin(
+    let live = patronusphoto_engine::retouch_cmds::LiveRetouch::begin(
         &app.session,
         "paint.healingBrush",
         &json!({"points": [[32,32]], "size": 12, "hardness": 100, "wrap": true}),
@@ -460,7 +461,7 @@ fn clone_overlay_suppresses_cross_document_masks_and_channels() {
             if mask {
                 app.ui.mask_target = true;
             } else {
-                app.session.active_mut().unwrap().channel_view.target = photocraft_engine::channel_cmds::ChannelTarget::Alpha(0);
+                app.session.active_mut().unwrap().channel_view.target = patronusphoto_engine::channel_cmds::ChannelTarget::Alpha(0);
             }
             assert_eq!(app.session.active().unwrap().revision, revision, "only the target changed");
             assert!(clone_source_image(&mut app).is_none(), "{tool:?}, mask={mask}: the gesture has no supported source");
@@ -501,14 +502,14 @@ fn clone_overlay_is_clipped_to_a_shaped_tip() {
 /// edit its mask, as in Photoshop, instead of failing with "not a pixel layer".
 #[test]
 fn fills_on_an_adjustment_layer_edit_its_mask_when_the_icon_is_targeted() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 40, "height": 20, "background": "white"})).unwrap();
     app.run("layer.newAdjustmentLayer.curves", json!({})).unwrap();
     // Click the Curves icon thumbnail: the panel targets the layer, not its mask.
     app.ui.mask_target = false;
     app.sync_mask_targets();
     assert!(!app.ui.mask_target, "the panel's target is the icon");
-    let mask_at = |app: &PhotocraftApp| {
+    let mask_at = |app: &PatronusPhotoApp| {
         let st = app.session.active().unwrap();
         st.doc.layer(st.active_layer.unwrap()).unwrap().mask.as_ref().unwrap().surface.sample_channel(10, 10, 0)
     };
@@ -535,7 +536,7 @@ fn fills_on_an_adjustment_layer_edit_its_mask_when_the_icon_is_targeted() {
 /// changed (the pasted area), not the whole document as when only one revision counted.
 #[test]
 fn paste_into_refreshes_only_the_pasted_area() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.background_jobs = false;
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 800, "height": 600})).unwrap();
@@ -554,7 +555,7 @@ fn paste_into_refreshes_only_the_pasted_area() {
 /// that follows still redraws only where the layer was and is.
 #[test]
 fn auto_select_move_is_still_bounded() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.background_jobs = false;
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 800, "height": 600})).unwrap();
@@ -585,13 +586,13 @@ fn auto_select_move_is_still_bounded() {
 fn a_secondary_canvas_does_not_overwrite_the_main_canvas_scale() {
     // #1943 review: a document window can sit on a display with another scale; only the
     // primary canvas records `app.ppp`, so the main mapping doesn't change under it.
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
     app.run("view.actualPixels", json!({})).unwrap();
     app.sync_views();
     let view = app.ui.views[0].clone();
-    let frame = |app: &mut PhotocraftApp, ppp: f32, host: CanvasHost, primary: bool| {
+    let frame = |app: &mut PatronusPhotoApp, ppp: f32, host: CanvasHost, primary: bool| {
         let mut input = egui::RawInput::default();
         input.viewports.entry(egui::ViewportId::ROOT).or_default().native_pixels_per_point = Some(ppp);
         let mut out = ctx.run_ui(input, |ui| {
@@ -614,7 +615,7 @@ fn a_secondary_canvas_does_not_overwrite_the_main_canvas_scale() {
 fn a_secondary_canvas_hand_pans_while_a_transform_is_open() {
     // #2302 review: `app.ui.transform` is global, but only the primary canvas draws and drives
     // the box. A secondary window's Hand must still pan while the main window transforms.
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
@@ -625,7 +626,7 @@ fn a_secondary_canvas_hand_pans_while_a_transform_is_open() {
     app.ui.tool = Tool::Hand;
     app.sync_views();
     crate::transform_tool::begin(&mut app, &ctx).expect("a transform starts");
-    let box_key = |app: &PhotocraftApp| app.transform_preview.as_ref().map(|p| crate::transform_tool::preview_key(p.session));
+    let box_key = |app: &PatronusPhotoApp| app.transform_preview.as_ref().map(|p| crate::transform_tool::preview_key(p.session));
     let box_before = box_key(&app);
     assert!(app.ui.transform.is_some() && box_before.is_some(), "the box is open");
     let mut view0 = app.ui.views[0].clone();
@@ -636,7 +637,7 @@ fn a_secondary_canvas_hand_pans_while_a_transform_is_open() {
     // The same document in a document window of its own, whose canvas is not the main window's.
     let window = CanvasHost { idx: 0, window: Some(1) };
     let rect = Rect::from_min_size(Pos2::ZERO, vec2(400.0, 300.0));
-    let frame = |app: &mut PhotocraftApp, events: Vec<egui::Event>| -> View {
+    let frame = |app: &mut PatronusPhotoApp, events: Vec<egui::Event>| -> View {
         let input = egui::RawInput { screen_rect: Some(rect), events, ..Default::default() };
         let mut seen = view0.clone();
         let mut out = ctx.run_ui(input, |ui| {
@@ -667,7 +668,7 @@ fn guides_draw_over_the_transform_preview_and_under_its_box() {
     // picture and the controls are on different paint layers, so the order is read from the
     // pass's shapes, which egui hands over merged in paint order. The canvas's picture slot holds the document and the
     // preview as one list shape at its place, so the order is read from the shapes with every list opened in place.
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
@@ -718,7 +719,7 @@ fn guides_draw_over_the_transform_preview_and_under_its_box() {
 
 #[test]
 fn layer_style_dialog_previews_live_and_cancel_restores() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 16, "height": 16})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     let fx = |d: &Document| d.layers.iter().map(|l| l.effects.items.len()).sum::<usize>();
@@ -750,7 +751,7 @@ fn layer_style_opened_during_free_transform_applies_the_box_and_previews() {
     use craft::behavior::{EditEvent, Mixed};
     use craft::draw::ui::transform::TransformEdit;
     for placed in [true, false] {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
         app.run("file.new", json!({"width": 64, "height": 64})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();
         app.run("select.rect", json!({"x": 8, "y": 8, "width": 16, "height": 16})).unwrap();
@@ -772,9 +773,9 @@ fn layer_style_opened_during_free_transform_applies_the_box_and_previews() {
         crate::layer_style::open(&mut app, Some("dropShadow")).expect("the dialog opens");
         assert!(app.ui.transform.is_none() && app.transform_preview.is_none(), "placed {placed}: the box is applied");
         let (shown, _) = display_doc(&mut app, 0);
-        let rect = photocraft_geom::Rect::new(0, 0, 64, 64);
-        let with = photocraft_compose::render(&shown, rect);
-        let without = photocraft_compose::render(&app.session.documents()[0].doc, rect);
+        let rect = patronusphoto_geom::Rect::new(0, 0, 64, 64);
+        let with = patronusphoto_compose::render(&shown, rect);
+        let without = patronusphoto_compose::render(&app.session.documents()[0].doc, rect);
         assert!(
             with.get(16 + dx, 16)[0] < 0.1 && with.get(16 + dx, 16)[2] > 0.9,
             "placed {placed}: the blue block where the box left it, not the white under it"
@@ -789,12 +790,12 @@ fn layer_style_opened_during_free_transform_applies_the_box_and_previews() {
 
 #[test]
 fn damage_grows_by_nested_effect_reach() {
-    use photocraft_doc::{Effect, Layer};
-    let fmt = photocraft_color::PixelFormat::RGBA8;
+    use patronusphoto_doc::{Effect, Layer};
+    let fmt = patronusphoto_color::PixelFormat::RGBA8;
     assert_eq!(effect_reach(&[Layer::raster("plain", fmt)]), 0);
     let mut inner = Layer::raster("inner", fmt);
     inner.effects.items.push(Effect::default_drop_shadow());
-    let m = photocraft_compose::effects::margin(&inner);
+    let m = patronusphoto_compose::effects::margin(&inner);
     let mut group = Layer::group("g", vec![inner.clone()]);
     group.effects.items.push(Effect::default_drop_shadow());
     assert_eq!(effect_reach(std::slice::from_ref(&inner)), m);
@@ -812,18 +813,18 @@ fn tab_reorder_keeps_floating_documents_in_place() {
 }
 
 /// The `document` param naming the open document at index `i`: floating windows are keyed by document id.
-fn doc_param(app: &PhotocraftApp, i: usize) -> serde_json::Value {
+fn doc_param(app: &PatronusPhotoApp, i: usize) -> serde_json::Value {
     serde_json::to_value(app.session.documents()[i].doc.id).unwrap()
 }
 
 /// Window › Arrange › Float in Window for the open document at index `i`.
-fn float_doc(app: &mut PhotocraftApp, ctx: &egui::Context, i: usize) -> Result<serde_json::Value, String> {
+fn float_doc(app: &mut PatronusPhotoApp, ctx: &egui::Context, i: usize) -> Result<serde_json::Value, String> {
     let document = doc_param(app, i);
     crate::menus::invoke(app, ctx, "window.arrange.floatInWindow", json!({"document": document}))
 }
 
 /// The id of the first floating document window.
-fn first_window(app: &PhotocraftApp) -> u64 {
+fn first_window(app: &PatronusPhotoApp) -> u64 {
     app.ui.document_windows.floating[0].0.id
 }
 
@@ -831,7 +832,7 @@ fn first_window(app: &PhotocraftApp) -> u64 {
 fn torn_off_document_is_not_drawn_again_in_the_main_window() {
     use egui_kittest::kittest::{NodeT, Queryable};
     for kind in [crate::theme::AppTheme::pro(), crate::theme::AppTheme::studio()] {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 80, "height": 60, "name": "floating"})).unwrap();
         app.run("file.new", json!({"width": 80, "height": 60, "name": "docked"})).unwrap();
         app.sync_views();
@@ -841,14 +842,14 @@ fn torn_off_document_is_not_drawn_again_in_the_main_window() {
         assert_eq!(app.session.active_index(), Some(0), "{kind:?}: the floated page remains active");
         assert_eq!(main_canvas_document(&app), Some(1), "{kind:?}: the main canvas picks a docked page instead");
         let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(680.0, 480.0)).with_context(app.ctx().clone()).build_ui_state(
-            |ui, (app, ready): &mut (Box<PhotocraftApp>, bool)| {
+            |ui, (app, ready): &mut (Box<PatronusPhotoApp>, bool)| {
                 if *ready {
                     egui::CentralPanel::default().frame(egui::Frame::NONE).show(ui, |ui| document_area(app, ui));
                 }
             },
             (app, false),
         );
-        PhotocraftApp::setup_context(&h.ctx, kind.clone());
+        PatronusPhotoApp::setup_context(&h.ctx, kind.clone());
         h.state_mut().1 = true;
         h.run_steps(3);
         // The main tab strip's tabs, by the label each one exposes.
@@ -868,7 +869,7 @@ fn type_zoom(view: &mut View, percent: f32) {
 /// second floating window would share the document's view and overwrite its centre.
 #[test]
 fn float_all_keeps_one_window_per_floating_document() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 400, "height": 300, "name": "one"})).unwrap();
     app.run("file.new", json!({"width": 400, "height": 300, "name": "two"})).unwrap();
     app.sync_views();
@@ -876,7 +877,7 @@ fn float_all_keeps_one_window_per_floating_document() {
     let first = float_doc(&mut app, &ctx, 0).unwrap()["window"].as_u64();
     for _ in 0..2 {
         crate::menus::invoke(&mut app, &ctx, "window.arrange.floatAllInWindows", json!({})).unwrap();
-        let window_of = |app: &PhotocraftApp, doc: usize| {
+        let window_of = |app: &PatronusPhotoApp, doc: usize| {
             let id = app.session.documents()[doc].doc.id;
             let holding: Vec<u64> = app.ui.document_windows.floating.iter().filter(|(g, _)| g.documents.contains(&id)).map(|(g, _)| g.id).collect();
             assert_eq!(holding.len(), 1, "document {doc}: one floating window");
@@ -891,7 +892,7 @@ fn float_all_keeps_one_window_per_floating_document() {
 /// when the windows are consolidated back into tabs.
 #[test]
 fn consolidating_keeps_the_zoom_set_while_floating() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 400, "height": 300, "name": "floating"})).unwrap();
     app.sync_views();
     let ctx = app.ctx().clone();
@@ -906,13 +907,13 @@ fn consolidating_keeps_the_zoom_set_while_floating() {
 /// canvas: zooming either leaves the other as it was.
 #[test]
 fn a_new_window_for_document_keeps_its_own_view() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 400, "height": 300, "name": "doc"})).unwrap();
     app.sync_views();
     let app_ctx = app.ctx().clone();
     crate::menus::invoke(&mut app, &app_ctx, "window.arrange.newWindowForDocument", json!({})).unwrap();
     let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(900.0, 700.0)).with_context(app.ctx().clone()).build_ui_state(
-        |ui, (app, ready): &mut (Box<PhotocraftApp>, bool)| {
+        |ui, (app, ready): &mut (Box<PatronusPhotoApp>, bool)| {
             if *ready {
                 egui::CentralPanel::default().frame(egui::Frame::NONE).show(ui, |ui| document_area(app, ui));
                 extra_windows(app, ui);
@@ -924,7 +925,7 @@ fn a_new_window_for_document_keeps_its_own_view() {
     h.run_steps(4);
     assert!(!h.state().0.ui.document_windows.floating.is_empty(), "the extra window is open");
     let window = first_window(&h.state().0);
-    let window_zoom = |h: &egui_kittest::Harness<'_, (Box<PhotocraftApp>, bool)>| h.state().0.ui.window_views[&window].zoom;
+    let window_zoom = |h: &egui_kittest::Harness<'_, (Box<PatronusPhotoApp>, bool)>| h.state().0.ui.window_views[&window].zoom;
     let before = window_zoom(&h);
     type_zoom(&mut h.state_mut().0.ui.views[0], 300.0);
     h.run_steps(3);
@@ -942,7 +943,7 @@ fn a_new_window_for_document_keeps_its_own_view() {
 #[test]
 fn a_tiled_document_follows_navigator_and_status_bar_zoom() {
     for layout in ["twoUpVertical", "tileAllVertically", "fourUp"] {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         for name in ["one", "two", "three"] {
             app.run("file.new", json!({"width": 400, "height": 300, "name": name})).unwrap();
         }
@@ -950,7 +951,7 @@ fn a_tiled_document_follows_navigator_and_status_bar_zoom() {
         let app_ctx = app.ctx().clone();
         crate::menus::invoke(&mut app, &app_ctx, &format!("window.arrange.{layout}"), json!({})).unwrap();
         let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(900.0, 700.0)).with_context(app.ctx().clone()).build_ui_state(
-            |ui, (app, ready): &mut (Box<PhotocraftApp>, bool)| {
+            |ui, (app, ready): &mut (Box<PatronusPhotoApp>, bool)| {
                 if *ready {
                     egui::CentralPanel::default().frame(egui::Frame::NONE).show(ui, |ui| document_area(app, ui));
                 }
@@ -977,8 +978,8 @@ fn a_tiled_document_follows_navigator_and_status_bar_zoom() {
 fn a_floating_document_follows_navigator_and_status_bar_zoom() {
     use egui_kittest::kittest::{NodeT, Queryable};
     let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1400.0, 900.0)).with_max_steps(64).build_eframe(|cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), crate::Services::default());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 400, "height": 300, "name": "floating"})).unwrap();
         app.run("file.new", json!({"width": 400, "height": 300, "name": "docked"})).unwrap();
         app.sync_views();
@@ -1004,7 +1005,7 @@ fn a_floating_document_follows_navigator_and_status_bar_zoom() {
     assert!(crate::panel_docking::is_front(h.state(), "navigator"), "the Navigator shows as a panel");
     assert_eq!(h.state().session.active_index(), Some(0), "the floating document is active");
     // The status bar's zoom field (bottom left) and the Navigator's.
-    let fields = |h: &egui_kittest::Harness<'_, Box<PhotocraftApp>>| {
+    let fields = |h: &egui_kittest::Harness<'_, Box<PatronusPhotoApp>>| {
         // The fields are the nodes named Zoom that show the percentage as their value (a field's group and the Navigator's slider carry the name too).
         let mut f: Vec<egui::Rect> = h
             .query_all_by_label("Zoom")
@@ -1044,12 +1045,12 @@ fn a_floating_document_follows_navigator_and_status_bar_zoom() {
 fn free_transform_redraws_only_the_moving_layer_when_the_box_opens_and_closes() {
     // Opening the box swapped the canvas to a preview document with no damage for it, so a
     // gigapixel canvas recomposited in full (over a second) on every ⌘T, and again on Cancel.
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 400, "height": 200, "background": "transparent"})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     app.session
         .edit("paint", |doc, a| {
-            doc.layer_mut(a.unwrap()).unwrap().surface_mut().unwrap().fill_rect(photocraft_geom::Rect::new(20, 20, 60, 50), &[1.0, 0.0, 0.0, 1.0]);
+            doc.layer_mut(a.unwrap()).unwrap().surface_mut().unwrap().fill_rect(patronusphoto_geom::Rect::new(20, 20, 60, 50), &[1.0, 0.0, 0.0, 1.0]);
             Ok(())
         })
         .unwrap();
@@ -1065,7 +1066,7 @@ fn free_transform_redraws_only_the_moving_layer_when_the_box_opens_and_closes() 
     let canceled = damage_since(&app, 0, (rev, key ^ dk), (rev, 0), dk, (rev, None)).expect("canceling has one too");
     assert_eq!(canceled, opened);
     // A commit (one revision later) adds what it changed; anything else redraws everything.
-    let moved = photocraft_geom::Rect::new(100, 20, 140, 50);
+    let moved = patronusphoto_geom::Rect::new(100, 20, 140, 50);
     let committed = damage_since(&app, 0, (rev, key ^ dk), (rev + 1, 0), dk, (rev, Some(moved))).expect("committing too");
     assert!(committed.contains(20, 20) && committed.contains(139, 49), "{committed:?}");
     assert!(damage_since(&app, 0, (rev, key ^ dk), (rev + 2, 0), dk, (rev + 1, Some(moved))).is_none(), "a later revision isn't ours");
@@ -1076,7 +1077,7 @@ mod gpu_tests {
 
     #[test]
     fn gpu_display_luts_are_per_display() {
-        let _gpu = photocraft_testkit::gpu_lock();
+        let _gpu = patronusphoto_testkit::gpu_lock();
         let Ok(rs) = std::panic::catch_unwind(|| egui_kittest::wgpu::create_render_state(crate::gpu_canvas::wgpu_setup(), Default::default())) else {
             eprintln!("skipping: no GPU adapter");
             return;

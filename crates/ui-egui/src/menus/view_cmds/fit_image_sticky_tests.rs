@@ -4,18 +4,18 @@
 use craft::ui::dialog::DialogId;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 const FIT_IMAGE: &str = "file.automate.fitImage";
 
-fn app(width: u32, height: u32) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app(width: u32, height: u32) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": width, "height": height})).unwrap();
     app
 }
 
 /// Opens Fit Image, after the frame that shows it: a hosted form loads its values when it first shows.
-fn open(app: &mut PhotocraftApp) -> DialogId {
+fn open(app: &mut PatronusPhotoApp) -> DialogId {
     let ctx = app.ctx().clone();
     let reply = crate::menus::invoke(app, &ctx, FIT_IMAGE, json!({})).unwrap();
     let want = reply["dialog"].as_str().expect("the reply names a dialog").to_owned();
@@ -25,12 +25,12 @@ fn open(app: &mut PhotocraftApp) -> DialogId {
 }
 
 /// The dialog's Width, Height and Don't Enlarge.
-fn shown(app: &PhotocraftApp, id: DialogId) -> (Value, Value, Value) {
+fn shown(app: &PatronusPhotoApp, id: DialogId) -> (Value, Value, Value) {
     let f = app.framework.dialogs.open_dialogs().into_iter().find(|d| d.id == id).and_then(|d| d.fields).unwrap();
     (f["width"].clone(), f["height"].clone(), f["dontEnlarge"].clone())
 }
 
-fn set(app: &mut PhotocraftApp, id: DialogId, width: u64, height: u64, dont_enlarge: bool) {
+fn set(app: &mut PatronusPhotoApp, id: DialogId, width: u64, height: u64, dont_enlarge: bool) {
     let ctx = app.ctx().clone();
     for (key, value) in [("width", json!(width)), ("height", json!(height)), ("dontEnlarge", json!(dont_enlarge))] {
         app.framework.dialogs.set_json_field(&ctx, id, key, value).unwrap();

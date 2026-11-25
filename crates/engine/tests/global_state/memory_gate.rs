@@ -1,13 +1,13 @@
 //! On the web build a failed allocation aborts the module and freezes the page. The big
-//! operations therefore ask the allocator first (`photocraft_raster::headroom`) and refuse with
+//! operations therefore ask the allocator first (`patronusphoto_raster::headroom`) and refuse with
 //! an error when their estimated need won't fit (#10024). The simulation switch is process-wide,
 //! so every test here holds `LOCK` and resets it when it ends.
 
 use std::sync::MutexGuard;
 
-use photocraft_color::{ColorMode, PixelFormat, SampleType};
-use photocraft_engine::Session;
-use photocraft_raster::headroom;
+use patronusphoto_color::{ColorMode, PixelFormat, SampleType};
+use patronusphoto_engine::Session;
+use patronusphoto_raster::headroom;
 use serde_json::json;
 
 /// Holds the lock and the simulated room; resets the simulation when dropped.
@@ -39,7 +39,7 @@ fn png(dir: &std::path::Path, name: &str, w: u32, h: u32, color: &str) -> String
     let mut s = Session::new();
     s.execute("file.new", json!({"width": w, "height": h, "background": color})).unwrap();
     let st = s.active().unwrap();
-    let bytes = photocraft_io::export(&st.doc, "png", &Default::default()).unwrap().bytes;
+    let bytes = patronusphoto_io::export(&st.doc, "png", &Default::default()).unwrap().bytes;
     let path = dir.join(name);
     std::fs::write(&path, bytes).unwrap();
     path.to_string_lossy().into_owned()
@@ -106,10 +106,10 @@ fn smart_object_render_that_does_not_fit_is_refused_by_name() {
     let bytes = std::fs::read(&path).unwrap();
     let fmt = PixelFormat::new(ColorMode::Rgb, SampleType::U8, true);
     room.set(Some(SMALL));
-    let err = photocraft_engine::smart_cmds::source_image("src.png", &bytes, fmt).unwrap_err().to_string();
+    let err = patronusphoto_engine::smart_cmds::source_image("src.png", &bytes, fmt).unwrap_err().to_string();
     assert!(err.contains("Not enough memory to render the smart object \u{201c}src.png\u{201d}"), "{err}");
     room.set(None);
-    assert!(photocraft_engine::smart_cmds::source_image("src.png", &bytes, fmt).is_ok());
+    assert!(patronusphoto_engine::smart_cmds::source_image("src.png", &bytes, fmt).is_ok());
 }
 
 #[test]
@@ -127,7 +127,7 @@ fn layered_psd_is_refused_before_decode_without_changing_the_document() {
         builder.push_layer(LayerSpec::new(format!("layer {layer}"), 0, 0, SIDE, SIDE, PixelData::Rgba8(rgba)));
     }
     let bytes = builder.to_bytes().unwrap();
-    let budget = pixels * photocraft_engine::memory_gate::SMART_RENDER_BYTES_PER_PX + bytes.len() as u64;
+    let budget = pixels * patronusphoto_engine::memory_gate::SMART_RENDER_BYTES_PER_PX + bytes.len() as u64;
 
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("layers.psd");
@@ -140,7 +140,7 @@ fn layered_psd_is_refused_before_decode_without_changing_the_document() {
         assert_eq!(state(&s), before);
     }
     let fmt = PixelFormat::new(ColorMode::Rgb, SampleType::U8, true);
-    assert!(photocraft_engine::smart_cmds::source_image("layers.psd", &bytes, fmt).is_err());
+    assert!(patronusphoto_engine::smart_cmds::source_image("layers.psd", &bytes, fmt).is_err());
 
     // The layers make the need bigger but bounded, so the error names it.
     let err = s.execute("file.placeEmbedded", json!({"path": path})).unwrap_err().to_string();
@@ -152,7 +152,7 @@ fn layered_psd_is_refused_before_decode_without_changing_the_document() {
         assert!(s.execute(cmd, json!({"path": path})).unwrap_err().to_string().contains("Not enough memory"));
         assert_eq!(state(&s), before);
     }
-    assert!(photocraft_engine::smart_cmds::source_image("layers.psd", &bytes, fmt).is_err());
+    assert!(patronusphoto_engine::smart_cmds::source_image("layers.psd", &bytes, fmt).is_err());
 }
 
 #[test]
@@ -171,7 +171,7 @@ fn small_flat_psd_still_places_and_renders() {
     s.execute("file.placeEmbedded", json!({"path": path})).unwrap();
     assert_eq!(state(&s).2, before.2 + 1);
     let fmt = PixelFormat::new(ColorMode::Rgb, SampleType::U8, true);
-    assert!(photocraft_engine::smart_cmds::source_image("flat.psd", &bytes, fmt).is_ok());
+    assert!(patronusphoto_engine::smart_cmds::source_image("flat.psd", &bytes, fmt).is_ok());
     drop(room);
 }
 
@@ -198,7 +198,7 @@ fn a_psd_with_image_resources_places_and_renders_when_it_fits() {
         let bytes = builder.to_bytes().unwrap();
         // No color-mode data for RGB, then a non-empty image resources section.
         assert_ne!(&bytes[30..34], &[0u8; 4][..], "{name} has image resources");
-        assert!(photocraft_engine::smart_cmds::source_image(name, &bytes, fmt).is_ok(), "{name}");
+        assert!(patronusphoto_engine::smart_cmds::source_image(name, &bytes, fmt).is_ok(), "{name}");
         let path = dir.path().join(name);
         std::fs::write(&path, &bytes).unwrap();
         let before = state(&s);
@@ -244,14 +244,14 @@ fn a_smart_object_edit_under_low_memory_keeps_its_appearance() {
 #[test]
 fn everything_passes_without_a_simulation() {
     let _room = Room::new(None);
-    assert!(photocraft_engine::memory_gate::ensure("do anything", 64 << 30).is_ok());
-    assert!(photocraft_engine::memory_gate::ensure_for_save("save", 64 << 30).is_ok());
+    assert!(patronusphoto_engine::memory_gate::ensure("do anything", 64 << 30).is_ok());
+    assert!(patronusphoto_engine::memory_gate::ensure_for_save("save", 64 << 30).is_ok());
 }
 
 #[test]
 fn the_save_wording_leads_with_freeing_memory_and_keeps_the_document() {
     let room = Room::new(Some(SMALL));
-    let err = photocraft_engine::memory_gate::ensure_for_save("save \u{201c}a.psd\u{201d}", 900 * MIB).unwrap_err().to_string();
+    let err = patronusphoto_engine::memory_gate::ensure_for_save("save \u{201c}a.psd\u{201d}", 900 * MIB).unwrap_err().to_string();
     assert!(err.starts_with("Not enough memory to save \u{201c}a.psd\u{201d} (it needs about 900 MB)."), "{err}");
     assert!(err.contains("Edit \u{203a} Purge \u{203a} All"), "{err}");
     assert!(err.contains("still open"), "{err}");

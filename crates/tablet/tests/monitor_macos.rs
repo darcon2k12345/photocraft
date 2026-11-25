@@ -11,8 +11,8 @@ fn main() {
     use objc2_app_kit::{NSApplication, NSEvent};
     use objc2_core_graphics::{CGEvent, CGEventField, CGEventMouseSubtype, CGEventType, CGMouseButton};
     use objc2_foundation::NSPoint;
-    use photocraft_tablet::Sample;
-    use photocraft_tablet::macos::Monitor;
+    use patronusphoto_tablet::Sample;
+    use patronusphoto_tablet::macos::Monitor;
 
     // Answer cargo-nextest's `--list` (and nothing for `--ignored`), as every `harness = false`
     // test must; `monitor_macos --exact` falls through to the test.

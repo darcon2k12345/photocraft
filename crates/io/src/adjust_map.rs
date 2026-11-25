@@ -11,8 +11,8 @@
 //! stay [`Adjustment::Unsupported`] and are written back verbatim.
 
 use craft_psd::descriptor::{Descriptor, Value, VersionedDescriptor};
-use photocraft_doc::Adjustment;
-use photocraft_doc::adjust::{CURVE_MAP_LEN, CurvePoint, HueRange, LevelsChannel, LutFormat, LutSource, ToneSpace, curve_map};
+use patronusphoto_doc::Adjustment;
+use patronusphoto_doc::adjust::{CURVE_MAP_LEN, CurvePoint, HueRange, LevelsChannel, LutFormat, LutSource, ToneSpace, curve_map};
 
 mod encode;
 
@@ -182,7 +182,7 @@ pub fn parse(key: &[u8; 4], data: &[u8], cged: Option<&[u8]>, channels: Channels
         }
         (Adjustment::Curves { space, black, .. }, Channels::Cmyk) => {
             *space = ToneSpace::Cmyk;
-            if photocraft_doc::adjust::is_identity_curve(black) {
+            if patronusphoto_doc::adjust::is_identity_curve(black) {
                 black.clear();
             }
         }
@@ -326,7 +326,7 @@ fn parse_gradient_map(d: &[u8]) -> Option<Adjustment> {
     let mids: Vec<f32> = order.iter().skip(1).map(|i| mids[*i]).collect();
     let method = crate::gradient_bake::Method::from_code(method);
     // Kept as Photoshop's editor holds it, so the editor shows these stops (#8351).
-    let source = photocraft_doc::adjust::GradientSource {
+    let source = patronusphoto_doc::adjust::GradientSource {
         stops: order.iter().filter_map(|i| stops.get(*i)).map(|(t, c)| (*t, c.to_rgb())).collect(),
         midpoints: mids.clone(),
         smoothness: smooth.clamp(0.0, 1.0),
@@ -358,10 +358,10 @@ pub(crate) fn retarget_gradient_map(data: &mut [u8], target: &Adjustment, channe
     }
 }
 
-/// `true` for a `grdm` block exactly as older PhotoCraft builds wrote it: [`write_gradient_map`]'s
+/// `true` for a `grdm` block exactly as older Patronus Photo builds wrote it: [`write_gradient_map`]'s
 /// output without the two padding bytes, which makes Photoshop refuse the file (#8070). Blocks
 /// from other writers, whatever their length, are not matched.
-pub(crate) fn is_unpadded_photocraft_gradient_map(data: &[u8]) -> bool {
+pub(crate) fn is_unpadded_patronusphoto_gradient_map(data: &[u8]) -> bool {
     if data.len().is_multiple_of(4) {
         return false;
     }
@@ -640,9 +640,9 @@ fn parse_photo_filter(d: &[u8]) -> Option<Adjustment> {
                 return None;
             }
             // Relative to the D50 white: bring it back to absolute D50 XYZ before converting.
-            let xyz = [rel[0] * photocraft_color::convert::D50[0], rel[1], rel[2] * photocraft_color::convert::D50[2]];
-            let lin = photocraft_color::convert::mat3_mul(&photocraft_color::convert::XYZ_D50_TO_SRGB, xyz);
-            (lin.map(|v| photocraft_color::convert::linear_to_srgb(v.clamp(0.0, 1.0))), 14)
+            let xyz = [rel[0] * patronusphoto_color::convert::D50[0], rel[1], rel[2] * patronusphoto_color::convert::D50[2]];
+            let lin = patronusphoto_color::convert::mat3_mul(&patronusphoto_color::convert::XYZ_D50_TO_SRGB, xyz);
+            (lin.map(|v| patronusphoto_color::convert::linear_to_srgb(v.clamp(0.0, 1.0))), 14)
         }
         _ => return None,
     };

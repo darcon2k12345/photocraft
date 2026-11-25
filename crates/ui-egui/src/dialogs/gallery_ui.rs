@@ -26,13 +26,13 @@ use craft::ui::patterns::form_dialogs::{Param, ParamKind};
 use craft::ui::primitives::textures::{Revision, ThumbRender, ThumbRequest, ThumbSource};
 use craft::ui::runtime::pending::Job;
 use egui::Color32;
-use photocraft_algo::{FilterParams, GALLERY_CATEGORIES, GalleryFilter};
-use photocraft_doc::{DocId, LayerId};
-use photocraft_geom::Rect;
-use photocraft_raster::{Interrupt, Surface};
+use patronusphoto_algo::{FilterParams, GALLERY_CATEGORIES, GalleryFilter};
+use patronusphoto_doc::{DocId, LayerId};
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::{Interrupt, Surface};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 const THUMB: [usize; 2] = [80, 56];
 const KEY: &str = "filter.filterGallery";
@@ -240,7 +240,7 @@ pub(crate) struct GalleryApp {
 }
 
 /// The open gallery's fields for automation, with the document, layer and smart filter it edits.
-pub(crate) fn describe(app: &PhotocraftApp) -> Option<Value> {
+pub(crate) fn describe(app: &PatronusPhotoApp) -> Option<Value> {
     let g = app.gallery.as_ref()?;
     let mut v: Value = crate::distort_ui::workspace_fields(app, KEY).unwrap_or_else(|| json!({}));
     if let Some(o) = v.as_object_mut() {
@@ -254,7 +254,7 @@ pub(crate) fn describe(app: &PhotocraftApp) -> Option<Value> {
 /// Acts on what the gallery reported this frame: opens the colour picker for a swatch, hands the
 /// picked colour back, and runs OK's stack. Takes only what is queued now, so a second pass in a
 /// frame finds nothing left to repeat.
-pub(crate) fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
+pub(crate) fn take(app: &mut PatronusPhotoApp, _ctx: &egui::Context) {
     let Some(id) = app.gallery.as_ref().map(|g| g.id) else { return };
 
     let events = app.framework.dialogs.get_mut_by_id::<Hosted>(id).map(|h| h.take_events()).unwrap_or_default();
@@ -312,12 +312,12 @@ fn sample(surf: &Surface, r: Rect, k: u32) -> Surface {
 
 /// Runs a stack on a small surface (the thumbnails).
 fn render(src: &Surface, params: &Value) -> Surface {
-    let effects = photocraft_engine::gallery_cmds::effects_from_json(params).unwrap_or_default();
+    let effects = patronusphoto_engine::gallery_cmds::effects_from_json(params).unwrap_or_default();
     let b = src.content_bounds().union(&Rect::new(0, 0, 1, 1));
     let b = Rect::new(0, 0, b.x1, b.y1);
-    let mut out = photocraft_algo::apply_in(src, &FilterParams::FilterGallery { effects }, b, b, None, b);
-    if let Ok(Some(colors)) = photocraft_engine::color_channels::explicit(params, src.format().mode.color_channels())
-        && photocraft_engine::color_channels::restrict_surface(src, &mut out, colors).is_err()
+    let mut out = patronusphoto_algo::apply_in(src, &FilterParams::FilterGallery { effects }, b, b, None, b);
+    if let Ok(Some(colors)) = patronusphoto_engine::color_channels::explicit(params, src.format().mode.color_channels())
+        && patronusphoto_engine::color_channels::restrict_surface(src, &mut out, colors).is_err()
     {
         return src.clone();
     }
@@ -329,13 +329,13 @@ fn render(src: &Surface, params: &Value) -> Surface {
 /// the pixels equal the same crop of the applied result; then `k`×`k` blocks are averaged.
 /// `None` when cancelled.
 fn preview_pixels(src: &Surface, canvas: Rect, params: &Value, vis: Rect, k: u32, ctl: &Interrupt) -> Option<Surface> {
-    let effects = photocraft_engine::gallery_cmds::effects_from_json(params).unwrap_or_default();
+    let effects = patronusphoto_engine::gallery_cmds::effects_from_json(params).unwrap_or_default();
     let fp = FilterParams::FilterGallery { effects };
     let content = src.content_bounds();
-    let area = photocraft_algo::output_area(&fp, content, canvas, None).intersect(&vis);
-    let mut full = if area.is_empty() { src.clone() } else { photocraft_algo::apply_in_with(src, &fp, area, canvas, None, canvas.union(&content), ctl)? };
-    if let Some(colors) = photocraft_engine::color_channels::explicit(params, src.format().mode.color_channels()).ok()? {
-        photocraft_engine::color_channels::restrict_region(src, &mut full, colors, area).ok()?;
+    let area = patronusphoto_algo::output_area(&fp, content, canvas, None).intersect(&vis);
+    let mut full = if area.is_empty() { src.clone() } else { patronusphoto_algo::apply_in_with(src, &fp, area, canvas, None, canvas.union(&content), ctl)? };
+    if let Some(colors) = patronusphoto_engine::color_channels::explicit(params, src.format().mode.color_channels()).ok()? {
+        patronusphoto_engine::color_channels::restrict_region(src, &mut full, colors, area).ok()?;
     }
     Some(reduce(&full, vis, k))
 }
@@ -455,7 +455,7 @@ fn colour_param(p: &Value, key: &str) -> Option<[f32; 4]> {
 }
 
 /// Opens the dialog on the active layer, starting from the last gallery stack used.
-pub fn open(app: &mut PhotocraftApp) -> Result<(), String> {
+pub fn open(app: &mut PatronusPhotoApp) -> Result<(), String> {
     let (layer, src, _) = crate::distort_ui::active_filter_target(app)?;
     let last = app.session.journal.iter().rev().find(|(id, _)| id == KEY).map(|(_, p)| p.clone());
     let effects = last.as_ref().map(|p| effects_from(p, &PcCatalog)).unwrap_or_default();
@@ -465,9 +465,9 @@ pub fn open(app: &mut PhotocraftApp) -> Result<(), String> {
 
 /// Re-opens Filter Gallery smart filter `index` of smart object `layer` with its recorded stack,
 /// previewing on the pixels below it; OK updates that filter (`layer.smartFilter.setParams`).
-pub fn open_smart_filter(app: &mut PhotocraftApp, layer: LayerId, index: usize) -> Result<(), String> {
+pub fn open_smart_filter(app: &mut PatronusPhotoApp, layer: LayerId, index: usize) -> Result<(), String> {
     let st = app.session.active().ok_or("no document")?;
-    let Some(photocraft_doc::LayerContent::Smart(sm)) = st.doc.layer(layer).map(|l| &l.content) else {
+    let Some(patronusphoto_doc::LayerContent::Smart(sm)) = st.doc.layer(layer).map(|l| &l.content) else {
         return Err("the layer is not a smart object".into());
     };
     let filter = sm.smart_filters.get(index).ok_or("no such smart filter")?;
@@ -475,7 +475,7 @@ pub fn open_smart_filter(app: &mut PhotocraftApp, layer: LayerId, index: usize) 
         return Err("the smart filter is not a Filter Gallery filter".into());
     }
     let p = filter.params.clone();
-    let src = photocraft_engine::smart_cmds::render_below_filter(&st.doc, sm, index)
+    let src = patronusphoto_engine::smart_cmds::render_below_filter(&st.doc, sm, index)
         .map_err(|e| e.to_string())?
         .ok_or("the smart object's contents are unavailable (missing linked file?)")?;
     let fg = colour_param(&p, "foreground").unwrap_or(app.session.tools.foreground);
@@ -484,7 +484,7 @@ pub fn open_smart_filter(app: &mut PhotocraftApp, layer: LayerId, index: usize) 
 }
 
 fn open_on(
-    app: &mut PhotocraftApp,
+    app: &mut PatronusPhotoApp,
     layer: LayerId,
     src: Surface,
     effects: Vec<EffectLayer>,

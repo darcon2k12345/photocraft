@@ -2,17 +2,17 @@
 //! GPU canvas and on the CPU canvas (flipped views draw through the CPU path), and nothing past
 //! the document while it is off. Skips when no GPU adapter exists (like `color_managed_canvas.rs`).
 
-use photocraft_ui_egui::PhotocraftApp;
+use patronusphoto_ui_egui::PatronusPhotoApp;
 use serde_json::json;
 
-type Harness = egui_kittest::Harness<'static, Box<PhotocraftApp>>;
+type Harness = egui_kittest::Harness<'static, Box<PatronusPhotoApp>>;
 
 /// Build the application harness for GPU and CPU canvas comparisons.
 fn harness() -> Option<Harness> {
     let built = std::panic::catch_unwind(|| {
         egui_kittest::Harness::builder().with_size(egui::vec2(1000.0, 700.0)).with_pixels_per_point(1.0).with_max_steps(64).wgpu().build_eframe(|cc| {
-            PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-            let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), Default::default());
+            PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+            let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), Default::default());
             if let Some(rs) = cc.wgpu_render_state.as_ref() {
                 eprintln!("pattern preview adapter {:?}", rs.adapter.get_info());
                 app.set_wgpu(rs.clone());
@@ -33,7 +33,7 @@ fn harness() -> Option<Harness> {
 /// the points of one state share a render instead of settling and rendering the same frame again (#15652).
 fn samples<const N: usize>(h: &mut Harness, at: [[f32; 2]; N]) -> [[u8; 3]; N] {
     h.run_steps(6);
-    let xf = photocraft_ui_egui::canvas::active_view(h.state()).expect("canvas view");
+    let xf = patronusphoto_ui_egui::canvas::active_view(h.state()).expect("canvas view");
     let img = h.render().expect("render");
     at.map(|at| {
         let p = xf.to_screen(craft::behavior::kurbo::Point::new(f64::from(at[0]), f64::from(at[1])));
@@ -44,10 +44,10 @@ fn samples<const N: usize>(h: &mut Harness, at: [[f32; 2]; N]) -> [[u8; 3]; N] {
 
 /// View › Pattern Preview, as the menu runs it.
 fn toggle(h: &mut Harness) {
-    let (request, _) = photocraft_ui_egui::control::ControlRequest::new("ui.menu.invoke", json!({"id": "view.patternPreview"}));
+    let (request, _) = patronusphoto_ui_egui::control::ControlRequest::new("ui.menu.invoke", json!({"id": "view.patternPreview"}));
     let ctx = h.ctx.clone();
-    let response = photocraft_ui_egui::control::handle(h.state_mut(), &ctx, &request);
-    assert!(matches!(response, photocraft_ui_egui::control::Reply::Done(_)));
+    let response = patronusphoto_ui_egui::control::handle(h.state_mut(), &ctx, &request);
+    assert!(matches!(response, patronusphoto_ui_egui::control::Reply::Done(_)));
 }
 
 fn near(a: [u8; 3], b: [u8; 3]) -> bool {
@@ -56,7 +56,7 @@ fn near(a: [u8; 3], b: [u8; 3]) -> bool {
 
 #[test]
 fn pattern_preview_repeats_the_document_on_gpu_and_cpu_canvases() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut h) = harness() else { return };
     let app = h.state_mut();
     app.run("file.new", json!({"width": 200, "height": 100, "mode": "rgb", "depth": 8})).expect("new");

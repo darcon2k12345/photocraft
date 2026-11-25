@@ -1,10 +1,10 @@
 //! Color Replacement: recolour pixels similar to a sampled colour using a non-separable blend
 //! (Hue, Saturation, Color or Luminosity) with the foreground colour.
 
-use photocraft_color::BlendMode;
-use photocraft_color::blend::blend_rgb;
-use photocraft_geom::Rect;
-use photocraft_raster::{Surface, from_rgba_into, to_rgba};
+use patronusphoto_color::BlendMode;
+use patronusphoto_color::blend::blend_rgb;
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::{Surface, from_rgba_into, to_rgba};
 use serde::{Deserialize, Serialize};
 
 use crate::Stroke;
@@ -105,9 +105,9 @@ pub fn color_replacement_effect(pre: Surface, rs: ReplaceSettings) -> impl FnMut
     // In a Lab/8 document Color mode keeps the pixel's L and takes the foreground's a and b, as in
     // the reference application (#11922): the stored a, b channels move straight to its. Lab/16
     // wasn't measured and keeps the RGB blend.
-    let lab_color = fmt.mode == photocraft_color::ColorMode::Lab && fmt.sample == photocraft_color::SampleType::U8 && rs.mode == ReplaceMode::Color;
+    let lab_color = fmt.mode == patronusphoto_color::ColorMode::Lab && fmt.sample == patronusphoto_color::SampleType::U8 && rs.mode == ReplaceMode::Color;
     let fg_ab = {
-        let l = photocraft_color::convert::srgb_to_lab(fg);
+        let l = patronusphoto_color::convert::srgb_to_lab(fg);
         [(l[1] + 128.0) / 255.0, (l[2] + 128.0) / 255.0]
     };
     let tol = rs.tolerance.clamp(0.0, 1.0);
@@ -210,9 +210,9 @@ pub fn color_replacement_effect(pre: Surface, rs: ReplaceSettings) -> impl FnMut
         };
         // A sample as the document stores it.
         let stored = |v: f32| match fmt.sample {
-            photocraft_color::SampleType::U8 => (v.clamp(0.0, 1.0) * 255.0).round(),
-            photocraft_color::SampleType::U16 => (v.clamp(0.0, 1.0) * 65535.0).round(),
-            photocraft_color::SampleType::F32 => v,
+            patronusphoto_color::SampleType::U8 => (v.clamp(0.0, 1.0) * 255.0).round(),
+            patronusphoto_color::SampleType::U16 => (v.clamp(0.0, 1.0) * 65535.0).round(),
+            patronusphoto_color::SampleType::F32 => v,
         };
         let mut enc = [0.0f32; 8];
         for y in r.y0..r.y1 {
@@ -255,14 +255,14 @@ mod replace_lab_tests;
 mod tests {
     use super::*;
     use crate::{BrushSettings, StrokePoint};
-    use photocraft_color::PixelFormat;
-    use photocraft_color::blend::lum;
+    use patronusphoto_color::PixelFormat;
+    use patronusphoto_color::blend::lum;
 
     fn setup(fmt: PixelFormat) -> Surface {
         let mut s = Surface::new(fmt);
         // Left: mid green; right: dark blue.
-        s.fill_rect(Rect::new(0, 0, 40, 40), &photocraft_raster::from_rgba(&fmt, [0.2, 0.6, 0.2, 1.0]));
-        s.fill_rect(Rect::new(40, 0, 80, 40), &photocraft_raster::from_rgba(&fmt, [0.1, 0.1, 0.5, 1.0]));
+        s.fill_rect(Rect::new(0, 0, 40, 40), &patronusphoto_raster::from_rgba(&fmt, [0.2, 0.6, 0.2, 1.0]));
+        s.fill_rect(Rect::new(40, 0, 80, 40), &patronusphoto_raster::from_rgba(&fmt, [0.1, 0.1, 0.5, 1.0]));
         s
     }
 

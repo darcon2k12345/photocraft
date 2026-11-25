@@ -11,23 +11,23 @@ use egui_kittest::{
     Harness,
     kittest::{NodeT, Queryable},
 };
-use photocraft_doc::ShapeLayer;
+use patronusphoto_doc::ShapeLayer;
 
-fn app(mode: &str, depth: u32) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app(mode: &str, depth: u32) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 120, "height": 100, "mode": mode, "depth": depth})).unwrap();
     app.ui.tool = Tool::Rectangle;
     app.sync_views();
     app
 }
 
-fn shape(app: &PhotocraftApp) -> &ShapeLayer {
+fn shape(app: &PatronusPhotoApp) -> &ShapeLayer {
     let st = app.session.active().unwrap();
     let LayerContent::Shape(shape) = &st.doc.layer(st.active_layer.unwrap()).unwrap().content else { panic!("expected editable shape") };
     shape
 }
 
-fn history(app: &PhotocraftApp) -> usize {
+fn history(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.past_len()
 }
 
@@ -59,15 +59,15 @@ fn geometry(tool: Tool, from: [f64; 2], to: [f64; 2]) -> ShapeGeometry {
 }
 
 /// Commits a drag of `tool` from `from` to `to` as the canvas does on release.
-fn draw(app: &mut PhotocraftApp, tool: Tool, from: [f64; 2], to: [f64; 2]) {
+fn draw(app: &mut PatronusPhotoApp, tool: Tool, from: [f64; 2], to: [f64; 2]) {
     shapes::finish_drag(app, shapes::kind_of(tool), &geometry(tool, from, to), Mods::default());
 }
 
-fn harness(app: Box<PhotocraftApp>, properties: bool) -> Harness<'static, Box<PhotocraftApp>> {
+fn harness(app: Box<PatronusPhotoApp>, properties: bool) -> Harness<'static, Box<PatronusPhotoApp>> {
     // kittest's default step: 0.25 s a frame.
     let ctx = app.ctx().clone();
     let mut h = Harness::builder().with_size(vec2(1000.0, 700.0)).with_step_dt(0.25).with_context(ctx).build_ui_state(
-        move |ui, app: &mut Box<PhotocraftApp>| {
+        move |ui, app: &mut Box<PatronusPhotoApp>| {
             crate::screen_picker::tick(app, ui.ctx());
             if !ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 return;
@@ -85,12 +85,12 @@ fn harness(app: Box<PhotocraftApp>, properties: bool) -> Harness<'static, Box<Ph
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     h.run_steps(3);
     h
 }
 
-fn stroke_width(h: &mut Harness<'_, Box<PhotocraftApp>>, width: &str) {
+fn stroke_width(h: &mut Harness<'_, Box<PatronusPhotoApp>>, width: &str) {
     h.get_all_by_role(egui::accesskit::Role::SpinButton).next().expect("the stroke width").click();
     h.run();
     h.key_press_modifiers(Modifiers::COMMAND, Key::A);
@@ -100,17 +100,17 @@ fn stroke_width(h: &mut Harness<'_, Box<PhotocraftApp>>, width: &str) {
 }
 
 /// The Fill or Stroke chip named `label` (a colour well; the popover's kind switch carries the same name).
-fn chip<'h>(h: &'h Harness<'_, Box<PhotocraftApp>>, label: &'h str) -> egui_kittest::Node<'h> {
+fn chip<'h>(h: &'h Harness<'_, Box<PatronusPhotoApp>>, label: &'h str) -> egui_kittest::Node<'h> {
     h.get_by_role_and_label(egui::accesskit::Role::ColorWell, label)
 }
 
 /// The Stroke style button, which opens the Stroke Options popover.
-fn stroke_style_button<'h>(h: &'h Harness<'_, Box<PhotocraftApp>>) -> egui_kittest::Node<'h> {
+fn stroke_style_button<'h>(h: &'h Harness<'_, Box<PatronusPhotoApp>>) -> egui_kittest::Node<'h> {
     h.get_by_role_and_label(egui::accesskit::Role::Button, "Stroke style")
 }
 
 /// Opens the chip `label` and picks its kind button `kind` ("No Color", "Solid", "Gradient").
-fn pick_kind(h: &mut Harness<'_, Box<PhotocraftApp>>, label: &str, kind: &str) {
+fn pick_kind(h: &mut Harness<'_, Box<PatronusPhotoApp>>, label: &str, kind: &str) {
     chip(h, label).click();
     h.run_steps(3);
     h.get_by_role_and_label(egui::accesskit::Role::RadioButton, kind).click();
@@ -119,9 +119,9 @@ fn pick_kind(h: &mut Harness<'_, Box<PhotocraftApp>>, label: &str, kind: &str) {
 
 /// Clicks the popover's swatch `name`: a list item labelled "<name>, <hex>" in the Swatches list. The list is the Solid
 /// paint's, and a group's rows show once its header is open (the group named by the swatch's first word).
-fn click_swatch(h: &mut Harness<'_, Box<PhotocraftApp>>, name: &str) {
+fn click_swatch(h: &mut Harness<'_, Box<PatronusPhotoApp>>, name: &str) {
     let prefix = format!("{name}, #");
-    let found = |h: &Harness<'_, Box<PhotocraftApp>>| {
+    let found = |h: &Harness<'_, Box<PatronusPhotoApp>>| {
         h.query_all_by_role(egui::accesskit::Role::ListItem).any(|n| n.accesskit_node().label().as_deref().is_some_and(|l| l.starts_with(&prefix)))
     };
     if !found(h) {
@@ -145,7 +145,7 @@ fn click_swatch(h: &mut Harness<'_, Box<PhotocraftApp>>, name: &str) {
 
 /// Opens the chip `label`, its Color Picker… button, sets `color` (the colour it opened with when
 /// `None`) and presses OK.
-fn pick_in_full_picker(h: &mut Harness<'_, Box<PhotocraftApp>>, label: &str, color: Option<Srgba>) {
+fn pick_in_full_picker(h: &mut Harness<'_, Box<PatronusPhotoApp>>, label: &str, color: Option<Srgba>) {
     chip(h, label).click();
     h.run_steps(3);
     h.get_by_label("Color Picker…").click();
@@ -190,8 +190,8 @@ fn zero_width_preserves_selected_shape_stroke_and_restores_it() {
 
             // A save at zero must retain the dormant stroke too.
             let st = h.state().session.active().unwrap();
-            let bytes = photocraft_format::save_to_bytes(&st.doc, &Default::default()).unwrap();
-            let loaded = photocraft_format::load_from_bytes(&bytes).unwrap();
+            let bytes = patronusphoto_format::save_to_bytes(&st.doc, &Default::default()).unwrap();
+            let loaded = patronusphoto_format::load_from_bytes(&bytes).unwrap();
             let LayerContent::Shape(saved) = &loaded.layer(st.active_layer.unwrap()).unwrap().content else { panic!("saved shape") };
             assert_eq!(saved.stroke, zero.stroke);
 
@@ -297,7 +297,7 @@ fn float_paints_match_preview_creation_native_roundtrip_and_document_depth() {
             let mut app = app(mode, depth);
             set_tool_paint(&mut app, false, PaintChange::Color(foreground)).unwrap();
             set_tool_paint(&mut app, true, PaintChange::Color(background)).unwrap();
-            app.ui.tool_options.shape_stroke.cap = photocraft_doc::LineCap::Round;
+            app.ui.tool_options.shape_stroke.cap = patronusphoto_doc::LineCap::Round;
             app.ui.tool_options.shape_stroke.dashes = vec![0.0, 2.0];
             let drag = geometry(tool, [20.0, 20.0], [100.0, 80.0]);
             let preview = shapes::shape_preview(&app, shapes::kind_of(tool), &drag).unwrap();
@@ -309,10 +309,10 @@ fn float_paints_match_preview_creation_native_roundtrip_and_document_depth() {
             assert_eq!(committed.fill, Some(solid_paint(foreground)));
             assert_eq!(committed.stroke.as_ref().unwrap().paint, solid_paint(background));
             let doc = &app.session.active().unwrap().doc;
-            let rendered = photocraft_vector::render_shape(&preview, doc.pixel_format(), doc.bounds());
+            let rendered = patronusphoto_vector::render_shape(&preview, doc.pixel_format(), doc.bounds());
             assert_eq!(committed.cache.as_ref().unwrap(), &rendered, "{tool:?} {mode}/{depth}");
-            let bytes = photocraft_format::save_to_bytes(doc, &Default::default()).unwrap();
-            let loaded = photocraft_format::load_from_bytes(&bytes).unwrap();
+            let bytes = patronusphoto_format::save_to_bytes(doc, &Default::default()).unwrap();
+            let loaded = patronusphoto_format::load_from_bytes(&bytes).unwrap();
             let id = app.session.active().unwrap().active_layer.unwrap();
             let LayerContent::Shape(saved) = &loaded.layer(id).unwrap().content else { panic!("saved editable shape") };
             assert_eq!((&saved.fill, &saved.stroke), (&committed.fill, &committed.stroke));
@@ -427,7 +427,7 @@ fn selected_shape_gradient_and_full_picker_edit_the_layer() {
     let before = history(&app);
     let mut h = harness(app, true);
     pick_kind(&mut h, "Fill", "Gradient");
-    assert!(matches!(shape(h.state()).fill, Some(photocraft_doc::Fill::Gradient { .. })), "Gradient fills the shape");
+    assert!(matches!(shape(h.state()).fill, Some(patronusphoto_doc::Fill::Gradient { .. })), "Gradient fills the shape");
     assert_eq!(history(h.state()), before + 1);
     h.key_press(Key::Escape);
     h.run_steps(2);
@@ -441,12 +441,12 @@ fn selected_shape_gradient_and_full_picker_edit_the_layer() {
     assert_eq!(shape(h.state()).fill, Some(solid_paint(h.state().session.tools.foreground)));
 }
 
-fn test_gradient() -> photocraft_doc::Fill {
-    photocraft_doc::Fill::Gradient {
-        stops: vec![(0.0, photocraft_doc::Color::rgba(0.123456, 0.5, 0.75, 1.0)), (1.0, photocraft_doc::Color::rgba(0.9, 0.2, 0.1, 0.6))],
+fn test_gradient() -> patronusphoto_doc::Fill {
+    patronusphoto_doc::Fill::Gradient {
+        stops: vec![(0.0, patronusphoto_doc::Color::rgba(0.123456, 0.5, 0.75, 1.0)), (1.0, patronusphoto_doc::Color::rgba(0.9, 0.2, 0.1, 0.6))],
         angle: 30.0,
         scale: 0.5,
-        style: photocraft_doc::GradientStyle::Radial,
+        style: patronusphoto_doc::GradientStyle::Radial,
         reverse: true,
         opacity_stops: vec![(0.0, 1.0), (1.0, 0.25)],
         midpoints: vec![0.3],
@@ -486,7 +486,7 @@ fn tool_gradient_paints_reach_the_preview_and_the_next_shape() {
         assert_eq!(committed.stroke.as_ref().unwrap().paint, test_gradient(), "{mode}/{depth}");
         assert_eq!(committed.fill, Some(test_gradient()));
         let doc = &app.session.active().unwrap().doc;
-        let rendered = photocraft_vector::render_shape(&preview, doc.pixel_format(), doc.bounds());
+        let rendered = patronusphoto_vector::render_shape(&preview, doc.pixel_format(), doc.bounds());
         assert_eq!(committed.cache.as_ref().unwrap(), &rendered, "{mode}/{depth}");
         set_tool_paint(&mut app, true, PaintChange::Color([0.0, 1.0, 0.0, 1.0])).unwrap();
         assert!(app.ui.tool_options.shape_stroke_gradient.is_none());
@@ -502,12 +502,12 @@ fn tool_gradient_paints_reach_the_preview_and_the_next_shape() {
 fn stroke_swatch_gradient_tab_sets_the_next_shapes_stroke() {
     let mut h = harness(app("rgb", 8), false);
     pick_kind(&mut h, "Stroke", "Gradient");
-    let stroke_gradient = |h: &Harness<'_, Box<PhotocraftApp>>| match h.state().ui.tool_options.shape_stroke_gradient.clone() {
-        Some(photocraft_doc::Fill::Gradient { stops, style, angle, .. }) => (stops, style, angle),
+    let stroke_gradient = |h: &Harness<'_, Box<PatronusPhotoApp>>| match h.state().ui.tool_options.shape_stroke_gradient.clone() {
+        Some(patronusphoto_doc::Fill::Gradient { stops, style, angle, .. }) => (stops, style, angle),
         other => panic!("a stroke gradient, not {other:?}"),
     };
     let (_, style, angle) = stroke_gradient(&h);
-    assert_eq!((style, angle), (photocraft_doc::GradientStyle::Linear, 90.0));
+    assert_eq!((style, angle), (patronusphoto_doc::GradientStyle::Linear, 90.0));
     assert_eq!(h.state().ui.tool_options.stroke_width, 3.0, "choosing a gradient enables the stroke");
     h.get_by_label("Blue 01").click();
     h.run_steps(2);
@@ -519,7 +519,7 @@ fn stroke_swatch_gradient_tab_sets_the_next_shapes_stroke() {
     h.get_by_role_and_label(egui::accesskit::Role::RadioButton, "Radial").click();
     h.run_steps(2);
     let (stops, style, _) = stroke_gradient(&h);
-    assert_eq!((stops, style), (blue_stops, photocraft_doc::GradientStyle::Radial), "the style keeps the colours");
+    assert_eq!((stops, style), (blue_stops, patronusphoto_doc::GradientStyle::Radial), "the style keeps the colours");
     assert_eq!(history(h.state()), 0, "tool defaults do not edit the document");
     draw(h.state_mut(), Tool::Rectangle, [20.0, 20.0], [100.0, 80.0]);
     assert_eq!(shape(h.state()).stroke.as_ref().unwrap().paint, tool_stroke_gradient(&h), "the next shape's stroke is the tool gradient");
@@ -538,26 +538,28 @@ fn properties_stroke_swatch_gives_the_selected_shape_a_gradient_stroke() {
     let mut h = harness(app, true);
     pick_kind(&mut h, "Stroke", "Gradient");
     let stroke = shape(h.state()).stroke.clone().unwrap();
-    let photocraft_doc::Fill::Gradient { stops, .. } = &stroke.paint else { panic!("a gradient stroke, not {:?}", stroke.paint) };
+    let patronusphoto_doc::Fill::Gradient { stops, .. } = &stroke.paint else { panic!("a gradient stroke, not {:?}", stroke.paint) };
     assert_eq!(stroke.width, 4.0);
     assert_eq!(history(h.state()), before + 1);
     h.get_by_role_and_label(egui::accesskit::Role::RadioButton, "Reflected").click();
     h.run_steps(3);
-    let photocraft_doc::Fill::Gradient { stops: after, style, .. } = shape(h.state()).stroke.clone().unwrap().paint else { panic!("still a gradient stroke") };
-    assert_eq!((&after, style), (stops, photocraft_doc::GradientStyle::Reflected));
+    let patronusphoto_doc::Fill::Gradient { stops: after, style, .. } = shape(h.state()).stroke.clone().unwrap().paint else {
+        panic!("still a gradient stroke")
+    };
+    assert_eq!((&after, style), (stops, patronusphoto_doc::GradientStyle::Reflected));
     while history(h.state()) > before {
         h.state_mut().run("edit.undo", json!({})).unwrap();
     }
     assert_eq!(shape(h.state()).stroke.as_ref().unwrap().paint, solid_paint([1.0, 0.0, 0.0, 1.0]));
 }
 
-fn tool_stroke_gradient(h: &Harness<'_, Box<PhotocraftApp>>) -> photocraft_doc::Fill {
+fn tool_stroke_gradient(h: &Harness<'_, Box<PatronusPhotoApp>>) -> patronusphoto_doc::Fill {
     h.state().ui.tool_options.shape_stroke_gradient.clone().expect("a stroke gradient")
 }
 
-fn gradient_stops(f: &photocraft_doc::Fill) -> photocraft_engine::presets::gradients::FillStops {
+fn gradient_stops(f: &patronusphoto_doc::Fill) -> patronusphoto_engine::presets::gradients::FillStops {
     match f {
-        photocraft_doc::Fill::Gradient { stops, opacity_stops, .. } => (stops.clone(), opacity_stops.clone()),
+        patronusphoto_doc::Fill::Gradient { stops, opacity_stops, .. } => (stops.clone(), opacity_stops.clone()),
         other => panic!("a gradient, not {other:?}"),
     }
 }
@@ -566,7 +568,7 @@ fn gradient_stops(f: &photocraft_doc::Fill) -> photocraft_engine::presets::gradi
 /// stops as they are: before, every stop went out as sRGB RGBA and came back in the RGB model.
 #[test]
 fn gradient_tab_edit_keeps_cmyk_stops_in_their_model() {
-    let cmyk = |c: [f32; 4]| photocraft_doc::Color { mode: photocraft_doc::ColorMode::Cmyk, c, alpha: 1.0 };
+    let cmyk = |c: [f32; 4]| patronusphoto_doc::Color { mode: patronusphoto_doc::ColorMode::Cmyk, c, alpha: 1.0 };
     let stops = vec![(0.0, cmyk([0.1, 0.2, 0.3, 0.9])), (1.0, cmyk([0.75, 0.0, 0.5, 0.0]))];
     for (properties, label) in [(true, "Stroke"), (false, "Stroke")] {
         let mut app = app("cmyk", 8);
@@ -579,7 +581,7 @@ fn gradient_tab_edit_keeps_cmyk_stops_in_their_model() {
         h.get_by_role_and_label(egui::accesskit::Role::CheckBox, "Reverse").click();
         h.run_steps(3);
         let paint = shape(h.state()).stroke.clone().unwrap().paint;
-        assert!(matches!(paint, photocraft_doc::Fill::Gradient { reverse: true, .. }), "Properties={properties}: Reverse applied");
+        assert!(matches!(paint, patronusphoto_doc::Fill::Gradient { reverse: true, .. }), "Properties={properties}: Reverse applied");
         assert_eq!(gradient_stops(&paint).0, stops, "Properties={properties}: the stops keep their CMYK model and values");
     }
 }
@@ -659,7 +661,7 @@ fn a_refused_popover_swatch_is_not_a_recently_used_colour() {
                 |_, ()| Ok(json!({})),
             )
             .unwrap();
-        let photocraft_engine::jobs::Started::Job(job) = started else { panic!("the job ran inline") };
+        let patronusphoto_engine::jobs::Started::Job(job) = started else { panic!("the job ran inline") };
         let mut h = harness(app, properties);
         chip(&h, popover).click();
         h.run_steps(3);
@@ -687,8 +689,8 @@ fn a_refused_popover_swatch_is_not_a_recently_used_colour() {
 fn path_mode_radius_leaves_the_active_shape_layer_alone() {
     let mut app = app("rgb", 8);
     app.run("shape.create", json!({"kind": "rect", "rect": [20, 20, 60, 40], "radii": 10})).unwrap();
-    let radii = |app: &PhotocraftApp| match &shape(app).live {
-        Some(photocraft_doc::LiveShape::Rect { radii, .. }) => *radii,
+    let radii = |app: &PatronusPhotoApp| match &shape(app).live {
+        Some(patronusphoto_doc::LiveShape::Rect { radii, .. }) => *radii,
         other => panic!("expected a live rectangle, got {other:?}"),
     };
     assert_eq!(radii(&app), [10.0; 4]);

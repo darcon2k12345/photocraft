@@ -1,5 +1,5 @@
 [package]
-name = "photocraft-compose"
+name = "patronusphoto-compose"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -8,11 +8,11 @@ license.workspace = true
 workspace = true
 
 [dependencies]
-photocraft-geom = { workspace = true }
-photocraft-color = { workspace = true }
-photocraft-raster = { workspace = true }
-photocraft-doc = { workspace = true }
-photocraft-vector = { workspace = true }
+patronusphoto-geom = { workspace = true }
+patronusphoto-color = { workspace = true }
+patronusphoto-raster = { workspace = true }
+patronusphoto-doc = { workspace = true }
+patronusphoto-vector = { workspace = true }
 craft-cms = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -21,7 +21,7 @@ rayon = { workspace = true }
 [dev-dependencies]
 proptest = { workspace = true }
 criterion = { workspace = true }
-photocraft-paint = { workspace = true }
+patronusphoto-paint = { workspace = true }
 
 [[bench]]
 name = "compose"

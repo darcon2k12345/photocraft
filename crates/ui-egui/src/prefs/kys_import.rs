@@ -16,7 +16,7 @@ use craft::menu::shortcuts::{ImportOffer, OfferAnswer, OfferRecord};
 use craft::ui::dialog::{DialogResult, StartupStage};
 use serde_json::Value;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::prefs_ui::shortcuts::{draft_keymap, import_options, kys_text, profiles_of, queue_import, save_keys};
 
 /// Preferences › `dialogs` key that records the first-launch offer (an [`OfferRecord`]: the source
@@ -25,26 +25,26 @@ pub const IMPORTED_PREF: &str = "photoshopShortcuts";
 
 /// A `.kys` opened like a document (File › Open, a drop): its bytes are text. The dialog opens on
 /// Keyboard Shortcuts and reviews the set on its next pass.
-pub fn open_bytes(app: &mut PhotocraftApp, name: &str, bytes: &[u8]) -> Result<Value, String> {
+pub fn open_bytes(app: &mut PatronusPhotoApp, name: &str, bytes: &[u8]) -> Result<Value, String> {
     let text = kys_text(name, bytes)?;
     queue_import(app, text);
     Ok(crate::prefs_ui::shortcuts::control_reply())
 }
 
-fn remember(app: &mut PhotocraftApp, record: &OfferRecord) {
+fn remember(app: &mut PatronusPhotoApp, record: &OfferRecord) {
     let record = serde_json::to_value(record).unwrap_or_default();
     app.session.edit_prefs(|p| {
         p.dialogs.insert(IMPORTED_PREF.into(), record);
     });
 }
 
-fn not_imported(app: &mut PhotocraftApp, error: &str) {
+fn not_imported(app: &mut PatronusPhotoApp, error: &str) {
     app.ui.status = crate::i18n::fmt(tl!("The keyboard shortcut set was not imported: {error}"), &[("error", error)]);
     app.ui.status_error = true;
 }
 
 /// Photoshop's live set ([`crate::Services::photoshop_shortcuts`]) as its source path and text.
-fn live_set(app: &mut PhotocraftApp) -> Option<(String, String)> {
+fn live_set(app: &mut PatronusPhotoApp) -> Option<(String, String)> {
     app.services.photoshop_shortcuts.as_mut().and_then(|find| find())
 }
 
@@ -52,7 +52,7 @@ fn live_set(app: &mut PhotocraftApp) -> Option<(String, String)> {
 /// the startup stage for offers. Someone who already changed a shortcut keeps their own set and is
 /// not asked; a set that changes nothing (Photoshop's defaults are ours too) is not offered
 /// either. The preferences remember each outcome, so a later launch never asks again.
-pub fn offer(app: &mut PhotocraftApp) {
+pub fn offer(app: &mut PatronusPhotoApp) {
     if app.session.prefs().dialogs.contains_key(IMPORTED_PREF) {
         return;
     }
@@ -78,13 +78,13 @@ pub fn offer(app: &mut PhotocraftApp) {
 /// The offer's answer. The record is stored first, as the offer is answered, whatever follows;
 /// Import then applies the set, saves it as OK would and says so. A prompt closed from outside
 /// records nothing, so the next launch asks again.
-pub fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
+pub fn take(app: &mut PatronusPhotoApp, _ctx: &egui::Context) {
     let Some(DialogResult::Ok(answer)) = app.framework.dialogs.take::<ImportOffer>() else { return };
     answered(app, answer);
 }
 
 /// What an answer of the prompt does ([`take`]).
-fn answered(app: &mut PhotocraftApp, answer: OfferAnswer) {
+fn answered(app: &mut PatronusPhotoApp, answer: OfferAnswer) {
     let Some((source, text)) = live_set(app) else { return };
     remember(app, &OfferRecord::new(&source, answer == OfferAnswer::Import));
     if answer != OfferAnswer::Import {

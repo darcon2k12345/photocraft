@@ -1,4 +1,4 @@
-//! `ui.screenshot` through the app: craft-automation's capture queue driven by PhotoCraft's logic
+//! `ui.screenshot` through the app: craft-automation's capture queue driven by Patronus Photo's logic
 //! and UI phases, its document identity, the geometry the runtime reports, and the automation
 //! write authority. The queue's own rules (budgets, settling, deadlines, image checks) are
 //! craft-automation's and tested there.
@@ -11,16 +11,16 @@ use serde_json::{Value, json};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-fn captures(app: &crate::PhotocraftApp) -> &Captures {
+fn captures(app: &crate::PatronusPhotoApp) -> &Captures {
     &app.control.as_ref().expect("a control channel").captures
 }
 
-fn captures_mut(app: &mut crate::PhotocraftApp) -> &mut Captures {
+fn captures_mut(app: &mut crate::PatronusPhotoApp) -> &mut Captures {
     &mut app.control.as_mut().expect("a control channel").captures
 }
 
 /// Execute the same logic→UI order as eframe, with genuinely new host geometry before logic.
-fn actual_capture_frame(app: &mut crate::PhotocraftApp, ctx: &Context, size: egui::Vec2, scale: f32, minimized: bool) -> egui::FullOutput {
+fn actual_capture_frame(app: &mut crate::PatronusPhotoApp, ctx: &Context, size: egui::Vec2, scale: f32, minimized: bool) -> egui::FullOutput {
     use eframe::App as _;
     let rect = egui::Rect::from_min_size(egui::Pos2::ZERO, size);
     let mut viewports = egui::ViewportIdMap::default();
@@ -49,7 +49,7 @@ fn actual_callback(output: &egui::FullOutput) -> Option<egui::ScreenshotCallback
 type ScreenshotWrites = std::rc::Rc<std::cell::RefCell<Vec<(String, Vec<u8>)>>>;
 
 struct ActualCallbackFixture {
-    app: Box<crate::PhotocraftApp>,
+    app: Box<crate::PatronusPhotoApp>,
     ctx: Context,
     writes: ScreenshotWrites,
     reply: std::sync::mpsc::Receiver<serde_json::Value>,
@@ -71,11 +71,11 @@ fn actual_callback_fixture() -> ActualCallbackFixture {
         })),
         ..Default::default()
     };
-    let mut app = crate::PhotocraftApp::new(photocraft_engine::Session::new(), services).with_control(std::sync::mpsc::channel().1);
+    let mut app = crate::PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services).with_control(std::sync::mpsc::channel().1);
     app.run("file.new", serde_json::json!({"width": 32, "height": 32})).unwrap();
     let ctx = app.ctx().clone();
     // `raw_input_hook` hands the craft runtime its frame input, as on the app's context.
-    crate::PhotocraftApp::setup_context(&ctx, Default::default());
+    crate::PatronusPhotoApp::setup_context(&ctx, Default::default());
     for _ in 0..4 {
         actual_capture_frame(&mut app, &ctx, vec2(600.0, 400.0), 1.0, false);
     }
@@ -213,11 +213,11 @@ fn assert_successful_capture(fixture: &mut ActualCallbackFixture, size: egui::Ve
 #[test]
 fn a_launch_and_capture_request_waits_for_the_first_ui_pass() {
     let (tx, rx) = std::sync::mpsc::channel();
-    let mut app = crate::PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default()).with_control(rx);
+    let mut app = crate::PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default()).with_control(rx);
     let (request, reply) = crate::control::ControlRequest::new("ui.screenshot", json!({"focus": false}));
     tx.send(request).unwrap();
     let ctx = app.ctx().clone();
-    crate::PhotocraftApp::setup_context(&ctx, Default::default());
+    crate::PatronusPhotoApp::setup_context(&ctx, Default::default());
     // The settle delay runs on the wall clock.
     let give_up = Instant::now() + Duration::from_secs(5);
     let callback = loop {
@@ -236,7 +236,7 @@ fn a_launch_and_capture_request_waits_for_the_first_ui_pass() {
     assert_eq!(reply["ok"], true, "{reply}");
 }
 
-/// PhotoCraft's document identity against a capture in flight: switching to another document, or
+/// Patronus Photo's document identity against a capture in flight: switching to another document, or
 /// away and back, fails it; an edit in the same document does not.
 #[test]
 fn a_capture_in_flight_follows_the_app_document_identity() {
@@ -248,7 +248,7 @@ fn a_capture_in_flight_follows_the_app_document_identity() {
         ("edit in the same document", vec![("layer.new.layer", json!({}))], true),
     ];
     for (name, between, captured) in cases {
-        let mut app = crate::PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
         app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
         let ctx = app.ctx().clone();

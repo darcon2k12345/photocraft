@@ -10,8 +10,8 @@ use serde_json::json;
 use super::*;
 
 /// A filter dialog over a 256×256 layer, with the preview the canvas computed for it on screen.
-fn filter_dialog_with_preview(background: bool) -> (Box<PhotocraftApp>, DialogId) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn filter_dialog_with_preview(background: bool) -> (Box<PatronusPhotoApp>, DialogId) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.background_jobs = background;
     app.run("file.new", serde_json::json!({"width": 256, "height": 256, "background": "#3366cc"})).unwrap();
     let id = crate::filter_dialog::open(&mut app, "filter.blur.gaussianBlur").unwrap();
@@ -69,7 +69,7 @@ fn a_filters_preview_stays_on_screen_until_its_job_lands() {
 
 #[test]
 fn file_info_keeps_multiline_metadata_on_confirm_and_reopen() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 64, "height": 64})).unwrap();
     let ctx = app.ctx().clone();
     crate::menus::invoke(&mut app, &ctx, "file.fileInfo", json!({})).unwrap();
@@ -94,7 +94,7 @@ fn tint(fields: &mut DialogFields) -> ParamDialog<'_> {
 #[test]
 fn a_color_row_opens_the_color_picker_as_a_child_and_its_ok_answers_the_row() {
     use egui_kittest::kittest::Queryable;
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 64, "height": 64})).unwrap();
     let tools = (app.session.tools.foreground, app.session.tools.background);
     let mut h =
@@ -122,10 +122,10 @@ fn a_color_row_opens_the_color_picker_as_a_child_and_its_ok_answers_the_row() {
 
 #[test]
 fn the_one_time_move_stores_owned_dialog_values_once_and_leaves_engine_read_keys() {
-    let host = Host::builder(AppInfo { id: "photocraft", name: "PhotoCraft", version: "0" }).settings(Arc::new(MemorySections::default())).build();
-    let mut prefs = photocraft_engine::prefs::Preferences::default();
+    let host = Host::builder(AppInfo { id: "patronusphoto", name: "Patronus Photo", version: "0" }).settings(Arc::new(MemorySections::default())).build();
+    let mut prefs = patronusphoto_engine::prefs::Preferences::default();
     let dialogs = &mut prefs.dialogs;
-    // Generic: the old key under `photocraft.`, nulls dropped.
+    // Generic: the old key under `patronusphoto.`, nulls dropped.
     dialogs.insert("filter.gaussianBlur".into(), json!({"radius": 4.0, "preview": null}));
     // Routed: a library crate names the slot.
     dialogs.insert("shape.create.ellipse".into(), json!({"default": {"width": 3}}));
@@ -140,11 +140,11 @@ fn the_one_time_move_stores_owned_dialog_values_once_and_leaves_engine_read_keys
     move_memories(&mut prefs, &host);
 
     let table = |scope: &str| Remembered::<toml::Table>::new(scope).recall(&host);
-    assert_eq!(table("photocraft.filter.gaussianBlur").expect("moved").get("radius"), Some(&toml::Value::Float(4.0)));
-    assert!(!table("photocraft.filter.gaussianBlur").unwrap().contains_key("preview"), "a null drops");
+    assert_eq!(table("patronusphoto.filter.gaussianBlur").expect("moved").get("radius"), Some(&toml::Value::Float(4.0)));
+    assert!(!table("patronusphoto.filter.gaussianBlur").unwrap().contains_key("preview"), "a null drops");
     assert!(table("craft_draw.shape.create.ellipse").is_some(), "a routed key lands under its library scope");
-    assert!(table("photocraft.shape.create.ellipse").is_none());
-    assert_eq!(table("photocraft.edit.fill").unwrap().get("mode"), Some(&toml::Value::String(photocraft_color::BlendMode::ColorBurn.key().to_string())));
+    assert!(table("patronusphoto.shape.create.ellipse").is_none());
+    assert_eq!(table("patronusphoto.edit.fill").unwrap().get("mode"), Some(&toml::Value::String(patronusphoto_color::BlendMode::ColorBurn.key().to_string())));
     let mut left: Vec<&str> = prefs.dialogs.keys().map(String::as_str).collect();
     left.sort_unstable();
     let mut kept = vec!["file.print", "ui.layersPanelOptions", "file.export.saveForWebLegacy", live_shape_prompt::PREF];
@@ -152,9 +152,9 @@ fn the_one_time_move_stores_owned_dialog_values_once_and_leaves_engine_read_keys
     assert_eq!(left, kept, "only the kept entries stay in the preferences");
 
     // A second run finds nothing to move: a value changed since is not overwritten.
-    Remembered::<toml::Table>::new("photocraft.filter.gaussianBlur").store(&host, &toml::Table::new());
+    Remembered::<toml::Table>::new("patronusphoto.filter.gaussianBlur").store(&host, &toml::Table::new());
     move_memories(&mut prefs, &host);
-    assert_eq!(table("photocraft.filter.gaussianBlur"), Some(toml::Table::new()));
+    assert_eq!(table("patronusphoto.filter.gaussianBlur"), Some(toml::Table::new()));
 }
 
 struct MarkA;
@@ -162,14 +162,14 @@ struct MarkB;
 
 static HITS: Mutex<Vec<(&'static str, PromptChoice)>> = Mutex::new(Vec::new());
 
-fn row_a(_: &mut PhotocraftApp, _: &egui::Context, answer: &mut PromptAnswer) -> bool {
+fn row_a(_: &mut PatronusPhotoApp, _: &egui::Context, answer: &mut PromptAnswer) -> bool {
     answer.tag::<MarkA>().is_some_and(|_| {
         HITS.lock().unwrap().push(("a", answer.choice));
         true
     })
 }
 
-fn row_b(_: &mut PhotocraftApp, _: &egui::Context, answer: &mut PromptAnswer) -> bool {
+fn row_b(_: &mut PatronusPhotoApp, _: &egui::Context, answer: &mut PromptAnswer) -> bool {
     answer.tag::<MarkB>().is_some_and(|_| {
         HITS.lock().unwrap().push(("b", answer.choice));
         true
@@ -183,7 +183,7 @@ fn with_buttons(prompt: StandardPrompt) -> StandardPrompt {
 
 #[test]
 fn a_prompt_answer_reaches_its_own_entry_once_and_a_host_cancel_reaches_none() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     // The rows are listed with B first: A's answer must pass B's row and still reach A's.
     let rows: &[PromptRow] = &[row_b, row_a];

@@ -9,10 +9,10 @@
 //! one router that says which popup a press the tool refused opens, for every canvas tool.
 
 use craft::keymap::Mods;
-use photocraft_engine::BrushSettings;
-use photocraft_engine::prefs::RightClickPaint;
+use patronusphoto_engine::BrushSettings;
+use patronusphoto_engine::prefs::RightClickPaint;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas_tool_menu::MenuKind;
 use crate::state::Tool;
 
@@ -25,7 +25,7 @@ use crate::state::Tool;
 /// The foreground and background colours, the erase flag and the stroke seed belong to the
 /// session rather than to the tool, so a swap never carries them between tools: picking a colour
 /// or painting with the Eraser works with any tool's brush.
-pub fn sync_tool_brush(app: &mut PhotocraftApp) {
+pub fn sync_tool_brush(app: &mut PatronusPhotoApp) {
     let tool = app.ui.tool;
     if !has_brush_picker(tool) || app.ui.brush_tool == tool {
         return;
@@ -73,7 +73,7 @@ pub fn sync_tool_brush(app: &mut PhotocraftApp) {
             };
             // The Remove tool starts at its measured 19 px; the rest is the current brush (#12548).
             let size = if tool == Tool::Remove { REMOVE_TOOL_SIZE } else { current.size };
-            BrushSettings { smoothing: first_smoothing(), mode: photocraft_color::BlendMode::Normal, opacity, flow, size, ..current }
+            BrushSettings { smoothing: first_smoothing(), mode: patronusphoto_color::BlendMode::Normal, opacity, flow, size, ..current }
         }
     };
     // The picked preset was the outgoing tool's brush: forget it, so Update Brush can't overwrite
@@ -84,7 +84,7 @@ pub fn sync_tool_brush(app: &mut PhotocraftApp) {
 }
 
 /// The brush `tool` had when it was last active.
-fn save_brush(app: &mut PhotocraftApp, tool: Tool, brush: BrushSettings) {
+fn save_brush(app: &mut PatronusPhotoApp, tool: Tool, brush: BrushSettings) {
     match app.ui.tool_brushes.iter_mut().find(|(t, _)| *t == tool) {
         Some(e) => e.1 = brush,
         None => app.ui.tool_brushes.push((tool, brush)),
@@ -172,13 +172,13 @@ pub(crate) fn fresh_brush(tool: Tool, current: &BrushSettings) -> BrushSettings 
 }
 
 /// Photoshop's 10 % stroke smoothing, what a tool's brush starts at.
-fn first_smoothing() -> photocraft_engine::paint::brush::Smoothing {
-    photocraft_engine::paint::brush::Smoothing { amount: 0.1, ..Default::default() }
+fn first_smoothing() -> patronusphoto_engine::paint::brush::Smoothing {
+    patronusphoto_engine::paint::brush::Smoothing { amount: 0.1, ..Default::default() }
 }
 
 /// Does a stroke with `tool` starting now paint in Photoshop's Clear mode, erasing with its own
 /// brush (#3439)? Clear chosen in its Mode dropdown, or `~` held (`hold_keys::erase_key`).
-pub fn clears(app: &PhotocraftApp, tool: Tool) -> bool {
+pub fn clears(app: &PatronusPhotoApp, tool: Tool) -> bool {
     let chosen = match tool {
         Tool::Brush => app.ui.tool_options.brush_clear,
         Tool::Pencil => app.ui.tool_options.pencil_clear,
@@ -199,7 +199,7 @@ pub fn right_click_picker(tool: Tool) -> bool {
 }
 
 /// Does a right-button drag with `tool` erase (rather than open the picker)?
-pub fn right_erases(app: &PhotocraftApp, tool: Tool) -> bool {
+pub fn right_erases(app: &PatronusPhotoApp, tool: Tool) -> bool {
     matches!(tool, Tool::Brush | Tool::Eraser) && app.session.prefs().tools.right_click_with_painting_tools == RightClickPaint::Erase
 }
 
@@ -221,7 +221,7 @@ pub(crate) enum SecondaryUse {
 /// (Cmd, or the Move tool) are menus, so neither erases nor resizes; a resize beats the erase; the
 /// HUD is the Shift+Alt press of a tool whose right click is the picker, unless the right button
 /// erases.
-pub(crate) fn secondary_takes(app: &PhotocraftApp, tool: Tool, mods: Mods) -> SecondaryUse {
+pub(crate) fn secondary_takes(app: &PatronusPhotoApp, tool: Tool, mods: Mods) -> SecondaryUse {
     // The press has no document point here: a plain bucket press over the pasteboard is no paint
     // press either way (`context_popup` tells the two menus apart).
     if crate::brush_mode_menu::opens_on(app, tool, mods, None) {
@@ -258,7 +258,7 @@ pub(crate) enum ContextPopup {
 /// image; the pasteboard menu; the view menu of the Zoom and Hand tools; the Brush Preset picker of
 /// the painting tools; and the tool's own menu, the type edit menu or the type layer menu. Guide
 /// menus come from the guides' own output and transform menus from the transform box.
-pub(crate) fn context_popup(app: &mut PhotocraftApp, tool: Tool, mods: Mods, doc: [f64; 2]) -> Option<ContextPopup> {
+pub(crate) fn context_popup(app: &mut PatronusPhotoApp, tool: Tool, mods: Mods, doc: [f64; 2]) -> Option<ContextPopup> {
     use crate::canvas_tool_menu as menu;
     if crate::brush_mode_menu::opens_on(app, tool, mods, Some(doc)) {
         return Some(ContextPopup::Menu(MenuKind::BrushMode { plain: !crate::brush_mode_menu::is_gesture(tool, mods) }));

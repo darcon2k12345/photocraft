@@ -7,22 +7,22 @@ use craft::ui::menu::PanelRow;
 use craft::ui::runtime::commands::CommandRef;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The panel menu's rows.
-pub(crate) fn panel_rows(_app: &PhotocraftApp) -> Vec<PanelRow> {
+pub(crate) fn panel_rows(_app: &PatronusPhotoApp) -> Vec<PanelRow> {
     TextStylesPanel::panel_rows()
 }
 
 /// The panel's commands come back to it as actions, scoped to the focused panel.
 // PLAN: the lead's ruling maps `TextStyleCommand` here into the panel's action handling, but the command carries no
 // panel kind and the panel's `Facts` (picked row, selection) are private, so the panel's own scope delivers it.
-pub(crate) fn run_fired(_app: &mut PhotocraftApp, _ctx: &egui::Context, _command: &CommandRef) -> bool {
+pub(crate) fn run_fired(_app: &mut PatronusPhotoApp, _ctx: &egui::Context, _command: &CommandRef) -> bool {
     false
 }
 
 /// The styles panel of one kind, with the Style Options editor of the open style under it.
-pub fn panel(app: &mut PhotocraftApp, ui: &mut egui::Ui, paragraph: bool) {
+pub fn panel(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, paragraph: bool) {
     let prefix = if paragraph { "type.paragraphStyle" } else { "type.characterStyle" };
     let kind_index = usize::from(paragraph);
     let tgt = super::target(app);

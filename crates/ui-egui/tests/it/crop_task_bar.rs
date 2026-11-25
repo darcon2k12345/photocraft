@@ -10,19 +10,19 @@
 
 use egui::{Modifiers, PointerButton, Pos2, Rect, Vec2, pos2, vec2};
 use egui_kittest::kittest::Queryable;
-use photocraft_ui_egui::PhotocraftApp;
-use photocraft_ui_egui::control::{ControlRequest, Reply, handle};
-use photocraft_ui_egui::crop_ui::{frame, pending};
+use patronusphoto_ui_egui::PatronusPhotoApp;
+use patronusphoto_ui_egui::control::{ControlRequest, Reply, handle};
+use patronusphoto_ui_egui::crop_ui::{frame, pending};
 use serde_json::{Value, json};
 
-type Harness = egui_kittest::Harness<'static, Box<PhotocraftApp>>;
+type Harness = egui_kittest::Harness<'static, Box<PatronusPhotoApp>>;
 
 /// The app in English with a 400 × 300 white document at 100 %, the Crop tool picked in Classic
 /// Mode (the frame moves over a fixed image, so the frame's screen place is easy to predict).
 fn harness() -> Harness {
     let mut h = Harness::builder().with_size(vec2(1100.0, 760.0)).with_max_steps(64).build_eframe(|cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), Default::default());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), Default::default());
         // English labels, whatever the system language.
         app.session.prefs.edit(|p| p.interface.language = "en".into());
         app.run("file.new", json!({"width": 400, "height": 300, "background": "white"})).expect("new");
@@ -149,7 +149,7 @@ fn ui_set_changes_only_the_place_fields_it_names() {
     assert_eq!(bar(&h).expect("bar").left_top(), dropped.left_top());
     // Placing it keeps the pin.
     control(&mut h, "ui.set", json!({"panels": {"task_bar": {"at": [12.0, 34.0]}}}));
-    assert_eq!(h.state().ui.panels.task_bar, photocraft_ui_egui::state::TaskBarPlace::new(true, Some([12.0, 34.0])));
+    assert_eq!(h.state().ui.panels.task_bar, patronusphoto_ui_egui::state::TaskBarPlace::new(true, Some([12.0, 34.0])));
     // A field the bar doesn't have is refused, and nothing changes.
     let v = request(&mut h, "ui.set", json!({"panels": {"task_bar": {"pinned": false, "nope": 1}}}));
     assert_eq!(v["ok"], false, "{v}");
@@ -197,7 +197,7 @@ fn with_tiled_documents_the_bar_sits_on_the_active_tile() {
     h.state_mut().run("file.new", json!({"width": 400, "height": 300, "background": "white"})).expect("new");
     h.run_steps(4);
     let ctx = h.ctx.clone();
-    photocraft_ui_egui::menus::invoke(h.state_mut(), &ctx, "window.arrange.twoUpVertical", json!({})).expect("2-up");
+    patronusphoto_ui_egui::menus::invoke(h.state_mut(), &ctx, "window.arrange.twoUpVertical", json!({})).expect("2-up");
     h.run_steps(6);
     // Each tile active in turn (side by side, the first one left): the first tile is drawn before
     // the second, so a bar drawn by every tile would end up on the second one both times.
@@ -280,14 +280,14 @@ fn hide_and_place_are_kept_with_the_panel_layout() {
     // A layout saved before the bar existed: the bar is on and follows the frame.
     let mut old = serde_json::to_value(&h.state().ui.panels).expect("panels");
     old.as_object_mut().map(|o| (o.remove("context_task_bar"), o.remove("task_bar")));
-    photocraft_ui_egui::dock::apply(h.state_mut(), &json!({"panels": old}));
+    patronusphoto_ui_egui::dock::apply(h.state_mut(), &json!({"panels": old}));
     assert!(h.state().ui.panels.context_task_bar);
     assert_eq!(h.state().ui.panels.task_bar, Default::default());
     // What a restart restores.
     let saved = json!({"panels": {"context_task_bar": false, "task_bar": {"pinned": true, "at": [12.0, 34.0]}}});
     let mut panels = serde_json::to_value(&h.state().ui.panels).expect("panels");
     panels.as_object_mut().expect("object").extend(saved["panels"].as_object().expect("object").clone());
-    photocraft_ui_egui::dock::apply(h.state_mut(), &json!({"panels": panels}));
+    patronusphoto_ui_egui::dock::apply(h.state_mut(), &json!({"panels": panels}));
     let p = &h.state().ui.panels;
     assert!(!p.context_task_bar);
     assert!(p.task_bar.pinned);

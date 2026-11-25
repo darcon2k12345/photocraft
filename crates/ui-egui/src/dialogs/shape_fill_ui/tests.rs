@@ -1,10 +1,10 @@
-use photocraft_doc::{DocId, Fill, LayerContent, LayerId};
+use patronusphoto_doc::{DocId, Fill, LayerContent, LayerId};
 use serde_json::json;
 
 use super::*;
 use crate::color_picker_ui::testing;
 
-fn fill(app: &PhotocraftApp, id: LayerId) -> Option<Fill> {
+fn fill(app: &PatronusPhotoApp, id: LayerId) -> Option<Fill> {
     match &app.session.active().unwrap().doc.layer(id).unwrap().content {
         LayerContent::Shape(sh) => sh.fill.clone(),
         _ => None,
@@ -12,7 +12,7 @@ fn fill(app: &PhotocraftApp, id: LayerId) -> Option<Fill> {
 }
 
 /// OK on picker `dialog`, and the error its commit reported: a refused commit leaves the error in the status line.
-fn ok(app: &mut PhotocraftApp, dialog: DialogId) -> Result<(), String> {
+fn ok(app: &mut PatronusPhotoApp, dialog: DialogId) -> Result<(), String> {
     app.ui.status = Default::default();
     app.ui.status_error = false;
     crate::dialogs::testing::confirm(app, dialog).unwrap();
@@ -20,7 +20,7 @@ fn ok(app: &mut PhotocraftApp, dialog: DialogId) -> Result<(), String> {
 }
 
 /// The foreground colour as `"#rrggbb"`.
-fn foreground_hex(app: &PhotocraftApp) -> String {
+fn foreground_hex(app: &PatronusPhotoApp) -> String {
     let c = app.session.tools.foreground;
     color_picker_ui::hex([c[0], c[1], c[2]])
 }
@@ -29,14 +29,14 @@ fn foreground_hex(app: &PhotocraftApp) -> String {
 /// when its target goes stale.
 #[test]
 fn stroke_picker_previews_commits_and_rejects_stale_or_bad_targets() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
     let id = LayerId(
         app.run("shape.create", json!({"rect": [8, 8, 40, 30], "fill": "#336699", "stroke": {"width": 4, "color": [1.0, 0.0, 0.0, 0.5]}})).unwrap()["layer"]
             .as_u64()
             .unwrap(),
     );
-    let stroke = |app: &PhotocraftApp| match &app.session.active().unwrap().doc.layer(id).unwrap().content {
+    let stroke = |app: &PatronusPhotoApp| match &app.session.active().unwrap().doc.layer(id).unwrap().content {
         LayerContent::Shape(sh) => sh.stroke.clone(),
         _ => None,
     };
@@ -78,7 +78,7 @@ fn stroke_picker_previews_commits_and_rejects_stale_or_bad_targets() {
 #[test]
 fn stroke_picker_previews_a_stroke_that_is_off_as_ok_turns_it_on() {
     for stroke in [json!(null), json!({"width": 0, "color": "#ff0000"})] {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
         let id = LayerId(app.run("shape.create", json!({"rect": [8, 8, 40, 30], "fill": "#336699", "stroke": stroke})).unwrap()["layer"].as_u64().unwrap());
         let dialog = open_paint(&mut app, Paint::Stroke, Some(id), false, [0.0, 0.0, 0.0, 1.0]).unwrap();
@@ -97,7 +97,7 @@ fn stroke_picker_previews_a_stroke_that_is_off_as_ok_turns_it_on() {
 /// document.
 #[test]
 fn tool_only_picker_sets_the_next_shapes_colour() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
     app.ui.tool_options.shape_fill = false;
     let history = app.session.active().unwrap().history.past_len();
@@ -117,7 +117,7 @@ fn tool_only_picker_sets_the_next_shapes_colour() {
 /// With no document open, the options bar's Color Picker still sets the next shape's colour.
 #[test]
 fn tool_only_picker_works_without_a_document() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     assert!(app.session.active().is_none());
     for which in [Paint::Fill, Paint::Stroke] {
         let dialog = open_paint(&mut app, which, None, true, [0.1, 0.2, 0.3, 1.0]).unwrap();
@@ -139,7 +139,7 @@ fn tool_only_picker_works_without_a_document() {
 #[test]
 fn locked_shape_refuses_the_options_bar_picker_without_changing_the_next_shapes_colour() {
     for lock in ["all", "pixels"] {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
         let id = LayerId(app.run("shape.create", json!({"rect": [8, 8, 40, 30], "fill": "#336699"})).unwrap()["layer"].as_u64().unwrap());
         app.run("layer.lockLayers", json!({lock: true})).unwrap();
@@ -162,7 +162,7 @@ fn a_refused_shape_edit_leaves_the_next_shapes_colour_alone() {
     use std::sync::Arc;
     use std::sync::atomic::{AtomicBool, Ordering};
     for which in [Paint::Fill, Paint::Stroke] {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
         let id = LayerId(app.run("shape.create", json!({"rect": [8, 8, 40, 30], "fill": "#336699"})).unwrap()["layer"].as_u64().unwrap());
         let (tools, options) = (app.session.tools.clone(), app.ui.tool_options.clone());
@@ -187,7 +187,7 @@ fn a_refused_shape_edit_leaves_the_next_shapes_colour_alone() {
                 |_, ()| Ok(json!({})),
             )
             .unwrap();
-        let photocraft_engine::jobs::Started::Job(job) = started else { panic!("the job ran inline") };
+        let patronusphoto_engine::jobs::Started::Job(job) = started else { panic!("the job ran inline") };
         assert!(ok(&mut app, dialog).unwrap_err().contains("still running"), "{which:?}");
         assert_eq!(app.session.tools.foreground, tools.foreground, "{which:?}: the next shape's colours are unchanged");
         assert_eq!(app.session.tools.background, tools.background);

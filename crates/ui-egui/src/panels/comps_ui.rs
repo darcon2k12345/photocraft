@@ -11,16 +11,16 @@ use craft::ui::menu::PanelRow;
 use craft::ui::runtime::commands::CommandRef;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The comp footer and row actions act on: the panel selection if still valid, else the last
 /// applied comp.
-pub fn target(app: &PhotocraftApp) -> Option<u32> {
+pub fn target(app: &PatronusPhotoApp) -> Option<u32> {
     let doc = &app.session.active()?.doc;
     app.ui.layer_comp_selected.filter(|id| doc.comp(*id).is_some()).or(doc.last_applied_comp.filter(|id| doc.comp(*id).is_some()))
 }
 
-fn run(app: &mut PhotocraftApp, id: &str, p: Value) {
+fn run(app: &mut PatronusPhotoApp, id: &str, p: Value) {
     if let Err(e) = app.run(id, p) {
         app.ui.status = e;
         app.ui.status_error = true;
@@ -28,12 +28,12 @@ fn run(app: &mut PhotocraftApp, id: &str, p: Value) {
 }
 
 /// The panel menu has no rows: Move Up and Move Down belong to the row menu.
-pub(crate) fn panel_rows(_app: &PhotocraftApp) -> Vec<PanelRow> {
+pub(crate) fn panel_rows(_app: &PatronusPhotoApp) -> Vec<PanelRow> {
     Vec::new()
 }
 
 /// The panel has no menu commands to run.
-pub(crate) fn run_fired(_app: &mut PhotocraftApp, _ctx: &egui::Context, _command: &CommandRef) -> bool {
+pub(crate) fn run_fired(_app: &mut PatronusPhotoApp, _ctx: &egui::Context, _command: &CommandRef) -> bool {
     false
 }
 
@@ -70,7 +70,7 @@ fn option_commands(comps: &[u64], option: CompOption, edit: &EditEvent<bool>) ->
 }
 
 /// The Layer Comps panel.
-pub fn panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn panel(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let (rows, document, last_state_applied) = match app.session.active() {
         Some(st) => {
             let doc = &st.doc;

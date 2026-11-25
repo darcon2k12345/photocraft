@@ -1,4 +1,4 @@
-# PhotoCraft trimmed integration, 2026-10-29
+# Patronus Photo trimmed integration, 2026-10-29
 
 Removed all 21 requested PR contributions from the existing 108-PR integration, leaving 87 retained PRs. Reversals preserve the original branch history. Overlapping integration fixes are reconciled so unrelated retained work remains.
 
@@ -16,7 +16,7 @@ Removed all 21 requested PR contributions from the existing 108-PR integration, 
 - [#8347](https://github.com/storytold/photocraft/pull/8347): Type: Roman Hanging Punctuation (trailing marks hang, don't steer the alignment)
 - [#9282](https://github.com/storytold/photocraft/pull/9282): feat(ui): Preset menus for Levels, Exposure, Black & White and Channel Mixer
 - [#7742](https://github.com/storytold/photocraft/pull/7742): Actions: a fractional setting an integer field cannot hold is refused, not rounded
-- [#5090](https://github.com/storytold/photocraft/pull/5090): Actions: add editable PhotoCraft Essentials starter presets
+- [#5090](https://github.com/storytold/photocraft/pull/5090): Actions: add editable Patronus Photo Essentials starter presets
 - [#3455](https://github.com/storytold/photocraft/pull/3455): Undo and redo action definition edits from the Actions panel
 - [#1991](https://github.com/storytold/photocraft/pull/1991): feat(actions): import and export reusable Actions JSON files
 - [#4305](https://github.com/storytold/photocraft/pull/4305): Filter > Other > Frequency Separation (#1714)
@@ -28,7 +28,7 @@ Removed all 21 requested PR contributions from the existing 108-PR integration, 
 
 ## Validation and testing
 
-The trimmed head `8c8c4b95` passed [full-sweep fork CI](https://github.com/FredApps/photocraft/actions/runs/40935778575). The subsequent merge of upstream `8a6771a7` requires a fresh run, including Linux and Windows tests, corpus, WebAssembly and lint. Until that run completes, the reconciled source is not validated. The previous Windows portable ZIP still contains the removed changes and must not be used for acceptance of this branch. Manual UI checks are NOT RUN.
+The trimmed head `8c8c4b95` passed [full-sweep fork CI](https://github.com/FredApps/patronusphoto/actions/runs/40935778575). The subsequent merge of upstream `8a6771a7` requires a fresh run, including Linux and Windows tests, corpus, WebAssembly and lint. Until that run completes, the reconciled source is not validated. The previous Windows portable ZIP still contains the removed changes and must not be used for acceptance of this branch. Manual UI checks are NOT RUN.
 
 Use the retained 87 cases in [the regression appendix](per-pr-regressions.md). Verify basic editing/save/reopen/Undo/Redo, retained layer-name visibility playback, guide rotation/deletion, pattern persistence, gradient editing and type layout after the removals. Verify the removed menus, preferences and shortcuts are absent or return to base behavior. Custom shape import and native layer-identity rejection are excluded; do not mark their old tests as passing.
 

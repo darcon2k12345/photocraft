@@ -13,7 +13,7 @@ use craft::ui::canvas::{Canvas, CanvasTool, ToolHost, tool_pass};
 use craft::ui::contract::{Props as _, ShowContainer as _};
 use craft::ui::testing::{Frames, install_spec, pointer};
 use egui::{CursorIcon, Event, pos2};
-use photocraft_testkit::perf::{Summary, report, row, write_report};
+use patronusphoto_testkit::perf::{Summary, report, row, write_report};
 use serde_json::json;
 
 const BENCH: &str = "pen_cursor_bench";

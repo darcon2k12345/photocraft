@@ -6,20 +6,20 @@ use serde_json::json;
 
 use super::document_display::{CanvasHost, shown_camera};
 use super::{canvas_display, canvas_view, document_area};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::{Tool, View};
 
 #[test]
 fn live_brush_texture_includes_this_frames_press_and_moves() {
     for tool in [Tool::Brush, Tool::MixerBrush] {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
         app.run("file.new", json!({"width": 128, "height": 64, "background": "white"})).unwrap();
         app.run("tools.setColors", json!({"foreground": "#ff0000"})).unwrap();
         app.run("tools.setBrush", json!({"brush": {"size": 12, "hardness": 1.0, "smoothing": {"amount": 0.0}}})).unwrap();
         app.ui.tool = tool;
         app.sync_views();
         let mut h = egui_kittest::Harness::builder().with_context(app.ctx().clone()).with_size(vec2(900.0, 640.0)).build_ui_state(
-            |ui, app: &mut Box<PhotocraftApp>| {
+            |ui, app: &mut Box<PatronusPhotoApp>| {
                 if !ui.ctx().fonts(|fonts| fonts.families().contains(&egui::FontFamily::Name("medium".into()))) {
                     return;
                 }
@@ -27,7 +27,7 @@ fn live_brush_texture_includes_this_frames_press_and_moves() {
             },
             app,
         );
-        PhotocraftApp::setup_context(&h.ctx, Default::default());
+        PatronusPhotoApp::setup_context(&h.ctx, Default::default());
         h.run_steps(3);
         // One pass a frame: a second pass would show the input whatever the order of tools and canvas.
         h.ctx.options_mut(|o| o.max_passes = std::num::NonZeroUsize::MIN);
@@ -35,7 +35,7 @@ fn live_brush_texture_includes_this_frames_press_and_moves() {
         h.input_mut().events.push(egui::Event::PointerMoved(p));
         h.input_mut().events.push(egui::Event::PointerButton { pos: p, button: PointerButton::Primary, pressed: true, modifiers: egui::Modifiers::NONE });
         h.run_steps(1);
-        let shown = |h: &mut egui_kittest::Harness<'_, Box<PhotocraftApp>>| {
+        let shown = |h: &mut egui_kittest::Harness<'_, Box<PatronusPhotoApp>>| {
             let app = h.state_mut();
             let live = app.live_stroke.as_ref().expect("painting starts on press");
             let key = live.display_key();
@@ -66,7 +66,7 @@ fn live_brush_texture_includes_this_frames_press_and_moves() {
 #[test]
 fn live_tools_paint_the_interpolated_camera_during_zoom_animation() {
     for tool in [Tool::Brush, Tool::MixerBrush] {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 64, "height": 64, "background": "white"})).unwrap();
         app.run("prefs.set", json!({"values": {"general.animatedZoom": true}})).unwrap();
         app.sync_views();
@@ -77,9 +77,9 @@ fn live_tools_paint_the_interpolated_camera_during_zoom_animation() {
         v.center = [32.0, 32.0];
         v.doc_size = [64, 64];
         let ctx = app.ctx().clone();
-        PhotocraftApp::setup_context(&ctx, Default::default());
+        PatronusPhotoApp::setup_context(&ctx, Default::default());
         let rect = Rect::from_min_size(Pos2::ZERO, vec2(500.0, 400.0));
-        let pass = |app: &mut PhotocraftApp, view: View, time: f64| {
+        let pass = |app: &mut PatronusPhotoApp, view: View, time: f64| {
             let mut shown = view.clone();
             let mut out = ctx.run_ui(egui::RawInput { screen_rect: Some(rect), time: Some(time), ..Default::default() }, |ui| {
                 (shown, _) = canvas_view(app, ui, CanvasHost::main(0), rect, view.clone(), true);

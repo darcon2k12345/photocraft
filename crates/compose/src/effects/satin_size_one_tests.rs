@@ -1,6 +1,6 @@
 use super::{Contour, Map, satin_map};
-use photocraft_color::{BlendMode, Color};
-use photocraft_doc::{FxCommon, Satin};
+use patronusphoto_color::{BlendMode, Color};
+use patronusphoto_doc::{FxCommon, Satin};
 
 /// #14983: black Satin over an orange rectangle, measured down its centre column.
 fn green_column(size: f32) -> Vec<u8> {

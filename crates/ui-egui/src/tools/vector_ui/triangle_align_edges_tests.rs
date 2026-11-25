@@ -9,7 +9,7 @@ use egui_kittest::kittest::{NodeT, Queryable};
 use serde_json::json;
 
 use super::test_input::harness;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::{ToolEvent, tool_event};
 use crate::state::{Tool, ToolOptions};
 
@@ -19,7 +19,7 @@ const END: [f64; 2] = [40.7, 30.2];
 /// The box a `tool` drag from `START` to `END` draws, `None` when nothing is drawn. The pixel-grid
 /// snap of vector tools is off, so only Align Edges rounds.
 fn rect(set: impl FnOnce(&mut ToolOptions), tool: Tool, start: [f64; 2], end: [f64; 2]) -> Option<[f64; 4]> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
     app.run("prefs.set", json!({"path": "tools.snapVectorToolsAndTransformsToPixelGrid", "value": false})).unwrap();
     app.sync_views();
@@ -61,7 +61,7 @@ fn other_shape_tools_always_snap() {
 
 #[test]
 fn a_greyed_checkbox_keeps_snapping_in_path_mode() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
     app.ui.tool_options.align_edges = false;
     app.ui.tool_options.shape_mode = VectorMode::Path;

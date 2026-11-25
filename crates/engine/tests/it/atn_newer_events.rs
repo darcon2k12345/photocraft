@@ -3,8 +3,8 @@ use craft_psd::{
     atn::{self, AtnAction, AtnEvent, AtnFile, AtnItem},
     descriptor::{Class, Descriptor, Id, ReferenceItem, UnicodeString, Value as D},
 };
-use photocraft_doc::{Layer, LayerContent, LayerId, SmartObject, SmartSource};
-use photocraft_engine::{
+use patronusphoto_doc::{Layer, LayerContent, LayerId, SmartObject, SmartSource};
+use patronusphoto_engine::{
     Session,
     actions_cmds::{Action, ActionStep},
     atn_cmds,
@@ -74,7 +74,7 @@ fn file(event: &str, descriptor: Descriptor) -> Vec<u8> {
 }
 
 fn load(s: &mut Session, bytes: &[u8]) -> serde_json::Value {
-    s.execute("actions.load", json!({"data": photocraft_engine::paint::tile::b64_encode(bytes)})).unwrap()
+    s.execute("actions.load", json!({"data": patronusphoto_engine::paint::tile::b64_encode(bytes)})).unwrap()
 }
 
 fn play(s: &mut Session) {
@@ -86,7 +86,7 @@ fn play(s: &mut Session) {
 fn saved_item(s: &mut Session) -> AtnItem {
     let saved = s.execute("actions.save", json!({"set": "Links"})).unwrap();
     assert_eq!(saved["skipped"], json!([]));
-    let bytes = photocraft_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap();
+    let bytes = patronusphoto_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap();
     atn::parse(&bytes).unwrap().actions[0].items[0].clone()
 }
 
@@ -187,7 +187,7 @@ fn atn_link_events_keep_descriptors_and_replay_the_requested_operation() {
             assert_eq!(s.actions.list.actions()[0].steps, [ActionStep::new("layer.linkLayers", json!({"linked": linked}))]);
             let saved = s.execute("actions.save", json!({"set": "Links"})).unwrap();
             assert_eq!(saved["skipped"], json!([]));
-            let bytes = photocraft_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap();
+            let bytes = patronusphoto_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap();
             let parsed = atn::parse(&bytes).unwrap();
             assert_eq!(parsed.actions[0].items[0].event, AtnEvent::name(event));
             assert_eq!(parsed.actions[0].items[0].descriptor, Some(descriptor));
@@ -224,7 +224,7 @@ fn unsupported_link_descriptors_are_kept_and_ambiguous_exports_are_refused() {
             let mut s = Session::new();
             assert_eq!(load(&mut s, &file(event, descriptor.clone()))["unsupported"].as_array().unwrap().len(), 1);
             let saved = s.execute("actions.save", json!({"set": "Links"})).unwrap();
-            let bytes = photocraft_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap();
+            let bytes = patronusphoto_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap();
             let parsed = atn::parse(&bytes).unwrap();
             assert_eq!(parsed.actions[0].items[0].event, AtnEvent::name(event));
             assert_eq!(parsed.actions[0].items[0].descriptor, Some(descriptor));
@@ -272,7 +272,7 @@ fn target_events_keep_empty_and_explicit_target_descriptors_distinct() {
             let mut s = Session::new();
             load_targeted(&mut s, event, id, explicit);
             let saved = s.execute("actions.save", json!({"set": "Links"})).unwrap();
-            let bytes = photocraft_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap();
+            let bytes = patronusphoto_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap();
             let item = &atn::parse(&bytes).unwrap().actions[0].items[0];
             assert_eq!(item.event, AtnEvent::name(event));
             assert_eq!(item.descriptor, Some(targeted("null", explicit)), "{event}");
@@ -285,7 +285,7 @@ fn target_events_keep_empty_and_explicit_target_descriptors_distinct() {
     let mut s = Session::new();
     assert_eq!(load(&mut s, &atn::write(&f).unwrap())["unsupported"], json!([]));
     let saved = s.execute("actions.save", json!({"set": "Links"})).unwrap();
-    let bytes = photocraft_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap();
+    let bytes = patronusphoto_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap();
     assert_eq!(atn::parse(&bytes).unwrap().actions[0].items[0].descriptor, Some(Descriptor::new("null")));
 }
 
@@ -299,7 +299,7 @@ fn bare_link_events_keep_their_operation_and_empty_keys() {
         assert_eq!(load(&mut s, &file(event, Descriptor::new(event)))["unsupported"], json!([]));
         assert_eq!(s.actions.list.actions()[0].steps[0].params, json!({"linked": linked, "_atnNoTarget": true}));
         let saved = s.execute("actions.save", json!({"set": "Links"})).unwrap();
-        let bytes = photocraft_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap();
+        let bytes = patronusphoto_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap();
         assert_eq!(atn::parse(&bytes).unwrap().actions[0].items[0].descriptor, Some(Descriptor::new("null")));
         let before = s.active().unwrap().doc.clone();
         play(&mut s);
@@ -324,7 +324,7 @@ fn target_events_keep_unknown_targets_and_refuse_native_options() {
             let mut s = Session::new();
             assert_eq!(load(&mut s, &file(event, descriptor.clone()))["unsupported"].as_array().unwrap().len(), 1);
             let saved = s.execute("actions.save", json!({"set": "Links"})).unwrap();
-            let bytes = photocraft_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap();
+            let bytes = patronusphoto_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap();
             assert_eq!(atn::parse(&bytes).unwrap().actions[0].items[0].descriptor, Some(descriptor));
         }
         for p in [json!({"layer": 1}), json!({"on": true}), json!({"_atnNoTarget": false}), json!({"_atnNoTarget": "true"})] {
@@ -345,7 +345,7 @@ fn scan_fixture() -> Session {
     let id = st.active_layer.unwrap();
     let surface = Arc::make_mut(st.doc_mut()).layer_mut(id).unwrap().surface_mut().unwrap();
     for (x, y, w, h, color) in [(40, 60, 160, 110, [0.6, 0.1, 0.1, 1.0]), (290, 180, 150, 120, [0.1, 0.2, 0.6, 1.0])] {
-        surface.fill_rect(photocraft_doc::Rect::new(x, y, x + w, y + h), &color);
+        surface.fill_rect(patronusphoto_doc::Rect::new(x, y, x + w, y + h), &color);
     }
     s.execute("select.rect", json!({"x": 270, "y": 160, "width": 190, "height": 160})).unwrap();
     s
@@ -390,7 +390,7 @@ fn crop_parent_refuses_ineligible_layers_without_document_or_history_changes() {
             match case {
                 "hidden" => doc.layer_mut(id).unwrap().visible = false,
                 "pixels" => doc.layer_mut(id).unwrap().locks.pixels = true,
-                "indexed" => doc.mode = photocraft_doc::ColorMode::Indexed,
+                "indexed" => doc.mode = patronusphoto_doc::ColorMode::Indexed,
                 _ => {
                     let mut group = Layer::group("Parent", std::mem::take(&mut doc.layers));
                     group.visible = case != "hidden-parent";
@@ -449,7 +449,7 @@ fn crop_parent_runs_once_and_the_kept_helper_stops_the_duplicate_crop_tail() {
         ["file.automate.cropAndStraightenPhotos", "actions.photoshopStep", "image.duplicate", "image.crop"]
     );
     let saved = s.execute("actions.save", json!({"set": "Links"})).unwrap();
-    let bytes = photocraft_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap();
+    let bytes = patronusphoto_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap();
     assert_eq!(atn::parse(&bytes).unwrap().actions[0].items[1].descriptor, Some(helper));
     let report = s.execute("actions.play", json!({"action": "A", "set": "Links"})).unwrap();
     assert_eq!(report["ran"], 1, "{report}");
@@ -467,7 +467,7 @@ fn artboard_fixture() -> Session {
     let doc = Arc::make_mut(st.doc_mut());
     let mut child = Layer::raster("Pixels", doc.pixel_format());
     let surface = child.surface_mut().unwrap();
-    for rect in [photocraft_doc::Rect::new(2, 2, 3, 3), photocraft_doc::Rect::new(5, 5, 6, 6)] {
+    for rect in [patronusphoto_doc::Rect::new(2, 2, 3, 3), patronusphoto_doc::Rect::new(5, 5, 6, 6)] {
         surface.fill_rect(rect, &[1.0, 0.0, 0.0, 1.0]);
     }
     let group = Layer::group("Group", vec![child]);
@@ -516,12 +516,12 @@ fn artboard_recorded_flags_and_guides_roundtrip_without_resizing() {
             play(&mut s);
             let doc = &s.active().unwrap().doc;
             let board = doc.layer(id).unwrap().artboard().unwrap();
-            assert_eq!(board.rect, photocraft_doc::Rect::new(2, 2, 6, 6), "preset is a tag, not a request to resize the group");
+            assert_eq!(board.rect, patronusphoto_doc::Rect::new(2, 2, 6, 6), "preset is a tag, not a request to resize the group");
             assert_eq!(board.preset, "iPhone 14");
             assert_eq!(doc.size, before.size);
             assert_eq!(doc.layer(id).unwrap().children(), before.layer(id).unwrap().children());
             assert_eq!(doc.guides, before.guides);
-            let pixel = photocraft_compose::render(doc, photocraft_doc::Rect::new(3, 3, 4, 4)).px[0];
+            let pixel = patronusphoto_compose::render(doc, patronusphoto_doc::Rect::new(3, 3, 4, 4)).px[0];
             let applied = flag.is_none_or(|n| n == 1);
             for (actual, expected) in pixel.into_iter().zip(if applied { expected } else { [1.0; 4] }) {
                 assert!((actual - expected).abs() < 0.005, "background {background}, flag {flag:?}: {pixel:?}");
@@ -604,7 +604,7 @@ fn artboard_fractional_colors_survive_import_save_and_playback() {
         assert!(atn_cmds::export("Links", &[&Action::new("Changed", vec![ActionStep::new(id, changed)])], &[], false).is_err());
         let before = s.active().unwrap().doc.clone();
         play(&mut s);
-        let pixel = photocraft_compose::render(&s.active().unwrap().doc, photocraft_doc::Rect::new(3, 3, 4, 4)).px[0];
+        let pixel = patronusphoto_compose::render(&s.active().unwrap().doc, patronusphoto_doc::Rect::new(3, 3, 4, 4)).px[0];
         for (actual, expected) in pixel.into_iter().zip(rgb.map(|n| n as f32 / 255.0)) {
             assert!((actual - expected).abs() < 0.005, "{event}: {pixel:?}");
         }
@@ -653,7 +653,7 @@ fn artboard_omitted_type_defaults_to_white_and_invalid_native_settings_are_atomi
     changed["background"] = "black".into();
     assert!(atn_cmds::export("Links", &[&Action::new("A", vec![ActionStep::new("layer.new.artboardFromGroup", changed)])], &[], false).is_err());
     play(&mut s);
-    assert_eq!(photocraft_compose::render(&s.active().unwrap().doc, photocraft_doc::Rect::new(3, 3, 4, 4)).px[0], [1.0; 4]);
+    assert_eq!(patronusphoto_compose::render(&s.active().unwrap().doc, patronusphoto_doc::Rect::new(3, 3, 4, 4)).px[0], [1.0; 4]);
     assert!(s.undo());
     assert_eq!(s.active().unwrap().doc, before);
     let history = s.active().unwrap().history.past_len();
@@ -698,7 +698,7 @@ fn artboard_background_edit_roundtrips_without_replaying_recorded_geometry() {
         let id = s.active().unwrap().active_layer.unwrap();
         assert_eq!(
             before.layer(id).unwrap().artboard().unwrap().background,
-            if kind == 1 { photocraft_doc::ArtboardBackground::Black } else { photocraft_doc::ArtboardBackground::White }
+            if kind == 1 { patronusphoto_doc::ArtboardBackground::Black } else { patronusphoto_doc::ArtboardBackground::White }
         );
         let history = s.active().unwrap().history.past_len();
         let d = artboard_edit_descriptor(kind, 8);
@@ -713,7 +713,7 @@ fn artboard_background_edit_roundtrips_without_replaying_recorded_geometry() {
         assert_eq!(doc.layer(id).unwrap().children(), before.layer(id).unwrap().children());
         assert_eq!(doc.size, before.size);
         assert_eq!(doc.guides, before.guides);
-        let pixel = photocraft_compose::render(doc, photocraft_doc::Rect::new(3, 3, 4, 4)).px[0];
+        let pixel = patronusphoto_compose::render(doc, patronusphoto_doc::Rect::new(3, 3, 4, 4)).px[0];
         for (actual, expected) in pixel.into_iter().zip(expected) {
             assert!((actual - expected).abs() < 0.005, "{kind}: {pixel:?}");
         }
@@ -787,7 +787,7 @@ fn smart_target_scene(event: &str, bytes: &[u8], replacement: &[u8], path: &str)
     s
 }
 
-fn assert_smart_target_edit(event: &str, s: &Session, original_id: photocraft_doc::SmartContentsId, pixels: &[[f32; 4]], bytes: &[u8]) {
+fn assert_smart_target_edit(event: &str, s: &Session, original_id: patronusphoto_doc::SmartContentsId, pixels: &[[f32; 4]], bytes: &[u8]) {
     match event {
         "placedLayerMakeCopy" => {
             assert_ne!(active_smart(s).contents_id, original_id);
@@ -795,11 +795,11 @@ fn assert_smart_target_edit(event: &str, s: &Session, original_id: photocraft_do
         }
         "placedLayerConvertToLayers" => assert!(s.active().unwrap().doc.walk().iter().all(|(_, _, layer)| !matches!(layer.content, LayerContent::Smart(_)))),
         "placedLayerConvertToEmbedded" => assert!(matches!(&active_smart(s).source, SmartSource::Embedded { bytes: actual, .. } if actual.as_slice() == bytes)),
-        "placedLayerUpdateAllModified" => assert!(photocraft_compose::flatten(&s.active().unwrap().doc).px.iter().all(|px| *px == [1.0, 0.0, 0.0, 1.0])),
+        "placedLayerUpdateAllModified" => assert!(patronusphoto_compose::flatten(&s.active().unwrap().doc).px.iter().all(|px| *px == [1.0, 0.0, 0.0, 1.0])),
         _ => unreachable!(),
     }
     if event != "placedLayerUpdateAllModified" {
-        assert_eq!(photocraft_compose::flatten(&s.active().unwrap().doc).px, pixels);
+        assert_eq!(patronusphoto_compose::flatten(&s.active().unwrap().doc).px, pixels);
     }
 }
 
@@ -813,7 +813,7 @@ fn smart_target_events_copy_unpack_embed_and_refresh_real_contents() {
             let path = dir.path().join("linked.png");
             let mut s = smart_target_scene(event, &original, &replacement, path.to_str().unwrap());
             let before = s.active().unwrap().doc.clone();
-            let pixels = photocraft_compose::flatten(&before).into_px();
+            let pixels = patronusphoto_compose::flatten(&before).into_px();
             let contents_id = active_smart(&s).contents_id;
             load_targeted(&mut s, event, id, explicit);
             play(&mut s);
@@ -834,11 +834,11 @@ fn rasterize_all_event_visits_nested_and_top_level_smart_layers() {
         let nested = doc.remove(first).unwrap();
         doc.layers.push(Layer::group("Nested", vec![nested]));
         let before = s.active().unwrap().doc.clone();
-        let pixels = photocraft_compose::flatten(&before).into_px();
+        let pixels = patronusphoto_compose::flatten(&before).into_px();
         load_targeted(&mut s, "rasterizeAll", "layer.rasterize.allLayers", explicit);
         play(&mut s);
         assert!(s.active().unwrap().doc.walk().iter().all(|(_, _, layer)| !matches!(layer.content, LayerContent::Smart(_))));
-        assert_eq!(photocraft_compose::flatten(&s.active().unwrap().doc).px, pixels);
+        assert_eq!(patronusphoto_compose::flatten(&s.active().unwrap().doc).px, pixels);
         assert!(s.undo());
         assert_eq!(s.active().unwrap().doc, before);
     }
@@ -873,7 +873,7 @@ fn video_and_isolate_events_use_current_document_state() {
     }
 }
 
-fn active_text(s: &Session) -> &photocraft_doc::TextLayer {
+fn active_text(s: &Session) -> &patronusphoto_doc::TextLayer {
     let st = s.active().unwrap();
     let LayerContent::Text(text) = &st.doc.layer(st.active_layer.unwrap()).unwrap().content else { panic!("expected Type") };
     text
@@ -981,7 +981,7 @@ fn impulse_fixture() -> Session {
     let mut s = Session::new();
     s.execute("file.new", json!({"width": 9, "height": 9, "background": "transparent"})).unwrap();
     s.edit("impulse fixture", |doc, active| {
-        doc.layer_mut(active.unwrap()).unwrap().surface_mut().unwrap().fill_rect(photocraft_doc::Rect::new(4, 4, 5, 5), &[1.0, 1.0, 1.0, 1.0]);
+        doc.layer_mut(active.unwrap()).unwrap().surface_mut().unwrap().fill_rect(patronusphoto_doc::Rect::new(4, 4, 5, 5), &[1.0, 1.0, 1.0, 1.0]);
         Ok(())
     })
     .unwrap();
@@ -1001,13 +1001,13 @@ fn radius_only_shape_blur_roundtrips_and_changes_pixels_including_default() {
         assert_eq!(saved.descriptor, Some(canonical.clone()));
         assert_eq!(load(&mut s, &file("shapeBlur", canonical))["unsupported"], json!([]));
         let before = s.active().unwrap().doc.clone();
-        let pixels = photocraft_compose::flatten(&before).into_px();
+        let pixels = patronusphoto_compose::flatten(&before).into_px();
         play(&mut s);
-        let blurred = photocraft_compose::flatten(&s.active().unwrap().doc).into_px();
+        let blurred = patronusphoto_compose::flatten(&s.active().unwrap().doc).into_px();
         assert_ne!(blurred, pixels);
         let mut direct = impulse_fixture();
         direct.execute("filter.blur.shapeBlur", json!({"radius": radius.unwrap_or(10.0)})).unwrap();
-        assert_eq!(blurred, photocraft_compose::flatten(&direct.active().unwrap().doc).px);
+        assert_eq!(blurred, patronusphoto_compose::flatten(&direct.active().unwrap().doc).px);
         assert!(s.undo());
         assert_eq!(s.active().unwrap().doc, before);
     }
@@ -1055,7 +1055,7 @@ fn link_descriptor_headers_normalize_without_changing_meaningful_keys() {
         let descriptor = Descriptor::new(event).with("null", target());
         assert_eq!(load(&mut s, &file(event, descriptor))["unsupported"], json!([]));
         let saved = s.execute("actions.save", json!({"set": "Links"})).unwrap();
-        let bytes = photocraft_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap();
+        let bytes = patronusphoto_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap();
         let parsed = atn::parse(&bytes).unwrap();
         assert_eq!(parsed.actions[0].items[0].event, AtnEvent::name(event));
         assert_eq!(parsed.actions[0].items[0].descriptor, Some(Descriptor::new("null").with("null", target())));
@@ -1089,13 +1089,13 @@ fn smart_path_descriptor(event: &str, path: &str) -> Descriptor {
 fn png(color: &str) -> Vec<u8> {
     let mut s = Session::new();
     s.execute("file.new", json!({"width": 4, "height": 4, "background": color})).unwrap();
-    photocraft_io::export(&s.active().unwrap().doc, "png", &Default::default()).unwrap().bytes
+    patronusphoto_io::export(&s.active().unwrap().doc, "png", &Default::default()).unwrap().bytes
 }
 
 fn smart_fixture(bytes: &[u8]) -> Session {
     let mut s = Session::new();
     s.execute("file.new", json!({"width": 4, "height": 4})).unwrap();
-    photocraft_engine::file_cmds::place_bytes(&mut s, "original.png", bytes.to_vec(), None, &json!({})).unwrap();
+    patronusphoto_engine::file_cmds::place_bytes(&mut s, "original.png", bytes.to_vec(), None, &json!({})).unwrap();
     s
 }
 
@@ -1146,7 +1146,7 @@ fn smart_paths_roundtrip_and_play_real_files_on_the_current_target() {
             assert_eq!(s.actions.list.actions()[0].steps, [ActionStep::new(id, json!({"path": path}))]);
             let saved = s.execute("actions.save", json!({"set": "Links"})).unwrap();
             assert_eq!(saved["skipped"], json!([]));
-            let bytes = photocraft_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap();
+            let bytes = patronusphoto_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap();
             let parsed = atn::parse(&bytes).unwrap();
             assert_eq!(parsed.actions[0].items[0].event, AtnEvent::name(event));
             // Reference #10603, docs/atn.md:197–201: normalize the descriptor class,
@@ -1159,7 +1159,7 @@ fn smart_paths_roundtrip_and_play_real_files_on_the_current_target() {
             assert_eq!(active_smart(&s).transform, before_smart.transform);
             assert_smart_file_output(event, &s, path, &original, &replacement);
             if replacing {
-                assert!(photocraft_compose::flatten(&s.active().unwrap().doc).px.iter().all(|px| *px == [1.0, 0.0, 0.0, 1.0]));
+                assert!(patronusphoto_compose::flatten(&s.active().unwrap().doc).px.iter().all(|px| *px == [1.0, 0.0, 0.0, 1.0]));
             }
             if event == "placedLayerExportContents" {
                 assert_eq!(s.active().unwrap().doc, before);
@@ -1190,7 +1190,7 @@ fn smart_paths_keep_missing_unusable_and_unrepresented_descriptors_whole() {
             let mut s = Session::new();
             assert_eq!(load(&mut s, &file(event, descriptor.clone()))["unsupported"].as_array().unwrap().len(), 1);
             let saved = s.execute("actions.save", json!({"set": "Links"})).unwrap();
-            let bytes = photocraft_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap();
+            let bytes = patronusphoto_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap();
             assert_eq!(atn::parse(&bytes).unwrap().actions[0].items[0].descriptor, Some(descriptor));
         }
     }

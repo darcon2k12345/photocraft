@@ -17,7 +17,7 @@ use egui::{Color32, CornerRadius, Pos2, Rect, Response, Vec2, vec2};
 use serde_json::json;
 
 use super::{create_note, show_note_options, status_on_err};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::document_display::CanvasHost;
 use crate::canvas::tools::{FamilyTool, ToolScope};
 use crate::state::Tool;
@@ -50,7 +50,7 @@ impl Default for AnalysisTools {
 
 /// The document's Color Sampler points as the framework's collection, with the document's size in pixels. The one
 /// place the document's list becomes `ColorSamplers`.
-pub(super) fn samplers_of(app: &PhotocraftApp) -> Option<(ColorSamplers, [u32; 2])> {
+pub(super) fn samplers_of(app: &PatronusPhotoApp) -> Option<(ColorSamplers, [u32; 2])> {
     let st = app.session.active()?;
     let size = [st.doc.size.width, st.doc.size.height];
     let mut samplers = ColorSamplers::new();
@@ -60,7 +60,7 @@ pub(super) fn samplers_of(app: &PhotocraftApp) -> Option<(ColorSamplers, [u32; 2
     Some((samplers, size))
 }
 
-fn ruler_line(app: &PhotocraftApp) -> Option<RulerLine> {
+fn ruler_line(app: &PatronusPhotoApp) -> Option<RulerLine> {
     let r = app.session.active()?.doc.measurement.ruler?;
     let line = RulerLine::new(Point::new(r.start[0], r.start[1]), Point::new(r.end[0], r.end[1]));
     Some(match r.protractor {
@@ -98,7 +98,7 @@ pub(crate) fn tool<'a>(scope: &'a ToolScope<'a>, state: &'a mut AnalysisTools, _
 }
 
 /// Turns the events the tools reported into engine commands, in order.
-pub(crate) fn drain(app: &mut PhotocraftApp, state: &mut AnalysisTools, _response: &ToolHostResponse) {
+pub(crate) fn drain(app: &mut PatronusPhotoApp, state: &mut AnalysisTools, _response: &ToolHostResponse) {
     for event in state.ruler.take_events() {
         match event {
             // A drag's updates are not applied: the pass shows the running line from the tool's own proposal, and the
@@ -162,7 +162,7 @@ pub(crate) fn drain(app: &mut PhotocraftApp, state: &mut AnalysisTools, _respons
 }
 
 /// Stores the Ruler line in the document: `None` clears it.
-fn set_ruler(app: &mut PhotocraftApp, line: Option<RulerLine>) {
+fn set_ruler(app: &mut PatronusPhotoApp, line: Option<RulerLine>) {
     let params = match line {
         Some(l) => json!({"start": [l.start.x, l.start.y], "end": [l.end.x, l.end.y], "protractor": l.protractor.map(|p| [p.x, p.y])}),
         None => json!({"clear": true}),
@@ -184,7 +184,7 @@ fn dist(a: [f64; 2], b: [f64; 2]) -> f64 {
 /// The ruler line, the sampler marks, the count markers and the note cards over the document, in the canvas body over
 /// `rect`. The marks show with every tool; the line with its handles only with the Ruler. View › Extras off hides the
 /// line (View › Show has no Ruler entry, #11987) and the sampler marks, whose points and Info readouts stay (#11741).
-pub(crate) fn body(app: &mut PhotocraftApp, ui: &mut egui::Ui, rect: Rect) {
+pub(crate) fn body(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, rect: Rect) {
     let view = &app.ui.view;
     let (show_count, show_notes, extras) = (view.shows(view.show.count), view.shows(view.show.notes), view.extras);
     let line = ruler_line(app).filter(|_| extras);
@@ -259,7 +259,7 @@ pub(crate) struct CountTool {
 
 /// The visible marker nearest `at` within `tol` document units: (group, index). The press and the cursor both ask, so
 /// the cursor never says "move" where a press adds a marker (#11773).
-pub(super) fn count_marker_at(app: &PhotocraftApp, at: [f64; 2], tol: f64) -> Option<(usize, usize)> {
+pub(super) fn count_marker_at(app: &PatronusPhotoApp, at: [f64; 2], tol: f64) -> Option<(usize, usize)> {
     let d = &app.session.active()?.doc;
     let mut best: Option<(f64, usize, usize)> = None;
     for (gi, g) in d.measurement.count_groups.iter().enumerate().filter(|(_, g)| g.visible) {

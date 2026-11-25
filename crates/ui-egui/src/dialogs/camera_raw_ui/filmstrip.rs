@@ -5,7 +5,7 @@
 
 use super::open::{Target, commit_open_raw, open_raw_with, return_on_failure};
 use super::sidecar::read_sidecar;
-use super::{CameraRaw, PhotocraftApp, RawOpen, Rect, Value, hosted, image, json, workspace_demosaic};
+use super::{CameraRaw, PatronusPhotoApp, RawOpen, Rect, Value, hosted, image, json, workspace_demosaic};
 
 /// Long side of a filmstrip thumbnail, in pixels.
 const THUMB_SIDE: usize = 240;
@@ -24,14 +24,14 @@ pub struct HeldRaw {
 }
 
 impl HeldRaw {
-    pub(super) fn new(app: &PhotocraftApp, raw: RawOpen) -> Self {
+    pub(super) fn new(app: &PatronusPhotoApp, raw: RawOpen) -> Self {
         let thumb = super::open::document_index(app, raw.document).and_then(|i| thumbnail(app, i));
         HeldRaw { raw, kept: None, thumb, tex: None }
     }
 }
 
 /// A filmstrip thumbnail of document `index` (a just-developed raw: its first pixel layer).
-fn thumbnail(app: &PhotocraftApp, index: usize) -> Option<egui::ColorImage> {
+fn thumbnail(app: &PatronusPhotoApp, index: usize) -> Option<egui::ColorImage> {
     let doc = &app.session.documents().get(index)?.doc;
     let surf = doc.layers.iter().find_map(|l| l.surface())?;
     let area = doc.bounds();
@@ -75,7 +75,7 @@ fn shrink(px: &[[f32; 4]], w: usize, h: usize) -> (Vec<[f32; 4]>, usize, usize) 
 }
 
 /// Hands each held raw's thumbnail to the workspace's tile, with whether the raw is edited.
-pub(super) fn sync_pictures(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(super) fn sync_pictures(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     let current = app.raw.as_ref().and_then(|s| s.raw_open.as_ref()).map(|r| r.document);
     let Some(shown) = hosted(app) else { return };
     let current_edited = !shown.workspace().session().is_identity();
@@ -94,7 +94,7 @@ pub(super) fn sync_pictures(app: &mut PhotocraftApp, ctx: &egui::Context) {
 
 /// Shows raw `i` of the filmstrip, with the settings it was left with (its sidecar's, the
 /// Camera Raw Defaults' Auto, or the defaults the first time).
-pub(super) fn open_held(app: &mut PhotocraftApp, ctx: &egui::Context, i: usize) -> Result<(), String> {
+pub(super) fn open_held(app: &mut PatronusPhotoApp, ctx: &egui::Context, i: usize) -> Result<(), String> {
     let held = app.raw_shelf.get(i).ok_or("no raw file at that place in the filmstrip")?;
     let (raw, kept) = (held.raw.clone(), held.kept.clone());
     open_raw_with(app, ctx, raw, kept)
@@ -102,7 +102,7 @@ pub(super) fn open_held(app: &mut PhotocraftApp, ctx: &egui::Context, i: usize) 
 
 /// Shows raw `to` of the filmstrip; the one being left keeps its settings, and its thumbnail
 /// shows them.
-pub(super) fn show_raw(app: &mut PhotocraftApp, ctx: &egui::Context, to: usize) -> Result<(), String> {
+pub(super) fn show_raw(app: &mut PatronusPhotoApp, ctx: &egui::Context, to: usize) -> Result<(), String> {
     let Some(session) = app.raw.as_ref() else { return Ok(()) };
     let current = session.raw_open.as_ref().map(|r| r.document);
     if session.target != Target::OpenRaw || app.raw_shelf.get(to).is_none_or(|h| Some(h.raw.document) == current) {
@@ -124,7 +124,7 @@ pub(super) fn show_raw(app: &mut PhotocraftApp, ctx: &egui::Context, to: usize) 
 
 /// Stores the workspace's settings (and demosaic choice) on its filmstrip raw, and refreshes the
 /// raw's thumbnail from the preview.
-pub(super) fn keep_settings(app: &mut PhotocraftApp) {
+pub(super) fn keep_settings(app: &mut PatronusPhotoApp) {
     let Some(workspace) = hosted(app) else { return };
     let settings = workspace.workspace().session().clone();
     let Some(demosaic) = workspace_demosaic(workspace) else { return };
@@ -133,7 +133,7 @@ pub(super) fn keep_settings(app: &mut PhotocraftApp) {
 
 /// Stores `settings` and `demosaic` on the held raw of the shown one; with `thumbnail`, refreshes its thumbnail from the
 /// develop of those settings.
-pub(super) fn keep(app: &mut PhotocraftApp, settings: &CameraRaw, demosaic: photocraft_io::raw::Demosaic, thumbnail: bool) {
+pub(super) fn keep(app: &mut PatronusPhotoApp, settings: &CameraRaw, demosaic: patronusphoto_io::raw::Demosaic, thumbnail: bool) {
     let Some(session) = app.raw.as_ref() else { return };
     let Some(raw) = &session.raw_open else { return };
     let (document, original, source) = (raw.document, session.original.clone(), session.source.clone());
@@ -154,7 +154,7 @@ pub(super) fn keep(app: &mut PhotocraftApp, settings: &CameraRaw, demosaic: phot
 
 /// The settings Open develops a never-shown filmstrip raw with, and what they started from:
 /// its sidecar's, else the Camera Raw Defaults' Auto when that is on, else the defaults.
-pub(super) fn first_settings(app: &PhotocraftApp, raw: &RawOpen) -> (CameraRaw, Option<CameraRaw>) {
+pub(super) fn first_settings(app: &PatronusPhotoApp, raw: &RawOpen) -> (CameraRaw, Option<CameraRaw>) {
     if let Some((loaded, _, _)) = raw.path.as_deref().and_then(read_sidecar) {
         return (loaded.clone(), Some(loaded));
     }
@@ -166,7 +166,7 @@ pub(super) fn first_settings(app: &PhotocraftApp, raw: &RawOpen) -> (CameraRaw, 
         && let Ok((area, w, h)) = super::convert::preview_area(st.doc.bounds(), surf)
     {
         let (proxy, ..) = super::convert::box_proxy(surf, area, w, h);
-        photocraft_algo::camera_raw::auto_tone(&proxy, &mut p);
+        patronusphoto_algo::camera_raw::auto_tone(&proxy, &mut p);
     }
     (p, None)
 }
@@ -175,8 +175,8 @@ pub(super) fn first_settings(app: &PhotocraftApp, raw: &RawOpen) -> (CameraRaw, 
 /// its own settings. One reply for one raw, `{"opened": [...]}` for several. A raw leaves the
 /// filmstrip once it has opened or its background develop has started: one that fails stays or
 /// comes back there with its settings, so the dialog returns for it (or Cancel still closes it).
-pub(super) fn open_all(app: &mut PhotocraftApp, params: &CameraRaw, raw: &RawOpen, original: &CameraRaw) -> Result<Value, String> {
-    let others: Vec<photocraft_doc::DocId> = app.raw_shelf.iter().map(|h| h.raw.document).filter(|id| *id != raw.document).collect();
+pub(super) fn open_all(app: &mut PatronusPhotoApp, params: &CameraRaw, raw: &RawOpen, original: &CameraRaw) -> Result<Value, String> {
+    let others: Vec<patronusphoto_doc::DocId> = app.raw_shelf.iter().map(|h| h.raw.document).filter(|id| *id != raw.document).collect();
     let first = commit_open_raw(app, params, raw, Some(original));
     if let Ok(v) = &first {
         return_on_failure(app, v, original);
@@ -219,7 +219,7 @@ pub(super) fn open_all(app: &mut PhotocraftApp, params: &CameraRaw, raw: &RawOpe
 
 /// Done: saves each raw's settings to its sidecar, as Camera Raw's Done does, and opens none of
 /// them (they close again). `settings` are the shown raw's.
-pub(super) fn done(app: &mut PhotocraftApp, settings: &CameraRaw) -> Value {
+pub(super) fn done(app: &mut PatronusPhotoApp, settings: &CameraRaw) -> Value {
     use super::sidecar::Stored;
     let Some(raw) = app.raw.as_ref().and_then(|s| s.raw_open.clone()) else { return Value::Null };
     let mut raws = vec![(raw.clone(), settings.clone())];

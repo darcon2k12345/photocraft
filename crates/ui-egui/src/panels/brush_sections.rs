@@ -17,12 +17,12 @@ use craft::ui::patterns::presets::{PresetBrowser, PresetEvent, PresetState, Pres
 use craft::ui::pickers::Select;
 use craft::ui::runtime::env::{Env, UnitKind};
 use egui::Ui;
-use photocraft_engine::BrushSettings;
-use photocraft_engine::paint::{self, BrushPreset, Control, Dynamic, MAX_BRUSH_SIZE, MaskMode, Pattern, PatternStyle, TipShape};
+use patronusphoto_engine::BrushSettings;
+use patronusphoto_engine::paint::{self, BrushPreset, Control, Dynamic, MAX_BRUSH_SIZE, MaskMode, Pattern, PatternStyle, TipShape};
 
 use super::brush_panel::brushes::{BrushKey, preset_rows};
 use super::preset_browser::pattern_picker;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::history_keys;
 use crate::pressure_curve_ui;
 use crate::state::Tool;
@@ -137,7 +137,7 @@ pub fn preset_tip(p: &BrushPreset) -> (&TipShape, f32, f32, f32, f32, f32) {
 
 /// One pane's drawing state: the app (tip grids, pattern library, open curves) and the pass's report.
 struct Pane<'a> {
-    app: &'a mut PhotocraftApp,
+    app: &'a mut PatronusPhotoApp,
     out: SectionOut,
 }
 
@@ -504,15 +504,15 @@ impl Pane<'_> {
 
 /// A grayscale tile of the library pattern `p` for the brush's texture: luminance, sampled so the longer side is at
 /// most `LIBRARY_TILE_SIDE` (a pattern file can declare a padded source of any size).
-fn library_tile(p: &photocraft_doc::Pattern) -> paint::tile::GrayTile {
+fn library_tile(p: &patronusphoto_doc::Pattern) -> paint::tile::GrayTile {
     let (w, h) = (p.width.max(1), p.height.max(1));
     let format = p.surface.format();
     let step = (w.max(h) as f32 / LIBRARY_TILE_SIDE as f32).max(1.0);
     let (tw, th) = (((w as f32 / step) as u32).max(1), ((h as f32 / step) as u32).max(1));
     paint::tile::GrayTile::from_fn(tw, th, |x, y| {
         let (sx, sy) = (((x as f32 * step) as u32).min(w - 1), ((y as f32 * step) as u32).min(h - 1));
-        let px = p.surface.read_region(photocraft_geom::Rect::from_xywh(sx as i32, sy as i32, 1, 1));
-        let [r, g, b, _] = photocraft_raster::to_rgba(&format, &px);
+        let px = p.surface.read_region(patronusphoto_geom::Rect::from_xywh(sx as i32, sy as i32, 1, 1));
+        let [r, g, b, _] = patronusphoto_raster::to_rgba(&format, &px);
         0.2126 * r + 0.7152 * g + 0.0722 * b
     })
 }
@@ -521,7 +521,7 @@ fn library_tile(p: &photocraft_doc::Pattern) -> paint::tile::GrayTile {
 /// The tip grids read the preset library from `app`; the active `tool` determines which Transfer controls apply.
 /// Reports the name of a preset whose tip was picked in the Brush Tip Shape grid and the history key of the pass's
 /// last edit.
-pub(crate) fn section_body(app: &mut PhotocraftApp, ui: &mut Ui, b: &mut BrushSettings, i: usize, tool: Tool) -> SectionOut {
+pub(crate) fn section_body(app: &mut PatronusPhotoApp, ui: &mut Ui, b: &mut BrushSettings, i: usize, tool: Tool) -> SectionOut {
     let defaults = BrushSettings::default();
     let mut pane = Pane { app, out: SectionOut::default() };
     match i {

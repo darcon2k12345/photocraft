@@ -1,21 +1,24 @@
 //! Community and project links: the Help menu, the About dialog, the start screen and the title
-//! bar all open these. URLs follow the crafting-app pattern (`getartcraft.com/apps/<app>`,
-//! `github.com/storytold/<app>`).
+//! bar all open these. They point at the Patronus Photo repository on GitHub.
 
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
-pub const DISCORD: &str = "https://discord.gg/artcraft";
-pub const ARTCRAFT_WEBSITE: &str = "https://getartcraft.com";
-pub const APP_PAGE: &str = "https://getartcraft.com/apps/photocraft";
-pub const TUTORIALS: &str = "https://getartcraft.com/tutorials";
-pub const GITHUB: &str = "https://github.com/storytold/photocraft";
-pub const ISSUES: &str = "https://github.com/storytold/photocraft/issues";
+/// Where the community talks: the repository's GitHub Discussions. (The constant and its `help.discord`
+/// command keep the names they have always had, so automation stays compatible.)
+pub const DISCORD: &str = "https://github.com/darcon2k12345/photocraft/discussions";
+/// Patronus on GitHub.
+pub const PATRONUS_WEBSITE: &str = "https://github.com/darcon2k12345";
+/// Where Patronus Photo's installers are published.
+pub const APP_PAGE: &str = "https://github.com/darcon2k12345/photocraft/releases";
+pub const TUTORIALS: &str = "https://github.com/darcon2k12345/photocraft#readme";
+pub const GITHUB: &str = "https://github.com/darcon2k12345/photocraft";
+pub const ISSUES: &str = "https://github.com/darcon2k12345/photocraft/issues";
 
 /// Help-menu link commands: (id, url). Labels live in `menus::UI_COMMANDS`.
 pub const COMMANDS: &[(&str, &str)] =
-    &[("help.discord", DISCORD), ("help.website", APP_PAGE), ("help.artcraftWebsite", ARTCRAFT_WEBSITE), ("help.github", GITHUB), ("help.reportIssue", ISSUES)];
+    &[("help.discord", DISCORD), ("help.website", APP_PAGE), ("help.artcraftWebsite", PATRONUS_WEBSITE), ("help.github", GITHUB), ("help.reportIssue", ISSUES)];
 
 pub fn url_for(id: &str) -> Option<&'static str> {
     static URLS: std::sync::OnceLock<std::collections::HashMap<&'static str, &'static str>> = std::sync::OnceLock::new();
@@ -32,7 +35,7 @@ pub fn url_for(id: &str) -> Option<&'static str> {
 
 /// Open `url` in the system browser (a new tab on the web) and note it in the status bar. Prefers
 /// the platform `open_url` service (reliable on Windows/macOS/Linux); falls back to `ctx.open_url`.
-pub fn open(app: &mut PhotocraftApp, ctx: &egui::Context, url: &str) -> Value {
+pub fn open(app: &mut PatronusPhotoApp, ctx: &egui::Context, url: &str) -> Value {
     let opened = app.services.open_url.as_ref().map(|f| f(url).is_ok()).unwrap_or(false);
     if !opened {
         ctx.open_url(egui::OpenUrl::new_tab(url));
@@ -60,7 +63,7 @@ mod tests {
             })),
             ..Default::default()
         };
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
         let ctx = app.ctx().clone();
         // Every Help-menu link id reaches the service with its URL.
         for (id, url) in COMMANDS {

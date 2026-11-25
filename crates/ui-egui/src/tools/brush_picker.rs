@@ -14,11 +14,11 @@ use craft::ui::buttons::{Button, ToggleButton};
 use craft::ui::choice::Checkbox;
 use craft::ui::contract::{Bind, Props as _, SaveKey, Show as _};
 use craft::ui::runtime::env::Env;
-use photocraft_engine::BrushSettings;
-use photocraft_engine::paint::{MAX_BRUSH_SIZE, TipShape};
+use patronusphoto_engine::BrushSettings;
+use patronusphoto_engine::paint::{MAX_BRUSH_SIZE, TipShape};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::brush_panel::brushes::{BrushKey, preset_rows, run_picks, tip_paint};
 use crate::brush_panel::commit_keyed;
 use crate::state::Tool;
@@ -35,7 +35,7 @@ pub(crate) struct PickerInput {
 impl PickerInput {
     /// The rows, the current preset and the brush values as the app holds them now. The current preset counts only
     /// while a preset of that name exists, so a deleted preset does not stay picked.
-    pub(crate) fn of(app: &PhotocraftApp, env: &Env) -> Self {
+    pub(crate) fn of(app: &PatronusPhotoApp, env: &Env) -> Self {
         let tools = &app.session.tools;
         let brush = tools.brush.clone();
         let current = tools
@@ -55,19 +55,19 @@ impl PickerInput {
             .max_diameter(f64::from(MAX_BRUSH_SIZE))
             .import()
             .gear_rows(gear_rows)
-            .resizable(SaveKey::new("photocraft.brush_picker"))
+            .resizable(SaveKey::new("patronusphoto.brush_picker"))
             .tip(std::sync::Arc::new(tip_paint(&self.brush)))
     }
 }
 
 /// Moves the picker's view out of the app for the pass: the picker borrows it while `apply` needs the whole app.
-fn take_state(app: &mut PhotocraftApp) -> BrushPickerState<BrushKey> {
+fn take_state(app: &mut PatronusPhotoApp) -> BrushPickerState<BrushKey> {
     std::mem::replace(&mut app.ui.brush_picker_state, BrushPickerState::new())
 }
 
 /// Sends each event of a head edit as a `tools.setBrush`; the events of one gesture share the coalesce key, so the
 /// gesture is one command.
-fn commit_edits<T>(app: &mut PhotocraftApp, events: &EditEvents<T>, set: impl Fn(&mut BrushSettings, &T)) {
+fn commit_edits<T>(app: &mut PatronusPhotoApp, events: &EditEvents<T>, set: impl Fn(&mut BrushSettings, &T)) {
     for event in events.iter() {
         let Some(value) = event.landed() else { continue };
         let before = app.session.tools.brush.clone();
@@ -79,7 +79,7 @@ fn commit_edits<T>(app: &mut PhotocraftApp, events: &EditEvents<T>, set: impl Fn
 }
 
 /// Runs what the picker reported: the head's edits, Escape's revert, the saved view and the picks.
-pub(crate) fn apply(app: &mut PhotocraftApp, ctx: &egui::Context, input: PickerInput, out: BrushPresetPickerOutput<BrushKey>) {
+pub(crate) fn apply(app: &mut PatronusPhotoApp, ctx: &egui::Context, input: PickerInput, out: BrushPresetPickerOutput<BrushKey>) {
     commit_edits(app, &out.diameter, |b, v| b.size = *v as f32);
     commit_edits(app, &out.hardness, |b, v| b.hardness = *v as f32);
     commit_edits(app, &out.tip, |b, v| {
@@ -114,7 +114,7 @@ pub(crate) fn apply(app: &mut PhotocraftApp, ctx: &egui::Context, input: PickerI
 
 /// The picker at the point `app.ui.brush_picker` holds (a right-click on the canvas), while it is open. A tool without
 /// a picker closes it. The Background Eraser shows the compact form with its own rows under the head.
-pub(crate) fn show_at(ui: &mut egui::Ui, app: &mut PhotocraftApp) {
+pub(crate) fn show_at(ui: &mut egui::Ui, app: &mut PatronusPhotoApp) {
     let Some(at) = app.ui.brush_picker else { return };
     if !crate::paint_mouse::has_brush_picker(app.ui.tool) {
         close(app);
@@ -151,7 +151,7 @@ pub(crate) fn show_at(ui: &mut egui::Ui, app: &mut PhotocraftApp) {
 
 /// The closed picker field of the options bar, which opens the popover. `enabled` is false for the Eraser in Block
 /// mode, which paints with no brush.
-pub(crate) fn show_field(ui: &mut egui::Ui, app: &mut PhotocraftApp, enabled: bool) {
+pub(crate) fn show_field(ui: &mut egui::Ui, app: &mut PatronusPhotoApp, enabled: bool) {
     let env = Env::of(ui);
     let mut input = PickerInput::of(app, &env);
     let mut state = take_state(app);
@@ -162,29 +162,29 @@ pub(crate) fn show_field(ui: &mut egui::Ui, app: &mut PhotocraftApp, enabled: bo
 
 #[cfg(test)]
 /// Where the canvas picker is open, in screen points; `None` while it is closed.
-pub(crate) fn opened_at(app: &PhotocraftApp) -> Option<egui::Pos2> {
+pub(crate) fn opened_at(app: &PatronusPhotoApp) -> Option<egui::Pos2> {
     app.ui.brush_picker.map(|at| egui::pos2(at[0], at[1]))
 }
 
 /// Opens the canvas picker at `at`. The framework popover closes itself on an outside press and keeps its own opening
 /// baseline for Escape.
-pub(crate) fn open(app: &mut PhotocraftApp, at: [f32; 2]) {
+pub(crate) fn open(app: &mut PatronusPhotoApp, at: [f32; 2]) {
     app.ui.brush_picker = Some(at);
 }
 
 /// Closes the canvas picker.
-pub(crate) fn close(app: &mut PhotocraftApp) {
+pub(crate) fn close(app: &mut PatronusPhotoApp) {
     app.ui.brush_picker = None;
 }
 
-/// PhotoCraft's view before the user changes it: name and stroke shown, tip hidden, search bar on, scale 1.
+/// Patronus Photo's view before the user changes it: name and stroke shown, tip hidden, search bar on, scale 1.
 fn default_settings() -> BrushPickerSettings {
     BrushPickerSettings::new(BrushCardParts::ALL.set(BrushCardPart::Tip, false), 1.0)
 }
 
-/// Restores the picker's remembered view at launch. A missing or malformed key keeps PhotoCraft's default; the
+/// Restores the picker's remembered view at launch. A missing or malformed key keeps Patronus Photo's default; the
 /// framework clamps the scale and turns the parts on when none is.
-pub fn restore(app: &mut PhotocraftApp) {
+pub fn restore(app: &mut PatronusPhotoApp) {
     let mut saved = app.session.prefs().brush_picker.clone();
     crate::tool_memory::upgrade_picker_view(&mut saved);
     let mut merged = serde_json::to_value(default_settings()).unwrap_or(Value::Null);
@@ -198,7 +198,7 @@ pub fn restore(app: &mut PhotocraftApp) {
 }
 
 /// Remembers the picker's view in the preferences when it differs from what is stored.
-fn save(app: &mut PhotocraftApp, settings: &BrushPickerSettings) {
+fn save(app: &mut PatronusPhotoApp, settings: &BrushPickerSettings) {
     let Ok(now) = serde_json::to_value(settings) else { return };
     if app.session.prefs().brush_picker != now {
         app.session.prefs.edit(|p| p.brush_picker = now);
@@ -239,7 +239,7 @@ fn gear_rows(ui: &mut egui::Ui, section: GearSection) {
 }
 
 /// Shows the Brush Settings panel on its settings tab (what F5 does when it is hidden).
-pub fn open_settings(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub fn open_settings(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     if crate::panel_docking::is_shown(app, "brushSettings") {
         // The panel is already showing; there is no tab to switch.
         return;
@@ -251,7 +251,7 @@ pub fn open_settings(app: &mut PhotocraftApp, ctx: &egui::Context) {
 
 /// The options-bar button beside the brush field that shows and hides the Brush Settings panel (Photoshop's "Toggle
 /// the Brush Settings panel"). It runs Window › Brush Settings (F5).
-pub(crate) fn settings_toggle(ui: &mut egui::Ui, app: &mut PhotocraftApp) {
+pub(crate) fn settings_toggle(ui: &mut egui::Ui, app: &mut PatronusPhotoApp) {
     let shown = crate::panel_docking::is_shown(app, "brushSettings");
     let mut on = shown;
     ToggleButton::new(tl!("Toggle the Brush Settings panel"), Bind::bound(&mut on))

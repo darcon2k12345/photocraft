@@ -6,11 +6,11 @@
 //! `ui.dialog.cancel` keeps it. Recorded actions and automation saves don't ask.
 
 use craft::ui::dialog::{PromptAnswer, PromptChoice, StandardPrompt};
-use photocraft_doc::DocId;
+use patronusphoto_doc::DocId;
 use serde_json::{Value, json};
 
 use super::alerts;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The save the prompt holds back: `doc` to `path`, with the format answers a script gave. `flat` is
 /// a flat file confirmed in the Save dialog.
@@ -23,8 +23,8 @@ pub(crate) struct HeldSave {
 
 /// Opens the prompt instead of saving `doc` to its own file at `path` when another app changed
 /// that file; `None` saves as usual. `flat` is a flat file confirmed in the Save dialog, which
-/// is saved (and recorded) the way [`PhotocraftApp::save_dialog_flow`] does it.
-pub(crate) fn intercept(app: &mut PhotocraftApp, doc: DocId, path: &str, flat: bool, choices: crate::FormatChoices) -> Option<Result<Value, String>> {
+/// is saved (and recorded) the way [`PatronusPhotoApp::save_dialog_flow`] does it.
+pub(crate) fn intercept(app: &mut PatronusPhotoApp, doc: DocId, path: &str, flat: bool, choices: crate::FormatChoices) -> Option<Result<Value, String>> {
     if !app.changed_on_disk(doc, path) {
         return None;
     }
@@ -37,7 +37,7 @@ pub(crate) fn intercept(app: &mut PhotocraftApp, doc: DocId, path: &str, flat: b
 
 /// The `PROMPTS` entry: Replace runs the save the prompt held back, Cancel leaves the file. `false`
 /// for another family's answer.
-pub(crate) fn answer(app: &mut PhotocraftApp, _ctx: &egui::Context, answer: &mut PromptAnswer) -> bool {
+pub(crate) fn answer(app: &mut PatronusPhotoApp, _ctx: &egui::Context, answer: &mut PromptAnswer) -> bool {
     let Some(held) = answer.take_tag::<HeldSave>() else { return false };
     if answer.choice == PromptChoice::Proceed {
         let result = replace(app, held);
@@ -47,7 +47,7 @@ pub(crate) fn answer(app: &mut PhotocraftApp, _ctx: &egui::Context, answer: &mut
 }
 
 /// Replace: the save the prompt held back.
-fn replace(app: &mut PhotocraftApp, held: HeldSave) -> Result<Value, String> {
+fn replace(app: &mut PatronusPhotoApp, held: HeldSave) -> Result<Value, String> {
     let HeldSave { doc, path, flat, choices } = held;
     app.with_document(doc, |app| {
         if flat {
@@ -58,7 +58,7 @@ fn replace(app: &mut PhotocraftApp, held: HeldSave) -> Result<Value, String> {
         } else if app.session.active().is_some_and(|st| crate::saves_flat_in_place(&st.doc, &path)) {
             // Its own flat file: a JPEG, TIFF, Targa or DDS texture asks its format's options next (#2223).
             app.save_flat_in_place(path, choices)
-        } else if app.session.active().is_some_and(|st| photocraft_engine::file_cmds::holds_at(&st.doc, &path)) {
+        } else if app.session.active().is_some_and(|st| patronusphoto_engine::file_cmds::holds_at(&st.doc, &path)) {
             app.save_in_place(path, crate::FormatChoices::default())
         } else {
             // The document changed while the prompt was open and its file can't keep it any more:

@@ -2,7 +2,7 @@
 
 use serde_json::Value;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::dialogs::params::ParamFamily;
 
 /// No external editor sessions exist in the browser.
@@ -17,15 +17,15 @@ impl State {
 }
 
 /// Leave every command to normal dispatch, so Edit Contents uses the internal editor.
-pub(crate) fn intercept(_app: &mut PhotocraftApp, _id: &str, _params: &Value) -> Option<Result<Value, String>> {
+pub(crate) fn intercept(_app: &mut PatronusPhotoApp, _id: &str, _params: &Value) -> Option<Result<Value, String>> {
     None
 }
 
 /// No sessions to poll.
-pub(crate) fn poll(_app: &mut PhotocraftApp, _ctx: &egui::Context) {}
+pub(crate) fn poll(_app: &mut PatronusPhotoApp, _ctx: &egui::Context) {}
 
 /// No dialog to host.
-pub(crate) fn host(_app: &mut PhotocraftApp, _ctx: &egui::Context) {}
+pub(crate) fn host(_app: &mut PatronusPhotoApp, _ctx: &egui::Context) {}
 
 /// The `PARAM_FAMILIES` row: the browser has no editor-choice dialog, so the row owns no key.
 pub(crate) const fn family() -> ParamFamily {

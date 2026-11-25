@@ -7,7 +7,7 @@ fn private_svg_parsing_uses_the_same_worker_at_every_depth() {
     for depth in [2, 200] {
         parse_at_depth(depth, || {
             assert!(SVG_WORKER.with(std::cell::Cell::get));
-            assert_eq!(std::thread::current().name(), Some("photocraft-svg"));
+            assert_eq!(std::thread::current().name(), Some("patronusphoto-svg"));
             let worker = std::thread::current().id();
             parse_at_depth(200, || {
                 assert_eq!(std::thread::current().id(), worker);
@@ -112,8 +112,8 @@ fn png_dimensions(width: u32, height: u32) -> Vec<u8> {
 /// Source-image decoding and canvas rendering are separate work components.
 #[test]
 fn preview_work_counts_large_compressed_rasters_on_tiny_canvases() {
-    let image = photocraft_codecs::Image::from_u8(64, 64, photocraft_codecs::ChannelLayout::Rgb, vec![255; 64 * 64 * 3]).unwrap();
-    let png = photocraft_codecs::encode(&image, photocraft_codecs::Format::Png, &Default::default()).unwrap();
+    let image = patronusphoto_codecs::Image::from_u8(64, 64, patronusphoto_codecs::ChannelLayout::Rgb, vec![255; 64 * 64 * 3]).unwrap();
+    let png = patronusphoto_codecs::encode(&image, patronusphoto_codecs::Format::Png, &Default::default()).unwrap();
     let svg = image_svg(&embedded_image("image/png", &png));
     let (imported, work) = import_svg_bounded_with_work("work", svg.as_bytes(), 8192).unwrap();
     assert_eq!(imported.document.size, Size::new(1, 1));
@@ -127,8 +127,8 @@ fn preview_work_counts_large_compressed_rasters_on_tiny_canvases() {
 /// A full-size input and output may each use the existing 24 MP component allowance.
 #[test]
 fn preview_work_can_pay_for_both_a_24mp_image_and_a_24mp_canvas() {
-    let image = photocraft_codecs::Image::from_u8(6000, 4000, photocraft_codecs::ChannelLayout::Rgb, vec![255; 6000 * 4000 * 3]).unwrap();
-    let png = photocraft_codecs::encode(&image, photocraft_codecs::Format::Png, &Default::default()).unwrap();
+    let image = patronusphoto_codecs::Image::from_u8(6000, 4000, patronusphoto_codecs::ChannelLayout::Rgb, vec![255; 6000 * 4000 * 3]).unwrap();
+    let png = patronusphoto_codecs::encode(&image, patronusphoto_codecs::Format::Png, &Default::default()).unwrap();
     let data = png.iter().map(|byte| format!("%{byte:02X}")).collect::<String>();
     let svg =
         format!(r#"<svg xmlns="http://www.w3.org/2000/svg" width="6000" height="4000"><image width="6000" height="4000" href="data:image/png,{data}"/></svg>"#);
@@ -141,8 +141,8 @@ fn preview_work_can_pay_for_both_a_24mp_image_and_a_24mp_canvas() {
 
 #[test]
 fn preview_work_plain_paths_and_artboard_clip_do_not_repeat_photo_decode() {
-    let image = photocraft_codecs::Image::from_u8(6000, 4000, photocraft_codecs::ChannelLayout::Rgb, vec![255; 6000 * 4000 * 3]).unwrap();
-    let png = photocraft_codecs::encode(&image, photocraft_codecs::Format::Png, &Default::default()).unwrap();
+    let image = patronusphoto_codecs::Image::from_u8(6000, 4000, patronusphoto_codecs::ChannelLayout::Rgb, vec![255; 6000 * 4000 * 3]).unwrap();
+    let png = patronusphoto_codecs::encode(&image, patronusphoto_codecs::Format::Png, &Default::default()).unwrap();
     let data = png.iter().map(|byte| format!("%{byte:02X}")).collect::<String>();
     let svg = format!(
         r#"<svg xmlns="http://www.w3.org/2000/svg" width="6000" height="4000"><defs><clipPath id="page"><path d="M0 0H6000V4000H0Z"/></clipPath></defs><g clip-path="url(#page)"><image width="6000" height="4000" href="data:image/png,{data}"/><path d="M0 0H4V4Z"/><path d="M5 5H9V9Z"/><path d="M10 10H14V14Z"/><path d="M15 15H19V19Z"/></g></svg>"#
@@ -156,8 +156,8 @@ fn preview_work_plain_paths_and_artboard_clip_do_not_repeat_photo_decode() {
 
 #[test]
 fn preview_work_repeatable_raster_patterns_pay_for_repainting() {
-    let image = photocraft_codecs::Image::from_u8(64, 64, photocraft_codecs::ChannelLayout::Rgb, vec![255; 64 * 64 * 3]).unwrap();
-    let png = photocraft_codecs::encode(&image, photocraft_codecs::Format::Png, &Default::default()).unwrap();
+    let image = patronusphoto_codecs::Image::from_u8(64, 64, patronusphoto_codecs::ChannelLayout::Rgb, vec![255; 64 * 64 * 3]).unwrap();
+    let png = patronusphoto_codecs::encode(&image, patronusphoto_codecs::Format::Png, &Default::default()).unwrap();
     let data = png.iter().map(|byte| format!("%{byte:02X}")).collect::<String>();
     let svg = format!(
         r#"<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><defs><pattern id="paint" width="1" height="1" patternUnits="userSpaceOnUse"><image width="1" height="1" href="data:image/png,{data}"/></pattern></defs><path fill="url(#paint)" d="M0 0H4V4H0Z"/><path fill="url(#paint)" d="M4 4H8V8H4Z"/></svg>"#
@@ -172,8 +172,8 @@ fn preview_work_repeatable_raster_patterns_pay_for_repainting() {
 
 #[test]
 fn preview_work_use_images_charge_each_resolved_occurrence() {
-    let image = photocraft_codecs::Image::from_u8(64, 64, photocraft_codecs::ChannelLayout::Rgb, vec![255; 64 * 64 * 3]).unwrap();
-    let png = photocraft_codecs::encode(&image, photocraft_codecs::Format::Png, &Default::default()).unwrap();
+    let image = patronusphoto_codecs::Image::from_u8(64, 64, patronusphoto_codecs::ChannelLayout::Rgb, vec![255; 64 * 64 * 3]).unwrap();
+    let png = patronusphoto_codecs::encode(&image, patronusphoto_codecs::Format::Png, &Default::default()).unwrap();
     let data = png.iter().map(|byte| format!("%{byte:02X}")).collect::<String>();
     let svg = format!(
         r##"<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><defs><image id="photo" width="1" height="1" href="data:image/png,{data}"/></defs><use href="#photo"/><use href="#photo" x="1"/><use href="#photo" x="2"/></svg>"##
@@ -219,7 +219,7 @@ fn embedded_images_share_budget_and_nested_svg_cannot_hide_raster_bombs() {
     // leaves out an image it can't read; the drawing still opens.
     let malformed = image_svg(&embedded_image("image/png", b"\x89PNG\r\n\x1a\n"));
     assert!(!parse_bounded(malformed.as_bytes(), MAX_RASTER_PIXELS).unwrap().tree.root().has_children());
-    assert!(photocraft_codecs::probe_allocation_size(b"GIF89a\x01\0\x01\0\0\0\0\x21\xfe\xff").is_err(), "truncated extension has no frame");
+    assert!(patronusphoto_codecs::probe_allocation_size(b"GIF89a\x01\0\x01\0\0\0\0\x21\xfe\xff").is_err(), "truncated extension has no frame");
 }
 
 #[test]
@@ -228,15 +228,15 @@ fn webp_container_cannot_hide_a_larger_lossy_frame() {
     webp.extend_from_slice(b"VP8 \x0a\0\0\0\0\0\0\x9d\x01\x2a");
     webp.extend_from_slice(&8000u16.to_le_bytes());
     webp.extend_from_slice(&8000u16.to_le_bytes());
-    assert_eq!(photocraft_codecs::probe_allocation_size(&webp).unwrap(), (8000, 8000), "shared probe sees the coded frame beyond the canvas");
+    assert_eq!(patronusphoto_codecs::probe_allocation_size(&webp).unwrap(), (8000, 8000), "shared probe sees the coded frame beyond the canvas");
     let svg = image_svg(&embedded_image("image/webp", &webp));
     assert!(parse_bounded(svg.as_bytes(), MAX_RASTER_PIXELS).unwrap_err().to_string().contains("decoded pixel budget"));
 }
 
 #[test]
 fn bounded_images_keep_small_pixels_and_external_references_stay_disabled() {
-    let image = photocraft_codecs::Image::from_u8(1, 1, photocraft_codecs::ChannelLayout::Rgba, vec![255, 0, 0, 255]).unwrap();
-    let bytes = photocraft_codecs::encode(&image, photocraft_codecs::Format::Png, &Default::default()).unwrap();
+    let image = patronusphoto_codecs::Image::from_u8(1, 1, patronusphoto_codecs::ChannelLayout::Rgba, vec![255, 0, 0, 255]).unwrap();
+    let bytes = patronusphoto_codecs::encode(&image, patronusphoto_codecs::Format::Png, &Default::default()).unwrap();
     let inner = image_svg(&embedded_image("image/png", &bytes));
     let nested = image_svg(&embedded_image("image/svg+xml", inner.as_bytes()));
     for svg in [&inner, &nested] {
@@ -355,7 +355,7 @@ fn text_without_any_font_is_reported_not_silently_dropped() {
 fn transformed_text_lands_where_resvg_draws_it() {
     fn inter() -> Arc<usvg::fontdb::Database> {
         let mut db = usvg::fontdb::Database::new();
-        db.load_font_data(photocraft_text::fonts::INTER_REGULAR.to_vec());
+        db.load_font_data(patronusphoto_text::fonts::INTER_REGULAR.to_vec());
         Arc::new(db)
     }
     assert!(inter().faces().next().is_some(), "the bundled Inter loads");
@@ -376,7 +376,7 @@ fn transformed_text_lands_where_resvg_draws_it() {
         let r = import_parsed("t", parsed, MAX_GROUP_DEPTH, None, false).unwrap();
         let [layer] = r.document.layers.as_slice() else { panic!("one text layer, got {}: {c}", r.document.layers.len()) };
         assert!(matches!(layer.content, LayerContent::Group(_)), "text stays outline shapes: {c}");
-        let imported = photocraft_compose::flatten(&r.document);
+        let imported = patronusphoto_compose::flatten(&r.document);
         let (mut both, mut either) = (0usize, 0usize);
         let (mut a_box, mut b_box) = ([i32::MAX, i32::MAX, i32::MIN, i32::MIN], [i32::MAX, i32::MAX, i32::MIN, i32::MIN]);
         let grow = |bx: &mut [i32; 4], x: i32, y: i32| *bx = [bx[0].min(x), bx[1].min(y), bx[2].max(x), bx[3].max(y)];
@@ -400,7 +400,7 @@ fn transformed_text_lands_where_resvg_draws_it() {
     }
 }
 
-/// #4266: a group clipped by one path (the PhotoCraft icon's rounded square) stays editable
+/// #4266: a group clipped by one path (the Patronus Photo icon's rounded square) stays editable
 /// shapes with the clip as its vector mask, and looks as resvg draws the drawing; a clip of
 /// two shapes is still rasterised, with the warning.
 #[test]
@@ -422,7 +422,7 @@ fn a_single_path_clip_becomes_the_groups_vector_mask() {
     let (lo, hi) = (xs.iter().copied().fold(f64::MAX, f64::min), xs.iter().copied().fold(f64::MIN, f64::max));
     assert!((lo - 12.0).abs() < 1e-3 && (hi - 52.0).abs() < 1e-3, "in the group's space: {lo}..{hi}");
     // Pixel for pixel what resvg draws, but for anti-aliasing along the edges.
-    let ours = photocraft_compose::flatten(&r.document).to_rgba8().pixels;
+    let ours = patronusphoto_compose::flatten(&r.document).to_rgba8().pixels;
     let tree = parse(svg).unwrap().tree;
     let pm = draw::render(&tree, usvg::Transform::default(), 64, 64, 0, MAX_PEAK_PIXEL_BYTES).unwrap();
     let theirs: Vec<u8> = pm
@@ -435,8 +435,8 @@ fn a_single_path_clip_becomes_the_groups_vector_mask() {
         .collect();
     let off = ours.chunks(4).zip(theirs.chunks(4)).filter(|(a, b)| a.iter().zip(*b).any(|(x, y)| x.abs_diff(*y) > 48)).count();
     assert!(off < 64, "{off} pixels differ");
-    // The report's file: PhotoCraft's own icon opens without the clip-path warning.
-    let icon = import_svg("photocraft.svg", include_bytes!("../../../../assets/app-icon/photocraft.svg")).unwrap();
+    // The report's file: Patronus Photo's own icon opens without the clip-path warning.
+    let icon = import_svg("patronusphoto.svg", include_bytes!("../../../../assets/app-icon/patronusphoto.svg")).unwrap();
     assert!(icon.warnings.iter().all(|w| !w.contains("clip-path")), "{:?}", icon.warnings);
     assert!(icon.document.layers.iter().any(|l| l.vector_mask.is_some()), "its rounded square is a vector mask");
     // Two shapes in the clip: rasterised, and said so.
@@ -463,7 +463,7 @@ fn percent_encoded_svg_child_text_renders_without_outer_text() {
     let outer =
         format!(r#"<svg xmlns="http://www.w3.org/2000/svg" width="80" height="40"><image width="80" height="40" href="data:image/svg+xml,{data}"/></svg>"#);
     assert!(!outer.contains("text"), "the encoded child is the only text source");
-    let has_glyph_ink = |pixels: &photocraft_compose::Buffer| pixels.px.iter().any(|pixel| pixel[3] > 0.5);
+    let has_glyph_ink = |pixels: &patronusphoto_compose::Buffer| pixels.px.iter().any(|pixel| pixel[3] > 0.5);
 
     let ink = on_svg_stack(|| {
         let parsed = parse_with(outer.as_bytes(), inter_only)?;
@@ -471,7 +471,7 @@ fn percent_encoded_svg_child_text_renders_without_outer_text() {
         let (parsed, chain) = parse_bounded_inner_with(outer.as_bytes(), MAX_RASTER_PIXELS, inter_only)?;
         assert_eq!(chain, 1);
         let pixels = rasterize_tree(&complete_raster_tree(parsed)?, 1.0)?;
-        Ok([has_glyph_ink(&photocraft_compose::flatten(&imported.document)), has_glyph_ink(&pixels)])
+        Ok([has_glyph_ink(&patronusphoto_compose::flatten(&imported.document)), has_glyph_ink(&pixels)])
     })
     .unwrap();
     assert_eq!(ink, [true, true], "glyph ink through ordinary import and bounded rendering");
@@ -549,7 +549,7 @@ fn a_font_file_gone_bad_since_indexing_is_not_cached() {
     use std::sync::atomic::{AtomicBool, Ordering};
     static BAD: AtomicBool = AtomicBool::new(true);
     fn indexed_then_overwritten() -> Arc<usvg::fontdb::Database> {
-        let path = std::env::temp_dir().join(format!("photocraft-svg-test-bad-{}.ttf", std::process::id()));
+        let path = std::env::temp_dir().join(format!("patronusphoto-svg-test-bad-{}.ttf", std::process::id()));
         std::fs::write(&path, include_bytes!("../../../../assets/fonts/Inter-Regular.ttf")).unwrap();
         let mut db = usvg::fontdb::Database::new();
         db.load_font_file(&path).unwrap();
@@ -583,7 +583,7 @@ fn imports_missing_the_same_font_at_once_share_one_read() {
     static ROUND: AtomicUsize = AtomicUsize::new(0);
     fn fresh_file() -> Arc<usvg::fontdb::Database> {
         let round = ROUND.load(Ordering::SeqCst);
-        let path = std::env::temp_dir().join(format!("photocraft-svg-test-shared-{}-{round}.ttf", std::process::id()));
+        let path = std::env::temp_dir().join(format!("patronusphoto-svg-test-shared-{}-{round}.ttf", std::process::id()));
         let mut db = usvg::fontdb::Database::new();
         db.load_font_file(&path).unwrap();
         Arc::new(db)
@@ -591,7 +591,7 @@ fn imports_missing_the_same_font_at_once_share_one_read() {
     let svg = b"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"120\" height=\"60\"><text x=\"5\" y=\"45\" font-family=\"Inter\">IHI</text></svg>";
     for round in 0..5 {
         ROUND.store(round, Ordering::SeqCst);
-        let path = std::env::temp_dir().join(format!("photocraft-svg-test-shared-{}-{round}.ttf", std::process::id()));
+        let path = std::env::temp_dir().join(format!("patronusphoto-svg-test-shared-{}-{round}.ttf", std::process::id()));
         std::fs::write(&path, include_bytes!("../../../../assets/fonts/Inter-Regular.ttf")).unwrap();
         let start = Arc::new(std::sync::Barrier::new(8));
         let threads: Vec<_> = (0..8)
@@ -627,7 +627,7 @@ fn the_fallback_search_reads_each_font_file_once() {
     use std::sync::atomic::{AtomicBool, Ordering};
     static GONE: AtomicBool = AtomicBool::new(false);
     fn path() -> std::path::PathBuf {
-        std::env::temp_dir().join(format!("photocraft-svg-test-fallback-{}.ttf", std::process::id()))
+        std::env::temp_dir().join(format!("patronusphoto-svg-test-fallback-{}.ttf", std::process::id()))
     }
     fn inter_and_mono_on_disk() -> Arc<usvg::fontdb::Database> {
         std::fs::write(path(), include_bytes!("../../../../assets/fonts/JetBrainsMono-Regular.ttf")).unwrap();
@@ -675,7 +675,7 @@ fn the_fallback_search_reads_the_cmap_of_an_unsorted_font() {
         let raw = ttf_parser::RawFace::parse(&font, 0).unwrap();
         assert!(raw.table(ttf_parser::Tag::from_bytes(b"cmap")).is_none(), "a binary search misses the cmap");
         assert!(raw.table(ttf_parser::Tag::from_bytes(b"name")).is_some(), "fontdb still finds the name");
-        let path = std::env::temp_dir().join(format!("photocraft-svg-test-unsorted-{}.ttf", std::process::id()));
+        let path = std::env::temp_dir().join(format!("patronusphoto-svg-test-unsorted-{}.ttf", std::process::id()));
         std::fs::write(&path, font).unwrap();
         let mut db = usvg::fontdb::Database::new();
         db.load_font_data(include_bytes!("../../../../assets/fonts/Inter-Regular.ttf").to_vec());
@@ -684,7 +684,7 @@ fn the_fallback_search_reads_the_cmap_of_an_unsorted_font() {
     }
     let svg = b"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"200\" height=\"60\"><text x=\"5\" y=\"45\" font-family=\"Inter\">I\xE2\x94\x80I</text></svg>";
     let parsed = parse_with(svg, inter_and_unsorted_mono_on_disk).unwrap();
-    let _ = std::fs::remove_file(std::env::temp_dir().join(format!("photocraft-svg-test-unsorted-{}.ttf", std::process::id())));
+    let _ = std::fs::remove_file(std::env::temp_dir().join(format!("patronusphoto-svg-test-unsorted-{}.ttf", std::process::id())));
     let mono =
         parsed.tree.fontdb().faces().any(|f| f.families.iter().any(|(n, _)| n == "JetBrains Mono") && matches!(f.source, usvg::fontdb::Source::Binary(_)));
     assert!(mono, "the box-drawing character falls back to JetBrains Mono");
@@ -715,7 +715,7 @@ fn a_collection_in_memory_keeps_its_face_order() {
             body.extend(font);
         }
         ttc.extend(body);
-        let path = std::env::temp_dir().join(format!("photocraft-svg-test-{}.ttc", std::process::id()));
+        let path = std::env::temp_dir().join(format!("patronusphoto-svg-test-{}.ttc", std::process::id()));
         std::fs::write(&path, ttc).unwrap();
         let mut db = usvg::fontdb::Database::new();
         db.load_font_file(&path).unwrap();
@@ -921,8 +921,8 @@ fn missing_svg_font_uses_an_available_generic_instead_of_dropping_text() {
 
 #[test]
 fn embedded_png_and_webp_validation_preserves_public_warning_and_strict_contracts() {
-    let img = photocraft_codecs::Image::from_u8(2, 2, photocraft_codecs::ChannelLayout::Rgb, vec![255; 12]).unwrap();
-    let valid_png = photocraft_codecs::encode(&img, photocraft_codecs::Format::Png, &Default::default()).unwrap();
+    let img = patronusphoto_codecs::Image::from_u8(2, 2, patronusphoto_codecs::ChannelLayout::Rgb, vec![255; 12]).unwrap();
+    let valid_png = patronusphoto_codecs::encode(&img, patronusphoto_codecs::Format::Png, &Default::default()).unwrap();
     for mime in ["image/png", "text/plain"] {
         let svg = image_svg(&embedded_image(mime, &valid_png));
         let output = rasterize_bounded(svg.as_bytes(), 1.0, 64).unwrap();
@@ -955,9 +955,9 @@ fn jpeg_allocation_probe_uses_the_frame_header_and_oversized_jpegs_are_refused()
         v.extend([1, 1, 0x11, 0]);
         v
     };
-    assert_eq!(photocraft_codecs::probe_allocation_size(&jpeg(400, 300)).unwrap(), (300, 400));
-    assert!(photocraft_codecs::probe_allocation_size(&[0xFF, 0xD8, 0xFF, 0xDA, 0, 2]).is_err());
-    assert!(photocraft_codecs::probe_allocation_size(&[0xFF, 0xD8]).is_err());
+    assert_eq!(patronusphoto_codecs::probe_allocation_size(&jpeg(400, 300)).unwrap(), (300, 400));
+    assert!(patronusphoto_codecs::probe_allocation_size(&[0xFF, 0xD8, 0xFF, 0xDA, 0, 2]).is_err());
+    assert!(patronusphoto_codecs::probe_allocation_size(&[0xFF, 0xD8]).is_err());
     for mime in ["image/jpeg", "text/plain"] {
         // 1.2 billion pixels would require 4.8 GB before scaling.
         let svg = image_svg(&embedded_image(mime, &jpeg(40_000, 30_000)));
@@ -991,7 +991,7 @@ fn resolve_data_rejects_nested_gzip_and_handles_text_plain_svgz() {
     }
 }
 
-/// The outer gzip is size-limited by PhotoCraft. Its result must be XML, never another
+/// The outer gzip is size-limited by Patronus Photo. Its result must be XML, never another
 /// compressed stream which usvg could inflate independently without that byte limit.
 #[test]
 fn bounded_svg_rejects_nested_gzip_at_top_level_and_inside_data_urls() {
@@ -1026,8 +1026,8 @@ fn bounded_svg_rejects_nested_gzip_at_top_level_and_inside_data_urls() {
 /// must reject the incomplete drawing.
 #[test]
 fn unreadable_embedded_images_are_left_out_and_the_drawing_still_renders() {
-    let image = photocraft_codecs::Image::from_u8(2, 2, photocraft_codecs::ChannelLayout::Rgb, vec![255; 12]).unwrap();
-    let png = photocraft_codecs::encode(&image, photocraft_codecs::Format::Png, &Default::default()).unwrap();
+    let image = patronusphoto_codecs::Image::from_u8(2, 2, patronusphoto_codecs::ChannelLayout::Rgb, vec![255; 12]).unwrap();
+    let png = patronusphoto_codecs::encode(&image, patronusphoto_codecs::Format::Png, &Default::default()).unwrap();
     for (mime, bytes) in
         [("image/x-foo", png.clone()), ("image/png", png_dimensions(0, 4)), ("image/bmp", b"BM\0\0\0\0".to_vec()), ("image/png", png[..20].to_vec())]
     {
@@ -1037,7 +1037,7 @@ fn unreadable_embedded_images_are_left_out_and_the_drawing_still_renders() {
         );
         assert!(rasterize_bounded(svg.as_bytes(), 1.0, MAX_RASTER_PIXELS).is_err(), "{mime}: incomplete pixels need a warning channel");
         let imported = import_svg_bounded("clipboard", svg.as_bytes(), MAX_RASTER_PIXELS).unwrap_or_else(|e| panic!("{mime}: {e}"));
-        let pixel = photocraft_compose::flatten(&imported.document).get(3, 1);
+        let pixel = patronusphoto_compose::flatten(&imported.document).get(3, 1);
         assert!(pixel[0] > 0.99 && pixel[3] > 0.99, "{mime}: the rect still draws");
         assert!(imported.warnings.iter().any(|warning| warning.contains("embedded") && warning.contains("omitted")), "{mime}: the loss is disclosed");
     }
@@ -1045,8 +1045,8 @@ fn unreadable_embedded_images_are_left_out_and_the_drawing_still_renders() {
 
 #[test]
 fn non_image_data_urls_remain_ignored_without_decoding() {
-    let image = photocraft_codecs::Image::from_u8(2, 2, photocraft_codecs::ChannelLayout::Rgb, vec![255; 12]).unwrap();
-    let png = photocraft_codecs::encode(&image, photocraft_codecs::Format::Png, &Default::default()).unwrap();
+    let image = patronusphoto_codecs::Image::from_u8(2, 2, patronusphoto_codecs::ChannelLayout::Rgb, vec![255; 12]).unwrap();
+    let png = patronusphoto_codecs::encode(&image, patronusphoto_codecs::Format::Png, &Default::default()).unwrap();
     for bytes in [png, png_dimensions(6000, 5000)] {
         let svg = format!(
             "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"4\" height=\"4\">{}<rect width=\"4\" height=\"4\" fill=\"#ff0000\"/></svg>",

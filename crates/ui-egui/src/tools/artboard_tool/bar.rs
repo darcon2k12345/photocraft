@@ -12,11 +12,11 @@ use craft::ui::buttons::Button;
 use craft::ui::contract::{Entry, Show as _, Trigger};
 use craft::ui::menu::Menu;
 use craft::ui::runtime::requests::ColorRequest;
-use photocraft_doc::{ArtboardBackground, LayerId};
-use photocraft_engine::artboard_cmds::PRESETS;
+use patronusphoto_doc::{ArtboardBackground, LayerId};
+use patronusphoto_engine::artboard_cmds::PRESETS;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The size preset a fresh bar (and Reset Tool) shows, with its width and height.
 pub const DEFAULT_SIZE: (&str, u32, u32) = ("iPhone 8/7/6", 750, 1334);
@@ -60,7 +60,7 @@ impl Gear {
 }
 
 /// "The bar's size": the selected board's size, else the tool option's. `[width, height]` in pixels.
-pub fn bar_size(app: &PhotocraftApp) -> [i64; 2] {
+pub fn bar_size(app: &PatronusPhotoApp) -> [i64; 2] {
     match super::active_board(app) {
         Some((_, r)) => [r[2].saturating_sub(r[0]), r[3].saturating_sub(r[1])],
         None => [i64::from(app.ui.artboard_tool.width), i64::from(app.ui.artboard_tool.height)],
@@ -73,7 +73,7 @@ pub fn preset_name(w: i64, h: i64) -> &'static str {
 }
 
 /// `params` for `layer.new.artboard` plus the bar's background: `background`, and `color` for Other….
-pub fn with_background(app: &PhotocraftApp, mut params: Value) -> Value {
+pub fn with_background(app: &PatronusPhotoApp, mut params: Value) -> Value {
     let o = &app.ui.artboard_tool;
     params["background"] = json!(o.background);
     if o.background == "custom" {
@@ -83,14 +83,14 @@ pub fn with_background(app: &PhotocraftApp, mut params: Value) -> Value {
 }
 
 /// Set the tool option size to `w` x `h`, clamped to 1..=300000.
-pub fn set_size(app: &mut PhotocraftApp, w: f32, h: f32) {
+pub fn set_size(app: &mut PatronusPhotoApp, w: f32, h: f32) {
     let clamp = |v: f32| if v.is_finite() { v.round().clamp(1.0, MAX_SIDE) as u32 } else { 1 };
     let o = &mut app.ui.artboard_tool;
     (o.width, o.height) = (clamp(w), clamp(h));
 }
 
 /// The selected boards: each selected layer's artboard, once, in document order.
-fn selected_boards(app: &PhotocraftApp) -> Vec<LayerId> {
+fn selected_boards(app: &PatronusPhotoApp) -> Vec<LayerId> {
     let Some(st) = app.session.active() else { return Vec::new() };
     let mut ids: Vec<LayerId> = Vec::new();
     for &l in st.selected_layers() {
@@ -105,7 +105,7 @@ fn selected_boards(app: &PhotocraftApp) -> Vec<LayerId> {
 
 /// The background the bar shows as `(name, #rrggbb)`: the first selected board's, else the tool
 /// option's. The colour is the custom one (or the option's remembered one for the named ones).
-pub fn shown_background(app: &PhotocraftApp) -> (String, String) {
+pub fn shown_background(app: &PatronusPhotoApp) -> (String, String) {
     let o = &app.ui.artboard_tool;
     let first = selected_boards(app).first().and_then(|id| app.session.active()?.doc.layer(*id)?.artboard().map(|a| a.background));
     match first {
@@ -121,7 +121,7 @@ pub fn shown_background(app: &PhotocraftApp) -> (String, String) {
 /// Choose background `name` (`white`, `black`, `transparent` or `custom` with `color`, `#rrggbb`).
 /// It is the tool option for the next drawn board, and with boards selected also the background of
 /// every selected board in one `layer.artboard.set` step ("Edit Artboard" / "Edit Artboards").
-pub fn set_background(app: &mut PhotocraftApp, name: &str, color: &str) -> Result<Value, String> {
+pub fn set_background(app: &mut PatronusPhotoApp, name: &str, color: &str) -> Result<Value, String> {
     let custom = name == "custom";
     if custom {
         crate::color_picker_ui::parse_hex(color).ok_or("not a colour")?;
@@ -158,7 +158,7 @@ pub fn set_background(app: &mut PhotocraftApp, name: &str, color: &str) -> Resul
 
 /// OK in the Color Picker opened by Other…: the custom background is `color` (`#rrggbb`), for the
 /// selected boards (if any) and the next drawn one.
-pub fn set_custom_background(app: &mut PhotocraftApp, color: &str) -> Result<Value, String> {
+pub fn set_custom_background(app: &mut PatronusPhotoApp, color: &str) -> Result<Value, String> {
     set_background(app, "custom", color)?;
     Ok(json!({"color": color}))
 }
@@ -167,7 +167,7 @@ pub fn set_custom_background(app: &mut PhotocraftApp, color: &str) -> Result<Val
 /// opened with, after any Only Web Colors snap) leaves every selected board alone, with no command
 /// and no history step: only the tool option for the next board follows. Otherwise boards that
 /// already have the picked RGB are skipped one by one ([`set_background`]).
-pub fn set_custom_background_from_picker(app: &mut PhotocraftApp, color: &str, unchanged: bool) -> Result<Value, String> {
+pub fn set_custom_background_from_picker(app: &mut PatronusPhotoApp, color: &str, unchanged: bool) -> Result<Value, String> {
     if !unchanged {
         return set_custom_background(app, color);
     }
@@ -179,7 +179,7 @@ pub fn set_custom_background_from_picker(app: &mut PhotocraftApp, color: &str, u
 }
 
 /// Opens the Color Picker for the custom background.
-fn pick_background(app: &mut PhotocraftApp) {
+fn pick_background(app: &mut PatronusPhotoApp) {
     let rgb = crate::color_picker_ui::parse_hex(&shown_background(app).1).unwrap_or([1.0; 3]);
     let title = crate::color_picker_ui::title_for(tl!("Color"));
     if let Err(message) = crate::color_picker_ui::open_for_target(app, "artboardBackground", &title, rgb) {
@@ -226,7 +226,7 @@ fn proposed(event: &EditEvent<Size>) -> Option<Size> {
 
 /// Applies what the bar reported: sizes edit the board (`board`) or the tool's option, a background goes to
 /// [`set_background`], and a colour request opens the picker.
-pub(crate) fn route(app: &mut PhotocraftApp, board: Option<LayerId>, size: EditEvents<Size>, background: Option<Shown>, pick_color: Option<ColorRequest>) {
+pub(crate) fn route(app: &mut PatronusPhotoApp, board: Option<LayerId>, size: EditEvents<Size>, background: Option<Shown>, pick_color: Option<ColorRequest>) {
     for event in &size {
         let Some(value) = proposed(event) else { continue };
         let (w, h) = (value.width.round(), value.height.round());
@@ -255,7 +255,7 @@ pub(crate) fn route(app: &mut PhotocraftApp, board: Option<LayerId>, size: EditE
 }
 
 /// Shows the bar's members for the selected board, or for the next board, and applies what they report.
-pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn show(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let boards = super::items(app);
     let selected = boards.selected.first().copied();
     let presets = presets();
@@ -274,7 +274,7 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 }
 
 /// The gear button and its menu: the four entries as check rows, Auto-nest Layers live, the others disabled.
-pub fn gear(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn gear(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let opener = Button::new(tl!("Options")).show(ui).response;
     let o = &app.ui.artboard_tool;
     let entries: Vec<Entry<Gear>> = GEAR.iter().map(|(g, label)| Entry::new(*g, label.to_string()).checked(g.checked(o)).enabled(g.enabled())).collect();

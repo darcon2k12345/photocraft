@@ -2,17 +2,17 @@
 //! on each axis, as in Photoshop. Other zoom levels keep the screen-based scaling.
 
 use egui::Modifiers;
-use photocraft_doc::vector::Subpath;
+use patronusphoto_doc::vector::Subpath;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::{ToolEvent, tool_event};
 use crate::state::Tool;
 use craft::draw::ui::VectorMode;
 
 /// The measured document: 800 × 600 px with the Freeform Pen in Path mode at `zoom`.
-fn app(zoom: f32) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app(zoom: f32) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 800, "height": 600})).unwrap();
     app.sync_views();
     // A window the 800 × 600 document fits in at every zoom the cases use.
@@ -27,7 +27,7 @@ fn app(zoom: f32) -> Box<PhotocraftApp> {
 
 /// The measured stroke: a circle around (600, 300) of radius 100 from (700, 300) in 60 moves,
 /// released `off` document px from its start. Returns the stroke's subpath.
-fn circle(app: &mut PhotocraftApp, off: [f64; 2]) -> Subpath {
+fn circle(app: &mut PatronusPhotoApp, off: [f64; 2]) -> Subpath {
     let mods = Modifiers::NONE;
     tool_event(app, ToolEvent::Down { x: 700.0, y: 300.0, pressure: 1.0 }, mods);
     for i in 1..60 {

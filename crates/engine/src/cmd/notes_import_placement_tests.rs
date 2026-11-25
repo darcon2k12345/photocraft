@@ -71,9 +71,9 @@ fn a_zero_height_source_or_an_overflow_is_an_error() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn an_import_reports_outside_and_keeps_the_history_step() {
-    let mut src = Document::new("src", photocraft_doc::Size::new(600, 400), photocraft_color::ColorMode::Rgb, photocraft_color::SampleType::U8);
+    let mut src = Document::new("src", patronusphoto_doc::Size::new(600, 400), patronusphoto_color::ColorMode::Rgb, patronusphoto_color::SampleType::U8);
     src.notes = source();
-    let bytes = photocraft_format::save_to_bytes(&src, &Default::default()).unwrap();
+    let bytes = patronusphoto_format::save_to_bytes(&src, &Default::default()).unwrap();
     let mut s = Session::new();
     s.execute("file.new", json!({"width": 1200, "height": 1600})).unwrap();
     let before = s.active().unwrap().history.past_len();

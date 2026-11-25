@@ -423,7 +423,7 @@ fn word_note(note: &SwatchNote, format: SwatchFormat, writing: bool) -> String {
             format!("{n} colour-book swatches can't be stored in a .{ext} file and were left out (save as .aco to keep them)")
         }
         SwatchNote::BookColors(n) => {
-            format!("{n} swatches use a colour book or colour space PhotoCraft can't show; they are kept (shown gray) and saved back unchanged")
+            format!("{n} swatches use a colour book or colour space Patronus Photo can't show; they are kept (shown gray) and saved back unchanged")
         }
         SwatchNote::Skipped(n) => format!("{n} swatches in an unknown colour model were skipped"),
         SwatchNote::GroupsFlattened => format!(".{ext} files have no groups; the swatches were saved as one list"),
@@ -562,7 +562,7 @@ fn export(s: &mut Session, p: &Value) -> Result<Value> {
             crate::file_cmds::write_file(path, &bytes)?;
             out["path"] = json!(path);
         }
-        None => out["data"] = json!(photocraft_paint::tile::b64_encode(&bytes)),
+        None => out["data"] = json!(patronusphoto_paint::tile::b64_encode(&bytes)),
     }
     Ok(out)
 }

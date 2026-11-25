@@ -1,12 +1,12 @@
 use super::*;
-use photocraft_color::BlendMode;
+use patronusphoto_color::BlendMode;
 use serde_json::json;
 
 fn render_state() -> Option<eframe::egui_wgpu::RenderState> {
     match std::panic::catch_unwind(|| egui_kittest::wgpu::create_render_state(crate::gpu_canvas::wgpu_setup(), Default::default())) {
         Ok(rs) => Some(rs),
         Err(error) => {
-            if std::env::var_os("PHOTOCRAFT_REQUIRE_GPU_TESTS").is_some() {
+            if std::env::var_os("PATRONUSPHOTO_REQUIRE_GPU_TESTS").is_some() {
                 std::panic::resume_unwind(error);
             }
             eprintln!("skipping blend viewport regression: no GPU adapter");
@@ -32,9 +32,9 @@ fn blend_hover_multiple_layers_tracks_visible_canvas() {
 
 #[test]
 fn blend_hover_pattern_tiles_and_multiple_views_reuse_current_pixels() {
-    let _guard = photocraft_testkit::gpu_lock();
+    let _guard = patronusphoto_testkit::gpu_lock();
     let Some(rs) = render_state() else { return };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.set_wgpu(rs);
     // Half the 1024 × 768 canvas these views were first written for (see `check_blend_viewport`): `a` still runs off
     // the right edge and `b` still lies apart from it.
@@ -46,18 +46,18 @@ fn blend_hover_pattern_tiles_and_multiple_views_reuse_current_pixels() {
     let b = DRect::new(0, 100, 150, 250);
     assert!(ensure_gpu(&mut app, &ctx, 0, a, None));
     app.ui.view.pattern_preview = true;
-    crate::blend_preview::hover(&mut app, &[photocraft_doc::LayerId(layer)], Some(BlendMode::Multiply));
+    crate::blend_preview::hover(&mut app, &[patronusphoto_doc::LayerId(layer)], Some(BlendMode::Multiply));
     assert!(ensure_gpu(&mut app, &ctx, 0, a, None));
     assert_visible_pixels(&mut app, b);
     let bounds = app.session.active().unwrap().doc.bounds();
     assert_visible_pixels(&mut app, bounds);
-    crate::blend_preview::hover(&mut app, &[photocraft_doc::LayerId(layer)], None);
+    crate::blend_preview::hover(&mut app, &[patronusphoto_doc::LayerId(layer)], None);
     assert!(ensure_gpu(&mut app, &ctx, 0, a, None));
     assert_visible_pixels(&mut app, bounds);
 
     app.ui.view.pattern_preview = false;
     for mode in [BlendMode::Multiply, BlendMode::Screen] {
-        crate::blend_preview::hover(&mut app, &[photocraft_doc::LayerId(layer)], Some(mode));
+        crate::blend_preview::hover(&mut app, &[patronusphoto_doc::LayerId(layer)], Some(mode));
         assert!(ensure_gpu(&mut app, &ctx, 0, a, None));
         assert!(ensure_gpu(&mut app, &ctx, 0, b, None));
         for visible in [a, b, a, b] {
@@ -71,16 +71,16 @@ fn blend_hover_pattern_tiles_and_multiple_views_reuse_current_pixels() {
     app.ui.view.pattern_preview = true;
     assert!(ensure_gpu(&mut app, &ctx, 0, a, None));
     assert_visible_pixels(&mut app, bounds);
-    crate::blend_preview::hover(&mut app, &[photocraft_doc::LayerId(layer)], None);
+    crate::blend_preview::hover(&mut app, &[patronusphoto_doc::LayerId(layer)], None);
     assert!(ensure_gpu(&mut app, &ctx, 0, a, None));
     assert_visible_pixels(&mut app, bounds);
 }
 
 #[test]
 fn blend_hover_during_background_redraw_restores_committed_pixels() {
-    let _guard = photocraft_testkit::gpu_lock();
+    let _guard = patronusphoto_testkit::gpu_lock();
     let Some(rs) = render_state() else { return };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.set_wgpu(rs);
     app.background_jobs = true;
     app.run("file.new", json!({"width":2600,"height":1700,"background":"#336699"})).unwrap();
@@ -91,20 +91,20 @@ fn blend_hover_during_background_redraw_restores_committed_pixels() {
     let visible = DRect::new(256, 256, 512, 512);
     assert!(ensure_gpu(&mut app, &ctx, 0, visible, None));
     assert!(!app.redraws.is_empty(), "fixture must start a deferred full redraw");
-    crate::blend_preview::hover(&mut app, &[photocraft_doc::LayerId(layer)], Some(BlendMode::Multiply));
+    crate::blend_preview::hover(&mut app, &[patronusphoto_doc::LayerId(layer)], Some(BlendMode::Multiply));
     assert!(ensure_gpu(&mut app, &ctx, 0, visible, None));
     let panned = DRect::new(2048, 1024, 2304, 1280);
     assert!(ensure_gpu(&mut app, &ctx, 0, panned, None));
     settle_redraw(&mut app);
     assert_visible_pixels(&mut app, panned);
-    crate::blend_preview::hover(&mut app, &[photocraft_doc::LayerId(layer)], None);
+    crate::blend_preview::hover(&mut app, &[patronusphoto_doc::LayerId(layer)], None);
     assert!(ensure_gpu(&mut app, &ctx, 0, panned, None));
     settle_redraw(&mut app);
     let bounds = app.session.active().unwrap().doc.bounds();
     assert_visible_pixels(&mut app, bounds);
 }
 
-fn settle_redraw(app: &mut PhotocraftApp) {
+fn settle_redraw(app: &mut PatronusPhotoApp) {
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(60);
     let gpu = app.gpu.clone().unwrap();
     let id = app.session.active().unwrap().doc.id;
@@ -115,7 +115,7 @@ fn settle_redraw(app: &mut PhotocraftApp) {
     }
 }
 
-fn assert_visible_pixels(app: &mut PhotocraftApp, visible: DRect) {
+fn assert_visible_pixels(app: &mut PatronusPhotoApp, visible: DRect) {
     let (doc, _) = display_doc(app, 0);
     let gpu = app.gpu.clone().unwrap();
     let reference = doc.id.0 ^ (1u64 << 60);
@@ -134,9 +134,9 @@ fn assert_visible_pixels(app: &mut PhotocraftApp, visible: DRect) {
 }
 
 fn check_blend_viewport(cpu_fallback: bool, multiple_layers: bool) {
-    let _guard = photocraft_testkit::gpu_lock();
+    let _guard = patronusphoto_testkit::gpu_lock();
     let Some(rs) = render_state() else { return };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.set_wgpu(rs);
     // Every view and count below is half of the 1024 × 768 fixture first used: the clip to the view
     // (`blend_preview::clip_damage`) and the catch-up (`blend_preview::uncovered`) are rectangle arithmetic with no
@@ -148,12 +148,12 @@ fn check_blend_viewport(cpu_fallback: bool, multiple_layers: bool) {
     if cpu_fallback {
         app.run("layer.layerStyle.blendingOptions", json!({"knockout":"shallow"})).unwrap();
     }
-    let mut layers = vec![photocraft_doc::LayerId(layer)];
+    let mut layers = vec![patronusphoto_doc::LayerId(layer)];
     if multiple_layers {
         let other = app.run("layer.new.layer", json!({})).unwrap()["layer"].as_u64().unwrap();
         app.run("edit.fill", json!({"color": "#4488cc"})).unwrap();
         app.run("layer.setProps", json!({"layer": other, "opacity": 0.5})).unwrap();
-        layers.push(photocraft_doc::LayerId(other));
+        layers.push(patronusphoto_doc::LayerId(other));
     }
     let ctx = app.ctx().clone();
     let visible = DRect::new(128, 128, 256, 256);

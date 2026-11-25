@@ -3,7 +3,7 @@
 
 use craft_psd::testgen;
 use craft_psd::{ColorMode, Compression, LayerSpec, PixelData, PsdBuilder, Version};
-use photocraft_io::psd_to_document;
+use patronusphoto_io::psd_to_document;
 
 /// A layer whose red channel is damaged: the warning says "treated as empty", and the layer must
 /// be empty, not opaque black (the transparency channel is still fine).
@@ -25,7 +25,7 @@ fn undecodable_channel_leaves_the_layer_empty() {
 
 /// A flattened 29000² RGB PSB: its merged image decodes to 2.52 GB, past the old 2 GiB cap, which
 /// opened it as a document with no layers. Needs about 12 GB of memory, so it is opt-in:
-/// `cargo test --release -p photocraft-io --test it -- large_psb:: --ignored`.
+/// `cargo test --release -p patronusphoto-io --test it -- large_psb:: --ignored`.
 #[test]
 #[ignore = "allocates ~12 GB; run in release"]
 fn flattened_psb_with_a_merged_image_over_2_gib_opens() {

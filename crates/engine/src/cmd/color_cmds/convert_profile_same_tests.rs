@@ -17,7 +17,7 @@ type State = (usize, bool, Option<std::sync::Arc<Vec<u8>>>, Vec<[f32; 4]>);
 
 fn state(s: &Session) -> State {
     let d = s.active().unwrap();
-    (d.history.entries().len(), d.is_dirty(), d.doc.icc_profile.clone(), photocraft_compose::flatten(&d.doc).px.to_vec())
+    (d.history.entries().len(), d.is_dirty(), d.doc.icc_profile.clone(), patronusphoto_compose::flatten(&d.doc).px.to_vec())
 }
 
 #[test]

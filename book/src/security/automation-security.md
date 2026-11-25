@@ -8,7 +8,7 @@ Automation is a privilege boundary because requests can cause filesystem access,
 - Headless TCP refuses a successfully bound non-loopback address.
 - Every desktop-control and headless-TCP connection must authenticate with a 256-bit bearer token before method dispatch.
 - Encoded request lines are limited to 1 MiB on desktop and headless TCP, the headless
-  JSON-lines stdio server (`photocraft-cli serve`), and MCP stdio. The MCP line limit is
+  JSON-lines stdio server (`patronusphoto-cli serve`), and MCP stdio. The MCP line limit is
   enforced before rmcp's line buffer; an oversized MCP line closes that stdio session because
   its request ID cannot safely be parsed. Active TCP connections are limited to 16, and
   headless/MCP batches to 256 steps.
@@ -34,7 +34,7 @@ Automation is a privilege boundary because requests can cause filesystem access,
   (`agent-control.token`) and stays the same across restarts and port changes: restarting does
   not revoke it. To revoke an exposed token, delete that file; the next start creates a new one.
   The published `agent-connection.json` holds the port and the token file's path, never the
-  token. `photocraft-cli mcp` authenticates with the challenge handshake, so the token
+  token. `patronusphoto-cli mcp` authenticates with the challenge handshake, so the token
   itself is never sent: the listener must first prove it holds the token, and a stale file whose
   port another program took fails that check before the client reveals anything.
 - The bridge and UI request paths use timeouts.

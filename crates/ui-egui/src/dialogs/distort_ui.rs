@@ -11,12 +11,12 @@ use std::sync::Arc;
 
 use craft::ui::dialog::dialog_id;
 use egui::{Color32, ColorImage};
-use photocraft_doc::{DocId, Document, LayerContent, LayerId};
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use patronusphoto_doc::{DocId, Document, LayerContent, LayerId};
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::Surface;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The key of RAW Develop's workspace; the filmstrip switches the active document itself, so it is the one workspace
 /// not bound to the document it opened on.
@@ -28,7 +28,7 @@ pub(crate) const WORKSPACES: [&str; 7] = [
     "filter.liquify",
     "edit.contentAwareFill",
     "filter.filterGallery",
-    photocraft_engine::lens_cmds::WIDE,
+    patronusphoto_engine::lens_cmds::WIDE,
     "filter.vanishingPoint",
     RAW_DEVELOP,
 ];
@@ -41,7 +41,7 @@ pub struct Distort {
     /// Perspective Warp's session.
     pub perspective: Option<crate::perspective_ui::PerspSession>,
     /// The document the open sessions belong to, noted by [`drop_foreign`] on the first frame they are open.
-    owner: Option<photocraft_doc::DocId>,
+    owner: Option<patronusphoto_doc::DocId>,
 }
 
 impl Distort {
@@ -60,7 +60,7 @@ impl Distort {
 }
 
 /// The active layer's pixels (a pixel layer, or a smart object's rendering) and its id.
-pub(crate) fn active_pixels(app: &PhotocraftApp) -> Result<(LayerId, Surface, bool), String> {
+pub(crate) fn active_pixels(app: &PatronusPhotoApp) -> Result<(LayerId, Surface, bool), String> {
     let st = app.session.active().ok_or("no document")?;
     let id = st.active_layer.ok_or("no active layer")?;
     let l = st.doc.layer(id).ok_or("no layer")?;
@@ -73,7 +73,7 @@ pub(crate) fn active_pixels(app: &PhotocraftApp) -> Result<(LayerId, Surface, bo
 
 /// The colour set full-window filters capture, or Null when none is targeted: the command then
 /// routes a targeted mask, filter mask, alpha channel or Quick Mask itself, as without colour sets.
-pub(crate) fn colour_set_target(app: &PhotocraftApp) -> Value {
+pub(crate) fn colour_set_target(app: &PatronusPhotoApp) -> Value {
     let target = crate::canvas::paint_target(app);
     if target.get("colors").is_some() { target } else { Value::Null }
 }
@@ -90,14 +90,14 @@ pub(crate) fn with_filter_target(mut params: Value, target: &Value) -> Value {
 
 /// Full-window filters capture their layer target; scalar planes use ordinary filter dialogs.
 /// Without a colour set they open on the layer's pixels or smart object, as before colour sets.
-pub(crate) fn active_filter_target(app: &PhotocraftApp) -> Result<(LayerId, Surface, Value), String> {
+pub(crate) fn active_filter_target(app: &PatronusPhotoApp) -> Result<(LayerId, Surface, Value), String> {
     let target = colour_set_target(app);
     if target.is_null() {
         // Colour rows left selected on a smart object: the engine refuses the command, so refuse
         // before any work is done in the workspace.
         if let Some(st) = app.session.active()
-            && matches!(st.channel_view.target, photocraft_engine::channel_cmds::ChannelTarget::Color(_))
-            && photocraft_engine::mask_view_cmds::current(st).is_none()
+            && matches!(st.channel_view.target, patronusphoto_engine::channel_cmds::ChannelTarget::Color(_))
+            && patronusphoto_engine::mask_view_cmds::current(st).is_none()
             && st.active_layer.and_then(|id| st.doc.layer(id)).is_some_and(|l| matches!(l.content, LayerContent::Smart(_)))
         {
             return Err("Rasterize the layer before editing its colour channels".into());
@@ -108,12 +108,12 @@ pub(crate) fn active_filter_target(app: &PhotocraftApp) -> Result<(LayerId, Surf
     let st = app.session.active().ok_or("no document")?;
     let layer = st.active_layer.ok_or("no active layer")?;
     let params = serde_json::json!({"target":target});
-    if photocraft_engine::color_channels::explicit(&params, photocraft_engine::channel_cmds::color_count(&st.doc)).map_err(|e| e.to_string())?.is_some()
+    if patronusphoto_engine::color_channels::explicit(&params, patronusphoto_engine::channel_cmds::color_count(&st.doc)).map_err(|e| e.to_string())?.is_some()
         && !matches!(st.doc.layer(layer).map(|l| &l.content), Some(LayerContent::Raster(_)))
     {
         return Err("Rasterize the layer before editing its colour channels".into());
     }
-    let surface = photocraft_engine::channel_cmds::read_target_surface(&st.doc, Some(layer), &params).map_err(|e| e.to_string())?.clone();
+    let surface = patronusphoto_engine::channel_cmds::read_target_surface(&st.doc, Some(layer), &params).map_err(|e| e.to_string())?.clone();
     Ok((layer, surface, target))
 }
 
@@ -121,8 +121,8 @@ pub(crate) fn active_filter_target(app: &PhotocraftApp) -> Result<(LayerId, Surf
 pub(crate) mod component_tests {
     use super::*;
 
-    pub fn app(mode: &str, depth: u32) -> Box<PhotocraftApp> {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    pub fn app(mode: &str, depth: u32) -> Box<PatronusPhotoApp> {
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
         app.run("file.new", json!({"width":64,"height":48,"mode":mode,"depth":depth})).unwrap();
         app.session
             .edit("Native detail", |doc, id| {
@@ -142,13 +142,13 @@ pub(crate) mod component_tests {
         app
     }
 
-    pub fn without_alpha(mut app: Box<PhotocraftApp>) -> Box<PhotocraftApp> {
+    pub fn without_alpha(mut app: Box<PatronusPhotoApp>) -> Box<PatronusPhotoApp> {
         app.session
             .edit("Alpha-less native raster", |doc, id| {
                 let bounds = doc.bounds();
                 let surface = doc.layer_mut(id.unwrap()).unwrap().surface_mut().unwrap();
                 let old = surface.format();
-                let format = photocraft_color::PixelFormat::new(old.mode, old.sample, false);
+                let format = patronusphoto_color::PixelFormat::new(old.mode, old.sample, false);
                 let raw = surface.read_region(bounds);
                 let raw: Vec<_> = raw.chunks_exact(old.channels()).flat_map(|pixel| pixel.iter().take(format.channels()).copied()).collect();
                 let mut replacement = Surface::new(format);
@@ -203,7 +203,7 @@ pub(crate) fn surface_image(surf: &Surface, r: Rect, max_side: usize) -> ColorIm
 /// The menu id of the open full-window workspace (Liquify, Content-Aware Fill, Select and Mask, Filter Gallery,
 /// Adaptive Wide Angle, Vanishing Point, RAW Develop). These are modal: other menu commands wait for OK or Cancel
 /// (`menus::menu_gate`). The newest open workspace wins, and a dialog it opened (a colour picker) does not hide it.
-pub(crate) fn modal_workspace(app: &PhotocraftApp) -> Option<&'static str> {
+pub(crate) fn modal_workspace(app: &PatronusPhotoApp) -> Option<&'static str> {
     app.framework.dialogs.open_dialogs().iter().rev().find_map(|d| {
         let key = d.key.as_deref()?;
         WORKSPACES.iter().copied().find(|w| *w == key)
@@ -212,27 +212,27 @@ pub(crate) fn modal_workspace(app: &PhotocraftApp) -> Option<&'static str> {
 
 /// The fields of the open workspace `key` names, as its dialog reports them; `None` when it is not open. The one
 /// host lookup behind every workspace's `describe`.
-pub(crate) fn workspace_fields(app: &PhotocraftApp, key: &str) -> Option<Value> {
+pub(crate) fn workspace_fields(app: &PatronusPhotoApp, key: &str) -> Option<Value> {
     app.framework.dialogs.open_dialogs().into_iter().find(|d| d.key.as_deref() == Some(key)).and_then(|d| d.fields)
 }
 
 /// Whether the workspace `key` names is open.
 #[cfg(not(target_arch = "wasm32"))]
-fn workspace_open(app: &PhotocraftApp, key: &str) -> bool {
+fn workspace_open(app: &PatronusPhotoApp, key: &str) -> bool {
     app.framework.dialogs.open_dialogs().iter().any(|d| d.key.as_deref() == Some(key))
 }
 
-fn active_doc(app: &PhotocraftApp) -> Option<DocId> {
+fn active_doc(app: &PatronusPhotoApp) -> Option<DocId> {
     app.session.active().map(|st| st.doc.id)
 }
 
-fn on_doc(app: &PhotocraftApp, document: DocId) -> bool {
+fn on_doc(app: &PatronusPhotoApp, document: DocId) -> bool {
     active_doc(app) == Some(document)
 }
 
 /// Drops Puppet / Perspective Warp when the document they were opened on is no longer active, so they cannot steal
 /// undo, block layer delete, or draw another document's pixels (#5115).
-pub fn cancel_stale(app: &mut PhotocraftApp) {
+pub fn cancel_stale(app: &mut PatronusPhotoApp) {
     let active = active_doc(app);
     if app.distort.puppet.as_ref().is_some_and(|p| Some(p.document) != active) {
         app.distort.puppet = None;
@@ -243,7 +243,7 @@ pub fn cancel_stale(app: &mut PhotocraftApp) {
 }
 
 /// The document shown on the canvas while Puppet or Perspective Warp previews a layer.
-pub fn display_doc(app: &PhotocraftApp, idx: usize) -> Option<(Arc<Document>, u64)> {
+pub fn display_doc(app: &PatronusPhotoApp, idx: usize) -> Option<(Arc<Document>, u64)> {
     if app.session.active_index() != Some(idx) {
         return None;
     }
@@ -264,11 +264,11 @@ pub fn display_doc(app: &PhotocraftApp, idx: usize) -> Option<(Arc<Document>, u6
 /// Menu / control routing. `Some` when this module handles the invocation. A workspace id opens its workspace
 /// through the workspace's module and answers with that module's `describe`; a `ui` call goes to the workspace's
 /// control surface on the dialog host.
-pub fn menu(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, params: &Value) -> Option<Result<Value, String>> {
+pub fn menu(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: &str, params: &Value) -> Option<Result<Value, String>> {
     let empty = params.as_object().is_none_or(|o| o.is_empty());
     let ui = params.get("ui");
     #[cfg(not(target_arch = "wasm32"))]
-    let hosted = |app: &mut PhotocraftApp, key: &str, ui: &Value| crate::control::dialogs::workspace_ui(app, ctx, key, ui);
+    let hosted = |app: &mut PatronusPhotoApp, key: &str, ui: &Value| crate::control::dialogs::workspace_ui(app, ctx, key, ui);
     match id {
         "filter.filterGallery" if empty => Some(crate::gallery_ui::open(app).map(|_| json!({"gallery": crate::gallery_ui::describe(app)}))),
         #[cfg(not(target_arch = "wasm32"))]
@@ -308,7 +308,7 @@ pub fn menu(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, params: &Val
 /// Keyboard while a warp is open. Puppet Warp takes ⌘Z and ⇧⌘Z for its own pin history; Enter, Esc and Delete are
 /// the warp controls' (they report apply, discard and delete). True when the key handling of the rest of the app
 /// should be skipped; a second pass in a frame finds the keys already consumed.
-pub fn keys(app: &mut PhotocraftApp, ctx: &egui::Context) -> bool {
+pub fn keys(app: &mut PatronusPhotoApp, ctx: &egui::Context) -> bool {
     cancel_stale(app);
     if app.distort.puppet.is_some() {
         let cmd_shift = egui::Modifiers::COMMAND | egui::Modifiers::SHIFT;
@@ -324,7 +324,7 @@ pub fn keys(app: &mut PhotocraftApp, ctx: &egui::Context) -> bool {
 
 /// Draws and runs Puppet Warp or Perspective Warp as canvas controls over the document at `at`, when the session
 /// belongs to the active document.
-pub(crate) fn show_in_canvas(app: &mut PhotocraftApp, ui: &mut egui::Ui, at: egui::Rect) {
+pub(crate) fn show_in_canvas(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, at: egui::Rect) {
     cancel_stale(app);
     if app.distort.puppet.as_ref().is_some_and(|p| on_doc(app, p.document)) {
         crate::puppet_ui::canvas(app, ui, at);
@@ -335,7 +335,7 @@ pub(crate) fn show_in_canvas(app: &mut PhotocraftApp, ui: &mut egui::Ui, at: egu
 }
 
 /// Options bar for the on-canvas modes. True when drawn.
-pub fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) -> bool {
+pub fn options_bar(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) -> bool {
     cancel_stale(app);
     if app.distort.puppet.is_some() {
         crate::puppet_ui::options_bar(app, ui);
@@ -352,7 +352,7 @@ pub fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) -> bool {
 /// another one opened or switched to). Without this, Puppet Warp's preview of the old document replaced the new
 /// document's canvas (#5092). RAW Develop stays: its filmstrip switches the active document itself. Each pass applies
 /// only the state it reads, so a second pass in a frame finds the owner already cleared and does nothing more.
-pub fn drop_foreign(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub fn drop_foreign(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     let current = active_doc(app);
     let bound = app.distort.active() || modal_workspace(app).is_some_and(|key| key != RAW_DEVELOP);
     if !bound {
@@ -372,7 +372,7 @@ pub fn drop_foreign(app: &mut PhotocraftApp, ctx: &egui::Context) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use photocraft_geom::Rect;
+    use patronusphoto_geom::Rect;
     use serde_json::json;
 
     use craft::behavior::kurbo::Point;
@@ -381,7 +381,7 @@ mod tests {
     /// A closed workspace request must not open a workspace or escape to an engine edit, on any target.
     #[test]
     fn closed_workspace_ui_requests_are_consumed_without_editing() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
         let ctx = app.ctx().clone();
         app.session.execute("file.new", json!({"width": 4, "height": 4})).unwrap();
         app.session.execute("select.rect", json!({"x": 1, "y": 1, "width": 1, "height": 1})).unwrap();
@@ -399,7 +399,7 @@ mod tests {
         assert!(app.caf.is_none());
     }
 
-    fn paint_bar(app: &mut PhotocraftApp) {
+    fn paint_bar(app: &mut PatronusPhotoApp) {
         app.session
             .edit("paint", |doc, active| {
                 doc.layer_mut(active.unwrap()).unwrap().surface_mut().unwrap().fill_rect(Rect::new(20, 30, 80, 50), &[1.0, 0.0, 0.0, 1.0]);
@@ -416,7 +416,7 @@ mod tests {
     /// layer delete apply to the new document, and the warp mesh does not leak onto it.
     #[test]
     fn switching_documents_drops_puppet_and_restores_undo_and_delete() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
         let ctx = app.ctx().clone();
         app.session.execute("file.new", json!({"width": 100, "height": 80, "depth": 8})).unwrap();
         app.session.execute("layer.new.layer", json!({})).unwrap();
@@ -446,7 +446,7 @@ mod tests {
 
     #[test]
     fn committed_puppet_is_one_undo_step_and_the_layer_stays_deletable() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
         let ctx = app.ctx().clone();
         app.session.execute("file.new", json!({"width": 100, "height": 80, "depth": 8})).unwrap();
         app.session.execute("layer.new.layer", json!({})).unwrap();
@@ -474,7 +474,7 @@ mod tests {
 
     #[test]
     fn switching_documents_drops_liquify() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
         let ctx = app.ctx().clone();
         app.session.execute("file.new", json!({"width": 100, "height": 80, "depth": 8})).unwrap();
         app.session.execute("layer.new.layer", json!({})).unwrap();

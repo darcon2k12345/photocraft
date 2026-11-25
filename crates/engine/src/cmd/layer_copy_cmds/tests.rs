@@ -1,7 +1,7 @@
-use photocraft_color::{ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{Document, LayerContent, LayerId, Pattern};
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use patronusphoto_color::{ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::{Document, LayerContent, LayerId, Pattern};
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::Surface;
 use serde_json::{Value, json};
 
 use crate::Session;
@@ -54,7 +54,7 @@ fn selection_only_copy_preserves_source_and_soft_coverage_across_documents() {
 fn selection_only_copy_rejects_a_floating_layer_mask() {
     let (mut s, paint) = two_docs(40, 30, 8);
     s.edit("mask", |doc, _| {
-        doc.layer_mut(paint).unwrap().mask = Some(photocraft_doc::LayerMask::reveal_all());
+        doc.layer_mut(paint).unwrap().mask = Some(patronusphoto_doc::LayerMask::reveal_all());
         Ok(())
     })
     .unwrap();
@@ -392,7 +392,7 @@ fn a_named_duplicate_takes_the_name_in_one_step() {
 
 #[test]
 fn a_copied_group_cannot_nest_the_destination_past_the_group_depth_limit() {
-    use photocraft_doc::{Layer, MAX_GROUP_DEPTH};
+    use patronusphoto_doc::{Layer, MAX_GROUP_DEPTH};
     let (mut s, paint) = two_docs(40, 30, 8);
     // A group in the source, and a destination whose active layer sits at the deepest legal level.
     s.execute("layer.groupLayers", json!({"layers": [paint.0]})).unwrap();
@@ -418,7 +418,7 @@ fn a_copied_group_cannot_nest_the_destination_past_the_group_depth_limit() {
 }
 
 /// The type layer `id` of document `i`.
-fn text(s: &Session, i: usize, id: LayerId) -> &photocraft_doc::TextLayer {
+fn text(s: &Session, i: usize, id: LayerId) -> &patronusphoto_doc::TextLayer {
     match &doc(s, i).layer(id).unwrap().content {
         LayerContent::Text(t) => t,
         other => panic!("not type: {other:?}"),
@@ -524,8 +524,9 @@ fn copied_paragraph_type_keeps_its_box() {
 /// is treated as 72 rather than producing an infinite or zero size.
 #[test]
 fn retargeting_type_survives_bad_resolutions() {
-    let mut d = Document::new("", photocraft_geom::Size::new(10, 10), ColorMode::Rgb, SampleType::U8);
-    d.layers.push(photocraft_doc::Layer::new("t", LayerContent::Text(photocraft_doc::TextLayer { text: "H".into(), size_pt: 24.0, ..Default::default() })));
+    let mut d = Document::new("", patronusphoto_geom::Size::new(10, 10), ColorMode::Rgb, SampleType::U8);
+    d.layers
+        .push(patronusphoto_doc::Layer::new("t", LayerContent::Text(patronusphoto_doc::TextLayer { text: "H".into(), size_pt: 24.0, ..Default::default() })));
     let size = |d: &Document| match &d.layers[0].content {
         LayerContent::Text(t) => t.size_pt,
         _ => panic!("not type"),
@@ -652,7 +653,7 @@ fn red_styled_type_docs() -> (Session, LayerId) {
 }
 
 /// The colour Character Style 1 of document `i` sets, and whether "He" of `id` overrides it.
-fn style_color(s: &mut Session, i: usize, id: LayerId) -> (photocraft_color::Color, bool) {
+fn style_color(s: &mut Session, i: usize, id: LayerId) -> (patronusphoto_color::Color, bool) {
     s.set_active(i);
     let c = s.execute("type.characterStyle.list", json!({"layer": id.0, "range": [0, 2]})).unwrap();
     let style = c["styles"].as_array().unwrap().iter().find(|x| x["name"] == "Character Style 1").unwrap();

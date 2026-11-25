@@ -360,7 +360,7 @@ mod tests {
         }
     }
 
-    /// Manual timing: `cargo test -p photocraft-paint --release bilinear_wrap_timing -- --ignored --nocapture`.
+    /// Manual timing: `cargo test -p patronusphoto-paint --release bilinear_wrap_timing -- --ignored --nocapture`.
     #[test]
     #[ignore]
     fn bilinear_wrap_timing() {

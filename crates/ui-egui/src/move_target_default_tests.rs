@@ -8,11 +8,11 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::{Tool, ToolOptions};
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 64, "height": 64})).unwrap();
     app.sync_views();
     app.ui.tool = Tool::Move;
@@ -48,7 +48,7 @@ fn a_saved_choice_is_kept_and_only_a_missing_key_gets_layer() {
 fn the_target_dropdown_lists_group_then_layer() {
     let app = app();
     let mut h = Harness::builder().with_size(vec2(1600.0, 400.0)).with_context(app.ctx().clone()).build_ui_state(
-        |ui, app: &mut Box<PhotocraftApp>| {
+        |ui, app: &mut Box<PatronusPhotoApp>| {
             if !ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 return;
             }
@@ -56,7 +56,7 @@ fn the_target_dropdown_lists_group_then_layer() {
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::studio());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::studio());
     h.run_steps(4);
     let combo = h
         .get_all_by_role(Role::ComboBox)

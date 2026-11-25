@@ -13,11 +13,11 @@ use craft::ui::contract::{Bind, Props as _, Show as _, ShowContainer as _, Sizin
 use craft::ui::layout_components::Grid;
 use craft::ui::runtime::commands::CommandRef;
 use craft::ui::sections::Section;
-use photocraft_doc::{Layer, LayerContent, LayerId};
-use photocraft_engine::prefs::Unit;
+use patronusphoto_doc::{Layer, LayerContent, LayerId};
+use patronusphoto_engine::prefs::Unit;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::prefs::unit_kind;
 
 /// The panel width, in points, from which Quick Actions take two columns.
@@ -69,7 +69,7 @@ fn edit_tolerance(layer: &Layer, step_px: f64) -> f32 {
 /// The box the Transform fields show and edit, [x0, y0, x1, y1]: the layer's pixel frame `px`,
 /// or for a shape its path's geometry, as Photoshop's Properties shows it, without the pixels its
 /// stroke adds around it; W/H then scale the path to exactly the typed size.
-fn frame(layer: &Layer, px: photocraft_geom::Rect) -> [f64; 4] {
+fn frame(layer: &Layer, px: patronusphoto_geom::Rect) -> [f64; 4] {
     let path = match &layer.content {
         LayerContent::Shape(sh) if !sh.path.inverted => sh.path.control_bounds().filter(|c| c.2 > c.0 && c.3 > c.1),
         _ => None,
@@ -79,7 +79,7 @@ fn frame(layer: &Layer, px: photocraft_geom::Rect) -> [f64; 4] {
 
 /// The Units & Rulers unit, the document's resolution and the points per inch: what a length shown in
 /// the rulers' unit needs.
-fn ruler_unit(app: &PhotocraftApp) -> (Unit, f64, f64) {
+fn ruler_unit(app: &PatronusPhotoApp) -> (Unit, f64, f64) {
     let ur = &app.session.prefs().units_and_rulers;
     let dpi = app.session.active().map_or(72.0, |s| f64::from(s.doc.resolution_dpi));
     (ur.rulers, dpi, ur.point_size.per_inch())
@@ -97,7 +97,7 @@ fn box_size(row: &TransformRow) -> (f64, f64) {
 }
 
 /// Runs a command; a refusal goes to the status line.
-fn run(app: &mut PhotocraftApp, id: &str, params: Value) {
+fn run(app: &mut PatronusPhotoApp, id: &str, params: Value) {
     if let Err(e) = app.run(id, params) {
         app.ui.status = e;
         app.ui.status_error = true;
@@ -105,7 +105,7 @@ fn run(app: &mut PhotocraftApp, id: &str, params: Value) {
 }
 
 /// The layer's Transform box as it is now, read again after an edit of the same pass.
-fn current_frame(app: &mut PhotocraftApp, id: LayerId) -> Option<[f64; 4]> {
+fn current_frame(app: &mut PatronusPhotoApp, id: LayerId) -> Option<[f64; 4]> {
     let doc = app.session.active()?.doc.clone();
     let layer = doc.layer(id)?;
     let surface = layer.surface()?;
@@ -115,7 +115,7 @@ fn current_frame(app: &mut PhotocraftApp, id: LayerId) -> Option<[f64; 4]> {
 /// Applies the edits the Transform fields committed in this pass: a W or H change past `tol` is one
 /// `edit.transform`, an X or Y change one `layer.translate`. A commit that left the box where it was
 /// (a click with no change, a value the field rounds back to the shown one) changes nothing.
-fn apply_transform(app: &mut PhotocraftApp, layer: &Layer, linked: bool, tol: (f32, f32), events: &EditEvents<TransformRow>) {
+fn apply_transform(app: &mut PatronusPhotoApp, layer: &Layer, linked: bool, tol: (f32, f32), events: &EditEvents<TransformRow>) {
     for event in events.iter() {
         let (EditEvent::Commit { before: Mixed::Same(before), after, .. } | EditEvent::Set { before: Mixed::Same(before), after, .. }) = event else {
             continue;
@@ -152,7 +152,7 @@ fn apply_transform(app: &mut PhotocraftApp, layer: &Layer, linked: bool, tol: (f
 ///
 /// The edits are the ones the fields report in this pass, applied once after the section has shown. A
 /// pass that reruns inside the frame gets no input events, so it applies nothing a second time.
-fn transform_section(app: &mut PhotocraftApp, ui: &mut egui::Ui, layer: &Layer, bb: [f64; 4]) {
+fn transform_section(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, layer: &Layer, bb: [f64; 4]) {
     let (unit, dpi, ppi) = ruler_unit(app);
     let (dw, dh) = app.session.active().map_or((1.0, 1.0), |s| (f64::from(s.doc.size.width), f64::from(s.doc.size.height)));
     let step = |extent: f64| (unit.to_px(0.05, dpi, extent, ppi) - unit.to_px(0.0, dpi, extent, ppi)).abs();
@@ -182,13 +182,13 @@ fn transform_section(app: &mut PhotocraftApp, ui: &mut egui::Ui, layer: &Layer, 
 /// Properties body for a non-adjustment layer: Transform, Align and Distribute, the kind's own
 /// sections (Character/Paragraph/Type Options for type, Appearance/Shape for shapes), then Quick
 /// Actions, all with the same collapsible headers (#155).
-pub fn properties(app: &mut PhotocraftApp, ui: &mut egui::Ui, layer: &Layer) {
+pub fn properties(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, layer: &Layer) {
     if let Some(s) = layer.surface() {
         let bb = frame(layer, app.layer_frame_bounds(layer, s));
         transform_section(app, ui, layer, bb);
     }
     // Gradient fills: their gradient first, as in Photoshop's Properties panel.
-    if matches!(layer.content, LayerContent::Fill(photocraft_doc::Fill::Gradient { .. })) {
+    if matches!(layer.content, LayerContent::Fill(patronusphoto_doc::Fill::Gradient { .. })) {
         crate::gradient_ui::properties(app, ui, layer);
     } else {
         align_and_distribute(ui);
@@ -246,13 +246,13 @@ pub fn quick_actions(content: &LayerContent) -> &'static [(&'static str, &'stati
 
 /// The Quick Actions shown right now: the kind's list, limited to commands that exist and are
 /// enabled (Convert to Paragraph Text only for point type, and vice versa).
-pub fn visible_quick_actions(app: &PhotocraftApp, content: &LayerContent) -> Vec<(&'static str, &'static str)> {
+pub fn visible_quick_actions(app: &PatronusPhotoApp, content: &LayerContent) -> Vec<(&'static str, &'static str)> {
     quick_actions(content).iter().copied().filter(|(_, id)| crate::menus::is_live(id) && crate::menus::is_enabled(app, id)).collect()
 }
 
 /// The Quick Actions section: one command button per shown action, two columns when the panel is
 /// wide enough. A click fires the command, which the menus run (the ones with dialogs open them).
-fn quick_actions_section(app: &PhotocraftApp, ui: &mut egui::Ui, content: &LayerContent) {
+fn quick_actions_section(app: &PatronusPhotoApp, ui: &mut egui::Ui, content: &LayerContent) {
     let actions = visible_quick_actions(app, content);
     if actions.is_empty() {
         return;
@@ -272,8 +272,8 @@ mod tests {
     use super::*;
 
     /// A document with one layer of each kind; returns the session and the ids by kind.
-    fn kinds() -> (photocraft_engine::Session, Vec<(&'static str, u64)>) {
-        let mut s = photocraft_engine::Session::new();
+    fn kinds() -> (patronusphoto_engine::Session, Vec<(&'static str, u64)>) {
+        let mut s = patronusphoto_engine::Session::new();
         s.execute("file.new", json!({"width": 400, "height": 300})).unwrap();
         let id = |v: serde_json::Value| v["layer"].as_u64().unwrap();
         let pixel = id(s.execute("layer.new.layer", json!({"name": "Paint"})).unwrap());
@@ -285,7 +285,7 @@ mod tests {
         (s, vec![("pixel", pixel), ("shape", shape), ("type", ty)])
     }
 
-    fn layer_of(app: &PhotocraftApp, id: u64) -> Layer {
+    fn layer_of(app: &PatronusPhotoApp, id: u64) -> Layer {
         app.session.active().unwrap().doc.layer(LayerId(id)).unwrap().clone()
     }
 
@@ -294,7 +294,7 @@ mod tests {
     #[test]
     fn every_quick_action_is_a_live_command_and_only_enabled_ones_show() {
         let (s, layers) = kinds();
-        let mut app = PhotocraftApp::new(s, crate::Services::default());
+        let mut app = PatronusPhotoApp::new(s, crate::Services::default());
         let ids = |layer: &Layer| quick_actions(&layer.content).iter().map(|(_, id)| *id).collect::<Vec<_>>();
         for (kind, id) in &layers {
             let layer = layer_of(&app, *id);
@@ -327,7 +327,7 @@ mod tests {
 
     #[test]
     fn transform_params_resize_a_layer_in_the_engine() {
-        let mut s = photocraft_engine::Session::new();
+        let mut s = patronusphoto_engine::Session::new();
         s.execute("file.new", json!({"width": 200, "height": 200, "background": "transparent"})).unwrap();
         s.execute("select.rect", json!({"x": 10, "y": 20, "width": 100, "height": 50})).unwrap();
         s.execute("edit.fill", json!({"color": "#ff0000"})).unwrap();
@@ -359,7 +359,7 @@ mod tests {
     /// Properties, while its outline is transformed by the engine as usual.
     #[test]
     fn linked_properties_resize_keeps_diagonal_arrow_editable() {
-        let mut s = photocraft_engine::Session::new();
+        let mut s = patronusphoto_engine::Session::new();
         s.execute("file.new", json!({"width": 1200, "height": 1200})).unwrap();
         s.execute(
             "shape.create",
@@ -381,8 +381,8 @@ mod tests {
             let id = st.active_layer.unwrap();
             let layer = st.doc.layer(id).unwrap();
             let LayerContent::Shape(shape) = &layer.content else { panic!("expected shape layer") };
-            assert!(matches!(shape.live.as_ref(), Some(photocraft_doc::vector::LiveShape::ArrowLine { .. })));
-            let px = photocraft_compose::bounds::content_bounds(layer.surface().unwrap());
+            assert!(matches!(shape.live.as_ref(), Some(patronusphoto_doc::vector::LiveShape::ArrowLine { .. })));
+            let px = patronusphoto_compose::bounds::content_bounds(layer.surface().unwrap());
             (id, frame(layer, px))
         };
         let p = transform_params(id.0, b, Some(600.0), None, true, 0.05).unwrap();
@@ -390,7 +390,7 @@ mod tests {
         let layer = s.active().unwrap().doc.layer(id).unwrap();
         let LayerContent::Shape(shape) = &layer.content else { panic!("expected shape layer") };
         assert!(
-            matches!(shape.live.as_ref(), Some(photocraft_doc::vector::LiveShape::ArrowLine { .. })),
+            matches!(shape.live.as_ref(), Some(patronusphoto_doc::vector::LiveShape::ArrowLine { .. })),
             "proportional Properties resize must preserve live arrow settings"
         );
 
@@ -398,21 +398,21 @@ mod tests {
         s.execute("shape.edit", json!({"layer": id.0, "arrowConcavity": 40.0})).unwrap();
         let layer = s.active().unwrap().doc.layer(id).unwrap();
         let LayerContent::Shape(shape) = &layer.content else { panic!("expected shape layer") };
-        assert!(matches!(shape.live.as_ref(), Some(photocraft_doc::vector::LiveShape::ArrowLine { concavity, .. }) if (*concavity - 40.0).abs() < 1e-9));
+        assert!(matches!(shape.live.as_ref(), Some(patronusphoto_doc::vector::LiveShape::ArrowLine { concavity, .. }) if (*concavity - 40.0).abs() < 1e-9));
     }
 
     /// A stroked shape's Transform fields show its path, not the stroke's pixels, and a W edit
     /// scales the path to that width, as in Photoshop.
     #[test]
     fn shape_fields_show_and_scale_the_path_without_its_stroke() {
-        let mut s = photocraft_engine::Session::new();
+        let mut s = patronusphoto_engine::Session::new();
         s.execute("file.new", json!({"width": 800, "height": 600})).unwrap();
         s.execute("shape.create", json!({"kind": "rect", "rect": [200, 150, 400, 300], "fill": "#3366cc", "stroke": {"width": 15, "color": "#000000"}}))
             .unwrap();
         let st = s.active().unwrap();
         let id = st.active_layer.unwrap();
         let layer = st.doc.layer(id).unwrap();
-        let px = photocraft_compose::bounds::content_bounds(layer.surface().unwrap());
+        let px = patronusphoto_compose::bounds::content_bounds(layer.surface().unwrap());
         assert!(px.width() > 400, "the stroke's pixels reach past the path: {px:?}");
         let bb = frame(layer, px);
         assert_eq!(bb, [200.0, 150.0, 600.0, 450.0]);
@@ -426,7 +426,7 @@ mod tests {
     /// px typed as 400), while a pixel layer still ignores sub-pixel noise.
     #[test]
     fn a_shape_path_takes_a_width_edit_under_half_a_pixel() {
-        let mut s = photocraft_engine::Session::new();
+        let mut s = patronusphoto_engine::Session::new();
         s.execute("file.new", json!({"width": 800, "height": 600})).unwrap();
         s.execute("shape.create", json!({"kind": "rect", "rect": [200, 150, 400.25, 100], "fill": "#3366cc"})).unwrap();
         let st = s.active().unwrap();
@@ -434,7 +434,7 @@ mod tests {
         let layer = st.doc.layer(id).unwrap();
         // One shown decimal step of the pixel ruler at 72 ppi.
         let step_px = 0.05;
-        let bb = frame(layer, photocraft_compose::bounds::content_bounds(layer.surface().unwrap()));
+        let bb = frame(layer, patronusphoto_compose::bounds::content_bounds(layer.surface().unwrap()));
         assert_eq!(bb[2] - bb[0], 400.25);
         let tol = edit_tolerance(layer, step_px);
         assert!(tol < 0.25, "{tol}");

@@ -25,14 +25,14 @@ use craft::behavior::CanvasView;
 use craft::behavior::kurbo::Point;
 use craft::imaging::ui::adjust::LevelsClip;
 use egui::{Color32, Mesh, TextureOptions, pos2};
-use photocraft_color::{ColorMode, SampleType};
-use photocraft_compose::adjust::{levels_float, levels_q};
-use photocraft_doc::adjust::{LevelsChannel, ToneSpace};
-use photocraft_doc::{Adjustment, DocId, LayerContent, LayerId};
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use patronusphoto_color::{ColorMode, SampleType};
+use patronusphoto_compose::adjust::{levels_float, levels_q};
+use patronusphoto_doc::adjust::{LevelsChannel, ToneSpace};
+use patronusphoto_doc::{Adjustment, DocId, LayerContent, LayerId};
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::Surface;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// A pixel counts where the selection covers at least this much (the command blends the rest).
 const SELECTED: f32 = 0.5;
@@ -65,7 +65,7 @@ pub type Thresholds = [(Option<u16>, Option<u16>); 3];
 /// in the RGB channel space (which Grayscale documents use too).
 pub fn thresholds(adj: &Adjustment, depth: SampleType) -> Option<Thresholds> {
     let Adjustment::Levels { master, per_channel, space: ToneSpace::Rgb, .. } = adj else { return None };
-    let quantum = photocraft_compose::adjustment_quantum(depth);
+    let quantum = patronusphoto_compose::adjustment_quantum(depth);
     let at = |ch: &LevelsChannel, k: u16| classify(master, ch, f32::from(k) / 65535.0, quantum);
     Some(std::array::from_fn(|c| {
         let ch = &per_channel[c];
@@ -210,21 +210,21 @@ pub fn image(stats: &Stats, thresholds: &Thresholds, end: LevelsClip) -> Vec<Col
 struct Request {
     end: LevelsClip,
     adj: Adjustment,
-    doc: std::sync::Arc<photocraft_doc::Document>,
+    doc: std::sync::Arc<patronusphoto_doc::Document>,
     revision: u64,
     target: LayerId,
 }
 
 /// Whether a Levels dialog is open. A Smart Filter's Levels edits the filter, not the layer's pixels, so
 /// it has no display (`adjust_preview` keeps it off the layer path too).
-fn dialog(app: &PhotocraftApp) -> Option<&crate::adjust_dialog::OpenAdjust> {
+fn dialog(app: &PatronusPhotoApp) -> Option<&crate::adjust_dialog::OpenAdjust> {
     crate::adjust_dialog::open_value(app).filter(|open| open.kind == "levels" && open.smart_filter.is_none())
 }
 
 /// The display the open Levels dialog asks for on document `idx`. None when no Levels dialog
 /// shows clipping, `idx` isn't the active document, or the document can't show it: CMYK and Lab,
 /// a channel, mask or Quick Mask target, or a target that isn't a pixel layer.
-fn request(app: &PhotocraftApp, idx: usize) -> Option<Request> {
+fn request(app: &PatronusPhotoApp, idx: usize) -> Option<Request> {
     let open = dialog(app)?;
     let end = crate::adjust_dialog::hosted(app, open.id)?.clipping()?;
     let params = crate::adjust_dialog::open_params(app)?;
@@ -239,7 +239,7 @@ fn request(app: &PhotocraftApp, idx: usize) -> Option<Request> {
     if !matches!(st.doc.layer(target).map(|l| &l.content), Some(LayerContent::Raster(_))) {
         return None;
     }
-    let adj = photocraft_engine::adjust_params::from_params("levels", &params, None, st.doc.mode).ok()?;
+    let adj = patronusphoto_engine::adjust_params::from_params("levels", &params, None, st.doc.mode).ok()?;
     Some(Request { end, adj, doc: st.doc.clone(), revision: st.revision, target })
 }
 
@@ -290,7 +290,7 @@ fn view_area(view: &CanvasView, bounds: Rect, ppp: f32, max_side: u32) -> Option
 /// The Levels clipping display over the image in canvas `view` of document `idx`, if one
 /// is asked for: the shapes the canvas paints under its controls. Drops the cache once no Levels dialog is open. Only the main canvas calls it:
 /// the one cache follows that view.
-pub fn shapes(app: &mut PhotocraftApp, ctx: &egui::Context, view: &CanvasView, idx: usize) -> Vec<egui::Shape> {
+pub fn shapes(app: &mut PatronusPhotoApp, ctx: &egui::Context, view: &CanvasView, idx: usize) -> Vec<egui::Shape> {
     if dialog(app).is_none() {
         app.levels_clipping = None;
         return Vec::new();
@@ -337,7 +337,7 @@ pub fn shapes(app: &mut PhotocraftApp, ctx: &egui::Context, view: &CanvasView, i
 
 /// [`shapes`] added to `painter`.
 #[cfg(test)]
-pub fn paint(app: &mut PhotocraftApp, ctx: &egui::Context, painter: &egui::Painter, view: &CanvasView, idx: usize) {
+pub fn paint(app: &mut PatronusPhotoApp, ctx: &egui::Context, painter: &egui::Painter, view: &CanvasView, idx: usize) {
     painter.extend(shapes(app, ctx, view, idx));
 }
 

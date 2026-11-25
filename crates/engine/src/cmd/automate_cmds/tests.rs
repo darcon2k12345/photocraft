@@ -7,7 +7,7 @@ fn list_of(actions: Vec<Action>) -> ActionList {
 }
 
 pub(super) fn tmp(name: &str) -> String {
-    let d = std::env::temp_dir().join(format!("photocraft-automate-{}-{name}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("patronusphoto-automate-{}-{name}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).unwrap();
     d.to_string_lossy().into_owned()
@@ -39,7 +39,7 @@ fn scripts_parse_json_and_lines() {
     let b = parse_script("# make a doc\nfile.new {\"width\": 12, \"height\": 8}\n\nimage.imageRotation.90cw\n").unwrap();
     assert_eq!(b.len(), 2);
     assert_eq!(b[1].0, "image.imageRotation.90cw");
-    let c = parse_script(r#"{"photocraftDroplet":1,"action":{"steps":[["file.new",{}]]}}"#).unwrap();
+    let c = parse_script(r#"{"patronusphotoDroplet":1,"action":{"steps":[["file.new",{}]]}}"#).unwrap();
     assert_eq!(c.len(), 1);
     assert!(parse_script("file.new {bad json").is_err());
 }
@@ -156,20 +156,20 @@ fn droplets_are_written_and_run() {
     let dp = r["path"].as_str().unwrap().to_string();
     assert!(dp.ends_with("Rotate.pcdroplet"));
     let v: Value = serde_json::from_slice(&std::fs::read(&dp).unwrap()).unwrap();
-    assert_eq!(v["photocraftDroplet"], 1);
+    assert_eq!(v["patronusphotoDroplet"], 1);
     #[cfg(unix)]
     {
         let shim = r["shim"].as_str().unwrap();
         let text = std::fs::read_to_string(shim).unwrap();
         assert!(text.starts_with("#!/bin/sh") && text.contains("droplet"));
-        assert!(text.contains("/Applications/PhotoCraft.app/Contents/MacOS/photocraft-cli"));
-        assert!(text.contains("${PHOTOCRAFT_CLI:-}"), "an explicit CLI path must take priority");
+        assert!(text.contains("/Applications/Patronus Photo.app/Contents/MacOS/patronusphoto-cli"));
+        assert!(text.contains("${PATRONUSPHOTO_CLI:-}"), "an explicit CLI path must take priority");
         use std::os::unix::fs::PermissionsExt;
         assert_ne!(std::fs::metadata(shim).unwrap().permissions().mode() & 0o111, 0, "executable");
     }
     let r = s.execute("file.automate.runDroplet", json!({"droplet": dp, "input": [dir.clone()]})).unwrap();
     assert_eq!(r["files"].as_array().unwrap().len(), inputs.len(), "{r}");
-    let out = photocraft_codecs::decode(&std::fs::read(format!("{dir}/out/img0.png")).unwrap()).unwrap();
+    let out = patronusphoto_codecs::decode(&std::fs::read(format!("{dir}/out/img0.png")).unwrap()).unwrap();
     assert_eq!(out.dimensions(), (20, 40));
     assert!(s.execute("file.automate.createDroplet", json!({"path": path, "steps": [["bogus", {}]]})).is_err());
 }
@@ -197,7 +197,7 @@ fn batch_and_droplets_use_the_named_actions_enabled_steps() {
                 result = Session::new().execute("file.automate.runDroplet", json!({"droplet": result["path"], "input": inputs})).unwrap();
             }
             assert_eq!(result["errors"], json!([]), "{command}: {result}");
-            let image = photocraft_codecs::decode(&std::fs::read(result["files"][0].as_str().unwrap()).unwrap()).unwrap();
+            let image = patronusphoto_codecs::decode(&std::fs::read(result["files"][0].as_str().unwrap()).unwrap()).unwrap();
             assert_eq!(image.dimensions(), (1, 2), "{command}: Rotate runs and the disabled Close does not");
         }
     }
@@ -227,7 +227,7 @@ fn batch_and_droplets_keep_explicit_steps_and_reject_invalid_sources_before_writ
                 result = Session::new().execute("file.automate.runDroplet", json!({"droplet": result["path"], "input": inputs})).unwrap();
             }
             assert_eq!(result["errors"], json!([]), "{command}: {result}");
-            let image = photocraft_codecs::decode(&std::fs::read(result["files"][0].as_str().unwrap()).unwrap()).unwrap();
+            let image = patronusphoto_codecs::decode(&std::fs::read(result["files"][0].as_str().unwrap()).unwrap()).unwrap();
             assert_eq!(image.dimensions(), if i == 2 { (2, 1) } else { (1, 2) });
         }
         for (i, source) in [
@@ -265,8 +265,8 @@ fn droplets_keep_the_recorded_save_that_marks_the_result() {
     let r = s.execute("file.automate.runDroplet", json!({"droplet": dp, "input": [dir.clone()]})).unwrap();
     assert_eq!(r["errors"], json!([]), "{r}");
     assert_eq!(r["files"].as_array().unwrap().len(), inputs.len(), "{r}");
-    let out = photocraft_io::import("img0.png", &std::fs::read(format!("{dir}/out/img0.png")).unwrap()).unwrap().document;
-    let px = photocraft_compose::render(&out, photocraft_geom::Rect::new(1, 1, 2, 2)).px[0];
+    let out = patronusphoto_io::import("img0.png", &std::fs::read(format!("{dir}/out/img0.png")).unwrap()).unwrap().document;
+    let px = patronusphoto_compose::render(&out, patronusphoto_geom::Rect::new(1, 1, 2, 2)).px[0];
     assert!((px[0] - 235.0 / 255.0).abs() < 1e-3, "img0's gray 20 inverted: {px:?}");
 }
 
@@ -288,16 +288,16 @@ fn droplet_shim_passes_shell_metacharacters_as_a_literal_path() {
     let input = format!("{dir}/input file");
     std::fs::write(
         &cli,
-        "#!/bin/sh\nif [ \"$#\" -ne 3 ] || [ \"$1\" != droplet ] || [ \"$3\" != \"$PHOTOCRAFT_EXPECTED_INPUT\" ]; then exit 90; fi\nprintf '%s' \"$2\" > \"$PHOTOCRAFT_CAPTURE\"\n",
+        "#!/bin/sh\nif [ \"$#\" -ne 3 ] || [ \"$1\" != droplet ] || [ \"$3\" != \"$PATRONUSPHOTO_EXPECTED_INPUT\" ]; then exit 90; fi\nprintf '%s' \"$2\" > \"$PATRONUSPHOTO_CAPTURE\"\n",
     )
     .unwrap();
     std::fs::set_permissions(&cli, std::fs::Permissions::from_mode(0o755)).unwrap();
     let output = std::process::Command::new(shim)
         .arg(&input)
         .current_dir(&dir)
-        .env("PHOTOCRAFT_CLI", &cli)
-        .env("PHOTOCRAFT_CAPTURE", &capture)
-        .env("PHOTOCRAFT_EXPECTED_INPUT", &input)
+        .env("PATRONUSPHOTO_CLI", &cli)
+        .env("PATRONUSPHOTO_CAPTURE", &capture)
+        .env("PATRONUSPHOTO_EXPECTED_INPUT", &input)
         .output()
         .unwrap();
 
@@ -337,11 +337,11 @@ fn droplets_carry_the_actions_their_play_steps_call() {
     let names: Vec<&str> = v["calledActions"].as_array().unwrap().iter().map(|a| a["name"].as_str().unwrap()).collect();
     assert_eq!(names, ["Rotate", "Outer"], "only the called actions, transitively");
 
-    // A fresh session, as `photocraft-cli droplet` and the droplet shim use.
+    // A fresh session, as `patronusphoto-cli droplet` and the droplet shim use.
     let mut fresh = Session::new();
     let r = fresh.execute("file.automate.runDroplet", json!({"droplet": dp, "input": [dir.clone()]})).unwrap();
     assert_eq!(r["files"].as_array().unwrap().len(), inputs.len(), "{r}");
-    let out = photocraft_codecs::decode(&std::fs::read(format!("{dir}/out-Outer/img0.png")).unwrap()).unwrap();
+    let out = patronusphoto_codecs::decode(&std::fs::read(format!("{dir}/out-Outer/img0.png")).unwrap()).unwrap();
     assert_eq!(out.dimensions(), (20, 40));
     let r = fresh.execute("file.automate.runDroplet", json!({"droplet": looping, "input": [dir.clone()]})).unwrap();
     assert_eq!(r["errors"].as_array().unwrap().len(), inputs.len(), "a self-call fails instead of looping: {r}");
@@ -417,7 +417,7 @@ fn droplets_carry_the_actions_their_play_steps_call() {
                 assert!(r["errors"][0]["error"].as_str().unwrap().contains(error), "{name}: {r}");
             } else {
                 assert_eq!(r["errors"], json!([]), "{name}/{different}: {r}");
-                let out = photocraft_codecs::decode(&std::fs::read(format!("{inner}/img0.png")).unwrap()).unwrap();
+                let out = patronusphoto_codecs::decode(&std::fs::read(format!("{inner}/img0.png")).unwrap()).unwrap();
                 assert_eq!(out.dimensions(), if name == "batch-empty" { (40, 20) } else { (20, 40) }, "{name}/{different}");
             }
         }
@@ -427,7 +427,8 @@ fn droplets_carry_the_actions_their_play_steps_call() {
     let old = format!("{dir}/old.pcdroplet");
     std::fs::write(
         &old,
-        json!({"photocraftDroplet": 1, "action": {"steps": [["image.imageRotation.90cw", {}]]}, "options": {"output": format!("{dir}/out-old")}}).to_string(),
+        json!({"patronusphotoDroplet": 1, "action": {"steps": [["image.imageRotation.90cw", {}]]}, "options": {"output": format!("{dir}/out-old")}})
+            .to_string(),
     )
     .unwrap();
     let r = fresh.execute("file.automate.runDroplet", json!({"droplet": old, "input": [dir.clone()]})).unwrap();
@@ -496,10 +497,10 @@ fn droplets_preserve_batch_action_namespaces() {
         }
         let r = Session::new().execute("file.automate.runDroplet", json!({"droplet": path, "input": [input]})).unwrap();
         assert_eq!(r["errors"], json!([]), "{kind}: {r}");
-        let out = photocraft_codecs::decode(&std::fs::read(format!("{inner}/img0.png")).unwrap()).unwrap();
+        let out = patronusphoto_codecs::decode(&std::fs::read(format!("{inner}/img0.png")).unwrap()).unwrap();
         assert_eq!(out.dimensions(), (20, 40), "{kind}");
         if kind == "mixed-two" {
-            assert_eq!(photocraft_codecs::decode(&std::fs::read(format!("{other}/img0.png")).unwrap()).unwrap().dimensions(), (40, 20));
+            assert_eq!(patronusphoto_codecs::decode(&std::fs::read(format!("{other}/img0.png")).unwrap()).unwrap().dimensions(), (40, 20));
         }
     }
 }
@@ -557,11 +558,11 @@ fn droplets_carry_the_actions_their_conditional_steps_call() {
     let names: Vec<&str> = v["calledActions"].as_array().unwrap().iter().map(|a| a["name"].as_str().unwrap()).collect();
     assert_eq!(names, ["Rotate", "Wide", "Tall"], "both branches and what they call");
 
-    // A fresh session, as `photocraft-cli droplet` and the droplet shim use.
+    // A fresh session, as `patronusphoto-cli droplet` and the droplet shim use.
     let mut fresh = Session::new();
     let r = fresh.execute("file.automate.runDroplet", json!({"droplet": dp, "input": [dir.clone()]})).unwrap();
     assert_eq!(r["files"].as_array().unwrap().len(), inputs.len(), "{r}");
-    let img = photocraft_codecs::decode(&std::fs::read(format!("{out}/img0.png")).unwrap()).unwrap();
+    let img = patronusphoto_codecs::decode(&std::fs::read(format!("{out}/img0.png")).unwrap()).unwrap();
     assert_eq!(img.dimensions(), (20, 40), "the landscape input took the then branch");
 }
 
@@ -573,7 +574,7 @@ fn batch_and_droplets_skip_recorded_view_steps() {
     let mut s = Session::new();
     let r = s.execute("file.automate.batch", json!({"steps": steps, "input": dir.clone(), "output": format!("{dir}/batch"), "format": "png"})).unwrap();
     assert!(r["errors"].as_array().unwrap().is_empty(), "{r}");
-    let out = photocraft_codecs::decode(&std::fs::read(format!("{dir}/batch/img0.png")).unwrap()).unwrap();
+    let out = patronusphoto_codecs::decode(&std::fs::read(format!("{dir}/batch/img0.png")).unwrap()).unwrap();
     assert_eq!(out.dimensions(), (20, 40));
     let r = s.execute("file.automate.createDroplet", json!({"path": format!("{dir}/Rotate"), "steps": steps})).unwrap();
     let v: Value = serde_json::from_slice(&std::fs::read(r["path"].as_str().unwrap()).unwrap()).unwrap();
@@ -590,9 +591,9 @@ fn statistics_makes_a_stack_mode_smart_object() {
     let d = &s.active().unwrap().doc;
     assert_eq!(d.layers.len(), 1);
     let LayerContent::Smart(so) = &d.layers[0].content else { panic!("not a smart object") };
-    assert_eq!(so.stack_mode, Some(photocraft_doc::StackMode::Mean));
+    assert_eq!(so.stack_mode, Some(patronusphoto_doc::StackMode::Mean));
     // Mean of 20, 60, 100 = 60.
-    let px = photocraft_compose::flatten(d).px[0];
+    let px = patronusphoto_compose::flatten(d).px[0];
     assert!((px[0] * 255.0 - 60.0).abs() < 1.5, "{px:?}");
     assert!(s.execute("file.scripts.statistics", json!({"mode": "average", "input": dir})).is_err());
 }
@@ -608,12 +609,12 @@ fn stacked_smart_object_holds_the_loaded_layers_at_its_top_level() {
         let surf = doc.layer_mut(active.ok_or(EngineError::NoDocument)?).and_then(Layer::surface_mut).ok_or(EngineError::NoDocument)?;
         for k in 0..40 {
             let (x, y, v) = ((k * 37) % 88, (k * 23) % 66, (k % 7) as f32 / 6.0);
-            surf.fill_rect(photocraft_geom::Rect::new(x, y, x + 3 + k % 5, y + 2 + k % 4), &[v, 1.0 - v, 0.5, 1.0]);
+            surf.fill_rect(patronusphoto_geom::Rect::new(x, y, x + 3 + k % 5, y + 2 + k % 4), &[v, 1.0 - v, 0.5, 1.0]);
         }
         Ok(())
     })
     .unwrap();
-    let source = photocraft_compose::flatten(&s.active().unwrap().doc);
+    let source = patronusphoto_compose::flatten(&s.active().unwrap().doc);
     let files: Vec<String> = (0..3)
         .map(|i| {
             let path = format!("{dir}/img{i}.png");
@@ -626,11 +627,11 @@ fn stacked_smart_object_holds_the_loaded_layers_at_its_top_level() {
         s.execute("file.scripts.statistics", json!({"mode": "median", "input": files, "align": align})).unwrap();
         let d = &s.active().unwrap().doc;
         let LayerContent::Smart(so) = &d.layers[0].content else { panic!("not a smart object") };
-        let photocraft_doc::SmartSource::Embedded { file_name, bytes } = &so.source else { panic!("not embedded") };
+        let patronusphoto_doc::SmartSource::Embedded { file_name, bytes } = &so.source else { panic!("not embedded") };
         let inner = crate::smart_cmds::decode_source(file_name, bytes).unwrap();
         let names: Vec<&str> = inner.layers.iter().map(|l| l.name.as_str()).collect();
         assert_eq!(names, ["img0.png", "img1.png", "img2.png"], "align {align}");
-        assert_eq!(photocraft_compose::flatten(d).px, source.px, "align {align}");
+        assert_eq!(patronusphoto_compose::flatten(d).px, source.px, "align {align}");
     }
 }
 
@@ -727,7 +728,7 @@ fn load_files_into_stack_aligns_before_the_smart_object() {
         let surf = doc.layer_mut(active.ok_or(EngineError::NoDocument)?).and_then(Layer::surface_mut).ok_or(EngineError::NoDocument)?;
         for k in 0..40 {
             let (x, y, v) = ((k * 37) % 88, (k * 23) % 66, (k % 7) as f32 / 6.0);
-            surf.fill_rect(photocraft_geom::Rect::new(x, y, x + 3 + k % 5, y + 2 + k % 4), &[v, 1.0 - v, 0.5, 1.0]);
+            surf.fill_rect(patronusphoto_geom::Rect::new(x, y, x + 3 + k % 5, y + 2 + k % 4), &[v, 1.0 - v, 0.5, 1.0]);
         }
         Ok(())
     })
@@ -823,7 +824,7 @@ fn droplets_skip_actions_called_only_from_disabled_steps() {
     let inputs = images(&dir, 1, 3, 2);
     let run = Session::new().execute("file.automate.runDroplet", json!({"droplet": r["path"], "input": inputs, "output": format!("{dir}/out")})).unwrap();
     assert_eq!(run["errors"], json!([]), "{run}");
-    let out = photocraft_codecs::decode(&std::fs::read(format!("{dir}/out/img0.png")).unwrap()).unwrap();
+    let out = patronusphoto_codecs::decode(&std::fs::read(format!("{dir}/out/img0.png")).unwrap()).unwrap();
     assert_eq!(out.dimensions(), (3, 2), "the disabled Rotate must not run");
 }
 
@@ -852,7 +853,7 @@ fn droplets_forward_override_open_to_batch() {
             .unwrap();
         let run = Session::new().execute("file.automate.runDroplet", json!({"droplet": r["path"], "input": [inputs[0]]})).unwrap();
         assert_eq!(run["errors"], json!([]), "{run}");
-        let image = photocraft_codecs::decode(&std::fs::read(format!("{out}/img0.png")).unwrap()).unwrap();
+        let image = patronusphoto_codecs::decode(&std::fs::read(format!("{out}/img0.png")).unwrap()).unwrap();
         assert_eq!(image.dimensions(), size, "overrideOpen {override_open}: {run}");
     }
 }

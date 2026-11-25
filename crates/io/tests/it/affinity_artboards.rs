@@ -6,9 +6,9 @@ mod fixture;
 
 use craft_affinity::synth::Method;
 use fixture::{Marker, document};
-use photocraft_doc::Document;
-use photocraft_geom::Rect;
-use photocraft_io::{ExportOptions, export, import};
+use patronusphoto_doc::Document;
+use patronusphoto_geom::Rect;
+use patronusphoto_io::{ExportOptions, export, import};
 
 fn boards(doc: &Document) -> Vec<(String, Rect)> {
     doc.artboards().into_iter().map(|(_, name, a)| (name.to_string(), a.rect)).collect()
@@ -16,7 +16,7 @@ fn boards(doc: &Document) -> Vec<(String, Rect)> {
 
 fn pixels(doc: &Document) -> Vec<u8> {
     let bytes = export(doc, "boards.png", &ExportOptions::default()).unwrap().bytes;
-    photocraft_codecs::decode(&bytes).unwrap().data().to_vec()
+    patronusphoto_codecs::decode(&bytes).unwrap().data().to_vec()
 }
 
 #[test]

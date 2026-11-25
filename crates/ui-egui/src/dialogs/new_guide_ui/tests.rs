@@ -4,22 +4,22 @@ use serde_json::json;
 
 use super::*;
 
-type H = Harness<'static, Box<PhotocraftApp>>;
+type H = Harness<'static, Box<PatronusPhotoApp>>;
 
 /// One 4 × 2 inch document at 100 ppi, with the rulers in `unit`, under a harness whose passes run the dialog host.
 fn harness(unit: &str) -> H {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 400, "height": 200, "resolution": 100})).unwrap();
     app.run("prefs.set", json!({"path": "unitsAndRulers.rulers", "value": unit})).unwrap();
     app.sync_views();
     with_app(app)
 }
 
-fn with_app(app: Box<PhotocraftApp>) -> H {
-    Harness::<'static, Box<PhotocraftApp>>::builder()
+fn with_app(app: Box<PatronusPhotoApp>) -> H {
+    Harness::<'static, Box<PatronusPhotoApp>>::builder()
         .with_context(app.ctx().clone())
         .with_size(egui::vec2(1000.0, 700.0))
-        .build_ui_state(|ui: &mut egui::Ui, app: &mut Box<PhotocraftApp>| crate::dialogs::run(app, ui), app)
+        .build_ui_state(|ui: &mut egui::Ui, app: &mut Box<PatronusPhotoApp>| crate::dialogs::run(app, ui), app)
 }
 
 /// Opens New Guide and shows its first pass, which recalls the remembered values.
@@ -64,12 +64,12 @@ fn fields(h: &H, id: DialogId) -> serde_json::Value {
 }
 
 /// Committed guide positions, excluding any draft preview.
-fn guides(app: &PhotocraftApp) -> (Vec<f64>, Vec<f64>) {
+fn guides(app: &PatronusPhotoApp) -> (Vec<f64>, Vec<f64>) {
     let g = &app.session.active().unwrap().doc.guides;
     (g.horizontal.clone(), g.vertical.clone())
 }
 
-fn color_of(app: &PhotocraftApp, vertical: bool, position: f64) -> Option<[u8; 3]> {
+fn color_of(app: &PatronusPhotoApp, vertical: bool, position: f64) -> Option<[u8; 3]> {
     app.session.active().unwrap().doc.guides.color(vertical, position)
 }
 

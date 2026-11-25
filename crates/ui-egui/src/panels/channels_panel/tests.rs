@@ -4,23 +4,23 @@ use craft::behavior::value::{EditEvent, Mixed};
 use craft::ui::contract::ReorderMove;
 use craft::ui::primitives::textures::{ThumbRender, ThumbRequest, ThumbSource};
 
-fn app_with(mode: &str) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app_with(mode: &str) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 32, "height": 24, "mode": mode})).unwrap();
     app
 }
 
-fn alpha_names(app: &PhotocraftApp) -> Vec<String> {
+fn alpha_names(app: &PatronusPhotoApp) -> Vec<String> {
     app.session.active().unwrap().doc.channels.iter().map(|c| c.name.clone()).collect()
 }
 
-fn steps(app: &PhotocraftApp) -> usize {
+fn steps(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.past_len()
 }
 
 /// The `Masked` layer with a reveal-all mask and one alpha channel, in a 64×48 document.
-fn masked_app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn masked_app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
     app.run("layer.new.layer", json!({"name": "Masked"})).unwrap();
     app.run("layer.layerMask.revealAll", json!({})).unwrap();
@@ -30,17 +30,17 @@ fn masked_app() -> Box<PhotocraftApp> {
 }
 
 /// The command of `command` for the targeted row, through the framework's own command-to-event map.
-fn fire(app: &mut PhotocraftApp, ctx: &egui::Context, command: ChannelsCommands) {
+fn fire(app: &mut PatronusPhotoApp, ctx: &egui::Context, command: ChannelsCommands) {
     assert!(run_fired(app, ctx, &CommandRef::from(command)));
 }
 
-fn enabled(app: &PhotocraftApp, command: ChannelsCommands) -> bool {
+fn enabled(app: &PatronusPhotoApp, command: ChannelsCommands) -> bool {
     let wanted = CommandRef::from(command);
     command_states(app).into_iter().find(|(r, _)| *r == wanted).is_some_and(|(_, s)| s.is_enabled())
 }
 
 /// The `channel` field of the newest open dialog.
-fn newest_dialog_channel(app: &PhotocraftApp) -> Value {
+fn newest_dialog_channel(app: &PatronusPhotoApp) -> Value {
     let open = app.framework.dialogs.open_dialogs().pop().expect("a dialog is open");
     crate::dialogs::params::captured(app, open.key.as_deref().expect("a keyed dialog"))["channel"].clone()
 }
@@ -48,10 +48,10 @@ fn newest_dialog_channel(app: &PhotocraftApp) -> Value {
 /// The thumbnail revision of a colour key follows the pixels and Show Channels in Color, not the selection (#4518).
 #[test]
 fn channel_thumbs_follow_their_inputs() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
     let request = ThumbRequest::for_cell(28.0, 1.0);
-    let revision = |app: &PhotocraftApp| {
+    let revision = |app: &PatronusPhotoApp| {
         let st = app.session.active().unwrap();
         ChannelThumbs::new(app, st).revision(&Row::Color(0), &request)
     };
@@ -102,17 +102,17 @@ fn channel_events_run_their_commands() {
     assert!(!app.ui.mask_target, "the composite targets the pixels again");
 
     // Visibility: the step's value is what the eye becomes. A colour eye off, then on.
-    let color_shown = |app: &PhotocraftApp, k| app.session.active().unwrap().channel_view.color_visible(k);
+    let color_shown = |app: &PatronusPhotoApp, k| app.session.active().unwrap().channel_view.color_visible(k);
     assert!(color_shown(&app, 1));
     apply_visibility(&mut app, Row::Color(1), false);
     assert!(!color_shown(&app, 1), "the eye is off");
     apply_visibility(&mut app, Row::Color(1), true);
     assert!(color_shown(&app, 1), "and on again");
     // The mask row's eye: the overlay on, then the mask view off.
-    let mask_view = |app: &PhotocraftApp| photocraft_engine::mask_view_cmds::current(app.session.active().unwrap()).map(|v| v.mode);
+    let mask_view = |app: &PatronusPhotoApp| patronusphoto_engine::mask_view_cmds::current(app.session.active().unwrap()).map(|v| v.mode);
     assert_eq!(mask_view(&app), None);
     apply_visibility(&mut app, Row::LayerMask, true);
-    assert_eq!(mask_view(&app), Some(photocraft_engine::mask_view_cmds::MaskViewMode::Overlay));
+    assert_eq!(mask_view(&app), Some(patronusphoto_engine::mask_view_cmds::MaskViewMode::Overlay));
     apply_visibility(&mut app, Row::LayerMask, false);
     assert_eq!(mask_view(&app), None);
 
@@ -179,7 +179,7 @@ fn channel_footer_follows_the_shown_target() {
     app.run("layer.layerMask.revealSelection", json!({})).unwrap();
     app.run("channel.target", json!({"channel": "composite"})).unwrap();
     app.ui.mask_target = true;
-    let sample = |app: &PhotocraftApp, x, y| app.session.active().unwrap().doc.selection.as_ref().unwrap().sample_channel(x, y, 0);
+    let sample = |app: &PatronusPhotoApp, x, y| app.session.active().unwrap().doc.selection.as_ref().unwrap().sample_channel(x, y, 0);
     let targeted = rows(&app).into_iter().find(|r| r.targeted).unwrap().key;
     assert_eq!(targeted, Row::LayerMask);
     run_drop(&mut app, targeted, ChannelsFooterButton::LoadSelection);
@@ -200,10 +200,10 @@ fn channel_footer_follows_the_shown_target() {
 /// channel as the index did.
 #[test]
 fn recorded_colour_clicks_save_as_component_selects() {
-    use photocraft_doc::ColorMode;
+    use patronusphoto_doc::ColorMode;
     for (mode, color_mode, count) in [("rgb", ColorMode::Rgb, 3), ("cmyk", ColorMode::Cmyk, 4), ("lab", ColorMode::Lab, 3)] {
         for k in 0..count {
-            let mut s = photocraft_engine::Session::new();
+            let mut s = patronusphoto_engine::Session::new();
             s.execute("file.new", json!({"width": 2, "height": 1, "mode": mode})).unwrap();
             let by_index = s.execute("channel.target", json!({"channel": Row::Color(k).reference(), "extend": false})).unwrap();
             s.execute("channel.target", json!({"channel": "composite"})).unwrap();
@@ -214,7 +214,7 @@ fn recorded_colour_clicks_save_as_component_selects() {
             assert_eq!(saved["skipped"], json!([]));
             let loaded = s.execute("actions.load", json!({"data": saved["data"]})).unwrap();
             assert_eq!(loaded["unsupported"], json!([]), "{mode}/{k}");
-            let name = photocraft_engine::channel_cmds::color_names(color_mode)[k].to_ascii_lowercase();
+            let name = patronusphoto_engine::channel_cmds::color_names(color_mode)[k].to_ascii_lowercase();
             assert_eq!(s.actions.list.actions().last().unwrap().steps, vec![ActionStep::new("channel.target", json!({"channel": {"color": name}}))]);
         }
     }
@@ -285,7 +285,7 @@ fn channel_commands_follow_the_target() {
     assert!(!enabled(&several, Duplicate));
 
     // No document: nothing acts on a row.
-    let none = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let none = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     for command in [Duplicate, Delete, MergeSpot, ChannelOptions] {
         assert!(!enabled(&none, command), "{command:?} waits for a document");
     }
@@ -313,9 +313,9 @@ fn panel_menu_merges_the_targeted_spot_channel() {
     app.run("channel.newSpot", json!({"name": "Ink", "color": "#0000ff", "solidity": 100})).unwrap();
     app.run("select.deselect", json!({})).unwrap();
     app.run("channel.target", json!({"channel": 1})).unwrap();
-    let pixel = |app: &PhotocraftApp, x: usize, y: usize| {
+    let pixel = |app: &PatronusPhotoApp, x: usize, y: usize| {
         let doc = &app.session.active().unwrap().doc;
-        let comp = photocraft_compose::render(doc, doc.bounds());
+        let comp = patronusphoto_compose::render(doc, doc.bounds());
         let p = comp.px[y * doc.size.width as usize + x];
         [p[0], p[1], p[2]].map(|v| (v * 255.0).round() as u8)
     };
@@ -343,7 +343,7 @@ fn panel_menu_merge_channels_opens_its_dialog() {
     crate::dialogs::testing::confirm(&mut app, id).unwrap();
     let docs = app.session.documents();
     assert_eq!(docs.len(), 1, "the sources close");
-    assert_eq!(docs[0].doc.mode, photocraft_doc::ColorMode::Lab, "in the mode picked");
+    assert_eq!(docs[0].doc.mode, patronusphoto_doc::ColorMode::Lab, "in the mode picked");
 
     let mut app = app_with("grayscale");
     for _ in 0..2 {

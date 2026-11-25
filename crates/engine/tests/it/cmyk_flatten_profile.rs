@@ -8,9 +8,9 @@
 
 use std::sync::Arc;
 
-use photocraft_color::convert::{CmykSpace, with_cmyk_space};
-use photocraft_engine::Session;
-use photocraft_geom::Rect;
+use patronusphoto_color::convert::{CmykSpace, with_cmyk_space};
+use patronusphoto_engine::Session;
+use patronusphoto_geom::Rect;
 use serde_json::json;
 
 const W: i32 = 8;
@@ -68,10 +68,10 @@ fn document(depth: u32, tag: bool) -> Session {
         let fmt = bg.format();
         with_cmyk_space(if tag { space.as_ref() } else { None }, || {
             for (x, rgb) in RGB.iter().enumerate() {
-                let mut px = photocraft_raster::from_rgba(&fmt, [rgb[0], rgb[1], rgb[2], 1.0]);
+                let mut px = patronusphoto_raster::from_rgba(&fmt, [rgb[0], rgb[1], rgb[2], 1.0]);
                 for _ in 0..3 {
-                    let back = photocraft_raster::to_rgba(&fmt, &px);
-                    px = photocraft_raster::from_rgba(&fmt, back);
+                    let back = patronusphoto_raster::to_rgba(&fmt, &px);
+                    px = patronusphoto_raster::from_rgba(&fmt, back);
                 }
                 bg.write_pixel(x as i32, 0, &px);
             }

@@ -1,9 +1,9 @@
 //! Note tool annotations (Window › Notes, File › Import › Notes…). Notes are document data
-//! ([`photocraft_doc::Note`]), saved in `.pcraft` and as the PSD `Anno` block; each change is
+//! ([`patronusphoto_doc::Note`]), saved in `.pcraft` and as the PSD `Anno` block; each change is
 //! one history step.
 
-use photocraft_color::Color;
-use photocraft_doc::{Document, Note};
+use patronusphoto_color::Color;
+use patronusphoto_doc::{Document, Note};
 use serde_json::{Value, json};
 
 use crate::commands::CommandSpec;
@@ -197,8 +197,8 @@ pub const NO_NOTES_IMPORTED: &str = "No notes were imported.";
 /// The error for a source the import could not read. A memory refusal says what the user can do
 /// about it and keeps its own (typed) message; anything else (not an image, damaged, truncated)
 /// gave no notes (#13915).
-fn source_error(name: &str, error: photocraft_io::IoError) -> EngineError {
-    use photocraft_io::IoError;
+fn source_error(name: &str, error: patronusphoto_io::IoError) -> EngineError {
+    use patronusphoto_io::IoError;
     match error {
         IoError::OutOfMemory(_) | IoError::PsdApprovalRequired { .. } | IoError::PsdImportBudget { .. } => crate::error::io_open_error(name, error),
         _ => EngineError::Other(NO_NOTES_IMPORTED.into()),
@@ -209,7 +209,7 @@ fn source_error(name: &str, error: photocraft_io::IoError) -> EngineError {
 pub fn import_notes_from(s: &mut Session, name: &str, bytes: &[u8]) -> Result<Value> {
     // The steps of `file_cmds::import`, with the io error still typed for `source_error`.
     crate::allocation::checkpoint("importing document")?;
-    let src = photocraft_io::import_for_open(name, bytes, &photocraft_io::ImportOptions::default()).map_err(|e| source_error(name, e))?.0.document;
+    let src = patronusphoto_io::import_for_open(name, bytes, &patronusphoto_io::ImportOptions::default()).map_err(|e| source_error(name, e))?.0.document;
     if src.notes.is_empty() {
         return Err(EngineError::Other(NO_NOTES_IMPORTED.into()));
     }
@@ -364,7 +364,7 @@ mod tests {
         let a = s.active().unwrap();
         assert_eq!(a.doc.notes[0], before);
         assert_eq!(a.history.past_len(), past);
-        assert!(photocraft_format::save_to_bytes(&a.doc, &Default::default()).is_ok());
+        assert!(patronusphoto_format::save_to_bytes(&a.doc, &Default::default()).is_ok());
     }
 
     #[test]
@@ -383,10 +383,10 @@ mod tests {
     fn import_notes_from_pcraft_and_psd() {
         let dir = std::env::temp_dir().join(format!("pc-notes-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
-        let mut src = Document::new("src", photocraft_doc::Size::new(400, 400), photocraft_color::ColorMode::Rgb, photocraft_color::SampleType::U8);
+        let mut src = Document::new("src", patronusphoto_doc::Size::new(400, 400), patronusphoto_color::ColorMode::Rgb, patronusphoto_color::SampleType::U8);
         src.notes.push(Note { text: "from pcraft".into(), position: [300.0, 300.0], ..Default::default() });
         let pc = dir.join("a.pcraft");
-        std::fs::write(&pc, photocraft_format::save_to_bytes(&src, &Default::default()).unwrap()).unwrap();
+        std::fs::write(&pc, patronusphoto_format::save_to_bytes(&src, &Default::default()).unwrap()).unwrap();
         let mut s = session();
         let r = s.execute("file.import.notes", json!({"path": pc.to_str().unwrap()})).unwrap();
         assert_eq!(r["imported"], 1);
@@ -405,7 +405,7 @@ mod tests {
         // A file without notes is an error.
         let empty = dir.join("b.pcraft");
         src.notes.clear();
-        std::fs::write(&empty, photocraft_format::save_to_bytes(&src, &Default::default()).unwrap()).unwrap();
+        std::fs::write(&empty, patronusphoto_format::save_to_bytes(&src, &Default::default()).unwrap()).unwrap();
         assert!(s.execute("file.import.notes", json!({"path": empty.to_str().unwrap()})).is_err());
         let _ = std::fs::remove_dir_all(&dir);
     }

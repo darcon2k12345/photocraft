@@ -9,21 +9,21 @@ use craft::ui::runtime::env::Env;
 use egui::vec2;
 use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
-use photocraft_engine::paint::{Control, GrayTile, MaskMode, Pattern, PatternStyle, TipShape};
+use patronusphoto_engine::paint::{Control, GrayTile, MaskMode, Pattern, PatternStyle, TipShape};
 
 use super::brushes::{BrushKey, apply_events, parts_of, preset_rows, run_picks};
 use super::*;
 
-fn app() -> Box<PhotocraftApp> {
-    PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default())
+fn app() -> Box<PatronusPhotoApp> {
+    PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default())
 }
 
-fn last_journal(app: &PhotocraftApp) -> Option<(String, Value)> {
+fn last_journal(app: &PatronusPhotoApp) -> Option<(String, Value)> {
     app.session.journal.last().cloned()
 }
 
 /// The visible options caption, not the numeric field it names.
-fn caption_rect(h: &Harness<'_, Box<PhotocraftApp>>, text: &str) -> egui::Rect {
+fn caption_rect(h: &Harness<'_, Box<PatronusPhotoApp>>, text: &str) -> egui::Rect {
     h.query_all(egui_kittest::kittest::by().label(text).include_labels())
         .find(|n| n.accesskit_node().role() == egui::accesskit::Role::Label)
         .unwrap_or_else(|| panic!("the `{text}` caption"))
@@ -175,7 +175,7 @@ fn every_section_round_trips_through_set_brush() {
         let got = app.session.execute("brush.get", json!({})).unwrap();
         assert_eq!(serde_json::from_value::<BrushSettings>(got).unwrap(), after, "section {i}");
         // Replaying the journaled call onto a fresh session gives the same brush (drivable).
-        let mut s = photocraft_engine::Session::new();
+        let mut s = patronusphoto_engine::Session::new();
         s.execute(&id, p).unwrap();
         assert_eq!(s.tools.brush, after, "replay of section {i}");
     }
@@ -249,12 +249,12 @@ fn section_locks_round_trip_and_survive_preset_picks() {
 }
 
 /// A harness that shows the options bar with `tool` in the Studio (non-pro) theme.
-fn options_bar_harness(tool: crate::state::Tool) -> Harness<'static, Box<PhotocraftApp>> {
+fn options_bar_harness(tool: crate::state::Tool) -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut app = app();
     app.ui.tool = tool;
     // As tall as a window, so the bar's menus open in full below it.
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(vec2(2400.0, 600.0)).build_app(
-        |ui, app: &mut PhotocraftApp| {
+        |ui, app: &mut PatronusPhotoApp| {
             if !ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 return;
             }
@@ -262,7 +262,7 @@ fn options_bar_harness(tool: crate::state::Tool) -> Harness<'static, Box<Photocr
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::studio());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::studio());
     h.run_steps(4);
     h
 }
@@ -307,7 +307,7 @@ fn options_bar_edits_are_one_set_brush_per_gesture() {
     assert_eq!(h.state().session.journal.len(), n + 2);
     assert_eq!(h.state().session.journal.last().unwrap().1["brush"], json!({"pressureSize": !was}));
     // Replaying the journal gives the same brush.
-    let mut s = photocraft_engine::Session::new();
+    let mut s = patronusphoto_engine::Session::new();
     for (id, p) in &h.state().session.journal {
         s.execute(id, p.clone()).unwrap();
     }
@@ -381,11 +381,11 @@ fn mixer_brush_clean_brush_and_the_automatic_load_keep_the_foreground_out() {
 
 /// A harness that draws the registry body of `panel` (`"brushSettings"` or `"brushes"`) with
 /// `section` selected.
-fn harness(panel: &'static str, section: usize) -> Harness<'static, Box<PhotocraftApp>> {
+fn harness(panel: &'static str, section: usize) -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut app = app();
     app.ui.brush_section = section;
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(vec2(1200.0, 900.0)).build_app(
-        move |ui, app: &mut PhotocraftApp| {
+        move |ui, app: &mut PatronusPhotoApp| {
             if !ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 return;
             }
@@ -394,7 +394,7 @@ fn harness(panel: &'static str, section: usize) -> Harness<'static, Box<Photocra
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     h.run_steps(4);
     h
 }
@@ -470,21 +470,21 @@ fn kit(name: &str, group: &str, folder: &[&str]) -> paint::BrushPreset {
 }
 
 /// The rows `preset_rows` gives for `app`, drawn in a frame (the rows read the frame's environment).
-fn rows_of(app: Box<PhotocraftApp>, view: PresetView) -> Vec<PresetRow<BrushKey>> {
+fn rows_of(app: Box<PatronusPhotoApp>, view: PresetView) -> Vec<PresetRow<BrushKey>> {
     let mut h = Harness::builder().with_size(vec2(200.0, 200.0)).with_context(app.ctx().clone()).build_ui_state(
-        move |ui, st: &mut (Box<PhotocraftApp>, Vec<PresetRow<BrushKey>>)| {
+        move |ui, st: &mut (Box<PatronusPhotoApp>, Vec<PresetRow<BrushKey>>)| {
             st.1 = preset_rows(&st.0, &Env::of(ui), parts_of(view));
         },
         (app, Vec::new()),
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     h.run_steps(2);
     std::mem::take(&mut h.state_mut().1)
 }
 
 #[test]
 fn preset_rows_nest_presets_in_panel_order() {
-    let max = photocraft_engine::brush_preset_cmds::MAX_FOLDER_DEPTH;
+    let max = patronusphoto_engine::brush_preset_cmds::MAX_FOLDER_DEPTH;
     let deep: Vec<&str> = vec!["d"; max + 5];
     let mut app = app();
     app.session.tools.presets = std::sync::Arc::new(vec![
@@ -507,7 +507,7 @@ fn preset_rows_nest_presets_in_panel_order() {
     assert_eq!(out.last().map(String::as_str), Some(format!("{}:Deep", max + 1).as_str()));
 }
 
-fn fixture() -> Box<PhotocraftApp> {
+fn fixture() -> Box<PatronusPhotoApp> {
     let mut app = app();
     app.session.tools.presets = std::sync::Arc::new(vec![
         kit("A1", "Alpha", &[]),
@@ -599,15 +599,15 @@ fn brushes_panel_events_run_their_commands() {
 
 /// A fresh session with the Brush tool: shortcuts, the options bar and the Brush Settings body,
 /// in the default theme (#258).
-fn app_harness() -> Harness<'static, Box<PhotocraftApp>> {
+fn app_harness() -> Harness<'static, Box<PatronusPhotoApp>> {
     app_harness_with_language(crate::i18n::Lang::EN)
 }
 
-fn app_harness_with_language(lang: crate::i18n::Lang) -> Harness<'static, Box<PhotocraftApp>> {
+fn app_harness_with_language(lang: crate::i18n::Lang) -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut app = app();
     app.ui.tool = crate::state::Tool::Brush;
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(vec2(1400.0, 900.0)).build_app(
-        move |ui, app: &mut PhotocraftApp| {
+        move |ui, app: &mut PatronusPhotoApp| {
             let ctx = ui.ctx().clone();
             if !ctx.fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 return;
@@ -624,7 +624,7 @@ fn app_harness_with_language(lang: crate::i18n::Lang) -> Harness<'static, Box<Ph
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::default());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::default());
     h.run_steps(4);
     h
 }
@@ -763,16 +763,17 @@ fn fixed_size_shows_and_takes_the_unit_picked_on_its_fields() {
     (o.marquee_style, o.marquee_width, o.marquee_height) = ("fixedSize".into(), 100.0, 50.0);
     assert_eq!(o.marquee_unit, "pixels");
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(vec2(1400.0, 360.0)).build_app(
-        |ui, app: &mut PhotocraftApp| {
+        |ui, app: &mut PatronusPhotoApp| {
             if ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 crate::panels::options_bar(app, ui);
             }
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     h.run_steps(4);
-    let has = |h: &Harness<'static, Box<PhotocraftApp>>, v: f64| h.query_all_by_role(Role::SpinButton).any(|n| n.accesskit_node().numeric_value() == Some(v));
+    let has =
+        |h: &Harness<'static, Box<PatronusPhotoApp>>, v: f64| h.query_all_by_role(Role::SpinButton).any(|n| n.accesskit_node().numeric_value() == Some(v));
     assert!(has(&h, 100.0) && has(&h, 50.0));
 
     // A right-click on Width lists the units; Millimeters shows both sides in mm.
@@ -815,7 +816,7 @@ fn fixed_size_shows_and_takes_the_unit_picked_on_its_fields() {
 #[test]
 fn brush_settings_hamburger_menu_actions() {
     let command = |c: BrushSettingsCommand| CommandRef::from(c);
-    let state = |app: &PhotocraftApp, c: BrushSettingsCommand| command_states(app).into_iter().find(|(r, _)| *r == command(c)).map(|(_, s)| s).unwrap();
+    let state = |app: &PatronusPhotoApp, c: BrushSettingsCommand| command_states(app).into_iter().find(|(r, _)| *r == command(c)).map(|(_, s)| s).unwrap();
 
     // 1. The menu offers Photoshop's four actions in order.
     let mut app = app();
@@ -853,7 +854,7 @@ fn brush_settings_hamburger_menu_actions() {
     assert!(app.session.tools.brush.locks.texture);
     assert_eq!(state(&app, BrushSettingsCommand::ResetLocks), CommandState::new().enabled(true));
     assert!(run_fired(&mut app, &ctx, &command(BrushSettingsCommand::ResetLocks)));
-    assert_eq!(app.session.tools.brush.locks, photocraft_paint::brush::SectionLocks::default());
+    assert_eq!(app.session.tools.brush.locks, patronusphoto_paint::brush::SectionLocks::default());
 
     // 5. Copy Texture to Other Tools is disabled with Texture off and copies only to tools with Texture on.
     let mut app = self::app();
@@ -868,7 +869,7 @@ fn brush_settings_hamburger_menu_actions() {
     eraser.texture.scale = 1.0;
     app.ui.tool_brushes = vec![(crate::state::Tool::Pencil, pencil), (crate::state::Tool::Eraser, eraser)];
     assert!(run_fired(&mut app, &ctx, &command(BrushSettingsCommand::CopyTexture)));
-    let scale = |app: &PhotocraftApp, tool| app.ui.tool_brushes.iter().find(|(t, _)| *t == tool).unwrap().1.texture.scale;
+    let scale = |app: &PatronusPhotoApp, tool| app.ui.tool_brushes.iter().find(|(t, _)| *t == tool).unwrap().1.texture.scale;
     assert_eq!(scale(&app, crate::state::Tool::Pencil), 2.5);
     assert_eq!(scale(&app, crate::state::Tool::Eraser), 1.0, "a tool with Texture off keeps its own");
 }

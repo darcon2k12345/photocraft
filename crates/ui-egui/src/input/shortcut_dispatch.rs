@@ -25,7 +25,7 @@ use craft::ui::runtime::frame::ChromeToggle;
 use craft::ui::shell::ScreenModeCommands;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// What a dispatched shortcut did (kept for tests and `ui.inspect`-style debugging).
@@ -57,9 +57,9 @@ pub fn take_log(ctx: &egui::Context) -> Vec<(String, Outcome)> {
     ctx.data_mut(|d| d.remove_temp::<Vec<(String, Outcome)>>(log_id())).unwrap_or_default()
 }
 
-/// The framework command a PhotoCraft command is: the runtime's own command carries out the row
+/// The framework command a Patronus Photo command is: the runtime's own command carries out the row
 /// (the chrome toggles, the canvas's view commands, the momentary tools), and the user's keys for the
-/// PhotoCraft id bind it.
+/// Patronus Photo id bind it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Bridged {
     /// A command the document canvas runs on its view.
@@ -68,9 +68,9 @@ pub(crate) enum Bridged {
     Chrome(ChromeCommand),
     /// A tool in effect while its key is held.
     Momentary(MomentaryCommands),
-    /// A framework edit command that owns the chord of a PhotoCraft action; PhotoCraft runs the action when it fires.
+    /// A framework edit command that owns the chord of a Patronus Photo action; Patronus Photo runs the action when it fires.
     Edit(EditCommands),
-    /// A Layers panel stacking command that owns the chord of a `layer.arrange.*` action; PhotoCraft runs the
+    /// A Layers panel stacking command that owns the chord of a `layer.arrange.*` action; Patronus Photo runs the
     /// action when it fires.
     Stack(LayersPanelCommands),
     /// A Swatches panel menu command under the id the engine's command of that name has; the panel runs it
@@ -98,9 +98,9 @@ impl Bridged {
     }
 }
 
-/// PhotoCraft's commands the craft runtime carries out, with the framework command each one is. Their
+/// Patronus Photo's commands the craft runtime carries out, with the framework command each one is. Their
 /// keys reach the runtime as keymap overrides ([`overrides`]) and the menu bar's rows fire them. App code (the menus
-/// PhotoCraft runs, action steps, automation) asks the active document's canvas for a view row's command
+/// Patronus Photo runs, action steps, automation) asks the active document's canvas for a view row's command
 /// (`actions::runner::run_view`), which journals it; the other rows it fires through [`fire_bridged`]. The action
 /// recorder records the view commands a canvas ran from the runtime ([`record_view_commands`]). They are not rows of
 /// [`catalog`]: the runtime defines them.
@@ -123,7 +123,7 @@ pub(crate) const RUNTIME_COMMANDS: &[(&str, Bridged)] = &[
     ("tools.temporary.zoomIn", Bridged::Momentary(MomentaryCommands::ZoomIn)),
     ("tools.temporary.zoomOut", Bridged::Momentary(MomentaryCommands::ZoomOut)),
     ("select.all", Bridged::Edit(EditCommands::SelectAll)),
-    // The ids the framework's sets give these commands are PhotoCraft's own ids, so the engine's rows of the same
+    // The ids the framework's sets give these commands are Patronus Photo's own ids, so the engine's rows of the same
     // names are not catalog rows either.
     ("edit.undo", Bridged::Edit(EditCommands::Undo)),
     ("edit.redo", Bridged::Edit(EditCommands::Redo)),
@@ -156,7 +156,7 @@ fn bridged_commands() -> &'static [(CommandRef, &'static str, Bridged)] {
     TABLE.get_or_init(|| RUNTIME_COMMANDS.iter().map(|(id, bridged)| (bridged.command(), *id, *bridged)).collect())
 }
 
-/// The PhotoCraft id and bridge row of a framework command, if a row bridges it.
+/// The Patronus Photo id and bridge row of a framework command, if a row bridges it.
 fn bridge_of(command: &CommandRef) -> Option<(&'static str, Bridged)> {
     bridged_commands().iter().find(|(bridged, _, _)| bridged == command).map(|(_, id, bridged)| (*id, *bridged))
 }
@@ -196,7 +196,7 @@ pub(crate) fn is_screen_mode(id: &str) -> bool {
     RUNTIME_COMMANDS.iter().any(|(row, bridged)| *row == id && matches!(bridged, Bridged::ScreenMode(_)))
 }
 
-/// The PhotoCraft row of a screen-mode command of the shell: the command gate judges the framework command as the
+/// The Patronus Photo row of a screen-mode command of the shell: the command gate judges the framework command as the
 /// menus judge that row.
 pub(crate) fn screen_mode_row(command: &CommandRef) -> Option<&'static str> {
     // The command gate asks this for every command a pass resolves: only the screen-mode rows build their command.
@@ -255,7 +255,7 @@ fn push_row(rows: &mut Vec<CommandDef>, index: &mut HashMap<String, usize>, def:
 /// the held keys, the engine's and shell's commands with their menu paths, the live menu items
 /// with no command of their own, the recorded actions, and the alternate keys. Ids the runtime defines
 /// ([`RUNTIME_COMMANDS`]) are not rows. The Keyboard Shortcuts dialog lists exactly these rows.
-pub(crate) fn command_rows(app: &PhotocraftApp) -> Vec<CommandDef> {
+pub(crate) fn command_rows(app: &PatronusPhotoApp) -> Vec<CommandDef> {
     let mut rows: Vec<CommandDef> = Vec::new();
     let mut index: HashMap<String, usize> = HashMap::new();
     let app_row = |id: &str, label: &str| CommandDef::new(CommandRef::new(id), label, Scope::app());
@@ -271,7 +271,7 @@ pub(crate) fn command_rows(app: &PhotocraftApp) -> Vec<CommandDef> {
         push_row(&mut rows, &mut index, def);
     }
     // The held erase key is momentary; the hand and zoom keys are the runtime's.
-    for &(id, label, key) in photocraft_engine::prefs::TEMPORARY_TOOLS {
+    for &(id, label, key) in patronusphoto_engine::prefs::TEMPORARY_TOOLS {
         if is_bridged(id) {
             continue;
         }
@@ -291,7 +291,7 @@ pub(crate) fn command_rows(app: &PhotocraftApp) -> Vec<CommandDef> {
 
     // The engine's and the shell's commands, with the menu paths the shell knows.
     // PLAN: `keymap_defs::command_defs` is top-w20's tp.PT25 row, assumed as `command_defs() -> Vec<CommandDef>`.
-    for mut def in photocraft_engine::keymap_defs::command_defs() {
+    for mut def in patronusphoto_engine::keymap_defs::command_defs() {
         if def.paths.is_empty() {
             def.paths.extend(menu_path(&def.command.id));
         }
@@ -326,7 +326,7 @@ pub(crate) fn command_rows(app: &PhotocraftApp) -> Vec<CommandDef> {
     }
 
     // A command's alternate keys (#3665: F3 is Copy as well as ⌘C), after every main key.
-    for &(id, key) in photocraft_engine::prefs::ALTERNATE_SHORTCUTS {
+    for &(id, key) in patronusphoto_engine::prefs::ALTERNATE_SHORTCUTS {
         let Some(alternate) = binding(key) else { continue };
         if let Some(&at) = index.get(id)
             && !rows[at].defaults.contains(&alternate)
@@ -361,11 +361,11 @@ pub(crate) fn keymap_command(id: &str) -> CommandRef {
     CommandRef::new(crate::menus::panel_alias(id).unwrap_or(id))
 }
 
-/// The rows of the commands the runtime defines ([`RUNTIME_COMMANDS`]) under their PhotoCraft ids, as the engine's
+/// The rows of the commands the runtime defines ([`RUNTIME_COMMANDS`]) under their Patronus Photo ids, as the engine's
 /// catalog gives them with their default keys. The Keyboard Shortcuts dialog and a `.kys` import edit them with the
 /// rows of [`command_rows`]; the runtime's own catalog holds them under the framework commands.
 pub(crate) fn bridged_rows() -> Vec<CommandDef> {
-    photocraft_engine::keymap_defs::command_defs()
+    patronusphoto_engine::keymap_defs::command_defs()
         .into_iter()
         .map(|mut def| {
             if def.paths.is_empty() {
@@ -388,12 +388,12 @@ pub(crate) fn catalog(rows: Vec<CommandDef>, generation: u64) -> Option<AppCatal
 
 /// The user's bindings for the runtime's keymap: Edit › Keyboard Shortcuts changes (`prefs.shortcuts`,
 /// `prefs.alternate_shortcuts`), the panel alias rule (#1272), and each row of [`RUNTIME_COMMANDS`] with its
-/// effective keys, so the framework command carries PhotoCraft's keys. The pane moves stay unbound
-/// (`app::framework`: PhotoCraft binds F6 and Shift+F6). `rows` are the app's catalog rows ([`command_rows`]).
-pub(crate) fn overrides(app: &PhotocraftApp, rows: &[CommandDef]) -> Overrides {
+/// effective keys, so the framework command carries Patronus Photo's keys. The pane moves stay unbound
+/// (`app::framework`: Patronus Photo binds F6 and Shift+F6). `rows` are the app's catalog rows ([`command_rows`]).
+pub(crate) fn overrides(app: &PatronusPhotoApp, rows: &[CommandDef]) -> Overrides {
     let prefs = app.session.prefs();
     // PLAN: `keymap_defs::prefs_overrides` is top-w20's tp.PT25 row, assumed as `prefs_overrides(&Preferences) -> Overrides`.
-    let mut overrides = photocraft_engine::keymap_defs::prefs_overrides(prefs);
+    let mut overrides = patronusphoto_engine::keymap_defs::prefs_overrides(prefs);
     // The Keyboard Shortcuts dialog lists Photoshop's Window › <panel> item (`window.panel.*`) in place of the
     // shell command it runs (`window.toggle.*`, see `menus::panel_alias`), so an edit to that row reassigns or
     // removes the shell command's default too (#1272).
@@ -460,7 +460,7 @@ fn held_by_action(taken: &[Chord], key: &str) -> bool {
 /// selection is filled with the background colour in the mask (Photoshop's Delete on a mask), and
 /// with no selection the mask itself is deleted, as Layer › Layer Mask › Delete, unless several
 /// layers are selected: then they are deleted.
-pub(crate) fn delete_key_command(app: &PhotocraftApp, id: String) -> String {
+pub(crate) fn delete_key_command(app: &PatronusPhotoApp, id: String) -> String {
     if id != "edit.clear" {
         return id;
     }
@@ -471,12 +471,12 @@ pub(crate) fn delete_key_command(app: &PhotocraftApp, id: String) -> String {
     if app.filter_mask_targeted() && st.doc.selection.is_some() {
         return "edit.fillBackground".into();
     }
-    let composite = st.channel_view.target == photocraft_engine::channel_cmds::ChannelTarget::Composite && st.doc.quick_mask.is_none();
+    let composite = st.channel_view.target == patronusphoto_engine::channel_cmds::ChannelTarget::Composite && st.doc.quick_mask.is_none();
     let has_mask = st.active_layer.and_then(|l| st.doc.layer(l)).is_some_and(|l| l.mask.is_some());
-    let colors_off = st.channel_view.visible_colors(photocraft_engine::channel_cmds::color_count(&st.doc)) == 0;
+    let colors_off = st.channel_view.visible_colors(patronusphoto_engine::channel_cmds::color_count(&st.doc)) == 0;
     let alpha_on = (0..st.doc.channels.len()).any(|i| st.channel_view.alpha_shown(i));
     let solo_mask = colors_off && has_mask && !alpha_on && st.doc.quick_mask.is_none();
-    let layer_mask = st.channel_view.target == photocraft_engine::channel_cmds::ChannelTarget::LayerMask;
+    let layer_mask = st.channel_view.target == patronusphoto_engine::channel_cmds::ChannelTarget::LayerMask;
     let mask = (app.ui.mask_target || solo_mask || layer_mask) && has_mask;
     // Several selected layers outrank the active one's targeted mask (#4025): a new adjustment
     // layer targets its mask, so the first press used to delete only that mask.
@@ -496,7 +496,7 @@ pub(crate) fn delete_key_command(app: &PhotocraftApp, id: String) -> String {
 /// shortcut: pressing it again takes the clip off. That is when the layers Create Clipping Mask
 /// would clip are all clipped already: the selected layer, or with several selected, every one
 /// above the lowest.
-pub(crate) fn clip_key_releases(app: &PhotocraftApp) -> bool {
+pub(crate) fn clip_key_releases(app: &PatronusPhotoApp) -> bool {
     let Some(st) = app.session.active() else { return false };
     let selected = st.selected_layers();
     let clips = match selected {
@@ -508,19 +508,19 @@ pub(crate) fn clip_key_releases(app: &PhotocraftApp) -> bool {
 }
 
 /// `id`, or Release Clipping Mask when Create Clipping Mask's key finds nothing left to clip.
-pub(crate) fn clip_key_command(app: &PhotocraftApp, id: String) -> String {
+pub(crate) fn clip_key_command(app: &PatronusPhotoApp, id: String) -> String {
     if id == "layer.createClippingMask" && clip_key_releases(app) { "layer.releaseClippingMask".into() } else { id }
 }
 
 /// Why `id` can't run now (the engine's reason when it has one).
-pub fn disabled_reason(app: &PhotocraftApp, id: &str) -> String {
-    photocraft_engine::commands::find(id).and_then(|_| app.session.disabled_reason_with(id, &app.with_mask_target(id, serde_json::Value::Null))).unwrap_or_else(
-        || match id {
+pub fn disabled_reason(app: &PatronusPhotoApp, id: &str) -> String {
+    patronusphoto_engine::commands::find(id)
+        .and_then(|_| app.session.disabled_reason_with(id, &app.with_mask_target(id, serde_json::Value::Null)))
+        .unwrap_or_else(|| match id {
             "tools.decreaseBrushHardness" | "tools.increaseBrushHardness" => "the current tool has no brush tip".into(),
             _ if app.session.active().is_none() => "no document open".into(),
             _ => "not available in the current state".into(),
-        },
-    )
+        })
 }
 
 fn label(id: &str) -> String {
@@ -529,7 +529,7 @@ fn label(id: &str) -> String {
         .find(|c| c.3 == id)
         .map(|c| c.1)
         .or_else(|| crate::menus::UI_COMMANDS.iter().find(|c| c.0 == id).map(|c| c.1))
-        .or_else(|| photocraft_engine::commands::find(id).map(|c| c.label))
+        .or_else(|| patronusphoto_engine::commands::find(id).map(|c| c.label))
         .or_else(|| crate::tool_shortcuts::tool(id).map(|tool| tool.label()))
         .unwrap_or(id)
         .trim_end_matches('…')
@@ -544,10 +544,10 @@ pub(crate) fn fire_bridged(ctx: &egui::Context, id: &str) -> Option<bool> {
 }
 
 /// Records each view row of [`RUNTIME_COMMANDS`] a canvas ran from the runtime since the last frame, by its chord or its
-/// menu-bar row, as PhotoCraft's view command: an action being recorded gets `view.fitOnScreen` for ⌘0 and for the menu
+/// menu-bar row, as Patronus Photo's view command: an action being recorded gets `view.fitOnScreen` for ⌘0 and for the menu
 /// item alike. The ones app code asked for (`run_view`) never reach the runtime and are journaled when asked.
 /// The screen-mode rows the shell ran go to the shortcut log only.
-pub(crate) fn record_view_commands(app: &mut PhotocraftApp) {
+pub(crate) fn record_view_commands(app: &mut PatronusPhotoApp) {
     for fired in std::mem::take(&mut app.framework.delivered) {
         match bridge_of(&fired.command) {
             Some((id, Bridged::View(_))) => {
@@ -577,8 +577,8 @@ pub(crate) fn record_chrome_toggles(ctx: &egui::Context, toggles: &[(egui::Viewp
 ///
 /// Per command: the held erase key; the opacity and blend keys (their own rules); a tool letter picks its
 /// group's tool on the press and releases the spring on the key-up; every other command runs on its press only.
-/// A framework command goes to [`crate::app::framework::run_command`], a PhotoCraft id to [`dispatch_as`].
-pub(crate) fn run_fired(app: &mut PhotocraftApp, ctx: &egui::Context, fired: &[Fired]) {
+/// A framework command goes to [`crate::app::framework::run_command`], a Patronus Photo id to [`dispatch_as`].
+pub(crate) fn run_fired(app: &mut PatronusPhotoApp, ctx: &egui::Context, fired: &[Fired]) {
     // A fired command is a command run, as `menus::invoke` counts one: many of these (the opacity and blend keys, the
     // Artboard, Slice and panel commands) change what a settled region shows without going through `invoke`. A key's
     // repeats change only what has a revision or a tool option (brush size, a nudge, a mode step), so a held key
@@ -640,14 +640,14 @@ pub(crate) fn run_fired(app: &mut PhotocraftApp, ctx: &egui::Context, fired: &[F
 /// The step a tool letter takes: with Preferences › Tools › Use Shift Key for Tool Switch the plain letter keeps the
 /// group's current tool (Shift+letter is [`next_in_group_id`]'s row); with it off the plain letter cycles a group
 /// whose tools share the letter.
-fn tool_step(app: &PhotocraftApp, fired: &Fired) -> PickStep {
+fn tool_step(app: &PatronusPhotoApp, fired: &Fired) -> PickStep {
     if app.session.prefs().tools.use_shift_key_for_tool_switch { PickStep::Last } else { PickStep::of(fired) }
 }
 
 /// Selects the tool the key `letter` picks. The group is the tools of that letter the user has not remapped, in the
 /// toolbar layout's order across slots (Edit › Toolbar); the rail's last-used memory is `app.ui.group_tools`, with the group's index among the letters as
 /// the slot. `plain` is a letter press with no Shift step: only those spring (#2672). `at` is the press's input time.
-fn pick_tool(app: &mut PhotocraftApp, letter: char, step: PickStep, plain: bool, at: f64) {
+fn pick_tool(app: &mut PatronusPhotoApp, letter: char, step: PickStep, plain: bool, at: f64) {
     let mut group: Vec<Tool> = Tool::ALL.iter().copied().filter(|t| t.key() == letter && crate::tool_shortcuts::uses_default(app, *t)).collect();
     let order = crate::panels::toolbar::layout_order(&app.session.prefs().toolbar);
     group.sort_by_key(|t| order.iter().position(|x| x == t).unwrap_or(usize::MAX));
@@ -669,9 +669,9 @@ fn pick_tool(app: &mut PhotocraftApp, letter: char, step: PickStep, plain: bool,
     }
 }
 
-/// Runs the press of a command that is not a tool key: the framework's command sources first, else PhotoCraft's own
+/// Runs the press of a command that is not a tool key: the framework's command sources first, else Patronus Photo's own
 /// through [`dispatch_as`].
-fn run_pressed(app: &mut PhotocraftApp, ctx: &egui::Context, f: &Fired) {
+fn run_pressed(app: &mut PatronusPhotoApp, ctx: &egui::Context, f: &Fired) {
     let id = f.command.id.as_str();
     // The Magnetic Lasso's bracket keys step its detection width, not the brush (#11688), until an outline is open.
     if app.ui.tool == Tool::MagneticLasso && !app.canvas_tools.selection.outline_open() {
@@ -713,13 +713,13 @@ fn run_pressed(app: &mut PhotocraftApp, ctx: &egui::Context, f: &Fired) {
 }
 
 /// Run a shortcut's command like its menu item (dialogs included), or say why it can't run.
-pub fn dispatch(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str) {
+pub fn dispatch(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: &str) {
     dispatch_as(app, ctx, id, false);
 }
 
 /// [`dispatch`]; with `last`, an adjustment dialog opens at its last confirmed settings and New Layer makes the
 /// layer without its dialog.
-fn dispatch_as(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, last: bool) {
+fn dispatch_as(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: &str, last: bool) {
     let action = id.strip_prefix(crate::actions::SHORTCUT_PREFIX);
     let command_id = if action.is_some() { "actions.play" } else { id };
     // A key saved for an action that was since deleted or renamed names no action.

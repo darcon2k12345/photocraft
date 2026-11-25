@@ -3,14 +3,14 @@ use crate::canvas::{ToolEvent, tool_event};
 use craft::behavior::CursorBadge;
 use craft::keymap::Mods;
 
-pub(super) fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+pub(super) fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 100, "height": 60})).unwrap();
     app.run("tools.setBrush", json!({"brush": {"size": 16, "hardness": 1.0}})).unwrap();
     app
 }
 
-fn drag(app: &mut PhotocraftApp, tool: Tool) {
+fn drag(app: &mut PatronusPhotoApp, tool: Tool) {
     app.ui.tool = tool;
     let m = egui::Modifiers::NONE;
     tool_event(app, ToolEvent::Down { x: 10.0, y: 30.0, pressure: 1.0 }, m);
@@ -20,7 +20,7 @@ fn drag(app: &mut PhotocraftApp, tool: Tool) {
 }
 
 /// Down at the first point, a move through each next one, up at the last.
-fn gesture(app: &mut PhotocraftApp, points: &[[f64; 2]]) {
+fn gesture(app: &mut PatronusPhotoApp, points: &[[f64; 2]]) {
     let m = egui::Modifiers::NONE;
     let [x, y] = points[0];
     tool_event(app, ToolEvent::Down { x, y, pressure: 1.0 }, m);
@@ -31,12 +31,12 @@ fn gesture(app: &mut PhotocraftApp, points: &[[f64; 2]]) {
     tool_event(app, ToolEvent::Up { x, y }, m);
 }
 
-fn active(app: &PhotocraftApp) -> &photocraft_doc::Layer {
+fn active(app: &PatronusPhotoApp) -> &patronusphoto_doc::Layer {
     let st = app.session.active().unwrap();
     st.active_layer.and_then(|id| st.doc.layer(id)).unwrap()
 }
 
-pub(super) fn stripes(app: &mut PhotocraftApp, step: usize, target: &str) {
+pub(super) fn stripes(app: &mut PatronusPhotoApp, step: usize, target: &str) {
     for x in (0..100).step_by(step) {
         app.run("paint.pencil", json!({"points": [[x, 0], [x, 60]], "size": 2, "color": "#606060", "target": target})).unwrap();
     }
@@ -120,7 +120,7 @@ fn alt_stroke_runs_the_opposite_tool() {
     }
 }
 
-type Setup = fn(&mut PhotocraftApp);
+type Setup = fn(&mut PatronusPhotoApp);
 
 /// One row of the stamp table: the tool's brush edit, an extra setup, the command and the params it sends.
 struct StampRow {
@@ -139,7 +139,7 @@ fn stamp_row(name: &'static str, tool: Tool, cmd: &'static str, brush: Value, se
 /// What each stamp tool's bar values become in its command (the JSON names are the engine's protocol).
 #[test]
 fn stamp_tools_send_the_options_they_paint_with() {
-    use photocraft_color::BlendMode;
+    use patronusphoto_color::BlendMode;
     let rows = [
         stamp_row(
             "Clone opacity, flow and Multiply",
@@ -240,14 +240,14 @@ fn dab_row(name: &'static str, tool: Tool, edit: Edit, key: &'static str, want: 
     DabRow { name, tool, edit, key, want }
 }
 
-fn tool_params(app: &PhotocraftApp, tool: Tool) -> Value {
+fn tool_params(app: &PatronusPhotoApp, tool: Tool) -> Value {
     if tool == Tool::ColorReplacement { color_replacement_params(app) } else { dab_params(app, tool).expect("a dab tool").1 }
 }
 
 /// What each dab tool's bar values become in its params, and which layers a stroke samples.
 #[test]
 fn dab_tools_send_their_bar_values() {
-    use photocraft_color::BlendMode;
+    use patronusphoto_color::BlendMode;
     let rows = [
         dab_row("Blur own Sample All", Tool::Blur, |o| o.sample_all.blur = true, "sampleAllLayers", Some(json!(true))),
         dab_row("Blur, another tool's Sample All", Tool::Blur, |o| o.sample_all.magic_wand = true, "sampleAllLayers", Some(json!(false))),
@@ -408,7 +408,7 @@ fn clone_marker_shows_only_while_painting() {
 fn patch_tool_lassoes_then_drags_the_patch() {
     let mut app = app();
     app.run("paint.pencil", json!({"points": [[68, 30], [74, 30]], "size": 6, "color": "#ff0000"})).unwrap();
-    let red = |app: &PhotocraftApp| active(app).surface().unwrap().rgba(71, 30)[1] < 0.5;
+    let red = |app: &PatronusPhotoApp| active(app).surface().unwrap().rgba(71, 30)[1] < 0.5;
     assert!(red(&app));
     app.ui.tool = Tool::Patch;
     let m = egui::Modifiers::NONE;
@@ -445,7 +445,7 @@ fn patch_cursor_shows_the_selection_mode_badge() {
         let mut app = app();
         app.ui.tool = tool;
 
-        let badge = |app: &PhotocraftApp, at: [f64; 2], mods: Mods| patch_badge(app, at, None, mods);
+        let badge = |app: &PatronusPhotoApp, at: [f64; 2], mods: Mods| patch_badge(app, at, None, mods);
         let outside = [80.0, 30.0];
         assert_eq!(badge(&app, outside, shift()), Some(CursorBadge::Add), "{tool:?}");
         assert_eq!(badge(&app, outside, alt), None, "{tool:?}: nothing selected, so ⌥ has nothing to subtract");
@@ -468,7 +468,7 @@ fn content_aware_move_tool_lassoes_then_moves_or_extends() {
     for (mode, keeps) in [("move", false), ("extend", true)] {
         let mut app = app();
         app.run("paint.pencil", json!({"points": [[20, 30], [24, 30]], "size": 6, "color": "#0000ff"})).unwrap();
-        let blue = |app: &PhotocraftApp, x: i32| active(app).surface().unwrap().rgba(x, 30)[0] < 0.5;
+        let blue = |app: &PatronusPhotoApp, x: i32| active(app).surface().unwrap().rgba(x, 30)[0] < 0.5;
         app.ui.tool = Tool::ContentAwareMove;
         app.ui.tool_options.cam_transform_on_drop = false;
         app.ui.tool_options.cam_mode = mode.into();
@@ -497,12 +497,12 @@ fn content_aware_move_tool_lassoes_then_moves_or_extends() {
 fn content_aware_move_transform_on_drop_turns_the_patch_on_enter() {
     let mut app = app();
     app.run("paint.pencil", json!({"points": [[16, 30], [28, 30]], "size": 4, "color": "#0000ff"})).unwrap();
-    let blue = |app: &PhotocraftApp, x: i32, y: i32| active(app).surface().unwrap().rgba(x, y)[0] < 0.5;
+    let blue = |app: &PatronusPhotoApp, x: i32, y: i32| active(app).surface().unwrap().rgba(x, y)[0] < 0.5;
     app.ui.tool = Tool::ContentAwareMove;
     app.ui.tool_options.cam_transform_on_drop = true;
     app.ui.tool_options.cam_structure = 7.0;
     let m = egui::Modifiers::NONE;
-    let drag = |app: &mut PhotocraftApp, path: &[[f64; 2]]| {
+    let drag = |app: &mut PatronusPhotoApp, path: &[[f64; 2]]| {
         let ([x, y], rest) = (path[0], &path[1..]);
         tool_event(app, ToolEvent::Down { x, y, pressure: 1.0 }, m);
         for &[x, y] in rest {
@@ -587,14 +587,14 @@ fn waiting_remove_strokes_keep_their_own_brush() {
     crate::paint_mouse::sync_tool_brush(&mut app);
     app.ui.tool_options.remove_after_each_stroke = false;
     let m = egui::Modifiers::NONE;
-    let stroke = |app: &mut PhotocraftApp, x: f64| {
+    let stroke = |app: &mut PatronusPhotoApp, x: f64| {
         tool_event(app, ToolEvent::Down { x, y: 20.0, pressure: 1.0 }, m);
         tool_event(app, ToolEvent::Move { x, y: 40.0, pressure: 1.0 }, m);
         tool_event(app, ToolEvent::Up { x, y: 40.0 }, m);
     };
     app.run("tools.setBrush", json!({"brush": {"size": 20, "hardness": 0.0}})).unwrap();
     stroke(&mut app, 25.0);
-    let tint = |app: &PhotocraftApp| app.remove_trail.as_ref().map(|t| (0..100).filter(|&x| t.coverage(x, 30) > 0).count());
+    let tint = |app: &PatronusPhotoApp| app.remove_trail.as_ref().map(|t| (0..100).filter(|&x| t.coverage(x, 30) > 0).count());
     let first = tint(&app);
     app.run("tools.setBrush", json!({"brush": {"size": 4, "hardness": 1.0}})).unwrap();
     stroke(&mut app, 75.0);
@@ -617,7 +617,7 @@ fn remove_after_each_stroke_off_collects_strokes_until_enter_or_escape() {
     app.ui.tool = Tool::Remove;
     app.ui.tool_options.remove_after_each_stroke = false;
     let m = egui::Modifiers::NONE;
-    let collect = |app: &mut PhotocraftApp| {
+    let collect = |app: &mut PatronusPhotoApp| {
         for x in [28.0, 32.0] {
             tool_event(app, ToolEvent::Down { x, y: 18.0, pressure: 1.0 }, m);
             tool_event(app, ToolEvent::Move { x, y: 42.0, pressure: 1.0 }, m);

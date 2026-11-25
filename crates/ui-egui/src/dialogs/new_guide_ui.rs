@@ -21,13 +21,13 @@ use craft::ui::runtime::env::Label;
 use craft::ui::runtime::memory::SaveKey;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::guide_edit::Target;
 use crate::guide_layout_ui::{guide_units, preference_rgba};
 
 const COMMAND: &str = "view.newGuide";
 /// Where New Guide's values are remembered between opens.
-const REMEMBER: SaveKey = SaveKey::new("craft_dialogs.photocraft.new_guide");
+const REMEMBER: SaveKey = SaveKey::new("craft_dialogs.patronusphoto.new_guide");
 
 /// `"#rrggbb"` of a guide colour, as the engine takes it.
 fn hex(color: GuideColor) -> String {
@@ -40,13 +40,13 @@ fn orientation(vertical: bool) -> &'static str {
 }
 
 /// A New Guide dialog opening with `values`, remembering them for the next open.
-fn new_dialog(app: &PhotocraftApp, values: NewGuideValues) -> HostedNewGuideDialog {
+fn new_dialog(app: &PatronusPhotoApp, values: NewGuideValues) -> HostedNewGuideDialog {
     let units = guide_units(app);
     HostedNewGuideDialog::new(values, move |bind| NewGuideDialog::new(units, bind).remember(REMEMBER))
 }
 
 /// An Edit Selected Guides dialog showing `guide`; its values start as the guide's.
-fn edit_dialog(app: &PhotocraftApp, guide: Guide) -> HostedNewGuideDialog {
+fn edit_dialog(app: &PatronusPhotoApp, guide: Guide) -> HostedNewGuideDialog {
     let units = guide_units(app);
     let preference = preference_rgba(app);
     let values = NewGuideValues::of_guide(&guide, preference);
@@ -55,14 +55,14 @@ fn edit_dialog(app: &PhotocraftApp, guide: Guide) -> HostedNewGuideDialog {
 
 /// Opens New Guide: the last guide's orientation, position and colour (in the current ruler unit), else horizontal at
 /// 0 in Cyan.
-pub fn open(app: &mut PhotocraftApp) -> DialogId {
+pub fn open(app: &mut PatronusPhotoApp) -> DialogId {
     let dialog = new_dialog(app, NewGuideValues::new(Axis::X, 0.0, GuideColor::default()));
     app.framework.dialogs.open(dialog)
 }
 
 /// Edit Selected Guides: the dialog on the selected guide, with its orientation, position and colour (its own, or the
 /// preference colour it is drawn in).
-pub fn open_edit(app: &mut PhotocraftApp) -> Result<DialogId, String> {
+pub fn open_edit(app: &mut PatronusPhotoApp) -> Result<DialogId, String> {
     let (vertical, index) = crate::guide_select::selected(app).ok_or_else(|| "No guide is selected".to_string())?;
     let guide = {
         let g = &app.session.active().ok_or_else(|| "No guide is selected".to_string())?.doc.guides;
@@ -103,12 +103,12 @@ fn values_of(guide: &Guide, fallback: GuideColor) -> NewGuideValues {
     NewGuideValues::new(guide.along, guide.position, guide.color.map_or(fallback, GuideColor::from_rgba))
 }
 
-fn new_guide_requests(app: &mut PhotocraftApp, id: DialogId) -> Option<&mut HostRequests> {
+fn new_guide_requests(app: &mut PatronusPhotoApp, id: DialogId) -> Option<&mut HostRequests> {
     app.framework.dialogs.get_mut_by_id::<HostedNewGuideDialog>(id).map(HostedNewGuideDialog::requests)
 }
 
 /// The dialog's colour requests and its answer, once per pass.
-pub(crate) fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
+pub(crate) fn take(app: &mut PatronusPhotoApp, _ctx: &egui::Context) {
     if let Some(id) = app.framework.dialogs.get::<HostedNewGuideDialog>().map(StackDialog::id) {
         crate::guide_layout_ui::pump_colors(app, id, new_guide_requests);
     }
@@ -136,7 +136,7 @@ pub(crate) fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
 }
 
 /// New Guide's OK: a refused position opens the dialog again with what was typed and the engine's message.
-fn confirm_new(app: &mut PhotocraftApp, guide: &Guide) -> Result<(), String> {
+fn confirm_new(app: &mut PatronusPhotoApp, guide: &Guide) -> Result<(), String> {
     let values = values_of(guide, GuideColor::default());
     match app.run(COMMAND, params(&values, None)) {
         Ok(_) => Ok(()),
@@ -151,7 +151,7 @@ fn confirm_new(app: &mut PhotocraftApp, guide: &Guide) -> Result<(), String> {
 
 /// Edit Selected Guides' OK: the edited guide stays selected (at the end of the other list if it turned). A refused
 /// edit opens the dialog again on the typed values, as New Guide does.
-fn confirm_edit(app: &mut PhotocraftApp, guide: &Guide) -> Result<(), String> {
+fn confirm_edit(app: &mut PatronusPhotoApp, guide: &Guide) -> Result<(), String> {
     let (target, original) = match app.guide_edit.as_ref() {
         Some(draft) => ((draft.target().vertical, draft.target().index), draft.target().original.color),
         None => return Err("Reopen Edit Selected Guides to start an edit.".into()),
@@ -190,23 +190,23 @@ fn confirm_edit(app: &mut PhotocraftApp, guide: &Guide) -> Result<(), String> {
 }
 
 /// The validated draft shown on the canvas, without changing the document or its history.
-pub fn edit_preview<'a>(app: &'a PhotocraftApp, doc: &photocraft_doc::Document) -> Option<&'a photocraft_doc::Guides> {
+pub fn edit_preview<'a>(app: &'a PatronusPhotoApp, doc: &patronusphoto_doc::Document) -> Option<&'a patronusphoto_doc::Guides> {
     crate::guide_edit::preview(app, doc)
 }
 
 /// The open New Guide dialog's id (also while Edit Selected Guides is open), for drivers outside the crate.
-pub fn dialog_id(app: &PhotocraftApp) -> Option<DialogId> {
+pub fn dialog_id(app: &PatronusPhotoApp) -> Option<DialogId> {
     app.framework.dialogs.get::<HostedNewGuideDialog>().map(StackDialog::id)
 }
 
 /// Sets one field of the open New Guide dialog by its JSON name, for drivers outside the crate.
-pub fn set_field(app: &mut PhotocraftApp, id: DialogId, field: &str, value: Value) -> Result<(), String> {
+pub fn set_field(app: &mut PatronusPhotoApp, id: DialogId, field: &str, value: Value) -> Result<(), String> {
     let ctx = app.ctx().clone();
     app.framework.dialogs.set_json_field(&ctx, id, field, value)
 }
 
 /// The message Edit Selected Guides shows for its current values, if any.
-pub fn edit_error(app: &PhotocraftApp) -> Option<&str> {
+pub fn edit_error(app: &PatronusPhotoApp) -> Option<&str> {
     crate::guide_edit::error(app)
 }
 

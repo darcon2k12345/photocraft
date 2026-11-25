@@ -1,9 +1,9 @@
 //! Native-depth grayscale samples for destructive Levels/Curves commands.
-use photocraft_color::{Color, ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{AlphaChannel, Document, Layer, LayerContent, LayerMask};
-use photocraft_engine::{Session, adjust_params, channel_cmds::ChannelTarget};
-use photocraft_geom::{Rect, Size};
-use photocraft_raster::Surface;
+use patronusphoto_color::{Color, ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::{AlphaChannel, Document, Layer, LayerContent, LayerMask};
+use patronusphoto_engine::{Session, adjust_params, channel_cmds::ChannelTarget};
+use patronusphoto_geom::{Rect, Size};
+use patronusphoto_raster::Surface;
 use serde_json::{Value, json};
 
 /// Build native-depth colour pixels and three independent gray targets with contrasting samples.
@@ -316,7 +316,7 @@ fn gray_tone_records_do_not_leak_from_rgb_channels() {
 /// Explicit colour sets and pixel commands must not inherit an unrelated gray-panel target.
 #[test]
 fn explicit_tone_descriptors_resolve_colour_sets_before_panel_state() {
-    use photocraft_engine::channel_cmds::{GraySurface, isolated_curve_channel_with_params};
+    use patronusphoto_engine::channel_cmds::{GraySurface, isolated_curve_channel_with_params};
     for mode in [ColorMode::Rgb, ColorMode::Lab, ColorMode::Cmyk] {
         for depth in [SampleType::U8, SampleType::U16, SampleType::F32] {
             for target in [ChannelTarget::Alpha(0), ChannelTarget::LayerMask, ChannelTarget::Color(1)] {

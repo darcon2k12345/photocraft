@@ -5,20 +5,20 @@ use egui::{Key, Modifiers};
 use egui_kittest::Harness;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::panels::toolbar::{TOOL_SECTIONS, toolbar_position};
 use crate::shortcut_dispatch::tests::{app_harness, tap};
 use crate::state::Tool;
 
 /// The whole app with a small document and a second layer.
-fn app() -> Harness<'static, Box<PhotocraftApp>> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Harness<'static, Box<PatronusPhotoApp>> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 20, "height": 10})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     app_harness(app)
 }
 
-fn shift_press(h: &mut Harness<'static, Box<PhotocraftApp>>, key: Key) {
+fn shift_press(h: &mut Harness<'static, Box<PatronusPhotoApp>>, key: Key) {
     tap(h, key, Modifiers::SHIFT);
 }
 
@@ -53,7 +53,7 @@ fn sequence(letter: char, steps: usize) -> Vec<Tool> {
 
 /// [`shift_press`] with two frames instead of three: the runtime takes the key in the first and the app picks the
 /// tool it fired in the second (`shortcut_dispatch::pick_tool`); the third only drew the toolbar again.
-fn quick_shift_press(h: &mut Harness<'static, Box<PhotocraftApp>>, key: Key) {
+fn quick_shift_press(h: &mut Harness<'static, Box<PatronusPhotoApp>>, key: Key) {
     h.input_mut().events.extend([
         egui::Event::ModifiersChanged(Modifiers::SHIFT),
         egui::Event::Key { key, physical_key: None, pressed: true, repeat: false, modifiers: Modifiers::SHIFT },

@@ -14,8 +14,8 @@ struct Language {
 }
 
 /// `cargo xtask i18n-report` (the last `cargo xtask ci` step): per registered language, how many
-/// of PhotoCraft's English UI strings have a translation in the craft-i18n checkout
-/// `CRAFT_I18N_DIR` names, looked up as the app does (the `craft-i18n` crate: PhotoCraft's rows
+/// of Patronus Photo's English UI strings have a translation in the craft-i18n checkout
+/// `CRAFT_I18N_DIR` names, looked up as the app does (the `craft-i18n` crate: Patronus Photo's rows
 /// over the shared ones, a region falling back to its language), the strings it lacks, and how
 /// many rows are kept in English (a translation that is the English text itself). It never fails
 /// on a missing translation: that string shows in English, and translators fill it in craft-i18n.
@@ -64,8 +64,8 @@ fn translation<'a>(i18n: &'a craft_i18n::I18n, lang: craft_i18n::Lang, key: &'a 
     }
 }
 
-/// The catalogs of every locale under `dir` with a `photocraft.tsv`, as the app's build.rs embeds
-/// them: (locale, shared `common.tsv` or "", `photocraft.tsv`). Read once per run, so leaked.
+/// The catalogs of every locale under `dir` with a `patronusphoto.tsv`, as the app's build.rs embeds
+/// them: (locale, shared `common.tsv` or "", `patronusphoto.tsv`). Read once per run, so leaked.
 fn embedded(dir: &Path) -> Result<&'static craft_i18n::Embedded, String> {
     let list = fs::read_dir(dir).map_err(|e| format!("{} is not a craft-i18n checkout ({e})", dir.display()))?;
     let mut out: Vec<(&'static str, &'static str, &'static str)> = Vec::new();
@@ -75,12 +75,12 @@ fn embedded(dir: &Path) -> Result<&'static craft_i18n::Embedded, String> {
         let Some(code) = path.file_name().and_then(|n| n.to_str()).map(str::to_string) else { continue };
         // A locale without the file is skipped (or reads without a shared catalog); a file that is
         // there but can't be read is an error, not a gap in the coverage.
-        let Some(app) = read_optional(&path.join("photocraft.tsv"))? else { continue };
+        let Some(app) = read_optional(&path.join("patronusphoto.tsv"))? else { continue };
         let shared = read_optional(&path.join("common.tsv"))?.unwrap_or_default();
         out.push((Box::leak(code.into_boxed_str()), Box::leak(shared.into_boxed_str()), Box::leak(app.into_boxed_str())));
     }
     if out.is_empty() {
-        return Err(format!("{} has no locale with a photocraft.tsv", dir.display()));
+        return Err(format!("{} has no locale with a patronusphoto.tsv", dir.display()));
     }
     out.sort();
     Ok(Box::leak(out.into_boxed_slice()))
@@ -131,7 +131,7 @@ fn format_report(
     }
     let unresolved: Vec<&str> = languages.iter().filter(|language| !resolved(language)).map(|language| language.code.as_str()).collect();
     if !unresolved.is_empty() {
-        report.push_str(&format!("\nRegistered without a photocraft.tsv in the checkout (shown in English, not counted): {}\n", unresolved.join(", ")));
+        report.push_str(&format!("\nRegistered without a patronusphoto.tsv in the checkout (shown in English, not counted): {}\n", unresolved.join(", ")));
     }
     report.push_str("\nMissing translations (shown in English until translated)\n");
     for language in languages.iter().filter(resolved).filter(|language| language.code != "en") {
@@ -560,7 +560,7 @@ mod tests {
              fr               1/3         33.33%      0\n\
              zh               3/3        100.00%      1\n\
              \n\
-             Registered without a photocraft.tsv in the checkout (shown in English, not counted): de\n\
+             Registered without a patronusphoto.tsv in the checkout (shown in English, not counted): de\n\
              \n\
              Missing translations (shown in English until translated)\n\
              fr: 2 missing\n\

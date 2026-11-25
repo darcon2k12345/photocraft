@@ -1,16 +1,16 @@
 //! Compare our composite with Photoshop's merged image for one PSD (rendering-fidelity work).
 //!
 //! ```sh
-//! cargo run --release -p photocraft-io --example oracle_diff -- file.psd [N]          # layers + first N pixels
-//! cargo run --release -p photocraft-io --example oracle_diff -- file.psd 0 png out.png # ours | Photoshop | diff heatmap
-//! cargo run --release -p photocraft-io --example oracle_diff -- file.psd 0 col [x]     # column samples
-//! cargo run --release -p photocraft-io --example oracle_diff -- file.psd 0 row y x0 x1 # row samples
-//! cargo run --release -p photocraft-io --example oracle_diff -- file.psd 0 worst [n]   # n worst pixels
-//! cargo run --release -p photocraft-io --example oracle_diff -- file.psd 0 grid x0 y0 x1 y1 [ch] # value grids
-//! cargo run --release -p photocraft-io --example oracle_diff -- file.psd 0 layerpx x y  # each layer's pixel
-//! cargo run --release -p photocraft-io --example oracle_diff -- corpus/psd             # every file: max err, bad %, PASS/DIFF
-//! cargo run --release -p photocraft-io --example oracle_diff -- file.psd 0 dump prefix # raw f32 planes for offline fitting
-//! cargo run --release -p photocraft-io --example oracle_diff -- file.psd 0 bylayer    # max error around each layer
+//! cargo run --release -p patronusphoto-io --example oracle_diff -- file.psd [N]          # layers + first N pixels
+//! cargo run --release -p patronusphoto-io --example oracle_diff -- file.psd 0 png out.png # ours | Photoshop | diff heatmap
+//! cargo run --release -p patronusphoto-io --example oracle_diff -- file.psd 0 col [x]     # column samples
+//! cargo run --release -p patronusphoto-io --example oracle_diff -- file.psd 0 row y x0 x1 # row samples
+//! cargo run --release -p patronusphoto-io --example oracle_diff -- file.psd 0 worst [n]   # n worst pixels
+//! cargo run --release -p patronusphoto-io --example oracle_diff -- file.psd 0 grid x0 y0 x1 y1 [ch] # value grids
+//! cargo run --release -p patronusphoto-io --example oracle_diff -- file.psd 0 layerpx x y  # each layer's pixel
+//! cargo run --release -p patronusphoto-io --example oracle_diff -- corpus/psd             # every file: max err, bad %, PASS/DIFF
+//! cargo run --release -p patronusphoto-io --example oracle_diff -- file.psd 0 dump prefix # raw f32 planes for offline fitting
+//! cargo run --release -p patronusphoto-io --example oracle_diff -- file.psd 0 bylayer    # max error around each layer
 //! SCALE=4 …                                                                         # upscale the png
 //! HIDE_ADJ=1 …                                                                        # adjustment layers hidden
 //! ONLY="name,name" …                                                                  # only these top-level layers (+ the bottom one)
@@ -28,18 +28,18 @@ fn main() {
 fn run_file(path: &str) {
     let bytes = std::fs::read(path).unwrap();
     let file = craft_psd::PsdFile::from_bytes(&bytes).unwrap();
-    let mut imp = photocraft_io::import(path, &bytes).unwrap();
+    let mut imp = patronusphoto_io::import(path, &bytes).unwrap();
     configure_visibility(&mut imp.document.layers);
     let doc = &imp.document;
     println!("mode {:?} depth {:?} layers {} warnings {:?} light {:?}", doc.mode, doc.depth, doc.layer_count(), imp.warnings, doc.global_light);
     print_layer_details(doc);
     dump_filter_effects(&file);
-    let ours = photocraft_compose::flatten(doc).into_px();
-    let merged = photocraft_io::merged_composite(&file).unwrap();
+    let ours = patronusphoto_compose::flatten(doc).into_px();
+    let merged = patronusphoto_io::merged_composite(&file).unwrap();
     compare_modes(doc, &ours, &merged);
 }
 
-fn compare_modes(doc: &photocraft_doc::Document, ours: &[[f32; 4]], merged: &[[f32; 4]]) {
+fn compare_modes(doc: &patronusphoto_doc::Document, ours: &[[f32; 4]], merged: &[[f32; 4]]) {
     if std::env::args().nth(3).as_deref() == Some("png") {
         write_comparison_png(doc, ours, merged);
         return;
@@ -65,8 +65,8 @@ fn compare_modes(doc: &photocraft_doc::Document, ours: &[[f32; 4]], merged: &[[f
         wr(format!("{out}_ps.f32"), merged);
         let mut meta = format!("{} {}\n", doc.size.width, doc.size.height);
         for (i, l) in doc.layers.iter().enumerate() {
-            let b = photocraft_compose::surface_to_buffer(
-                l.surface().unwrap_or(&photocraft_raster::Surface::new(photocraft_color::PixelFormat::RGBA8)),
+            let b = patronusphoto_compose::surface_to_buffer(
+                l.surface().unwrap_or(&patronusphoto_raster::Surface::new(patronusphoto_color::PixelFormat::RGBA8)),
                 doc.bounds(),
             );
             wr(format!("{out}_L{i}.f32"), &b.px);
@@ -113,20 +113,20 @@ fn compare_modes(doc: &photocraft_doc::Document, ours: &[[f32; 4]], merged: &[[f
         for (_, _, l) in doc.walk() {
             let Some(sf) = l.surface() else { continue };
             let cb = sf.content_bounds();
-            let mut b = photocraft_geom::Rect::new(i32::MAX, i32::MAX, i32::MIN, i32::MIN);
+            let mut b = patronusphoto_geom::Rect::new(i32::MAX, i32::MAX, i32::MIN, i32::MIN);
             for y in cb.y0..cb.y1 {
                 for x in cb.x0..cb.x1 {
                     let p = sf.pixel(x, y);
                     if p[p.len() - 1] > 0.0 {
-                        b = photocraft_geom::Rect::new(b.x0.min(x), b.y0.min(y), b.x1.max(x + 1), b.y1.max(y + 1));
+                        b = patronusphoto_geom::Rect::new(b.x0.min(x), b.y0.min(y), b.x1.max(x + 1), b.y1.max(y + 1));
                     }
                 }
             }
             if b.x0 > b.x1 {
                 continue;
             }
-            let m = photocraft_compose::effects::margin(l);
-            let r = photocraft_geom::Rect::new((b.x0 - m).max(0), (b.y0 - m).max(0), (b.x1 + m).min(w), (b.y1 + m).min(h));
+            let m = patronusphoto_compose::effects::margin(l);
+            let r = patronusphoto_geom::Rect::new((b.x0 - m).max(0), (b.y0 - m).max(0), (b.x1 + m).min(w), (b.y1 + m).min(h));
             let (mut worst, mut at, mut bad) = (0.0f32, (0, 0), 0usize);
             for y in r.y0..r.y1 {
                 for x in r.x0..r.x1 {
@@ -182,9 +182,9 @@ fn compare_modes(doc: &photocraft_doc::Document, ours: &[[f32; 4]], merged: &[[f
         let a: Vec<i32> = (5..9).map(|i| std::env::args().nth(i).and_then(|s| s.parse().ok()).unwrap_or(0)).collect();
         let w = doc.size.width as usize;
         let l = doc.walk().into_iter().map(|t| t.2).find(|l| l.name == name).expect("layer");
-        let r = photocraft_geom::Rect::new(a[0], a[1], a[2], a[3]);
+        let r = patronusphoto_geom::Rect::new(a[0], a[1], a[2], a[3]);
         let cov = match &l.content {
-            photocraft_doc::LayerContent::Shape(sh) => photocraft_vector::path_coverage(&sh.path, r),
+            patronusphoto_doc::LayerContent::Shape(sh) => patronusphoto_vector::path_coverage(&sh.path, r),
             _ => vec![0.0; r.width() as usize * r.height() as usize],
         };
         for y in r.y0..r.y1 {
@@ -227,7 +227,7 @@ fn compare_modes(doc: &photocraft_doc::Document, ours: &[[f32; 4]], merged: &[[f
     }
 }
 
-fn write_comparison_png(doc: &photocraft_doc::Document, ours: &[[f32; 4]], merged: &[[f32; 4]]) {
+fn write_comparison_png(doc: &patronusphoto_doc::Document, ours: &[[f32; 4]], merged: &[[f32; 4]]) {
     // ours | photoshop | diff heatmap, side by side (over white).
     let out = std::env::args().nth(4).expect("out.png");
     let (w, h) = (doc.size.width as usize, doc.size.height as usize);
@@ -262,20 +262,21 @@ fn write_comparison_png(doc: &photocraft_doc::Document, ours: &[[f32; 4]], merge
         (img, w, h)
     };
     let image =
-        photocraft_codecs::Image::from_raw((w * 3) as u32, h as u32, photocraft_codecs::ChannelLayout::Rgba, photocraft_codecs::SampleType::U8, img).unwrap();
-    std::fs::write(&out, photocraft_codecs::encode(&image, photocraft_codecs::Format::Png, &Default::default()).unwrap()).unwrap();
+        patronusphoto_codecs::Image::from_raw((w * 3) as u32, h as u32, patronusphoto_codecs::ChannelLayout::Rgba, patronusphoto_codecs::SampleType::U8, img)
+            .unwrap();
+    std::fs::write(&out, patronusphoto_codecs::encode(&image, patronusphoto_codecs::Format::Png, &Default::default()).unwrap()).unwrap();
     println!("wrote {out}");
 }
 
-fn configure_visibility(layers: &mut [photocraft_doc::Layer]) {
+fn configure_visibility(layers: &mut [patronusphoto_doc::Layer]) {
     if std::env::var_os("HIDE_ADJ").is_some() {
         // Composite without adjustment layers (their input, for fitting transfer curves).
-        fn hide(ls: &mut [photocraft_doc::Layer]) {
+        fn hide(ls: &mut [patronusphoto_doc::Layer]) {
             for l in ls {
-                if matches!(l.content, photocraft_doc::LayerContent::Adjustment(_)) {
+                if matches!(l.content, patronusphoto_doc::LayerContent::Adjustment(_)) {
                     l.visible = false;
                 }
-                if let photocraft_doc::LayerContent::Group(g) = &mut l.content {
+                if let patronusphoto_doc::LayerContent::Group(g) = &mut l.content {
                     hide(&mut g.children);
                 }
             }
@@ -292,7 +293,7 @@ fn configure_visibility(layers: &mut [photocraft_doc::Layer]) {
     }
 }
 
-fn print_layer_details(doc: &photocraft_doc::Document) {
+fn print_layer_details(doc: &patronusphoto_doc::Document) {
     for l in doc.walk() {
         let l = l.2;
         println!(
@@ -305,10 +306,10 @@ fn print_layer_details(doc: &photocraft_doc::Document) {
             l.fill_cache.is_some(),
             l.visible
         );
-        if let photocraft_doc::LayerContent::Adjustment(a) = &l.content {
+        if let patronusphoto_doc::LayerContent::Adjustment(a) = &l.content {
             println!("    {}", format!("{a:?}").chars().take(800).collect::<String>());
         }
-        if let photocraft_doc::LayerContent::Fill(f) = &l.content {
+        if let patronusphoto_doc::LayerContent::Fill(f) = &l.content {
             println!("    {f:?}");
         }
         if let Some(m) = &l.mask {
@@ -333,7 +334,7 @@ fn print_layer_details(doc: &photocraft_doc::Document) {
             }
             println!("    alpha bounds ({x0},{y0})-({x1},{y1})");
         }
-        if let photocraft_doc::LayerContent::Shape(sh) = &l.content {
+        if let patronusphoto_doc::LayerContent::Shape(sh) = &l.content {
             println!(
                 "    shape path bounds {:?} subpaths {} rule {:?} inverted {} fill {} stroke {} outline {}",
                 sh.path.control_bounds(),
@@ -342,7 +343,7 @@ fn print_layer_details(doc: &photocraft_doc::Document) {
                 sh.path.inverted,
                 sh.fill.is_some(),
                 sh.stroke.is_some(),
-                photocraft_compose::effect_outline(l).is_some()
+                patronusphoto_compose::effect_outline(l).is_some()
             );
             if std::env::var_os("PATHS").is_some() {
                 for s in &sh.path.subpaths {
@@ -353,9 +354,14 @@ fn print_layer_details(doc: &photocraft_doc::Document) {
         if let Some(vm) = &l.vector_mask {
             println!("    vector mask bounds {:?}", vm.path.control_bounds());
         }
-        println!("    clipped {} frame {:?} bounds {:?}", l.clipped, photocraft_compose::fill_frame(l, doc.bounds()), l.surface().map(|s| s.content_bounds()));
+        println!(
+            "    clipped {} frame {:?} bounds {:?}",
+            l.clipped,
+            patronusphoto_compose::fill_frame(l, doc.bounds()),
+            l.surface().map(|s| s.content_bounds())
+        );
         for e in &l.effects.items {
-            if let photocraft_doc::Effect::GradientOverlay { common, gradient, .. } = e
+            if let patronusphoto_doc::Effect::GradientOverlay { common, gradient, .. } = e
                 && common.enabled
             {
                 let g = format!("{gradient:?}");
@@ -492,12 +498,12 @@ fn corpus_summary(root: &std::path::Path) {
         let name = p.strip_prefix(root).unwrap_or(p).display().to_string();
         let Ok(bytes) = std::fs::read(p) else { return (name, None) };
         let Ok(file) = craft_psd::PsdFile::from_bytes(&bytes) else { return (name, None) };
-        let Ok(imp) = photocraft_io::import(&name, &bytes) else { return (name, None) };
+        let Ok(imp) = patronusphoto_io::import(&name, &bytes) else { return (name, None) };
         if file.has_real_merged_data() == Some(false) || file.layers().is_empty() {
             return (name, None);
         }
-        let Ok(merged) = photocraft_io::merged_composite(&file) else { return (name, None) };
-        let ours = photocraft_compose::flatten(&imp.document).into_px();
+        let Ok(merged) = patronusphoto_io::merged_composite(&file) else { return (name, None) };
+        let ours = patronusphoto_compose::flatten(&imp.document).into_px();
         let mut m = 0.0f32;
         let mut bad = 0usize;
         for (a, b) in ours.iter().zip(merged) {

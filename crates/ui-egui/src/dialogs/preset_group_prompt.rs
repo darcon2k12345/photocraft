@@ -15,7 +15,7 @@ use craft::ui::dialog::{PromptAnswer, PromptChoice, StandardPrompt};
 use serde_json::{Value, json};
 
 use super::alerts;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// An import held back while the prompt is up.
 pub struct Held {
@@ -30,7 +30,7 @@ pub(crate) struct PresetClash(Held);
 
 /// How many of the user's presets a group named `group` holds in the library `cmd` imports to
 /// (built-in brushes are never replaced, so they don't count).
-fn clashing(app: &PhotocraftApp, cmd: &str, group: &str) -> usize {
+fn clashing(app: &PatronusPhotoApp, cmd: &str, group: &str) -> usize {
     match cmd {
         "brush.presets.importAbr" => app.session.tools.presets.iter().filter(|x| !x.builtin && x.group == group).count(),
         "gradient.presets.importGrd" => app.session.presets.gradients.iter().filter(|g| g.name == group).map(|g| g.items.len()).sum(),
@@ -39,7 +39,7 @@ fn clashing(app: &PhotocraftApp, cmd: &str, group: &str) -> usize {
 }
 
 /// Opens the prompt for `held` when its group clashes; otherwise hands `held` back to import now.
-pub(crate) fn intercept(app: &mut PhotocraftApp, held: Held) -> Result<Option<Held>, String> {
+pub(crate) fn intercept(app: &mut PatronusPhotoApp, held: Held) -> Result<Option<Held>, String> {
     let n = clashing(app, held.cmd, &held.stem);
     if n == 0 {
         return Ok(Some(held));
@@ -79,7 +79,7 @@ pub(crate) fn intercept(app: &mut PhotocraftApp, held: Held) -> Result<Option<He
 
 /// The `PROMPTS` entry: Import as New Group keeps the existing group, Replace imports into its
 /// place, Cancel imports nothing. `false` for another family's answer.
-pub(crate) fn answer(app: &mut PhotocraftApp, _ctx: &egui::Context, answer: &mut PromptAnswer) -> bool {
+pub(crate) fn answer(app: &mut PatronusPhotoApp, _ctx: &egui::Context, answer: &mut PromptAnswer) -> bool {
     let Some(PresetClash(held)) = answer.take_tag::<PresetClash>() else { return false };
     let replace = match answer.choice {
         PromptChoice::Proceed => false,

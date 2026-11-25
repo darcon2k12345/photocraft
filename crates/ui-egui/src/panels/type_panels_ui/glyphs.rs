@@ -1,4 +1,4 @@
-//! The Glyphs panel body: the framework's `GlyphsPanel` over PhotoCraft's text engine.
+//! The Glyphs panel body: the framework's `GlyphsPanel` over Patronus Photo's text engine.
 
 use std::hash::{Hash, Hasher};
 
@@ -7,30 +7,30 @@ use craft::ui::contract::Bind;
 use serde_json::json;
 
 use super::run;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::type_tool;
 
 /// The glyph cells of the shared text engine. It holds no lock between calls.
 pub(crate) struct PhotoGlyphs;
 
 /// The style of `family`'s named face `style`, as the engine's face lookup takes it.
-fn char_style_for(family: &str, style: &str) -> photocraft_doc::text::CharStyle {
-    let mut st = photocraft_doc::text::CharStyle { font_family: family.into(), ..Default::default() };
-    photocraft_engine::type_cmds::apply_char_props(&mut st, &json!({ "fontStyle": style }));
+fn char_style_for(family: &str, style: &str) -> patronusphoto_doc::text::CharStyle {
+    let mut st = patronusphoto_doc::text::CharStyle { font_family: family.into(), ..Default::default() };
+    patronusphoto_engine::type_cmds::apply_char_props(&mut st, &json!({ "fontStyle": style }));
     st
 }
 
 impl GlyphSource for PhotoGlyphs {
     fn charmap(&self, family: &str, style: &str) -> Vec<char> {
         let st = char_style_for(family, style);
-        photocraft_text::shared().lock().unwrap_or_else(|e| e.into_inner()).fonts.charmap_for_style(&st)
+        patronusphoto_text::shared().lock().unwrap_or_else(|e| e.into_inner()).fonts.charmap_for_style(&st)
     }
 
     fn glyph(&self, family: &str, style: &str, c: char, px: u32) -> Option<egui::ColorImage> {
         let st = char_style_for(family, style);
         let (n, alpha) = {
-            let mut eng = photocraft_text::shared().lock().unwrap_or_else(|e| e.into_inner());
-            photocraft_text::glyphs::preview(&mut eng, &st, c, px)
+            let mut eng = patronusphoto_text::shared().lock().unwrap_or_else(|e| e.into_inner());
+            patronusphoto_text::glyphs::preview(&mut eng, &st, c, px)
         };
         if n == 0 {
             return None;
@@ -40,7 +40,7 @@ impl GlyphSource for PhotoGlyphs {
     }
 
     fn in_category(&self, c: char, category: &str) -> bool {
-        use photocraft_text::glyphs::in_category;
+        use patronusphoto_text::glyphs::in_category;
         let u = c as u32;
         match category {
             "Latin" => ["Basic Latin", "Latin 1", "Latin Extended-A", "Latin Extended-B"].iter().any(|name| in_category(c, name)),
@@ -53,46 +53,46 @@ impl GlyphSource for PhotoGlyphs {
     }
 
     fn ready(&self) -> bool {
-        photocraft_text::try_shared().is_some()
+        patronusphoto_text::try_shared().is_some()
     }
 
     fn revision(&self) -> u64 {
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
-        (photocraft_text::fonts::shared_generation(), photocraft_text::served::generation()).hash(&mut hasher);
+        (patronusphoto_text::fonts::shared_generation(), patronusphoto_text::served::generation()).hash(&mut hasher);
         hasher.finish()
     }
 }
 
 /// Font family and style the panel shows: its own choice, else the type selection's font.
-fn face(app: &PhotocraftApp) -> (String, String) {
+fn face(app: &PatronusPhotoApp) -> (String, String) {
     // PLAN: assumed `TypePanelsUi.glyph_face: Option<(String, String)>` (panels-w42), the panel's own pick.
     if let Some((family, style)) = &app.ui.type_panels.glyph_face {
         return (family.clone(), if style.is_empty() { tl!("Regular").into() } else { style.clone() });
     }
-    let layer = app.ui.text_edit.as_ref().map(|e| photocraft_doc::LayerId(e.layer)).or_else(|| app.session.active().and_then(|s| s.active_layer));
+    let layer = app.ui.text_edit.as_ref().map(|e| patronusphoto_doc::LayerId(e.layer)).or_else(|| app.session.active().and_then(|s| s.active_layer));
     if let Some(st) = app.session.active()
         && let Some(id) = layer
-        && let Some(photocraft_doc::LayerContent::Text(tl)) = st.doc.layer(id).map(|l| &l.content)
+        && let Some(patronusphoto_doc::LayerContent::Text(tl)) = st.doc.layer(id).map(|l| &l.content)
         && let Some(r) = tl.char_runs().first()
     {
-        let family = if r.style.font_family.is_empty() { photocraft_text::fonts::DEFAULT_FAMILY.to_string() } else { r.style.font_family.clone() };
+        let family = if r.style.font_family.is_empty() { patronusphoto_text::fonts::DEFAULT_FAMILY.to_string() } else { r.style.font_family.clone() };
         return (family, type_tool::selected_style(&r.style));
     }
-    (photocraft_text::fonts::DEFAULT_FAMILY.into(), tl!("Regular").into())
+    (patronusphoto_text::fonts::DEFAULT_FAMILY.into(), tl!("Regular").into())
 }
 
 /// Whether a glyph has somewhere to go: a text edit, or an active type layer.
-fn can_insert(app: &PhotocraftApp) -> bool {
+fn can_insert(app: &PatronusPhotoApp) -> bool {
     app.ui.text_edit.is_some()
         || app
             .session
             .active()
             .and_then(|s| s.active_layer.and_then(|id| s.doc.layer(id)))
-            .is_some_and(|l| matches!(l.content, photocraft_doc::LayerContent::Text(_)))
+            .is_some_and(|l| matches!(l.content, patronusphoto_doc::LayerContent::Text(_)))
 }
 
 /// The `glyphs` registry body.
-pub(crate) fn body(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub(crate) fn body(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let (mut family, mut style) = face(app);
     let can = can_insert(app);
     let families = type_tool::families();
@@ -118,7 +118,7 @@ pub(crate) fn body(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 
 /// Inserts `g` into the type being edited (replacing the selection), else at the end of the active type layer.
 /// Returns whether it was inserted.
-pub(crate) fn insert(app: &mut PhotocraftApp, g: &str) -> bool {
+pub(crate) fn insert(app: &mut PatronusPhotoApp, g: &str) -> bool {
     let p = if let Some(ed) = app.ui.text_edit.clone() {
         let (a, b) = (ed.caret.min(ed.anchor), ed.caret.max(ed.anchor));
         json!({ "layer": ed.layer, "text": g, "range": [a, b], "coalesce": ed.session })
@@ -137,15 +137,15 @@ pub(crate) fn insert(app: &mut PhotocraftApp, g: &str) -> bool {
 mod tests {
     use super::*;
 
-    fn text_of_active(app: &PhotocraftApp) -> String {
+    fn text_of_active(app: &PatronusPhotoApp) -> String {
         let st = app.session.active().unwrap();
-        let Some(photocraft_doc::LayerContent::Text(t)) = st.active_layer.and_then(|id| st.doc.layer(id)).map(|l| &l.content) else { panic!("not text") };
+        let Some(patronusphoto_doc::LayerContent::Text(t)) = st.active_layer.and_then(|id| st.doc.layer(id)).map(|l| &l.content) else { panic!("not text") };
         t.text.clone()
     }
 
     #[test]
     fn glyph_insertion_and_recent() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 300, "height": 120, "background": "white"})).unwrap();
         app.run("type.create", json!({"x": 10, "y": 60, "text": "ab"})).unwrap();
         app.sync_views();

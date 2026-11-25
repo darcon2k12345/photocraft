@@ -13,7 +13,7 @@ fn setup(depth: u64, mode: &str) -> (Session, LayerId, LayerId) {
         let mut data = Vec::new();
         for y in 0..64 {
             for x in 0..64 {
-                data.extend(photocraft_raster::from_rgba(&fmt, [x as f32 / 64.0, y as f32 / 64.0, 0.25, 1.0]));
+                data.extend(patronusphoto_raster::from_rgba(&fmt, [x as f32 / 64.0, y as f32 / 64.0, 0.25, 1.0]));
             }
         }
         surf.write_region(rect, &data);
@@ -436,7 +436,7 @@ fn clone_between_documents_preserves_float_hdr_and_source_alpha() {
     for alpha in [false, true] {
         let (mut s, source, _) = setup(32, "rgb");
         s.edit("source pixels", |doc, _| {
-            let fmt = PixelFormat::new(photocraft_color::ColorMode::Rgb, SampleType::F32, alpha);
+            let fmt = PixelFormat::new(patronusphoto_color::ColorMode::Rgb, SampleType::F32, alpha);
             let values = if alpha { vec![1.5, 0.25, 0.75, 0.25] } else { vec![1.5, 0.25, 0.75] };
             *doc.layer_mut(source).unwrap().surface_mut().unwrap() = Surface::with_default(fmt, &values);
             Ok(())
@@ -475,7 +475,7 @@ fn clone_cross_document_mismatched_surface_models_fail_without_panicking_or_edit
         s.edit("malformed layer", |doc, _| {
             let id = if change_source { source } else { target };
             *doc.layer_mut(id).unwrap().surface_mut().unwrap() =
-                Surface::with_default(PixelFormat::new(photocraft_color::ColorMode::Grayscale, SampleType::F32, false), &[0.5]);
+                Surface::with_default(PixelFormat::new(patronusphoto_color::ColorMode::Grayscale, SampleType::F32, false), &[0.5]);
             Ok(())
         })
         .unwrap();
@@ -789,7 +789,7 @@ fn no_alpha_scene(depth: u64, mode: &str, source_alpha: bool, target_alpha: bool
         let surf = doc.layer_mut(source).unwrap().surface_mut().unwrap();
         let fmt = PixelFormat::new(surf.format().mode, surf.format().sample, source_alpha);
         let mut quantized = Surface::new(fmt);
-        quantized.write_region(Rect::new(0, 0, 1, 1), &photocraft_raster::from_rgba(&fmt, color));
+        quantized.write_region(Rect::new(0, 0, 1, 1), &patronusphoto_raster::from_rgba(&fmt, color));
         let values = quantized.read_region(Rect::new(0, 0, 1, 1));
         *surf = if source_alpha {
             let mut finite = Surface::new(fmt);
@@ -811,7 +811,7 @@ fn no_alpha_scene(depth: u64, mode: &str, source_alpha: bool, target_alpha: bool
         let surf = doc.layer_mut(target).unwrap().surface_mut().unwrap();
         let fmt = PixelFormat::new(surf.format().mode, surf.format().sample, target_alpha);
         let mut quantized = Surface::new(fmt);
-        quantized.write_region(Rect::new(0, 0, 1, 1), &photocraft_raster::from_rgba(&fmt, [0.0, 0.0, 1.0, 1.0]));
+        quantized.write_region(Rect::new(0, 0, 1, 1), &patronusphoto_raster::from_rgba(&fmt, [0.0, 0.0, 1.0, 1.0]));
         *surf = Surface::with_default(fmt, &quantized.read_region(Rect::new(0, 0, 1, 1)));
         Ok(())
     })
@@ -977,9 +977,9 @@ fn clone_healing_absent_source_preserves_nonuniform_destinations() {
                                     let bounds = doc.bounds();
                                     let surf = doc.layer_mut(target).unwrap().surface_mut().unwrap();
                                     let fmt = surf.format();
-                                    surf.fill_rect(bounds, &photocraft_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 1.0]));
+                                    surf.fill_rect(bounds, &patronusphoto_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 1.0]));
                                     for (x, y) in [(30, 32), (34, 34)] {
-                                        surf.write_region(Rect::new(x, y, x + 1, y + 1), &photocraft_raster::from_rgba(&fmt, [0.25, 0.25, 0.25, 1.0]));
+                                        surf.write_region(Rect::new(x, y, x + 1, y + 1), &patronusphoto_raster::from_rgba(&fmt, [0.25, 0.25, 0.25, 1.0]));
                                     }
                                     Ok(())
                                 })

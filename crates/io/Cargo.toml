@@ -1,6 +1,6 @@
 [package]
-name = "photocraft-io"
-description = "Import/export between photocraft documents and PSD/PSB and flat raster formats"
+name = "patronusphoto-io"
+description = "Import/export between patronusphoto documents and PSD/PSB and flat raster formats"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -12,8 +12,8 @@ workspace = true
 [features]
 # Real-file corpus tests (opt-in; `cargo xtask test-corpus`). Fail when the corpus is missing.
 corpus = []
-# HEIC/HEIF decode (forwarded to photocraft-codecs; see its `heif` feature).
-heif = ["photocraft-codecs/heif", "photocraft-formats/heif"]
+# HEIC/HEIF decode (forwarded to patronusphoto-codecs; see its `heif` feature).
+heif = ["patronusphoto-codecs/heif", "patronusphoto-formats/heif"]
 # Test support for synthetic memory injection, estimate charges and verification across crates.
 testgen = []
 # Editable PDF import (experimental): painted paths and embedded-font text become editable
@@ -21,23 +21,23 @@ testgen = []
 pdf-editable = ["dep:kurbo"]
 
 [dependencies]
-photocraft-geom = { workspace = true }
-photocraft-color = { workspace = true }
+patronusphoto-geom = { workspace = true }
+patronusphoto-color = { workspace = true }
 craft-cms = { workspace = true }
-photocraft-raster = { workspace = true }
-photocraft-doc = { workspace = true }
-photocraft-compose = { workspace = true }
-photocraft-algo = { workspace = true }
+patronusphoto-raster = { workspace = true }
+patronusphoto-doc = { workspace = true }
+patronusphoto-compose = { workspace = true }
+patronusphoto-algo = { workspace = true }
 craft-psd = { workspace = true }
 craft = { workspace = true, features = ["imaging"] }
-photocraft-codecs = { workspace = true }
-photocraft-formats = { workspace = true }
-photocraft-raw = { workspace = true }
+patronusphoto-codecs = { workspace = true }
+patronusphoto-formats = { workspace = true }
+patronusphoto-raw = { workspace = true }
 craft-affinity = { workspace = true }
-photocraft-text = { workspace = true }
-photocraft-paint = { workspace = true }
-photocraft-vector = { workspace = true }
-photocraft-format = { path = "../format" }
+patronusphoto-text = { workspace = true }
+patronusphoto-paint = { workspace = true }
+patronusphoto-vector = { workspace = true }
+patronusphoto-format = { path = "../format" }
 craft-pdf = { workspace = true }
 craft-docpath = { workspace = true }
 craft-ora = { workspace = true }
@@ -73,9 +73,9 @@ crc32fast = "1.5"
 craft-affinity = { workspace = true, features = ["synth"] }
 flate2 = { workspace = true }
 craft-psd = { workspace = true, features = ["testgen"] }
-photocraft-raw = { workspace = true, features = ["testgen"] }
-photocraft-testkit = { workspace = true }
+patronusphoto-raw = { workspace = true, features = ["testgen"] }
+patronusphoto-testkit = { workspace = true }
 proptest = { workspace = true }
-# Lossless JPEG XL encoder for the JPEG XL DNG preview test (tests only), as in photocraft-raw.
+# Lossless JPEG XL encoder for the JPEG XL DNG preview test (tests only), as in patronusphoto-raw.
 zune-jpegxl = { version = "=0.5.2", default-features = false, features = ["std"] }
 zune-core = { workspace = true }

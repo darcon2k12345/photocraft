@@ -6,31 +6,31 @@ use egui_kittest::{Harness, kittest::Queryable};
 use crate::panels::panel_docking::{apply, is_front, is_shown, show_panel};
 use craft::behavior::dock::Action as DockAction;
 
-fn new_app() -> Box<PhotocraftApp> {
-    PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default())
+fn new_app() -> Box<PatronusPhotoApp> {
+    PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default())
 }
 
 fn step(id: &str, params: Value) -> ActionStep {
     ActionStep::new(id, params)
 }
 
-fn push(app: &mut PhotocraftApp, name: &str, set: Option<&str>, steps: Vec<ActionStep>) {
+fn push(app: &mut PatronusPhotoApp, name: &str, set: Option<&str>, steps: Vec<ActionStep>) {
     let mut action = Action::new(name, steps);
     action.set = set.map(str::to_owned);
     app.session.actions.list.push(action).unwrap();
 }
 
-fn layer_names(app: &PhotocraftApp) -> Vec<String> {
+fn layer_names(app: &PatronusPhotoApp) -> Vec<String> {
     app.session.active().unwrap().doc.walk().iter().map(|(_, _, l)| l.name.clone()).filter(|n| n != "Background").collect()
 }
 
-fn commands(app: &PhotocraftApp, action: usize) -> Vec<String> {
+fn commands(app: &PatronusPhotoApp, action: usize) -> Vec<String> {
     app.session.actions.list.action(action).unwrap().steps.iter().map(|s| s.command.clone()).collect()
 }
 
 /// Two sets, Web listed first: "Resize" (Web) adds a layer "w", "Sharpen" and "Soften" (Retouch)
 /// add "r1" and "r2".
-fn two_set_app() -> Box<PhotocraftApp> {
+fn two_set_app() -> Box<PatronusPhotoApp> {
     let mut app = new_app();
     app.run("file.new", json!({"width": 8, "height": 8})).unwrap();
     for (name, set, layer) in [("Resize", "Web", "w"), ("Sharpen", "Retouch", "r1"), ("Soften", "Retouch", "r2")] {
@@ -75,11 +75,11 @@ fn a_function_key_with_shift_and_command_plays_its_action() {
         .list
         .push(Action { name: "Action 1".into(), steps: vec![step("layer.new.layer", json!({}))], disabled: Default::default(), ..Default::default() })
         .unwrap();
-    let key = photocraft_engine::atn_cmds::function_key_name(2, true, true);
+    let key = patronusphoto_engine::atn_cmds::function_key_name(2, true, true);
     assert_eq!(key, "Cmd+Shift+F2");
     assign_shortcut(&mut app, "Action 1", &key).unwrap();
-    let press = |app: &mut PhotocraftApp, modifiers| crate::canvas::testing::key(app, Key::F2, modifiers);
-    let layers = |app: &PhotocraftApp| app.session.active().unwrap().doc.layers.len();
+    let press = |app: &mut PatronusPhotoApp, modifiers| crate::canvas::testing::key(app, Key::F2, modifiers);
+    let layers = |app: &PatronusPhotoApp| app.session.active().unwrap().doc.layers.len();
     let before = layers(&app);
     press(&mut app, Modifiers::NONE);
     press(&mut app, Modifiers::SHIFT);
@@ -115,7 +115,7 @@ fn assigning_an_action_key_clears_it_only_from_other_actions() {
 fn the_host_reads_the_shortcut_text_the_engine_writes() {
     let mut app = new_app();
     push(&mut app, "Keyed", None, vec![]);
-    let key = photocraft_engine::atn_cmds::function_key_name(2, true, true);
+    let key = patronusphoto_engine::atn_cmds::function_key_name(2, true, true);
     assign_shortcut(&mut app, "Keyed", &key).unwrap();
     let action = app.session.actions.list.action(0).unwrap();
     let choice = PhotoActions::new(&app.session, false).shortcut(action);
@@ -172,7 +172,7 @@ fn set_folders_group_actions_and_collapse() {
     push(&mut app, "Also loose", None, vec![]);
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(egui::vec2(360.0, 400.0)).build_ui_state(|ui, app| panel(app, ui), app);
     h.run_steps(3);
-    let first = |h: &Harness<'_, Box<PhotocraftApp>>, label: &str| h.get_all_by_label(label).next().expect(label).rect();
+    let first = |h: &Harness<'_, Box<PatronusPhotoApp>>, label: &str| h.get_all_by_label(label).next().expect(label).rect();
     let folder = first(&h, "Retouch");
     assert!(first(&h, "Loose").top() < folder.top());
     assert!(first(&h, "Sharpen").top() > folder.top());

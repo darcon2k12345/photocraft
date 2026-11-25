@@ -5,12 +5,12 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
-fn harness(paths: usize, size: egui::Vec2, ppp: f32) -> Harness<'static, Box<PhotocraftApp>> {
+fn harness(paths: usize, size: egui::Vec2, ppp: f32) -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut h = Harness::builder().with_size(size).with_pixels_per_point(ppp).with_max_steps(64).build_eframe(move |cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), crate::Services::default());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
         for i in 0..paths {
             let x = (i % 8) as i32 * 40;
@@ -27,7 +27,7 @@ fn harness(paths: usize, size: egui::Vec2, ppp: f32) -> Harness<'static, Box<Pho
 }
 
 /// The rect of the list row named `name` (its name cell carries the name too).
-fn row(h: &Harness<'_, Box<PhotocraftApp>>, name: &str) -> Option<egui::Rect> {
+fn row(h: &Harness<'_, Box<PatronusPhotoApp>>, name: &str) -> Option<egui::Rect> {
     h.query_all_by_label(name).find(|n| n.accesskit_node().role() == egui::accesskit::Role::ListItem).map(|n| n.rect())
 }
 
@@ -40,7 +40,7 @@ fn scrolling_the_paths_list_does_not_move_the_footer() {
     // Heights that moved it at 125 % (two bands of window heights), and ones that never did.
     for (ppp, height) in [(1.25, 520.0), (1.25, 900.0), (1.25, 960.0), (1.0, 900.0), (1.5, 900.0)] {
         let mut h = harness(30, vec2(1440.0, height), ppp);
-        let footer = |h: &Harness<'_, Box<PhotocraftApp>>| h.query_by_label("Delete current path").map(|r| r.rect().min.y);
+        let footer = |h: &Harness<'_, Box<PatronusPhotoApp>>| h.query_by_label("Delete current path").map(|r| r.rect().min.y);
         let rest = footer(&h).unwrap_or_else(|| panic!("the footer shows at {ppp}x, {height} high"));
         let first_row = row(&h, "Path 1").unwrap();
         h.hover_at(first_row.center());

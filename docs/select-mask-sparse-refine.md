@@ -7,7 +7,7 @@ limited to 512 MiB. Wasm processes the same bounded work sequentially.
 
 ## Release measurements
 
-[Benchmark run](https://github.com/wanikhawar/photocraft/actions/runs/41329979528),
+[Benchmark run](https://github.com/wanikhawar/patronusphoto/actions/runs/41329979528),
 Ubuntu 24.04 hosted runner, `RAYON_NUM_THREADS=4`, five repetitions per configuration,
 alternating queue-size order. All rows below come from that same run. Values are medians.
 The benchmark compares the previous dense tiled implementation (retained under `cfg(test)`)
@@ -42,12 +42,12 @@ Small-image regression tests separately compare dense and sparse bytes directly,
 including non-aligned origins, holes, soft coverage, smart radius, and add/restore strokes.
 
 Reproduce using the measurement script and fixture at
-[scratch commit 3f41ac0b](https://github.com/wanikhawar/photocraft/tree/3f41ac0b853d7eeb50815665fc0dc2b626709529/evidence-8822).
+[scratch commit 3f41ac0b](https://github.com/wanikhawar/patronusphoto/tree/3f41ac0b853d7eeb50815665fc0dc2b626709529/evidence-8822).
 The scratch workflow and runtime queue selector are excluded from the feature PR.
 
 ## Preview checks
 
-[Preview evidence run](https://github.com/wanikhawar/photocraft/actions/runs/41322345403)
+[Preview evidence run](https://github.com/wanikhawar/patronusphoto/actions/runs/41322345403)
 compares the previous dense Coverage implementation with sparse float-tile Coverage.
 All six decoded RGBA pairs match exactly: Overlay, Black & White, and On Layers, each
 with Show Edge off/on, using overlapping add/restore brush strokes. The overlay and

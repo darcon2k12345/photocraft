@@ -20,10 +20,10 @@ use craft::ui::canvas::{PixelRect, RasterSource};
 use craft::ui::dialog::{DialogId, DialogResult};
 use craft::ui::primitives::Revision;
 use egui::Color32;
-use photocraft_doc::{DocId, Document};
+use patronusphoto_doc::{DocId, Document};
 use serde_json::{Map, Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::document_display::CanvasHost;
 
 /// A rendered preview picture the framework dialog shows as a raster: one fixed image per revision.
@@ -113,8 +113,8 @@ pub struct SelectionPreview {
 
 /// Open the dialog with Photoshop's defaults (the value's `Default`). `Err` without a document: the
 /// dialog's sample points are clamped to the document's size.
-pub fn open(app: &mut PhotocraftApp) -> Result<DialogId, String> {
-    let label = crate::dialogs::filter_dialog::title_of(photocraft_engine::commands::find(COMMAND).map_or(tl!("Color Range…"), |c| c.label));
+pub fn open(app: &mut PatronusPhotoApp) -> Result<DialogId, String> {
+    let label = crate::dialogs::filter_dialog::title_of(patronusphoto_engine::commands::find(COMMAND).map_or(tl!("Color Range…"), |c| c.label));
     let idx = app.session.active_index().ok_or("no document")?;
     let size = app.session.active().map(|st| [st.doc.size.width, st.doc.size.height]).ok_or("no document")?;
     app.color_range = None;
@@ -189,7 +189,7 @@ pub struct Preview {
     canvas_mask: Option<Arc<ProxyMask>>,
 }
 
-fn query_key(app: &PhotocraftApp, params: &Value) -> u64 {
+fn query_key(app: &PatronusPhotoApp, params: &Value) -> u64 {
     let mut key = std::collections::hash_map::DefaultHasher::new();
     params.to_string().hash(&mut key);
     let foreground = app.session.tools.foreground;
@@ -214,7 +214,7 @@ fn scope_preview(proxy: &Document, params: &Value, mask: &mut [f32]) {
         return;
     }
     if let Some(selection) = proxy.selection.as_ref() {
-        let prior = photocraft_algo::selection::mask_from_surface(Some(selection), proxy.bounds());
+        let prior = patronusphoto_algo::selection::mask_from_surface(Some(selection), proxy.bounds());
         for (value, bound) in mask.iter_mut().zip(prior) {
             *value = value.min(bound);
         }
@@ -223,12 +223,12 @@ fn scope_preview(proxy: &Document, params: &Value, mask: &mut [f32]) {
 
 /// The selection mask `params` would make, on the proxy: the engine command run on a scratch
 /// session (Out Of Gamut uses the document's own proof setup).
-fn proxy_mask(app: &PhotocraftApp, proxy: &Document, k: u32, params: &Value) -> Result<Vec<f32>, String> {
+fn proxy_mask(app: &PatronusPhotoApp, proxy: &Document, k: u32, params: &Value) -> Result<Vec<f32>, String> {
     let area = proxy.bounds();
     if params.get("select").and_then(Value::as_str).unwrap_or("sampledColors") == "sampledColors" {
         // Pick on the original document, not the thumbnail's nearest retained pixel. The
         // prepared Lab query is the same one the command uses at full resolution.
-        let query = photocraft_engine::selection_cmds::ColorRangeSamples::new(&app.session, params).map_err(|e| e.to_string())?;
+        let query = patronusphoto_engine::selection_cmds::ColorRangeSamples::new(&app.session, params).map_err(|e| e.to_string())?;
         // Like the command (and OK): `sampleAllLayers: false` judges the active layer's own
         // pixels, otherwise the composite.
         let all_layers = params.get("sampleAllLayers").and_then(Value::as_bool).unwrap_or(true);
@@ -239,7 +239,7 @@ fn proxy_mask(app: &PhotocraftApp, proxy: &Document, k: u32, params: &Value) -> 
                 surf.read_rgba_into(area, &mut px);
                 px
             }
-            _ => photocraft_compose::render(proxy, area).into_px(),
+            _ => patronusphoto_compose::render(proxy, area).into_px(),
         };
         let invert = params.get("invert").and_then(Value::as_bool).unwrap_or(false);
         let mut mask: Vec<f32> = query
@@ -256,7 +256,7 @@ fn proxy_mask(app: &PhotocraftApp, proxy: &Document, k: u32, params: &Value) -> 
     }
     if params.get("select").and_then(Value::as_str) == Some("outOfGamut") {
         let pv = app.session.color.proof(proxy.id);
-        let (m, _) = photocraft_engine::color_cmds::gamut_mask(proxy, &pv.setup, pv.gamut_threshold).map_err(|e| e.to_string())?;
+        let (m, _) = patronusphoto_engine::color_cmds::gamut_mask(proxy, &pv.setup, pv.gamut_threshold).map_err(|e| e.to_string())?;
         let invert = params.get("invert").and_then(Value::as_bool).unwrap_or(false);
         let mut mask: Vec<f32> = m.iter().map(|v| f32::from(*v) / 255.0).map(|v| if invert { 1.0 - v } else { v }).collect();
         scope_preview(proxy, params, &mut mask);
@@ -279,7 +279,7 @@ fn proxy_mask(app: &PhotocraftApp, proxy: &Document, k: u32, params: &Value) -> 
             }
         }
     }
-    let mut s = photocraft_engine::Session::new();
+    let mut s = patronusphoto_engine::Session::new();
     s.tools = app.session.tools.clone();
     // Preserve the proxy's pre-existing selection so preview and OK use the same scope.
     s.add_document(proxy.clone(), None);
@@ -288,11 +288,11 @@ fn proxy_mask(app: &PhotocraftApp, proxy: &Document, k: u32, params: &Value) -> 
     }
     s.execute(COMMAND, p).map_err(|e| e.to_string())?;
     let d = s.active().ok_or("no preview document")?;
-    Ok(photocraft_algo::selection::mask_from_surface(d.doc.selection.as_ref(), area))
+    Ok(patronusphoto_algo::selection::mask_from_surface(d.doc.selection.as_ref(), area))
 }
 
 /// Record why the preview failed (logged once per new reason), or clear it. A thumbnail failure stays shown.
-fn report(app: &mut PhotocraftApp, error: Option<String>) {
+fn report(app: &mut PatronusPhotoApp, error: Option<String>) {
     let Some(p) = app.color_range.as_mut() else { return };
     let error = error.or_else(|| p.image_error.clone());
     if p.error != error {
@@ -304,9 +304,9 @@ fn report(app: &mut PhotocraftApp, error: Option<String>) {
 }
 
 /// The proxy's thumbnail as the dialog's Image view shows it.
-fn thumbnail(app: &PhotocraftApp, proxy: &Document) -> Result<Arc<SharedPicture>, String> {
+fn thumbnail(app: &PatronusPhotoApp, proxy: &Document) -> Result<Arc<SharedPicture>, String> {
     let (w, h) = (proxy.size.width as usize, proxy.size.height as usize);
-    let buf = photocraft_compose::thumbnail_buffer(proxy, proxy.size.width.max(proxy.size.height));
+    let buf = patronusphoto_compose::thumbnail_buffer(proxy, proxy.size.width.max(proxy.size.height));
     let thumb = app.session.color.canvas_display(proxy).map_err(|e| e.to_string())?.to_rgba8(&buf);
     let size = [thumb.width as usize, thumb.height as usize];
     if size != [w, h] || thumb.pixels.len() != w * h * 4 {
@@ -316,7 +316,7 @@ fn thumbnail(app: &PhotocraftApp, proxy: &Document) -> Result<Arc<SharedPicture>
 }
 
 /// Makes the cached proxy current for the active document and its revision. `None` without a document.
-fn ensure_proxy(app: &mut PhotocraftApp) -> Option<()> {
+fn ensure_proxy(app: &mut PatronusPhotoApp) -> Option<()> {
     let (doc_id, revision, doc) = {
         let st = app.session.active()?;
         (st.doc.id, st.revision, st.doc.clone())
@@ -351,7 +351,7 @@ fn ensure_proxy(app: &mut PhotocraftApp) -> Option<()> {
 }
 
 /// Rebuilds the dialog's mask picture when `params` differ from the cached ones and hands the pictures to the dialog.
-fn refresh(app: &mut PhotocraftApp, params: &Value) {
+fn refresh(app: &mut PatronusPhotoApp, params: &Value) {
     if ensure_proxy(app).is_none() {
         return;
     }
@@ -384,7 +384,7 @@ fn refresh(app: &mut PhotocraftApp, params: &Value) {
 
 /// The dialog's turn each pass (a `TAKERS` entry): runs OK, drops the cache on Cancel, and while the dialog is open
 /// keeps its preview pictures current. Rebuilds nothing while the params, document and proof setup are unchanged.
-pub fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
+pub fn take(app: &mut PatronusPhotoApp, _ctx: &egui::Context) {
     match app.framework.dialogs.take::<HostedColorRange>() {
         Some(DialogResult::Ok(value)) => {
             app.color_range = None;
@@ -410,7 +410,7 @@ pub fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
 /// The Selection Preview the canvas shows over the active document, `None` while the dialog is closed or its
 /// Selection Preview mode is None. The canvas proxy's mask is rebuilt only when the params, document or proof setup
 /// change.
-pub fn selection_preview(app: &mut PhotocraftApp, _ctx: &egui::Context) -> Option<SelectionPreview> {
+pub fn selection_preview(app: &mut PatronusPhotoApp, _ctx: &egui::Context) -> Option<SelectionPreview> {
     let dialog = app.framework.dialogs.get::<HostedColorRange>()?;
     let mode = dialog.preview_mode();
     if matches!(mode, PreviewMode::None) {

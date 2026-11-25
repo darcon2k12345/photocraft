@@ -1,10 +1,11 @@
 [workspace]
+exclude = ["vendor/craft-update"]
 resolver = "3"
 members = ["crates/*", "apps/*", "xtask"]
-default-members = ["crates/*", "apps/photocraft", "apps/photocraft-cli", "xtask"]
+default-members = ["crates/*", "apps/patronusphoto", "apps/patronusphoto-cli", "xtask"]
 
 [workspace.package]
-version = "0.23.1"
+version = "0.23.2"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 rust-version = "1.95"
@@ -16,32 +17,32 @@ craft = { git = "https://github.com/storytold/craft-libs", rev = "683fe060312247
 craft-tracked = { git = "https://github.com/storytold/craft-libs", rev = "683fe06031224725b913c8ad3697d8e8bfec6c90" }
 craft-ui-macros = { git = "https://github.com/storytold/craft-libs", rev = "683fe06031224725b913c8ad3697d8e8bfec6c90" }
 # internal
-photocraft-geom = { path = "crates/geom" }
-photocraft-color = { path = "crates/color" }
-photocraft-raster = { path = "crates/raster" }
-photocraft-doc = { path = "crates/doc" }
-photocraft-ops = { path = "crates/ops" }
+patronusphoto-geom = { path = "crates/geom" }
+patronusphoto-color = { path = "crates/color" }
+patronusphoto-raster = { path = "crates/raster" }
+patronusphoto-doc = { path = "crates/doc" }
+patronusphoto-ops = { path = "crates/ops" }
 craft-plist = { git = "https://github.com/storytold/craft-libs", rev = "683fe06031224725b913c8ad3697d8e8bfec6c90" }
 craft-psd = { git = "https://github.com/storytold/craft-libs", rev = "683fe06031224725b913c8ad3697d8e8bfec6c90" }
-photocraft-codecs = { package = "craft-image-codecs", git = "https://github.com/storytold/craft-libs", rev = "683fe06031224725b913c8ad3697d8e8bfec6c90" }
-photocraft-formats = { package = "craft-file-formats", git = "https://github.com/storytold/craft-libs", rev = "683fe06031224725b913c8ad3697d8e8bfec6c90", features = ["raster-codecs", "pdf", "svg", "ora", "kra", "xcf", "pdn", "raw", "psd", "affinity", "pcraft"] }
-photocraft-raw = { path = "crates/raw" }
+patronusphoto-codecs = { package = "craft-image-codecs", git = "https://github.com/storytold/craft-libs", rev = "683fe06031224725b913c8ad3697d8e8bfec6c90" }
+patronusphoto-formats = { package = "craft-file-formats", git = "https://github.com/storytold/craft-libs", rev = "683fe06031224725b913c8ad3697d8e8bfec6c90", features = ["raster-codecs", "pdf", "svg", "ora", "kra", "xcf", "pdn", "raw", "psd", "affinity", "pcraft"] }
+patronusphoto-raw = { path = "crates/raw" }
 craft-affinity = { git = "https://github.com/storytold/craft-libs", rev = "683fe06031224725b913c8ad3697d8e8bfec6c90" }
-photocraft-compose = { path = "crates/compose" }
-photocraft-gpu = { path = "crates/gpu" }
-photocraft-paint = { path = "crates/paint" }
-photocraft-algo = { path = "crates/algo" }
-photocraft-io = { path = "crates/io" }
-photocraft-text = { path = "crates/text" }
-photocraft-vector = { path = "crates/vector" }
-photocraft-format = { path = "crates/format" }
-photocraft-automation = { path = "crates/automation" }
-photocraft-plugins = { path = "crates/plugins" }
-photocraft-engine = { path = "crates/engine" }
-photocraft-ui-egui = { path = "crates/ui-egui" }
-photocraft-testkit = { path = "crates/testkit" }
-photocraft-tablet = { path = "crates/tablet" }
-photocraft-ipp = { path = "crates/ipp" }
+patronusphoto-compose = { path = "crates/compose" }
+patronusphoto-gpu = { path = "crates/gpu" }
+patronusphoto-paint = { path = "crates/paint" }
+patronusphoto-algo = { path = "crates/algo" }
+patronusphoto-io = { path = "crates/io" }
+patronusphoto-text = { path = "crates/text" }
+patronusphoto-vector = { path = "crates/vector" }
+patronusphoto-format = { path = "crates/format" }
+patronusphoto-automation = { path = "crates/automation" }
+patronusphoto-plugins = { path = "crates/plugins" }
+patronusphoto-engine = { path = "crates/engine" }
+patronusphoto-ui-egui = { path = "crates/ui-egui" }
+patronusphoto-testkit = { path = "crates/testkit" }
+patronusphoto-tablet = { path = "crates/tablet" }
+patronusphoto-ipp = { path = "crates/ipp" }
 
 # external
 # ICC colour management: the shared crate (replaces crates/cms; craft-libs#779).
@@ -116,13 +117,13 @@ todo = "warn"
 # The settings of craft-libs' `tools/cl` for this workspace (craft-libs docs/development.md, "App workspaces").
 [workspace.metadata.cl]
 # Every cl command selects these packages: each brings features the others lack, so a command that drops one
-# builds a second copy of egui, photocraft-io or craft-affinity and of everything above them.
+# builds a second copy of egui, patronusphoto-io or craft-affinity and of everything above them.
 selection = [
-    "photocraft-ui-egui", "photocraft-engine", "photocraft", "photocraft-algo", "photocraft-automation",
-    "photocraft-text", "photocraft-tablet", "photocraft-cli", "photocraft-paint", "photocraft-io", "photocraft-gpu",
+    "patronusphoto-ui-egui", "patronusphoto-engine", "patronusphoto", "patronusphoto-algo", "patronusphoto-automation",
+    "patronusphoto-text", "patronusphoto-tablet", "patronusphoto-cli", "patronusphoto-paint", "patronusphoto-io", "patronusphoto-gpu",
 ]
 # Crates whose new builds cl names after a command, besides the framework's.
-tracked = ["egui", "eframe", "photocraft-ui-egui", "photocraft-io", "craft-affinity"]
+tracked = ["egui", "eframe", "patronusphoto-ui-egui", "patronusphoto-io", "craft-affinity"]
 # Each changes a build input (the text crate's build script tracks CRAFT_FONTS_DIR), so a command run with a
 # different value rebuilds.
 unset_env = ["RUST_MIN_STACK", "CARGO_INCREMENTAL", "CRAFT_FONTS_DIR"]
@@ -134,20 +135,20 @@ test_threads = 4
 # The one build of each crate a target dir holds after the selection's test build (`cl doctor` compares).
 [workspace.metadata.cl.expected_features]
 egui = ["bytemuck", "default_fonts", "monochrome_emoji_fonts", "persistence", "ron", "serde"]
-photocraft-io = ["pdf-editable", "testgen"]
+patronusphoto-io = ["pdf-editable", "testgen"]
 craft-affinity = ["synth"]
 craft-ui-contract = ["default", "snapshot", "testing"]
 craft-imaging = ["default", "screen-testing", "ui"]
 
 # The ui-egui lib binary holds most of the unit tests; split, it no longer sets the run's wall time.
 [workspace.metadata.cl.shard]
-"photocraft-ui-egui/photocraft_ui_egui" = 3
+"patronusphoto-ui-egui/patronusphoto_ui_egui" = 3
 
 # Seconds per test binary, ordering the first run longest first (later runs use the recorded times).
 [workspace.metadata.cl.default_seconds]
-"photocraft-ui-egui/photocraft_ui_egui" = 389.0
-"photocraft-ui-egui/it" = 221.0
-"photocraft-engine/photocraft_engine" = 97.0
+"patronusphoto-ui-egui/patronusphoto_ui_egui" = 389.0
+"patronusphoto-ui-egui/it" = 221.0
+"patronusphoto-engine/patronusphoto_engine" = 97.0
 
 # Dependencies carry no debug info: their frames in a backtrace lose file:line, and the target dir
 # and link times shrink. The test profile inherits both settings.
@@ -168,23 +169,23 @@ debug = "line-tables-only"
 # tests run no heavier pixel code of their own (that lives in the crates that stay optimized).
 # Measured on CI: Windows build 18.9 -> 15.4 min, test run 10.0 -> 10.5. `cargo run` and
 # `cargo build` use the dev profile and are unaffected.
-[profile.test.package.photocraft-ui-egui]
+[profile.test.package.patronusphoto-ui-egui]
 opt-level = 0
 
 # Test builds compile the engine without optimization. Every test job compiles it, and at 0 its
 # test build is about 20% shorter on both Linux and Windows, while its tests run 7-8% longer
 # (measured against crates the setting doesn't touch). Its pixel-heavy neighbours (algo) stay at
 # the dev profile's 1.
-[profile.test.package.photocraft-engine]
+[profile.test.package.patronusphoto-engine]
 opt-level = 0
 
 # Only the exhaustive rounding proof needs maximum optimization; algo stays at its usual level.
-[profile.test.package.photocraft-oil-round-proof]
+[profile.test.package.patronusphoto-oil-round-proof]
 opt-level = 3
 
 # Test builds compile the craft UI framework (the `craft` facade and the craft-libs crates behind
 # it) below the opt-level 2 of `package."*"` above. The workspace unifies the facade's features, so
-# every crate that uses `craft`, photocraft-text included, waits for the whole framework. At 2 the
+# every crate that uses `craft`, patronusphoto-text included, waits for the whole framework. At 2 the
 # chain from craft-host to the facade took 38 of the 77 build minutes of the Windows unit leg, and
 # rustc shares no generic instantiations across crates at 2 (it does at 0 and 1).
 # The runtime every frame passes through (contract, shell, canvas, panels, widgets, host) builds at
@@ -257,9 +258,9 @@ opt-level = 0
 lto = "thin"
 codegen-units = 1
 
-# The browser build (apps/photocraft-web, `data-cargo-profile` in its index.html). Hosts cap the
+# The browser build (apps/patronusphoto-web, `data-cargo-profile` in its index.html). Hosts cap the
 # size of a single file (Cloudflare Pages/Workers: 25 MiB), and the wasm is downloaded on every
-# visit, so this profile optimizes for size: opt-level "z" for PhotoCraft's own crates,
+# visit, so this profile optimizes for size: opt-level "z" for Patronus Photo's own crates,
 # "s" for dependencies and for the crates that decode files, and 3 for pixel processing (filters
 # and compositing). Dependencies stay at "s": at "z" the whole wasm grows (by 0.4 MB, measured).
 # panic stays the target default (wasm32-unknown-unknown aborts; AGENTS.md's `panic = "unwind"`
@@ -280,21 +281,21 @@ opt-level = "s"
 # Decoding and rasterizing keep their speed.
 [profile.wasm-release.package.craft-image-codecs]
 opt-level = "s"
-[profile.wasm-release.package.photocraft-raw]
+[profile.wasm-release.package.patronusphoto-raw]
 opt-level = "s"
 [profile.wasm-release.package.craft-heif]
 opt-level = "s"
-[profile.wasm-release.package.photocraft-vector]
+[profile.wasm-release.package.patronusphoto-vector]
 opt-level = "s"
 
 # Large crates off the per-frame and per-pixel paths: the document model, file parsers run once
 # per open/save, JSON (settings, presets, control channel), SVG parsing, and shader translation
 # (runs when a pipeline is created). "z" keeps the wasm well under the size gate.
-[profile.wasm-release.package.photocraft-doc]
+[profile.wasm-release.package.patronusphoto-doc]
 opt-level = "z"
 [profile.wasm-release.package.craft-psd]
 opt-level = "z"
-[profile.wasm-release.package.photocraft-format]
+[profile.wasm-release.package.patronusphoto-format]
 opt-level = "z"
 [profile.wasm-release.package.craft-affinity]
 opt-level = "z"
@@ -321,20 +322,25 @@ opt-level = "z"
 # every interactive filter application; "z" there is the size lever of last resort (−331 KB),
 # taken because the gate is enforced in CI: if browser filters feel too slow, restore 3 here
 # and reclaim the bytes from a feature-gated decoder instead.
-[profile.wasm-release.package.photocraft-raster]
+[profile.wasm-release.package.patronusphoto-raster]
 opt-level = 3
-[profile.wasm-release.package.photocraft-color]
+[profile.wasm-release.package.patronusphoto-color]
 opt-level = 3
 [profile.wasm-release.package.craft-cms]
 opt-level = "z"
-[profile.wasm-release.package.photocraft-compose]
+[profile.wasm-release.package.patronusphoto-compose]
 opt-level = "z"
-[profile.wasm-release.package.photocraft-algo]
+[profile.wasm-release.package.patronusphoto-algo]
 opt-level = "z"
-[profile.wasm-release.package.photocraft-paint]
+[profile.wasm-release.package.patronusphoto-paint]
 opt-level = 3
 
 # Keep the complete egui family and native event bridge on reviewed fork commits.
+
+# The vendored copy of craft-update (see vendor/craft-update/VENDORED.md) replaces the git one everywhere,
+# including inside the `craft` crate.
+[patch."https://github.com/storytold/craft-libs"]
+craft-update = { path = "vendor/craft-update" }
 
 [patch.crates-io]
 krilla = { git = "https://github.com/storytold/craft-libs", rev = "683fe06031224725b913c8ad3697d8e8bfec6c90" }

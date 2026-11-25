@@ -1,6 +1,6 @@
 //! The scratch pool is process-wide, so these tests take a lock to run one at a time.
 
-use photocraft_raster::scratch::*;
+use patronusphoto_raster::scratch::*;
 /// Lets a miss evict every pooled byte for the test's lifetime, so sizes can be counted.
 struct NoFloor;
 impl NoFloor {

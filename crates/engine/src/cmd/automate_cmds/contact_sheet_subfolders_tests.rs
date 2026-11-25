@@ -16,7 +16,7 @@ impl Drop for Cleanup {
 /// that sorts before the top folder's files (`0_first/`) and one after `sub/` (`sub2/`). The
 /// returned guard holds the folder's path and removes it when dropped.
 fn tree(name: &str, extras: bool) -> Cleanup {
-    let root = std::env::temp_dir().join(format!("photocraft-contact-subfolders-{}-{name}", std::process::id()));
+    let root = std::env::temp_dir().join(format!("patronusphoto-contact-subfolders-{}-{name}", std::process::id()));
     let _ = std::fs::remove_dir_all(&root);
     let guard = Cleanup(root.to_string_lossy().into_owned());
     let root = &guard.0;

@@ -6,12 +6,12 @@
 
 use std::sync::{Arc, PoisonError};
 
-use photocraft_doc::{Document, LayerContent, LayerId, TextLayer};
-use photocraft_geom::{Affine, Point};
-use photocraft_text::TextLayout;
+use patronusphoto_doc::{Document, LayerContent, LayerId, TextLayer};
+use patronusphoto_geom::{Affine, Point};
+use patronusphoto_text::TextLayout;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::TextEdit;
 
 mod controls;
@@ -67,7 +67,7 @@ fn text_layer(doc: &Document, id: LayerId) -> Option<&TextLayer> {
 }
 
 fn byte_of(text: &str, ci: usize) -> usize {
-    photocraft_text::byte_index(text, ci)
+    patronusphoto_text::byte_index(text, ci)
 }
 
 fn hex(c: [f32; 4]) -> String {
@@ -75,20 +75,20 @@ fn hex(c: [f32; 4]) -> String {
     format!("#{:02x}{:02x}{:02x}", b(c[0]), b(c[1]), b(c[2]))
 }
 
-fn session_key(app: &mut PhotocraftApp) -> String {
+fn session_key(app: &mut PatronusPhotoApp) -> String {
     format!("type-{}", app.ui.alloc_id())
 }
 
-fn active_doc_id(app: &PhotocraftApp) -> Option<u64> {
+fn active_doc_id(app: &PatronusPhotoApp) -> Option<u64> {
     app.session.active().map(|st| st.doc.id.0)
 }
 
-fn current_text(app: &PhotocraftApp, id: LayerId) -> Option<String> {
+fn current_text(app: &PatronusPhotoApp, id: LayerId) -> Option<String> {
     Some(text_layer(&app.session.active()?.doc, id)?.text.clone())
 }
 
 /// The selected characters, clamped after undo/redo may have shortened the text.
-pub(crate) fn selected_range(app: &PhotocraftApp) -> Option<[usize; 2]> {
+pub(crate) fn selected_range(app: &PatronusPhotoApp) -> Option<[usize; 2]> {
     let ed = app.ui.text_edit.as_ref()?;
     let n = text_layer(&app.session.active()?.doc, LayerId(ed.layer))?.text.chars().count();
     let (a, b) = (ed.caret.min(ed.anchor).min(n), ed.caret.max(ed.anchor).min(n));

@@ -5,7 +5,7 @@
 use egui::Modifiers;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::{ToolEvent, tool_event};
 use crate::state::Tool;
 use crate::tools::brush_refusal::brush_refusal_alert_tests::{alerts, app, steps, stroke};
@@ -17,7 +17,7 @@ const MESSAGE: &str = if cfg!(target_os = "macos") {
 };
 
 /// The active layer's pixels.
-fn pixels(app: &PhotocraftApp) -> Vec<f32> {
+fn pixels(app: &PatronusPhotoApp) -> Vec<f32> {
     let st = app.session.active().unwrap();
     st.doc.layer(st.active_layer.unwrap()).unwrap().surface().unwrap().read_region(st.doc.bounds())
 }

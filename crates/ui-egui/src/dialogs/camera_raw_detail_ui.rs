@@ -6,9 +6,9 @@ use craft::imaging::scopes::ClippingMask;
 use craft::imaging::scopes::clipping;
 use craft::ui::canvas::PixelRect as RasterRect;
 use egui::{Color32, ColorImage, Context};
-use photocraft_algo::camera_raw::DevelopInputs;
-use photocraft_geom::Rect as PixelRect;
-use photocraft_raster::Surface;
+use patronusphoto_algo::camera_raw::DevelopInputs;
+use patronusphoto_geom::Rect as PixelRect;
+use patronusphoto_raster::Surface;
 #[cfg(test)]
 use std::sync::mpsc::TryRecvError;
 use std::sync::{
@@ -20,7 +20,7 @@ use std::sync::{
 #[derive(Clone)]
 pub(crate) enum Coverage {
     Selection(Surface),
-    Mask(photocraft_doc::LayerMask),
+    Mask(patronusphoto_doc::LayerMask),
     None,
 }
 
@@ -168,7 +168,7 @@ impl DetailPreview {
     /// region leaves the refined area. `false` when there is nothing to serve (not refined for the
     /// current revision, or the part is larger than 16 MP), and the caller then reads the proxy.
     /// Only the asked part is converted, never the whole image.
-    pub(crate) fn read(&self, region: RasterRect, factor: u32, display: &photocraft_engine::display_color::CanvasDisplay, out: &mut ColorImage) -> bool {
+    pub(crate) fn read(&self, region: RasterRect, factor: u32, display: &patronusphoto_engine::display_color::CanvasDisplay, out: &mut ColorImage) -> bool {
         let Some((_, surface)) = self.result.as_ref().filter(|_| self.ready) else { return false };
         let want = PixelRect::new(region.x0, region.y0, region.x1, region.y1).intersect(&self.area);
         if want.width() as u64 * want.height() as u64 > 16_777_216 {
@@ -258,11 +258,11 @@ impl DetailPreview {
 
 /// The full-size result of `params` over `area`. With a raw file's tone `curve`, the raw-stage
 /// sliders are applied first to the whole area, from the whole frame's maps as Open computes them
-/// ([`photocraft_io::raw::retone`]), then the rest of the pipeline: at 1:1 the preview shows close
+/// ([`patronusphoto_io::raw::retone`]), then the rest of the pipeline: at 1:1 the preview shows close
 /// to what Open will make. It retones the developed pixels, which already carry the black point,
 /// so it differs from Open only in the deepest shadows, as `retone` documents.
 fn develop(source: &Surface, curve: Option<&[[f32; 2]]>, area: PixelRect, params: &CameraRaw, inputs: &DevelopInputs, coverage: &Coverage) -> Surface {
-    let tone = photocraft_io::raw::Tone {
+    let tone = patronusphoto_io::raw::Tone {
         shadows: params.shadows,
         highlights: params.highlights,
         clarity: params.clarity,
@@ -274,7 +274,7 @@ fn develop(source: &Surface, curve: Option<&[[f32; 2]]>, area: PixelRect, params
             let (w, h) = (area.width() as usize, area.height() as usize);
             let mut px = vec![[0.0f32; 4]; w * h];
             source.read_rgba_into(area, &mut px);
-            photocraft_io::raw::retone(&mut px, w, h, curve, tone);
+            patronusphoto_io::raw::retone(&mut px, w, h, curve, tone);
             let fmt = source.format();
             let n = fmt.channels();
             // Written back in bands of rows, so only one band-sized buffer lives next to `px`
@@ -289,7 +289,7 @@ fn develop(source: &Surface, curve: Option<&[[f32; 2]]>, area: PixelRect, params
                 source.read_region_into(rect, &mut data);
                 for (o, q) in data.chunks_exact_mut(n).zip(rows) {
                     let alpha = if fmt.alpha { o.get(n - 1).copied() } else { None };
-                    photocraft_raster::from_rgba_into(&fmt, *q, o);
+                    patronusphoto_raster::from_rgba_into(&fmt, *q, o);
                     if let (Some(a), Some(last)) = (alpha, o.get_mut(n - 1)) {
                         *last = a;
                     }
@@ -303,7 +303,7 @@ fn develop(source: &Surface, curve: Option<&[[f32; 2]]>, area: PixelRect, params
         _ => (None, params.clone()),
     };
     let base = retoned.as_ref().unwrap_or(source);
-    let mut result = photocraft_engine::lens_cmds::camera_raw_surface(base, area, &params, inputs);
+    let mut result = patronusphoto_engine::lens_cmds::camera_raw_surface(base, area, &params, inputs);
     if matches!(coverage, Coverage::None) {
         return result;
     }
@@ -337,7 +337,7 @@ fn develop(source: &Surface, curve: Option<&[[f32; 2]]>, area: PixelRect, params
 const CROP_BAND_PIXELS: usize = 64 * 1024;
 
 /// The visible pixels of `surface`, as the canvas shows them.
-fn crop_image(surface: &Surface, area: PixelRect, display: &photocraft_engine::display_color::CanvasDisplay) -> ColorImage {
+fn crop_image(surface: &Surface, area: PixelRect, display: &patronusphoto_engine::display_color::CanvasDisplay) -> ColorImage {
     display_image(area, display, |rect, out| surface.read_rgba_into(rect, out))
 }
 
@@ -348,7 +348,7 @@ fn crop_image(surface: &Surface, area: PixelRect, display: &photocraft_engine::d
 /// the UI thread for every edit (#4682).
 pub(crate) fn display_image(
     area: PixelRect,
-    display: &photocraft_engine::display_color::CanvasDisplay,
+    display: &patronusphoto_engine::display_color::CanvasDisplay,
     read: impl Fn(PixelRect, &mut [[f32; 4]]) + Sync,
 ) -> ColorImage {
     let (width, height) = (area.width() as usize, area.height() as usize);
@@ -360,7 +360,7 @@ pub(crate) fn display_image(
     let band = |index: usize, out: &mut [Color32]| {
         let y0 = area.y0.saturating_add((index * band_rows) as i32);
         let rect = PixelRect::new(area.x0, y0, area.x1, y0.saturating_add((out.len() / width) as i32));
-        let mut buf = photocraft_compose::Buffer { rect, px: vec![[0.0; 4]; out.len()] };
+        let mut buf = patronusphoto_compose::Buffer { rect, px: vec![[0.0; 4]; out.len()] };
         read(rect, &mut buf.px);
         let img = display.to_rgba8(&buf);
         for (o, &[r, g, b, a]) in out.iter_mut().zip(img.pixels.as_chunks::<4>().0) {
@@ -382,7 +382,7 @@ pub(crate) fn display_image(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use photocraft_color::PixelFormat;
+    use patronusphoto_color::PixelFormat;
 
     fn exposure_only(exposure: f32) -> CameraRaw {
         let mut params = CameraRaw::default();
@@ -406,7 +406,7 @@ mod tests {
         source.write_region(area, &values);
         let mut params = CameraRaw::default();
         (params.exposure, params.texture, params.grain_amount) = (0.5, 15.0, 30.0);
-        let expected = photocraft_engine::lens_cmds::camera_raw_surface(&source, area, &params, &inputs());
+        let expected = patronusphoto_engine::lens_cmds::camera_raw_surface(&source, area, &params, &inputs());
         assert_eq!(develop(&source, None, area, &params, &inputs(), &Coverage::None), expected);
         let mask = Surface::with_default(PixelFormat::GRAY8, &[0.0]);
         assert_eq!(develop(&source, None, area, &params, &inputs(), &Coverage::Selection(mask)), source);
@@ -429,12 +429,12 @@ mod tests {
         let refined = develop(&source, Some(&curve), area, &params, &inputs(), &Coverage::None);
         let mut px = vec![[0.0f32; 4]; 96 * 64];
         source.read_rgba_into(area, &mut px);
-        let tone = photocraft_io::raw::Tone { shadows: 80.0, ..Default::default() };
-        photocraft_io::raw::retone(&mut px, 96, 64, &curve, tone);
+        let tone = patronusphoto_io::raw::Tone { shadows: 80.0, ..Default::default() };
+        patronusphoto_io::raw::retone(&mut px, 96, 64, &curve, tone);
         let mut retoned = source.clone();
         let flat: Vec<f32> = px.iter().flatten().copied().collect();
         retoned.write_region(area, &flat);
-        let expected = photocraft_engine::lens_cmds::camera_raw_surface(&retoned, area, &exposure_only(0.25), &inputs());
+        let expected = patronusphoto_engine::lens_cmds::camera_raw_surface(&retoned, area, &exposure_only(0.25), &inputs());
         let (a, b) = (refined.rgba(10, 30), expected.rgba(10, 30));
         assert!(a.iter().zip(&b).all(|(x, y)| (x - y).abs() < 2e-4), "{a:?} vs {b:?}");
         assert!(
@@ -446,7 +446,7 @@ mod tests {
         );
         // Without a raw curve Shadows is the filter's.
         let filter = develop(&source, None, area, &params, &inputs(), &Coverage::None);
-        assert_eq!(filter, photocraft_engine::lens_cmds::camera_raw_surface(&source, area, &params, &inputs()));
+        assert_eq!(filter, patronusphoto_engine::lens_cmds::camera_raw_surface(&source, area, &params, &inputs()));
     }
 
     #[test]
@@ -474,7 +474,7 @@ mod tests {
 
     #[test]
     fn full_resolution_sampling_and_crops_keep_fine_detail_at_every_supported_depth() {
-        use photocraft_color::{ColorMode, PixelFormat, SampleType};
+        use patronusphoto_color::{ColorMode, PixelFormat, SampleType};
         for depth in [SampleType::U8, SampleType::U16, SampleType::F32] {
             for mode in [ColorMode::Rgb, ColorMode::Grayscale] {
                 let format = PixelFormat { mode, sample: depth, alpha: true };
@@ -490,7 +490,7 @@ mod tests {
                 let mut params = CameraRaw::default();
                 (params.exposure, params.sharpen_amount, params.grain_amount) = (0.5, 20.0, 30.0);
                 let full = develop(&source, None, area, &params, &inputs(), &Coverage::None);
-                let expected = photocraft_engine::lens_cmds::camera_raw_surface(&source, area, &params, &inputs());
+                let expected = patronusphoto_engine::lens_cmds::camera_raw_surface(&source, area, &params, &inputs());
                 assert_eq!(full, expected);
                 let mut preview = DetailPreview::new(source, area, Coverage::None);
                 preview.result = Some((1, full));
@@ -498,10 +498,14 @@ mod tests {
                 let dark = preview.sample([0.0, 0.0], 1, false, &params).unwrap();
                 let light = preview.sample([1.0 / 40.0, 0.0], 1, false, &params).unwrap();
                 assert!(light[0] - dark[0] > 0.5, "native alternating pixels survive: {mode:?}/{depth:?}");
-                let mut doc =
-                    photocraft_doc::Document::new("test", photocraft_geom::Size::new(40, 30), photocraft_doc::ColorMode::Rgb, photocraft_doc::SampleType::U8);
+                let mut doc = patronusphoto_doc::Document::new(
+                    "test",
+                    patronusphoto_geom::Size::new(40, 30),
+                    patronusphoto_doc::ColorMode::Rgb,
+                    patronusphoto_doc::SampleType::U8,
+                );
                 doc.icc_profile = Some(craft::cms::Builtin::Srgb.profile().to_bytes());
-                let display = photocraft_engine::color_cmds::ColorState::default().canvas_display(&doc).unwrap();
+                let display = patronusphoto_engine::color_cmds::ColorState::default().canvas_display(&doc).unwrap();
                 assert_eq!(crop_image(&expected, PixelRect::new(-12, 8, -10, 9), &display).size, [2, 1]);
                 assert!(preview.sample([f32::NAN, 0.0], 1, false, &params).is_none());
                 assert!(preview.sample([0.5, 0.5], 2, false, &params).is_none());
@@ -512,12 +516,20 @@ mod tests {
     #[test]
     fn refined_crop_uses_linear_document_display_encoding() {
         let area = PixelRect::new(0, 0, 1, 1);
-        let mut source =
-            Surface::new(photocraft_color::PixelFormat { mode: photocraft_color::ColorMode::Rgb, sample: photocraft_color::SampleType::F32, alpha: true });
+        let mut source = Surface::new(patronusphoto_color::PixelFormat {
+            mode: patronusphoto_color::ColorMode::Rgb,
+            sample: patronusphoto_color::SampleType::F32,
+            alpha: true,
+        });
         source.write_region(area, &[0.25, 0.25, 0.25, 1.0]);
-        let mut doc = photocraft_doc::Document::new("test", photocraft_geom::Size::new(1, 1), photocraft_doc::ColorMode::Rgb, photocraft_doc::SampleType::F32);
+        let mut doc = patronusphoto_doc::Document::new(
+            "test",
+            patronusphoto_geom::Size::new(1, 1),
+            patronusphoto_doc::ColorMode::Rgb,
+            patronusphoto_doc::SampleType::F32,
+        );
         doc.icc_profile = Some(craft::cms::Builtin::LinearSrgb.profile().to_bytes());
-        let mut color = photocraft_engine::color_cmds::ColorState::default();
+        let mut color = patronusphoto_engine::color_cmds::ColorState::default();
         color.settings.monitor_profile = "srgb".into();
         let display = color.canvas_display(&doc).unwrap();
         let image = crop_image(&source, area, &display);
@@ -540,9 +552,14 @@ mod tests {
         let mut source = Surface::new(PixelFormat::RGBA8);
         let values: Vec<f32> = (0..8).flat_map(|i| if i % 4 == 0 { [1.0, 1.0, 1.0, 1.0] } else { [0.5, 0.5, 0.5, 1.0] }).collect();
         source.write_region(area, &values);
-        let mut doc = photocraft_doc::Document::new("test", photocraft_geom::Size::new(16, 8), photocraft_doc::ColorMode::Rgb, photocraft_doc::SampleType::U8);
+        let mut doc = patronusphoto_doc::Document::new(
+            "test",
+            patronusphoto_geom::Size::new(16, 8),
+            patronusphoto_doc::ColorMode::Rgb,
+            patronusphoto_doc::SampleType::U8,
+        );
         doc.icc_profile = Some(craft::cms::Builtin::Srgb.profile().to_bytes());
-        let display = photocraft_engine::color_cmds::ColorState::default().canvas_display(&doc).unwrap();
+        let display = patronusphoto_engine::color_cmds::ColorState::default().canvas_display(&doc).unwrap();
         let mut preview = DetailPreview::new(source.clone(), area, Coverage::None);
         let mut out = ColorImage::new([4, 2], vec![Color32::RED; 8]);
         assert!(!preview.read(RasterRect::new(2, 2, 6, 4), 1, &display, &mut out), "nothing refined yet: the caller reads the proxy");
@@ -566,19 +583,23 @@ mod tests {
         // Several bands, a ragged last one and an area off the image origin, through a real
         // transform (an Adobe RGB document on an sRGB monitor) and without one.
         let area = PixelRect::new(-3, 5, 1021, 5 + 2 * (CROP_BAND_PIXELS / 1024) as i32 + 7);
-        let mut source = Surface::new(PixelFormat { mode: photocraft_color::ColorMode::Rgb, sample: photocraft_color::SampleType::U8, alpha: true });
+        let mut source = Surface::new(PixelFormat { mode: patronusphoto_color::ColorMode::Rgb, sample: patronusphoto_color::SampleType::U8, alpha: true });
         let n = (area.width() * area.height()) as usize;
         let px: Vec<f32> = (0..n).flat_map(|i| [(i % 251) as f32 / 255.0, (i % 241) as f32 / 255.0, (i % 239) as f32 / 255.0, (i % 7) as f32 / 6.0]).collect();
         source.write_region(area, &px);
         for profile in [craft::cms::Builtin::AdobeRgbCompat, craft::cms::Builtin::Srgb] {
-            let mut doc =
-                photocraft_doc::Document::new("test", photocraft_geom::Size::new(1024, 1024), photocraft_doc::ColorMode::Rgb, photocraft_doc::SampleType::U8);
+            let mut doc = patronusphoto_doc::Document::new(
+                "test",
+                patronusphoto_geom::Size::new(1024, 1024),
+                patronusphoto_doc::ColorMode::Rgb,
+                patronusphoto_doc::SampleType::U8,
+            );
             doc.icc_profile = Some(profile.profile().to_bytes());
-            let mut color = photocraft_engine::color_cmds::ColorState::default();
+            let mut color = patronusphoto_engine::color_cmds::ColorState::default();
             color.settings.monitor_profile = "srgb".into();
             let display = color.canvas_display(&doc).unwrap();
             assert_eq!(display.transform.is_some(), profile == craft::cms::Builtin::AdobeRgbCompat);
-            let mut whole = photocraft_compose::Buffer { rect: area, px: vec![[0.0; 4]; n] };
+            let mut whole = patronusphoto_compose::Buffer { rect: area, px: vec![[0.0; 4]; n] };
             source.read_rgba_into(area, &mut whole.px);
             let expected = display.to_rgba8(&whole);
             let image = crop_image(&source, area, &display);
@@ -590,12 +611,12 @@ mod tests {
             crop_image(
                 &source,
                 PixelRect::new(0, 0, 0, 4),
-                &photocraft_engine::color_cmds::ColorState::default()
-                    .canvas_display(&photocraft_doc::Document::new(
+                &patronusphoto_engine::color_cmds::ColorState::default()
+                    .canvas_display(&patronusphoto_doc::Document::new(
                         "t",
-                        photocraft_geom::Size::new(1, 1),
-                        photocraft_doc::ColorMode::Rgb,
-                        photocraft_doc::SampleType::U8
+                        patronusphoto_geom::Size::new(1, 1),
+                        patronusphoto_doc::ColorMode::Rgb,
+                        patronusphoto_doc::SampleType::U8
                     ))
                     .unwrap()
             )

@@ -4,12 +4,12 @@ use craft::imaging::ui::warp::{CylinderValues, WarpFieldValues, WarpFields, Warp
 use craft::ui::canvas::RulerText;
 use craft::ui::contract::{Bind, Entry};
 use craft::ui::runtime::env::{Label, UnitKind};
-use photocraft_engine::prefs::Unit;
+use patronusphoto_engine::prefs::Unit;
 
 use super::begin::{enter_warp, warps_type};
 use super::commit::{cancel, commit};
 use super::warp::{edit_session_warp, set_warp};
-use super::{BezierMesh, PhotocraftApp, Warp, WarpStyle, json};
+use super::{BezierMesh, PatronusPhotoApp, Warp, WarpStyle, json};
 use crate::state::SessionWarp;
 
 /// Free Transform's options bar: the framework's [`TransformBar`] over the open session. The bar
@@ -21,7 +21,7 @@ use crate::state::SessionWarp;
 /// Protect group. The Warp phase shows the warp group in place of the fields. Each pass applies
 /// only the edits its own bar reported: a second pass of a frame gets no input events, so it
 /// reports none.
-pub fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn options_bar(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     // The bar reads a copy of the session; its edits are applied to the open one after `show`.
     let Some(t) = app.ui.transform.clone() else { return };
     let ctx = ui.ctx().clone();
@@ -99,7 +99,7 @@ fn size_unit_entries() -> Vec<Entry<UnitKind>> {
 // PLAN: the `RulerText` construction below repeats `panels/layer_props_ui.rs` `ruler_text` (private there); panels-w36 owns the file and should expose one helper for both callers.
 /// The rulers' text for X and Y: the Units & Rulers unit at the document's resolution, with
 /// Percent measured against the document's width and height.
-fn ruler_texts(app: &PhotocraftApp) -> (RulerText, RulerText) {
+fn ruler_texts(app: &PatronusPhotoApp) -> (RulerText, RulerText) {
     let ur = &app.session.prefs().units_and_rulers;
     let dpi = app.session.active().map_or(72.0, |s| f64::from(s.doc.resolution_dpi));
     let ppi = ur.point_size.per_inch();
@@ -140,7 +140,7 @@ fn cylinder_default(b: [f64; 4]) -> Option<Warp> {
 
 /// Applies one edit of the warp group to the session's warp. Each edit reads the warp as the
 /// edits before it left it.
-fn warp_edit(app: &mut PhotocraftApp, edit: WarpFieldsEdit) {
+fn warp_edit(app: &mut PatronusPhotoApp, edit: WarpFieldsEdit) {
     let Some(w) = app.ui.transform.as_ref().and_then(|t| t.session.warp()).map(|w| w.warp.clone()) else { return };
     let b = w.bounds;
     let preset = w.style.is_preset();
@@ -189,7 +189,7 @@ fn warp_edit(app: &mut PhotocraftApp, edit: WarpFieldsEdit) {
 
 /// Back to the untouched box: the default one-patch grid over the box, no bend (over type, the
 /// None style). One undo step through the session, and no Split tool armed.
-pub fn reset_warp(app: &mut PhotocraftApp) {
+pub fn reset_warp(app: &mut PatronusPhotoApp) {
     let Some((b, on_type)) = app.ui.transform.as_ref().and_then(|t| t.session.warp()).map(|w| (w.warp.bounds, w.on_type)) else { return };
     set_warp(app, if on_type { Warp::none(b) } else { Warp::custom(BezierMesh::identity(b, 1, 1), b) });
     if let Some(pv) = app.transform_preview.as_mut() {

@@ -4,13 +4,13 @@
 use craft::imaging::layer_style::{Contour, ContourPoint};
 use craft::imaging::ui::layer_style::{ContourAction, ContourEditorDialog, ContourRequest, HostedLayerStyle};
 use craft::ui::dialog::{DialogId, DialogResult};
-use photocraft_doc::Contour as DocContour;
-use photocraft_doc::adjust::CurvePoint;
-use photocraft_engine::layer_style::{contour_from_param, contour_param, contour_to_shc};
+use patronusphoto_doc::Contour as DocContour;
+use patronusphoto_doc::adjust::CurvePoint;
+use patronusphoto_engine::layer_style::{contour_from_param, contour_param, contour_to_shc};
 use serde_json::{Value, json};
 
 use super::{Child, child_of, take_child};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The levels of the contour editor's curve (it plots `0..=LEVELS` on both axes).
 const LEVELS: f32 = 255.0;
@@ -54,7 +54,7 @@ pub(super) fn to_param(c: &Contour) -> Value {
 }
 
 /// The user's contour library.
-pub(super) fn user_contours(app: &PhotocraftApp) -> Vec<Contour> {
+pub(super) fn user_contours(app: &PatronusPhotoApp) -> Vec<Contour> {
     app.session.presets.contours.iter().map(from_doc).collect()
 }
 
@@ -63,7 +63,7 @@ pub(super) fn user_contours(app: &PhotocraftApp) -> Vec<Contour> {
 pub(super) fn sampler() -> impl Fn(&[[f32; 2]]) -> Vec<f32> + Send + Sync + 'static {
     |points| {
         let points: Vec<CurvePoint> = points.iter().map(|p| CurvePoint { input: p[0] / LEVELS, output: p[1] / LEVELS }).collect();
-        let lut = photocraft_compose::adjust::contour_curve_lut(&points, &[]);
+        let lut = patronusphoto_compose::adjust::contour_curve_lut(&points, &[]);
         (0..=LEVELS as usize)
             .map(|level| {
                 let at = (level as f32 / LEVELS * lut.len().saturating_sub(1) as f32).round() as usize;
@@ -74,7 +74,7 @@ pub(super) fn sampler() -> impl Fn(&[[f32; 2]]) -> Vec<f32> + Send + Sync + 'sta
 }
 
 /// Opens the Contour Editor on `request` as a child of the Layer Style dialog `parent`.
-pub(super) fn open_editor(app: &mut PhotocraftApp, parent: DialogId, request: ContourRequest) {
+pub(super) fn open_editor(app: &mut PatronusPhotoApp, parent: DialogId, request: ContourRequest) {
     let (key, initial) = (request.key.clone(), request.contour.clone());
     let id = app.framework.dialogs.open_child(ContourEditorDialog::new(request).sampler(sampler()), parent);
     app.layer_style_child = Some((parent, Child::Editor { id, key, initial }));
@@ -83,7 +83,7 @@ pub(super) fn open_editor(app: &mut PhotocraftApp, parent: DialogId, request: Co
 /// Once per pass: while the editor is open its edits are the draft's contour (the preview follows)
 /// and its library asks are answered; when it is gone, OK keeps its contour and Cancel restores the
 /// one it opened with.
-pub(super) fn answered(app: &mut PhotocraftApp, parent: DialogId) {
+pub(super) fn answered(app: &mut PatronusPhotoApp, parent: DialogId) {
     let Some(Child::Editor { id, key, initial }) = child_of(app, parent).cloned() else { return };
     if let Some(open) = app.framework.dialogs.get_mut_by_id::<ContourEditorDialog>(id) {
         let action = open.take_action();
@@ -103,14 +103,14 @@ pub(super) fn answered(app: &mut PhotocraftApp, parent: DialogId) {
     }
 }
 
-fn set_contour(app: &mut PhotocraftApp, parent: DialogId, key: &str, contour: Contour) {
+fn set_contour(app: &mut PatronusPhotoApp, parent: DialogId, key: &str, contour: Contour) {
     if let Some(dialog) = app.framework.dialogs.get_mut_by_id::<HostedLayerStyle>(parent) {
         dialog.set_contour(key, contour);
     }
 }
 
 /// Gives the open Layer Style dialog the library as it is now.
-fn refresh(app: &mut PhotocraftApp) {
+fn refresh(app: &mut PatronusPhotoApp) {
     let list = user_contours(app);
     if let Some((id, ..)) = app.layer_style_target
         && let Some(dialog) = app.framework.dialogs.get_mut_by_id::<HostedLayerStyle>(id)
@@ -121,7 +121,7 @@ fn refresh(app: &mut PhotocraftApp) {
 
 /// Load, Replace, Save, Delete or New for the user's contours: the library lives in the session,
 /// the file is an `.shc`.
-pub(super) fn library_action(app: &mut PhotocraftApp, action: ContourAction) {
+pub(super) fn library_action(app: &mut PatronusPhotoApp, action: ContourAction) {
     let r = match action {
         ContourAction::Load | ContourAction::Replace => {
             let replace = action == ContourAction::Replace;
@@ -137,7 +137,7 @@ pub(super) fn library_action(app: &mut PhotocraftApp, action: ContourAction) {
             })
         }
         ContourAction::Save => app.run("layer.layerStyle.contours.save", json!({})).and_then(|r| {
-            let bytes = r["data"].as_str().and_then(photocraft_engine::paint::tile::b64_decode).ok_or("the export returned no data")?;
+            let bytes = r["data"].as_str().and_then(patronusphoto_engine::paint::tile::b64_decode).ok_or("the export returned no data")?;
             app.pick_save("Contours.shc", move |app, path| {
                 let write = app.services.write.as_mut().ok_or("no writer configured")?;
                 write(&path, &bytes)?;
@@ -165,7 +165,7 @@ fn contour_file(c: &Contour) -> Result<Vec<u8>, String> {
     contour_to_shc(&to_doc(c)).map_err(|e| e.to_string())
 }
 
-fn report(app: &mut PhotocraftApp, r: Result<Value, String>) {
+fn report(app: &mut PatronusPhotoApp, r: Result<Value, String>) {
     if let Err(e) = r
         && e != crate::file_dialog::CANCELLED
     {

@@ -213,7 +213,7 @@ impl Shard {
     }
 
     /// The `cargo nextest archive -E` filterset that writes this shard's archive. A shard can be
-    /// empty when a pull request's build leaves out most packages ($PHOTOCRAFT_CI_EXCLUDE).
+    /// empty when a pull request's build leaves out most packages ($PATRONUSPHOTO_CI_EXCLUDE).
     pub fn archive_filter(&self) -> String {
         if self.binaries.is_empty() {
             return "none()".to_string();

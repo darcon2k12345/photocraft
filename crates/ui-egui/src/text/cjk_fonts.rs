@@ -1,12 +1,12 @@
-//! PhotoCraft's inputs to the framework's UI font stack (`craft::ui::fonts::UiFonts`).
+//! Patronus Photo's inputs to the framework's UI font stack (`craft::ui::fonts::UiFonts`).
 //!
 //! The stack orders the craft-fonts faces by UI language, and `OnDemandFonts` reads an installed
 //! system font the first time a visible character of a script has no glyph. What stays here is
-//! what only PhotoCraft knows: which craft-fonts faces this build embeds
-//! ([`photocraft_text::craft_fonts`], empty without `CRAFT_FONTS_DIR`; the web build embeds none),
+//! what only Patronus Photo knows: which craft-fonts faces this build embeds
+//! ([`patronusphoto_text::craft_fonts`], empty without `CRAFT_FONTS_DIR`; the web build embeds none),
 //! and the OS locale.
 //!
-//! PhotoCraft's baseline for shared Han and kana is the craft manifest's first Japanese face
+//! Patronus Photo's baseline for shared Han and kana is the craft manifest's first Japanese face
 //! (Shippori Mincho): [`craft_faces`] passes the manifest in order, and the stack keeps that order
 //! while neither the UI language nor the OS locale names a Han script. An explicit ja/ko/zh
 //! preference puts its own script's face first.
@@ -14,7 +14,7 @@
 use std::sync::Arc;
 
 use craft::ui::fonts::{EmbeddedFace, OnDemandFonts, SystemCandidates, han_for_locale};
-use photocraft_text::craft_fonts::{self, CraftFont};
+use patronusphoto_text::craft_fonts::{self, CraftFont};
 
 /// The craft-fonts faces `faces` holds, as the stack's embedded faces, in manifest order. A face
 /// without bytes is left out. Each is installed as face 0, as a font collection's first face.
@@ -32,9 +32,9 @@ pub fn craft_faces() -> Vec<EmbeddedFace> {
 }
 
 /// The OS locale (`ja_JP`), which decides the Han preference when the UI language names none. `None` on the web and
-/// when nothing is set; `PHOTOCRAFT_LOCALE` overrides it.
+/// when nothing is set; `PATRONUSPHOTO_LOCALE` overrides it.
 pub fn os_locale() -> Option<&'static str> {
-    photocraft_text::cjk::ui_locale()
+    patronusphoto_text::cjk::ui_locale()
 }
 
 /// The loader that registers an installed system font the first time text needs a script no installed face covers.

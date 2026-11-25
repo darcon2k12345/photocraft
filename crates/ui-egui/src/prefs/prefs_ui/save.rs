@@ -4,7 +4,7 @@ use craft::platform::autosave::{AutosaveDoc, interval_for_minutes};
 
 use super::appearance::{canvas_style, sync_appearance, sync_display_scale, sync_tooltips};
 use super::startup::{load, presets_store, recovery, sync_rulers};
-use super::{PhotocraftApp, prefs};
+use super::{PatronusPhotoApp, prefs};
 
 /// The notice a failed preferences write posts; a later successful write removes it.
 const SAVE_FAILED_TITLE: &str = "Preferences can't be saved";
@@ -16,7 +16,7 @@ const SAVE_FAILED_TITLE: &str = "Preferences can't be saved";
 /// Nothing here reads the frame's input, so a second call in one frame does nothing new: the
 /// preferences revision is already handed over, the store and the autosave timer have nothing
 /// due at the same `now`, and the autosave results were drained by the first call.
-pub fn tick(app: &mut PhotocraftApp, ctx: &egui::Context, now: Instant) {
+pub fn tick(app: &mut PatronusPhotoApp, ctx: &egui::Context, now: Instant) {
     if !app.prefs_rt.loaded {
         load(app);
     }
@@ -50,7 +50,7 @@ pub fn tick(app: &mut PhotocraftApp, ctx: &egui::Context, now: Instant) {
 /// Hands a changed preferences revision to the settings store (`now`: the store's change time;
 /// `None` reads the clock).
 #[cfg(not(target_arch = "wasm32"))]
-fn hand_over(app: &mut PhotocraftApp, now: Option<Instant>) {
+fn hand_over(app: &mut PatronusPhotoApp, now: Option<Instant>) {
     let rev = app.session.prefs.rev();
     if rev == app.prefs_rt.saved_rev || app.services.settings.is_none() {
         return;
@@ -68,7 +68,7 @@ fn hand_over(app: &mut PhotocraftApp, now: Option<Instant>) {
 /// Saves the preferences through the store: hands over a change, ticks the store (its debounce and
 /// retry backoff), and reports a failed write once and its recovery. Returns when to tick again.
 #[cfg(not(target_arch = "wasm32"))]
-fn store_preferences(app: &mut PhotocraftApp, now: Instant) -> Option<Instant> {
+fn store_preferences(app: &mut PatronusPhotoApp, now: Instant) -> Option<Instant> {
     hand_over(app, Some(now));
     let (store, _) = app.services.settings.as_mut()?;
     let result = store.tick(now);
@@ -89,7 +89,7 @@ fn store_preferences(app: &mut PhotocraftApp, now: Instant) -> Option<Instant> {
 /// The web build saves through `Services::save_prefs` (browser storage) until it opens its own
 /// settings store (FW-264): the whole document on every change, no retry.
 #[cfg(target_arch = "wasm32")]
-fn store_preferences(app: &mut PhotocraftApp, _now: Instant) -> Option<Instant> {
+fn store_preferences(app: &mut PatronusPhotoApp, _now: Instant) -> Option<Instant> {
     let rev = app.session.prefs.rev();
     if rev == app.prefs_rt.saved_rev {
         return None;
@@ -108,19 +108,19 @@ fn store_preferences(app: &mut PhotocraftApp, _now: Instant) -> Option<Instant> 
 
 /// A preferences write failed; the store retries it. The first failure in a row sets the status
 /// line and posts the notice; the notice being shown keeps later failures quiet.
-fn save_failed(app: &mut PhotocraftApp, error: &str) {
+fn save_failed(app: &mut PatronusPhotoApp, error: &str) {
     if crate::notices::shown_titled(app, SAVE_FAILED_TITLE) {
         return;
     }
     let template = "Couldn't save preferences: {error}. Retrying…";
     app.ui.status = crate::i18n::fmt(tl!(template), &[("error", error)]);
     app.ui.status_error = true;
-    let lines = vec![error.to_string(), "PhotoCraft keeps retrying; until a save succeeds, preference changes are lost when it closes.".into()];
+    let lines = vec![error.to_string(), "Patronus Photo keeps retrying; until a save succeeds, preference changes are lost when it closes.".into()];
     crate::notices::post(app, SAVE_FAILED_TITLE, lines, craft::theme::variant::Tone::Bad, None);
 }
 
 /// A preferences write succeeded: after a failure, say so and take the notice down.
-fn saved(app: &mut PhotocraftApp) {
+fn saved(app: &mut PatronusPhotoApp) {
     if !crate::notices::shown_titled(app, SAVE_FAILED_TITLE) {
         return;
     }
@@ -133,7 +133,7 @@ fn saved(app: &mut PhotocraftApp) {
 /// Write the preferences now, for choices that need the result immediately (recovery, "don't
 /// show again"). The change stays pending in the store, and is retried, when the write fails.
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn save_preferences(app: &mut PhotocraftApp) -> Result<(), String> {
+pub(crate) fn save_preferences(app: &mut PatronusPhotoApp) -> Result<(), String> {
     hand_over(app, None);
     let Some((store, _)) = app.services.settings.as_mut() else { return Ok(()) };
     store.flush().map_err(|e| e.to_string())?;
@@ -143,7 +143,7 @@ pub(crate) fn save_preferences(app: &mut PhotocraftApp) -> Result<(), String> {
 
 /// Write the preferences now (the web build's storage).
 #[cfg(target_arch = "wasm32")]
-pub(crate) fn save_preferences(app: &mut PhotocraftApp) -> Result<(), String> {
+pub(crate) fn save_preferences(app: &mut PatronusPhotoApp) -> Result<(), String> {
     let rev = app.session.prefs.rev();
     let text = app.session.prefs_to_json();
     let Some(save) = app.services.save_prefs.as_mut() else { return Ok(()) };
@@ -156,9 +156,9 @@ pub(crate) fn save_preferences(app: &mut PhotocraftApp) -> Result<(), String> {
 /// Linked smart objects follow their files while the document is open, as in Photoshop: every two
 /// seconds, and as soon as the window comes back to the front (after saving in another app), stamp
 /// the active document's linked files on a worker thread and re-render the layers of the ones that
-/// changed ([`photocraft_engine::link_watch`]).
+/// changed ([`patronusphoto_engine::link_watch`]).
 #[cfg(not(target_arch = "wasm32"))]
-fn link_updates(app: &mut PhotocraftApp, ctx: &egui::Context) {
+fn link_updates(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     match app.session.poll_link_scan() {
         Some(Ok(r)) => {
             if let Some(n) = r["updated"].as_array().map(Vec::len).filter(|n| *n > 0) {
@@ -197,7 +197,7 @@ fn link_updates(app: &mut PhotocraftApp, ctx: &egui::Context) {
 ///
 /// A saved or closed document needs no `Autosave::forget` here: the timer's next `due` finds it
 /// clean or gone and lists it in `discard` (craft-platform autosave/timer.rs:124-132).
-fn autosave(app: &mut PhotocraftApp, now: Instant) {
+fn autosave(app: &mut PatronusPhotoApp, now: Instant) {
     if app.services.autosave.is_none() {
         return;
     }
@@ -246,19 +246,19 @@ fn autosave(app: &mut PhotocraftApp, now: Instant) {
 }
 
 /// The status line of a failed autosave (`Autosave::finished`'s text); the next interval retries.
-fn autosave_failed(app: &mut PhotocraftApp, text: String) {
+fn autosave_failed(app: &mut PatronusPhotoApp, text: String) {
     app.ui.status = text;
     app.ui.status_error = true;
 }
 
 /// Makes the next tick autosave every dirty document that has none in flight (tests, `prefs`
 /// changes).
-pub fn autosave_now(app: &mut PhotocraftApp) {
+pub fn autosave_now(app: &mut PatronusPhotoApp) {
     app.autosave.autosave_now();
 }
 
 /// History Log preference: append executed commands to a text file.
-fn history_log(app: &mut PhotocraftApp) {
+fn history_log(app: &mut PatronusPhotoApp) {
     let n = app.session.journal.len();
     if n <= app.prefs_rt.log_len {
         app.prefs_rt.log_len = n;
@@ -273,7 +273,7 @@ fn history_log(app: &mut PhotocraftApp) {
     let Some(append) = app.services.append_text.as_mut() else { return };
     let mut text = String::new();
     for (id, params) in &app.session.journal[start..] {
-        let label = photocraft_engine::commands::find(id).map_or(id.as_str(), |c| c.label).trim_end_matches('…');
+        let label = patronusphoto_engine::commands::find(id).map_or(id.as_str(), |c| c.label).trim_end_matches('…');
         match hl.detail {
             prefs::LogDetail::SessionsOnly => {
                 if matches!(id.as_str(), "file.new" | "file.open" | "file.close" | "file.openAs") {

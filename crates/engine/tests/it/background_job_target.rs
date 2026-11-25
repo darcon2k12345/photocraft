@@ -2,9 +2,9 @@
 //! selects while it runs. A job's result is applied only by `poll_jobs` or `wait_job` on the
 //! session's thread, so a selection made after `start` always comes first.
 
-use photocraft_doc::LayerId;
-use photocraft_engine::Session;
-use photocraft_engine::jobs::Started;
+use patronusphoto_doc::LayerId;
+use patronusphoto_engine::Session;
+use patronusphoto_engine::jobs::Started;
 
 const REMOVE: &str = r#"{"points":[[12,10],[16,12]],"size":6}"#;
 

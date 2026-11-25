@@ -6,26 +6,26 @@
 use craft::keymap::{Binding, CommandRef, Policy};
 use egui::{Event, Key, Modifiers};
 use egui_kittest::Harness;
-use photocraft_engine::prefs::{bindable_items, normalize_shortcut};
+use patronusphoto_engine::prefs::{bindable_items, normalize_shortcut};
 use serde_json::json;
 
 use super::shortcuts::{press_ok, rebind};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
-pub(super) fn harness_with(session: photocraft_engine::Session) -> Harness<'static, Box<PhotocraftApp>> {
+pub(super) fn harness_with(session: patronusphoto_engine::Session) -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut session = Some(session);
     Harness::builder().with_size(egui::vec2(1100.0, 760.0)).with_max_steps(64).build_eframe(move |cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::with_context(cc.egui_ctx.clone(), session.take().expect("one app"), crate::Services::default())
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        PatronusPhotoApp::with_context(cc.egui_ctx.clone(), session.take().expect("one app"), crate::Services::default())
     })
 }
 
-pub(super) fn harness() -> Harness<'static, Box<PhotocraftApp>> {
-    harness_with(photocraft_engine::Session::new())
+pub(super) fn harness() -> Harness<'static, Box<PatronusPhotoApp>> {
+    harness_with(patronusphoto_engine::Session::new())
 }
 
 /// A key tap: press and release, so the next press isn't a held key's repeat.
-pub(super) fn tap(h: &mut Harness<'_, Box<PhotocraftApp>>, key: Key, modifiers: Modifiers) {
+pub(super) fn tap(h: &mut Harness<'_, Box<PatronusPhotoApp>>, key: Key, modifiers: Modifiers) {
     h.event(Event::ModifiersChanged(modifiers));
     h.event(Event::Key { key, physical_key: None, pressed: true, repeat: false, modifiers });
     h.event(Event::Key { key, physical_key: None, pressed: false, repeat: false, modifiers });
@@ -34,7 +34,7 @@ pub(super) fn tap(h: &mut Harness<'_, Box<PhotocraftApp>>, key: Key, modifiers: 
 
 /// Opens the dialog, gives `command` the key `text` as the dialog's own edit does (taking it from
 /// its holders), and presses OK.
-fn edit_and_ok(h: &mut Harness<'_, Box<PhotocraftApp>>, command: &str, text: &str) {
+fn edit_and_ok(h: &mut Harness<'_, Box<PatronusPhotoApp>>, command: &str, text: &str) {
     let ctx = h.ctx.clone();
     crate::prefs_ui::open_shortcuts(h.state_mut(), 0);
     rebind(h.state_mut(), &CommandRef::new(command), Binding::parse(text).unwrap(), Policy::Steal).unwrap();
@@ -44,7 +44,7 @@ fn edit_and_ok(h: &mut Harness<'_, Box<PhotocraftApp>>, command: &str, text: &st
 }
 
 /// The ids that hold `key` as a main or further key under the saved preferences.
-fn holders(app: &PhotocraftApp, key: &str) -> Vec<String> {
+fn holders(app: &PatronusPhotoApp, key: &str) -> Vec<String> {
     let key = normalize_shortcut(key).unwrap();
     bindable_items()
         .filter(|(id, _, _, default, _)| {
@@ -65,7 +65,7 @@ fn toolbar_shortcut_can_be_captured_and_restored_on_restart() {
 
     // The saved preferences carry the key to the next run.
     let saved = h.state().session.prefs_to_json();
-    let mut session = photocraft_engine::Session::new();
+    let mut session = patronusphoto_engine::Session::new();
     session.load_prefs_json(&saved).unwrap();
     let mut restarted = harness_with(session);
     restarted.run_steps(2);

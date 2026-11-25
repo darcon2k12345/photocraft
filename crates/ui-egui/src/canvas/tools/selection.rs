@@ -20,7 +20,7 @@ use craft::ui::primitives::Draw;
 use serde_json::{Value, json};
 
 use super::{FamilyTool, ToolScope};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::document_display::CanvasHost;
 use crate::magnetic_lasso_ui::{self, PcEdges};
 use crate::state::Tool;
@@ -163,7 +163,7 @@ impl InsideSelectionDrag {
     }
 
     /// Runs what the drag reported during the run; `tool` is the tool whose drag it was.
-    pub(crate) fn drain(&mut self, app: &mut PhotocraftApp, tool: Tool) {
+    pub(crate) fn drain(&mut self, app: &mut PatronusPhotoApp, tool: Tool) {
         for event in self.marquee.take_events() {
             apply(app, &mut self.lock_prompted, tool, event);
         }
@@ -192,31 +192,31 @@ pub(crate) struct PcSelection {
     document: u64,
     size: PixelSize,
     has_selection: bool,
-    selection: Option<photocraft_raster::Surface>,
+    selection: Option<patronusphoto_raster::Surface>,
     piece: Option<Piece>,
 }
 
 /// A floating piece: where it is shown and the outline of its pixels.
 struct Piece {
     offset: (i32, i32),
-    outline: Option<photocraft_raster::Surface>,
+    outline: Option<patronusphoto_raster::Surface>,
 }
 
 impl PcSelection {
     /// The snapshot of the active document.
-    pub(crate) fn of(app: &PhotocraftApp) -> Self {
+    pub(crate) fn of(app: &PatronusPhotoApp) -> Self {
         let st = app.session.active();
         let (document, size) = st.map_or((0, PixelSize::new(0, 0)), |st| {
             let b = st.doc.bounds();
             (st.doc.id.0 ^ app.session.active_generation(), PixelSize::new(b.width(), b.height()))
         });
-        let piece = st.and_then(photocraft_engine::float_cmds::floating).map(|f| Piece { offset: f.offset, outline: f.parts.outline().cloned() });
+        let piece = st.and_then(patronusphoto_engine::float_cmds::floating).map(|f| Piece { offset: f.offset, outline: f.parts.outline().cloned() });
         Self { document, size, has_selection: crate::tool_feedback::has_selection(app), selection: st.and_then(|st| st.doc.selection.clone()), piece }
     }
 }
 
 /// Does selection surface `sel` cover document point `at`?
-fn covers(sel: &photocraft_raster::Surface, at: Point) -> bool {
+fn covers(sel: &patronusphoto_raster::Surface, at: Point) -> bool {
     let mut v = [0.0f32];
     sel.read_pixel(at.x.floor() as i32, at.y.floor() as i32, &mut v);
     v[0] > 0.0
@@ -294,7 +294,7 @@ fn marquee_tool(kind: MarqueeKind) -> Tool {
 }
 
 /// The options bar's Style, Width and Height as the marquee's constraint.
-fn constraint(app: &PhotocraftApp) -> Constraint {
+fn constraint(app: &PatronusPhotoApp) -> Constraint {
     let o = &app.ui.tool_options;
     let (w, h) = (f64::from(o.marquee_width), f64::from(o.marquee_height));
     match o.marquee_style.as_str() {
@@ -310,7 +310,7 @@ pub(crate) fn tool<'a>(scope: &'a ToolScope<'a>, state: &'a mut SelectionTools, 
     let (probe, tool, bar, constraint) = scope.with_app(|app| {
         let tool = app.ui.tool;
         if tool == Tool::MagneticLasso {
-            // PLAN: assumed `magnetic_lasso_ui::prepare(app: &mut PhotocraftApp, tool: &mut MagneticLassoTool<PcEdges>)` (tools-w64).
+            // PLAN: assumed `magnetic_lasso_ui::prepare(app: &mut PatronusPhotoApp, tool: &mut MagneticLassoTool<PcEdges>)` (tools-w64).
             magnetic_lasso_ui::prepare(app, &mut state.magnetic);
         }
         (PcSelection::of(app), tool, crate::tool_feedback::selection_op(tool, app.ui.selection_mode, Mods::NONE, true), constraint(app))
@@ -492,7 +492,7 @@ impl CanvasTool for WandPass<'_> {
 }
 
 /// Runs an engine command; an error goes to the status line.
-fn run(app: &mut PhotocraftApp, command: &str, params: Value) -> bool {
+fn run(app: &mut PatronusPhotoApp, command: &str, params: Value) -> bool {
     match app.run(command, params) {
         Ok(_) => true,
         Err(e) => {
@@ -503,19 +503,19 @@ fn run(app: &mut PhotocraftApp, command: &str, params: Value) -> bool {
     }
 }
 
-fn deselect(app: &mut PhotocraftApp) {
+fn deselect(app: &mut PatronusPhotoApp) {
     if app.session.is_enabled("select.deselect") {
         run(app, "select.deselect", json!({}));
     }
 }
 
-fn piece_offset(app: &PhotocraftApp) -> Option<(i32, i32)> {
-    app.session.active().and_then(photocraft_engine::float_cmds::floating).map(|f| f.offset)
+fn piece_offset(app: &PatronusPhotoApp) -> Option<(i32, i32)> {
+    app.session.active().and_then(patronusphoto_engine::float_cmds::floating).map(|f| f.offset)
 }
 
 /// The engine command of a selection a tool made: the one `SelectEvent::Commit` mapping. `tool` names the History
 /// step (Single Row, Polygonal Lasso, Patch Tool) and picks the options the bar has for it.
-pub(crate) fn run_commit(app: &mut PhotocraftApp, tool: Tool, shape: SelectionShape, op: SelectionOperation) {
+pub(crate) fn run_commit(app: &mut PatronusPhotoApp, tool: Tool, shape: SelectionShape, op: SelectionOperation) {
     let mode = crate::tool_feedback::mode_name(op);
     let (anti_alias, feather) = (app.ui.tool_options.anti_alias, app.ui.tool_options.feather);
     let r = |v: f64| v.round() as i64;
@@ -551,7 +551,7 @@ pub(crate) fn run_commit(app: &mut PhotocraftApp, tool: Tool, shape: SelectionSh
 
 /// Turns what the selection tools reported during the run into engine commands, in order. Each tool's events are
 /// taken once, so a second pass in the same frame finds nothing left to run.
-pub(crate) fn drain(app: &mut PhotocraftApp, state: &mut SelectionTools, _response: &ToolHostResponse) {
+pub(crate) fn drain(app: &mut PatronusPhotoApp, state: &mut SelectionTools, _response: &ToolHostResponse) {
     let marquee = marquee_tool(state.marquee.marquee_kind());
     for event in state.marquee.take_events() {
         apply(app, &mut state.lock_prompted, marquee, event);
@@ -569,11 +569,11 @@ pub(crate) fn drain(app: &mut PhotocraftApp, state: &mut SelectionTools, _respon
     for click in std::mem::take(&mut state.wand.clicks) {
         wand_click(app, &click);
     }
-    // PLAN: assumed `magnetic_lasso_ui::store(app: &mut PhotocraftApp, tool: &MagneticLassoTool<PcEdges>)` (tools-w64).
+    // PLAN: assumed `magnetic_lasso_ui::store(app: &mut PatronusPhotoApp, tool: &MagneticLassoTool<PcEdges>)` (tools-w64).
     magnetic_lasso_ui::store(app, &state.magnetic);
 }
 
-fn apply(app: &mut PhotocraftApp, prompted: &mut bool, tool: Tool, event: SelectEvent) {
+fn apply(app: &mut PatronusPhotoApp, prompted: &mut bool, tool: Tool, event: SelectEvent) {
     match event {
         SelectEvent::Commit { shape, operation, .. } => match (tool, shape) {
             // PLAN: assumed `magnetic_lasso_ui::commit(app, points: &[Point], mode: &str)` (tools-w64).
@@ -587,7 +587,7 @@ fn apply(app: &mut PhotocraftApp, prompted: &mut bool, tool: Tool, event: Select
 }
 
 /// A Magic Wand click: a New click off the document deselects (Photoshop's "Deselect", #11782), any other samples.
-fn wand_click(app: &mut PhotocraftApp, click: &WandClick) {
+fn wand_click(app: &mut PatronusPhotoApp, click: &WandClick) {
     let (x, y) = (click.at.x.floor(), click.at.y.floor());
     let on_canvas = app.session.active().is_some_and(|st| st.doc.bounds().contains(x as i32, y as i32));
     if click.operation == SelectionOperation::New && !on_canvas {
@@ -603,7 +603,7 @@ fn wand_click(app: &mut PhotocraftApp, click: &WandClick) {
     );
 }
 
-fn drag_event(app: &mut PhotocraftApp, prompted: &mut bool, edit: EditEvent<SelectionDrag>) {
+fn drag_event(app: &mut PatronusPhotoApp, prompted: &mut bool, edit: EditEvent<SelectionDrag>) {
     match edit {
         EditEvent::Begin { before: Mixed::Same(drag), .. } => {
             *prompted = false;
@@ -627,7 +627,7 @@ fn drag_event(app: &mut PhotocraftApp, prompted: &mut bool, edit: EditEvent<Sele
 
 /// The press of a pixel drag cuts the selected pixels into a floating piece (Cmd+Alt: a copy, leaving a piece
 /// already there where it is). A layer that cannot float refuses at the drag's first move instead (`refuse_pixel_drag`).
-fn begin_drag(app: &mut PhotocraftApp, kind: DragKind) {
+fn begin_drag(app: &mut PatronusPhotoApp, kind: DragKind) {
     let DragKind::Pixels { copy, .. } = kind else { return };
     let floating = piece_offset(app).is_some();
     if floating && !copy {
@@ -636,7 +636,7 @@ fn begin_drag(app: &mut PhotocraftApp, kind: DragKind) {
     if floating && !run(app, "select.drop", json!({})) {
         return;
     }
-    // PLAN: assumed `move_lock::pixels_locked(app: &PhotocraftApp) -> bool` (tools-w65).
+    // PLAN: assumed `move_lock::pixels_locked(app: &PatronusPhotoApp) -> bool` (tools-w65).
     if crate::move_lock::pixels_locked(app) {
         return;
     }
@@ -644,7 +644,7 @@ fn begin_drag(app: &mut PhotocraftApp, kind: DragKind) {
 }
 
 /// The lock message of a pixel drag that could not cut: shown at the first move, never for a click.
-fn refuse_pixel_drag(app: &mut PhotocraftApp, prompted: &mut bool, drag: SelectionDrag) {
+fn refuse_pixel_drag(app: &mut PatronusPhotoApp, prompted: &mut bool, drag: SelectionDrag) {
     let pixels = matches!(drag.kind, DragKind::Pixels { .. });
     if pixels && drag.delta != [0, 0] && !*prompted && piece_offset(app).is_none() && crate::move_lock::pixels_locked(app) {
         crate::move_lock::prompt(app);
@@ -654,7 +654,7 @@ fn refuse_pixel_drag(app: &mut PhotocraftApp, prompted: &mut bool, drag: Selecti
 
 /// The release of a selection drag: the outline moves (`Move Selection`) or the piece does. A click deselects; a
 /// click on a piece that never moved puts it back.
-fn finish_drag(app: &mut PhotocraftApp, drag: SelectionDrag) {
+fn finish_drag(app: &mut PatronusPhotoApp, drag: SelectionDrag) {
     let pixels = matches!(drag.kind, DragKind::Pixels { .. });
     let [dx, dy] = drag.delta;
     let offset = piece_offset(app);
@@ -678,16 +678,16 @@ fn finish_drag(app: &mut PhotocraftApp, drag: SelectionDrag) {
 /// The selection a floating piece on document `idx` shows its ants for, before its offset: the moved pixels' outline,
 /// as in Photoshop (#7538); `None` outlines the document's selection. The surface's tiles are shared, so the clone is
 /// cheap.
-pub(crate) fn floating_outline(app: &PhotocraftApp, idx: usize) -> Option<photocraft_raster::Surface> {
+pub(crate) fn floating_outline(app: &PatronusPhotoApp, idx: usize) -> Option<patronusphoto_raster::Surface> {
     if app.session.active_index() != Some(idx) {
         return None;
     }
-    photocraft_engine::float_cmds::floating(app.session.active()?)?.parts.outline().cloned()
+    patronusphoto_engine::float_cmds::floating(app.session.active()?)?.parts.outline().cloned()
 }
 
 /// Where the selection is drawn relative to where it is: a floating piece's offset plus a drag in progress, else the
 /// selection drag, else the offset of Move-tool layers that carry the selection along (#7538).
-pub(crate) fn shown_offset(app: &PhotocraftApp) -> Option<(i32, i32)> {
+pub(crate) fn shown_offset(app: &PatronusPhotoApp) -> Option<(i32, i32)> {
     crate::move_ui::floating_offset(app)
         .or_else(|| app.canvas_tools.selection.drag_offset())
         .or_else(|| app.canvas_tools.retouch.drag_offset())
@@ -859,8 +859,8 @@ mod tests {
         ]
     }
 
-    fn app() -> Box<PhotocraftApp> {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    fn app() -> Box<PatronusPhotoApp> {
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
         app.sync_views();
         app.ui.extras.snap = false;
@@ -877,10 +877,10 @@ mod tests {
         }
     }
 
-    fn drive(app: &mut PhotocraftApp, row: &Row) {
+    fn drive(app: &mut PatronusPhotoApp, row: &Row) {
         let m = row.mods;
-        let down = |app: &mut PhotocraftApp, p: [f64; 2]| tool_event(app, ToolEvent::Down { x: p[0], y: p[1], pressure: 1.0 }, m);
-        let up = |app: &mut PhotocraftApp, p: [f64; 2]| tool_event(app, ToolEvent::Up { x: p[0], y: p[1] }, m);
+        let down = |app: &mut PatronusPhotoApp, p: [f64; 2]| tool_event(app, ToolEvent::Down { x: p[0], y: p[1], pressure: 1.0 }, m);
+        let up = |app: &mut PatronusPhotoApp, p: [f64; 2]| tool_event(app, ToolEvent::Up { x: p[0], y: p[1] }, m);
         if row.clicks {
             // Frames between the clicks pass egui's double-click delay, so no click pair is a double click.
             let delay = app.ctx().options(|o| o.input_options.max_double_click_delay);

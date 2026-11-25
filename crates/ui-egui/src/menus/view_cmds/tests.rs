@@ -6,8 +6,8 @@ use craft::automation::ui::actions::ActionSelection;
 use craft::ui::dialog::DialogId;
 use craft::ui::patterns::form_dialogs::{HostedParamDialog, ParamKind};
 
-fn app_with(n: usize) -> (Box<PhotocraftApp>, egui::Context) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app_with(n: usize) -> (Box<PatronusPhotoApp>, egui::Context) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     for i in 0..n {
         app.run("file.new", json!({"width": 100 + i as u32 * 10, "height": 80})).unwrap();
     }
@@ -16,19 +16,19 @@ fn app_with(n: usize) -> (Box<PhotocraftApp>, egui::Context) {
     (app, ctx)
 }
 
-fn checked(app: &PhotocraftApp, id: &str) -> Option<bool> {
+fn checked(app: &PatronusPhotoApp, id: &str) -> Option<bool> {
     row(&menu_rows(app), id).and_then(|r| r.kind.checked())
 }
 
 /// The dialog a command's reply names.
-fn opened(app: &PhotocraftApp, reply: &Value) -> DialogId {
+fn opened(app: &PatronusPhotoApp, reply: &Value) -> DialogId {
     let want = reply["dialog"].as_str().expect("the reply names a dialog");
     app.framework.dialogs.open_dialogs().into_iter().map(|d| d.id).find(|id| id.value().to_string() == want).expect("the named dialog is open")
 }
 
 /// Runs a menu command that opens a form and returns the form's dialog, after the frame that shows it: a hosted
 /// form loads its remembered values and defaults when it first shows.
-fn open_form(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str) -> DialogId {
+fn open_form(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: &str) -> DialogId {
     let reply = menu(app, ctx, id, json!({})).unwrap();
     let dialog = opened(app, &reply);
     frame(app, ctx);
@@ -36,30 +36,30 @@ fn open_form(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str) -> DialogId
 }
 
 /// The most recently opened dialog.
-fn last_dialog(app: &PhotocraftApp) -> DialogId {
+fn last_dialog(app: &PatronusPhotoApp) -> DialogId {
     app.framework.dialogs.open_dialogs().last().expect("a dialog is open").id
 }
 
 /// The values the open dialog `id` lists (a hosted form or the guide layout dialog).
-fn fields(app: &PhotocraftApp, id: DialogId) -> Value {
+fn fields(app: &PatronusPhotoApp, id: DialogId) -> Value {
     app.framework.dialogs.open_dialogs().into_iter().find(|open| open.id == id).and_then(|open| open.fields).expect("an open dialog that lists its fields")
 }
 
 /// Sets a form value as the user editing that row would.
-fn set(app: &mut PhotocraftApp, ctx: &egui::Context, id: DialogId, key: &str, value: Value) {
+fn set(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: DialogId, key: &str, value: Value) {
     app.framework.dialogs.set_json_field(ctx, id, key, value).unwrap_or_else(|e| panic!("{key}: {e}"));
 }
 
-fn confirm(app: &mut PhotocraftApp, ctx: &egui::Context, id: DialogId) -> Result<(), String> {
+fn confirm(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: DialogId) -> Result<(), String> {
     crate::dialogs::confirm(app, ctx, id)
 }
 
-fn cancel(app: &mut PhotocraftApp, ctx: &egui::Context, id: DialogId) {
+fn cancel(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: DialogId) {
     crate::dialogs::cancel(app, ctx, id).unwrap();
 }
 
 /// The option ids of choice row `key` of command `command`'s form.
-fn choice_ids(app: &mut PhotocraftApp, command: &str, key: &str) -> Vec<String> {
+fn choice_ids(app: &mut PatronusPhotoApp, command: &str, key: &str) -> Vec<String> {
     let (params, _) = params_for(app, command).expect("the command has a form");
     match &params.iter().find(|p| p.key == key).unwrap_or_else(|| panic!("no row {key}")).kind {
         ParamKind::Choice { options, .. } => options.iter().map(|(id, _)| id.clone()).collect(),
@@ -67,12 +67,12 @@ fn choice_ids(app: &mut PhotocraftApp, command: &str, key: &str) -> Vec<String> 
     }
 }
 
-fn label_of(app: &mut PhotocraftApp, command: &str, key: &str) -> String {
+fn label_of(app: &mut PatronusPhotoApp, command: &str, key: &str) -> String {
     let (params, _) = params_for(app, command).expect("the command has a form");
     params.iter().find(|p| p.key == key).unwrap_or_else(|| panic!("no row {key}")).label.as_str().to_owned()
 }
 
-fn assert_mode(app: &PhotocraftApp, mode: &str) {
+fn assert_mode(app: &PatronusPhotoApp, mode: &str) {
     assert_eq!(checked(app, &format!("view.screenMode.{mode}")), Some(true), "{mode}");
 }
 
@@ -84,7 +84,7 @@ fn names_in(dir: &std::path::Path) -> Vec<String> {
 }
 
 /// One frame of the app on `ctx`.
-fn frame(app: &mut PhotocraftApp, ctx: &egui::Context) {
+fn frame(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     let mut output = ctx.run_ui(Default::default(), |ui| {
         let mut frame = eframe::Frame::_new_kittest();
         app.logic_frame(ui.ctx(), &mut frame);
@@ -96,7 +96,7 @@ fn frame(app: &mut PhotocraftApp, ctx: &egui::Context) {
 
 /// Fires a view command on the canvas and runs the frame that drains it. The canvas takes the command once a frame
 /// has shown it, so one runs first.
-fn fire(app: &mut PhotocraftApp, ctx: &egui::Context, command: craft::ui::canvas::ViewCommands) {
+fn fire(app: &mut PatronusPhotoApp, ctx: &egui::Context, command: craft::ui::canvas::ViewCommands) {
     frame(app, ctx);
     assert!(craft::ui::runtime::commands::fire(ctx, command, craft::ui::runtime::commands::FireSource::Menu), "the canvas takes {command:?}");
     frame(app, ctx);
@@ -104,7 +104,7 @@ fn fire(app: &mut PhotocraftApp, ctx: &egui::Context, command: craft::ui::canvas
 
 /// Runs a View › Screen Mode command as its menu item does, with the frames around it: the window's shell takes the
 /// command once a frame has shown the shell, and applies it in that pass.
-fn screen_mode(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str) {
+fn screen_mode(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: &str) {
     frame(app, ctx);
     menu(app, ctx, id, json!({})).unwrap();
     frame(app, ctx);
@@ -154,7 +154,7 @@ fn place_embedded_enablement_does_not_require_native_doc() {
 /// document before OK.
 #[test]
 fn command_dialogs_open_and_refuse() {
-    type Setup = fn(&mut PhotocraftApp);
+    type Setup = fn(&mut PatronusPhotoApp);
     let nothing: Setup = |_| {};
     let type_layer: Setup = |app| {
         app.run("type.create", json!({"x": 5, "y": 40, "text": "Warp", "size": 20})).unwrap();
@@ -304,7 +304,7 @@ fn arrange_layouts_floating_windows_and_matching() {
 #[test]
 fn match_zoom_clamps_to_each_documents_zoom_range() {
     let lowest = craft::behavior::canvas::ZoomLadder::min(craft::behavior::kurbo::Size::new(10.0, 10.0)) as f32;
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 10, "height": 10})).unwrap();
     app.run("file.new", json!({"width": 2000, "height": 2000})).unwrap();
     app.sync_views();
@@ -404,7 +404,7 @@ fn batch_menu_starts_on_the_selected_actions_set_and_runs_its_action() {
     set(&mut app, &ctx, id, "output", json!(output.to_string_lossy()));
     confirm(&mut app, &ctx, id).unwrap();
     let saved = names_in(&output).into_iter().next().unwrap();
-    let image = photocraft_io::import("out.png", &std::fs::read(output.join(saved)).unwrap()).unwrap().document;
+    let image = patronusphoto_io::import("out.png", &std::fs::read(output.join(saved)).unwrap()).unwrap().document;
     assert_eq!((image.size.width, image.size.height), (1, 2), "set B's action (a rotation) ran");
 }
 
@@ -431,7 +431,7 @@ fn batch_menu_runs_the_action_chosen_in_the_form() {
     confirm(&mut app, &ctx, id).unwrap();
     let written = names_in(&output);
     assert_eq!(written.len(), 1);
-    let image = photocraft_io::import("source.png", &std::fs::read(output.join(&written[0])).unwrap()).unwrap().document;
+    let image = patronusphoto_io::import("source.png", &std::fs::read(output.join(&written[0])).unwrap()).unwrap().document;
     assert_eq!((image.size.width, image.size.height), (1, 2));
 
     let cancelled = dir.path().join("cancelled");
@@ -564,7 +564,7 @@ fn lookup_export_dialog_uses_the_current_adjustment_selection() {
 #[test]
 fn batch_dialogs_include_all_subfolders() {
     let (mut app, ctx) = app_with(1);
-    let dir = std::env::temp_dir().join(format!("photocraft-ui-batch-subfolders-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("patronusphoto-ui-batch-subfolders-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(dir.join("in/sub")).unwrap();
     let input = dir.join("in").to_string_lossy().into_owned();
@@ -601,7 +601,7 @@ fn batch_dialogs_include_all_subfolders() {
 #[test]
 fn batch_runs_an_action_recorded_with_the_type_tool() {
     let (mut app, ctx) = app_with(1);
-    let dir = std::env::temp_dir().join(format!("photocraft-ui-batch-type-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("patronusphoto-ui-batch-type-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(dir.join("in")).unwrap();
     for name in ["a.png", "b.png"] {
@@ -624,12 +624,12 @@ fn batch_runs_an_action_recorded_with_the_type_tool() {
     assert_eq!(names_in(&dir.join("out")), ["a.png", "b.png"]);
     for name in ["a.png", "b.png"] {
         // CodeRabbit on #10730: the action ran on each file: the typed text is in its pixels.
-        let pixels = |folder: &str| photocraft_codecs::decode(&std::fs::read(dir.join(folder).join(name)).unwrap()).unwrap().data().to_vec();
+        let pixels = |folder: &str| patronusphoto_codecs::decode(&std::fs::read(dir.join(folder).join(name)).unwrap()).unwrap().data().to_vec();
         assert_ne!(pixels("out"), pixels("in"), "{name}: the text was laid on it");
     }
     // CodeRabbit on #10730: all of it, as typed by hand: the document the action was recorded
     // on (the same image, with the text typed into it) has the pixels Batch wrote.
-    let decoded = |path: std::path::PathBuf| photocraft_codecs::decode(&std::fs::read(path).unwrap()).unwrap().data().to_vec();
+    let decoded = |path: std::path::PathBuf| patronusphoto_codecs::decode(&std::fs::read(path).unwrap()).unwrap().data().to_vec();
     for name in ["a.png", "b.png"] {
         assert_eq!(decoded(dir.join("out").join(name)), decoded(dir.join("ref.png")), "{name}: Batch laid the whole text, as it was typed by hand");
     }
@@ -641,7 +641,7 @@ fn batch_runs_an_action_recorded_with_the_type_tool() {
 #[test]
 fn a_batch_that_fails_on_its_files_says_which_and_why() {
     let (mut app, ctx) = app_with(1);
-    let dir = std::env::temp_dir().join(format!("photocraft-ui-batch-fails-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("patronusphoto-ui-batch-fails-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(dir.join("in")).unwrap();
     for name in ["a.png", "b.png"] {
@@ -764,7 +764,7 @@ fn load_selection_without_alpha_channels_offers_the_composite() {
 
 /// A plain Esc press, through the canvas passes: the tool host claims it first where a gesture, a transform or a
 /// straighten line owns it, then the app's key route.
-fn press_esc(app: &mut PhotocraftApp, _ctx: &egui::Context) {
+fn press_esc(app: &mut PatronusPhotoApp, _ctx: &egui::Context) {
     crate::canvas::testing::key(app, egui::Key::Escape, egui::Modifiers::NONE);
 }
 
@@ -773,7 +773,7 @@ fn esc_leaves_full_screen_with_the_crop_tool_showing_its_default_frame() {
     let (mut app, ctx) = app_with(1);
     app.ui.tool = crate::Tool::Crop;
     crate::canvas::testing::frame(&mut app);
-    let default_frame = |app: &PhotocraftApp| crate::crop_ui::frame(app).is_some() && crate::crop_ui::is_default_frame(app);
+    let default_frame = |app: &PatronusPhotoApp| crate::crop_ui::frame(app).is_some() && crate::crop_ui::is_default_frame(app);
     assert!(default_frame(&app));
     for mode in ["fullScreen", "fullScreenWithMenuBar"] {
         screen_mode(&mut app, &ctx, &format!("view.screenMode.{mode}"));
@@ -832,7 +832,7 @@ fn esc_leaves_full_screen_modes_unless_something_else_owns_it() {
 /// them, and a new selection keeps the individual Show choices.
 #[test]
 fn selection_outcomes_restore_hidden_extras() {
-    type Setup = fn(&mut PhotocraftApp);
+    type Setup = fn(&mut PatronusPhotoApp);
     let fill: Setup = |app| {
         app.run("edit.fill", json!({"color": "#cc4422"})).unwrap();
     };
@@ -895,8 +895,8 @@ fn selection_outcomes_restore_hidden_extras() {
 fn rotate_view_params_set_add_reset_and_reject() {
     let (mut app, ctx) = app_with(1);
     // PLAN: assumed the document's view keeps its rotation in degrees as `views[0].rotation`
-    let angle = |app: &PhotocraftApp| f64::from(app.ui.views[0].rotation);
-    let run = |app: &mut PhotocraftApp, p: Value| menu(app, &ctx, "view.rotateView", p);
+    let angle = |app: &PatronusPhotoApp| f64::from(app.ui.views[0].rotation);
+    let run = |app: &mut PatronusPhotoApp, p: Value| menu(app, &ctx, "view.rotateView", p);
     run(&mut app, json!({"angle": 30.0})).unwrap();
     assert_eq!(angle(&app), 30.0);
     run(&mut app, json!({"delta": 15.0})).unwrap();

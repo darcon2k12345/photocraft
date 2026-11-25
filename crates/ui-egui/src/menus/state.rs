@@ -1,7 +1,7 @@
 use super::invoke::{panel_alias, proof_preset, workspace_id};
-use super::{DOCUMENT_ITEM, PhotocraftApp, Value};
+use super::{DOCUMENT_ITEM, PatronusPhotoApp, Value};
 
-pub fn is_enabled(app: &PhotocraftApp, id: &str) -> bool {
+pub fn is_enabled(app: &PatronusPhotoApp, id: &str) -> bool {
     // Shortcut-only: the tool host owns presses during a gesture.
     if id == "layer.selectUnderCursor" {
         return app.session.active().is_some() && !app.brush_resize.active();
@@ -97,7 +97,7 @@ pub fn is_enabled(app: &PhotocraftApp, id: &str) -> bool {
             .session
             .active()
             .and_then(|s| s.active_layer.and_then(|id| s.doc.layer(id)))
-            .is_some_and(|l| matches!(l.content, photocraft_doc::LayerContent::Text(_))),
+            .is_some_and(|l| matches!(l.content, patronusphoto_doc::LayerContent::Text(_))),
         "select.transformSelection" => app.ui.transform.is_none() && app.session.is_enabled("select.transformSelection"),
         // ⇧[ / ⇧] only step the hardness of a tool that paints with the brush tip, as in Photoshop.
         "tools.decreaseBrushHardness" | "tools.increaseBrushHardness" => app.ui.tool.is_brushlike(),
@@ -137,8 +137,8 @@ fn panel_of(id: &str) -> Option<&str> {
 }
 
 /// Is a UI-level toggle currently on (for checkmarks)?
-pub(super) fn checked(app: &PhotocraftApp, id: &str) -> Option<bool> {
-    use photocraft_doc::{ColorMode, SampleType};
+pub(super) fn checked(app: &PatronusPhotoApp, id: &str) -> Option<bool> {
+    use patronusphoto_doc::{ColorMode, SampleType};
     if let Some(c) = crate::view_cmds::checked(app, id) {
         return Some(c);
     }

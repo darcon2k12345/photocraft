@@ -3,14 +3,14 @@ use serde_json::json;
 use super::*;
 use crate::smart_filter_dialog::tests::{cancel, confirm, newest, open_count, set};
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 40, "height": 30, "background": "transparent"})).unwrap();
     app.run("tools.setColors", json!({"foreground": "#ff0000", "background": "#0000ff"})).unwrap();
     app
 }
 
-fn pixel(app: &PhotocraftApp, x: i32, y: i32) -> [f32; 4] {
+fn pixel(app: &PatronusPhotoApp, x: i32, y: i32) -> [f32; 4] {
     let st = app.session.active().unwrap();
     st.doc.layer(st.active_layer.unwrap()).unwrap().surface().unwrap().rgba(x, y)
 }
@@ -39,9 +39,9 @@ fn menu_stroke_edits_the_targeted_filter_mask_and_undoes() {
     app.run("select.rect", json!({"x": 10, "y": 10, "width": 10, "height": 10})).unwrap();
     assert!(app.filter_mask_targeted());
     assert!(crate::menus::is_enabled(&app, COMMAND));
-    let sample = |app: &PhotocraftApp, x, y| {
+    let sample = |app: &PatronusPhotoApp, x, y| {
         let st = app.session.active().unwrap();
-        photocraft_engine::channel_cmds::read_target_surface(&st.doc, st.active_layer, &json!({"target": "filterMask"})).unwrap().sample_channel(x, y, 0)
+        patronusphoto_engine::channel_cmds::read_target_surface(&st.doc, st.active_layer, &json!({"target": "filterMask"})).unwrap().sample_channel(x, y, 0)
     };
     let history = app.session.active().unwrap().history.past_len();
     assert_eq!(sample(&app, 10, 15), 1.0, "the real filter mask starts white");
@@ -66,7 +66,7 @@ fn menu_stroke_edits_the_targeted_filter_mask_and_undoes() {
 #[test]
 fn implicit_filter_mask_dialog_retains_its_target_when_ui_set_changes_it() {
     use crate::control::{ControlRequest, Reply, handle};
-    use photocraft_doc::LayerContent;
+    use patronusphoto_doc::LayerContent;
     let mut app = app();
     app.run("edit.fill", json!({"contents": "white"})).unwrap();
     app.run("layer.smartObjects.convertToSmartObject", json!({})).unwrap();
@@ -86,7 +86,7 @@ fn implicit_filter_mask_dialog_retains_its_target_when_ui_set_changes_it() {
     let history = app.session.active().unwrap().history.past_len();
     confirm(&mut app, id);
     let st = app.session.active().unwrap();
-    let surface = photocraft_engine::channel_cmds::read_target_surface(&st.doc, st.active_layer, &json!({"target": "filterMask"})).unwrap();
+    let surface = patronusphoto_engine::channel_cmds::read_target_surface(&st.doc, st.active_layer, &json!({"target": "filterMask"})).unwrap();
     assert_eq!(surface.sample_channel(0, 15, 0), 0.0);
     assert_eq!(surface.sample_channel(15, 15, 0), 1.0);
     assert_eq!(st.history.past_len(), history + 1);
@@ -111,9 +111,9 @@ fn stroke_dialog_keeps_layer_editing_in_channel_views() {
             app.run("channel.target", json!({"channel": 0})).unwrap();
             json!({"channel": 0})
         };
-        let samples = |app: &PhotocraftApp| {
+        let samples = |app: &PatronusPhotoApp| {
             let st = app.session.active().unwrap();
-            photocraft_engine::channel_cmds::read_target_surface(&st.doc, st.active_layer, &json!({"target": target})).unwrap().clone()
+            patronusphoto_engine::channel_cmds::read_target_surface(&st.doc, st.active_layer, &json!({"target": target})).unwrap().clone()
         };
         let before = samples(&app);
         let history = app.session.active().unwrap().history.past_len();

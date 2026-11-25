@@ -59,7 +59,7 @@ fn the_layers_list_survives_a_strict_roundtrip() {
     }
 
     // Strictly back into the same document, ids unchanged.
-    let r = s.execute("actions.load", json!({"data": photocraft_paint::tile::b64_encode(bytes.as_slice()), "set": "S"})).unwrap();
+    let r = s.execute("actions.load", json!({"data": patronusphoto_paint::tile::b64_encode(bytes.as_slice()), "set": "S"})).unwrap();
     assert_eq!(r["actions"], json!(["Targets"]));
     assert_eq!(r["steps"], 2);
     let played = s.execute("actions.play", json!({"action": "Targets"})).unwrap();
@@ -123,7 +123,7 @@ fn export_refuses_a_layer_id_beyond_the_idnt_range() {
     assert_eq!(skipped, [Skipped { action: "Targets".into(), step: 0, id: "layer.setProps".into() }]);
 }
 
-/// A name on a several-layers change can't be exact either: PhotoCraft's own command refuses
+/// A name on a several-layers change can't be exact either: Patronus Photo's own command refuses
 /// that step, and strict export refuses it too.
 #[test]
 fn export_refuses_a_rename_carrying_a_layers_list() {
@@ -176,7 +176,7 @@ fn a_list_with_properties_exports_exact_targets_in_order() {
         assert!(!item.enabled, "an unchecked source step stays unchecked through expansion");
         assert!(item.with_dialog, "a dialog source step keeps its dialog through expansion");
     }
-    assert!(s.active().unwrap().doc.walk()[1].2.blend == photocraft_color::BlendMode::Normal, "export writes no edit into the document");
+    assert!(s.active().unwrap().doc.walk()[1].2.blend == patronusphoto_color::BlendMode::Normal, "export writes no edit into the document");
 
     let malformed = Action::new("Targets", vec![ActionStep::new("layer.setProps", json!({"layers": [first, "nope"], "opacity": 0.5}))]);
     let e = export("S", &[&malformed], &[], false).unwrap_err();

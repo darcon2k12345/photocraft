@@ -3,16 +3,16 @@
 //! while the box is open, and matching what the commit leaves.
 
 use egui::ColorImage;
-use photocraft_doc::{Layer, LayerId};
+use patronusphoto_doc::{Layer, LayerId};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use craft::imaging::ui::transform_preview::StylePlan;
 
 /// A 200 × 160 document with a 40 × 20 blue block at (60, 60) on its own layer, wearing a 4 px
 /// red outside Stroke.
-fn app(mode: &str, depth: u32) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app(mode: &str, depth: u32) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 160, "mode": mode, "depth": depth})).unwrap();
     app.run("layer.new.layer", json!({"name": "styled"})).unwrap();
     app.run("select.rect", json!({"x": 60, "y": 60, "width": 40, "height": 20})).unwrap();
@@ -23,13 +23,13 @@ fn app(mode: &str, depth: u32) -> Box<PhotocraftApp> {
     app
 }
 
-fn begin(app: &mut PhotocraftApp) {
+fn begin(app: &mut PatronusPhotoApp) {
     let app_ctx = app.ctx().clone();
     crate::transform_tool::begin(app, &app_ctx).unwrap();
 }
 
 /// What the box draws for the styled layer at `zoom`: `None` when it draws the bare pixels.
-fn composite(app: &PhotocraftApp, zoom: f32) -> Option<(ColorImage, StylePlan)> {
+fn composite(app: &PatronusPhotoApp, zoom: f32) -> Option<(ColorImage, StylePlan)> {
     crate::transform_tool::styled_composite(app, zoom)
 }
 
@@ -45,15 +45,15 @@ fn at(c: &(ColorImage, StylePlan), x: f64, y: f64) -> [f32; 4] {
     image.pixels[py as usize * image.size[0] + px as usize].to_srgba_unmultiplied().map(|v| f32::from(v) / 255.0)
 }
 
-fn set_quad(app: &mut PhotocraftApp, quad: [[f64; 2]; 4]) {
+fn set_quad(app: &mut PatronusPhotoApp, quad: [[f64; 2]; 4]) {
     app.ui.transform.as_mut().unwrap().edit_box(|b| b.quad = quad.map(|[x, y]| (x, y).into()));
 }
 
-fn active(app: &PhotocraftApp) -> LayerId {
+fn active(app: &PatronusPhotoApp) -> LayerId {
     app.session.active().unwrap().active_layer.unwrap()
 }
 
-fn edit_layer(app: &mut PhotocraftApp, f: impl FnOnce(&mut Layer)) {
+fn edit_layer(app: &mut PatronusPhotoApp, f: impl FnOnce(&mut Layer)) {
     let id = active(app);
     app.session
         .edit("edit", |doc, _| {
@@ -123,7 +123,7 @@ fn the_preview_matches_the_committed_layer() {
             l.visible = l.id == id;
         }
         let s = plan.shown;
-        let committed = photocraft_compose::render(&solo, photocraft_geom::Rect::new(s.x0, s.y0, s.x1, s.y1));
+        let committed = patronusphoto_compose::render(&solo, patronusphoto_geom::Rect::new(s.x0, s.y0, s.x1, s.y1));
         let premultiplied = |p: &[f32; 4]| [p[0] * p[3], p[1] * p[3], p[2] * p[3], p[3]];
         let (mut sum, mut off) = (0.0f64, 0usize);
         for (a, b) in shown.pixels.iter().zip(&committed.px) {

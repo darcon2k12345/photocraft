@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use photocraft_doc::{Layer, LayerContent, TextLayer};
+use patronusphoto_doc::{Layer, LayerContent, TextLayer};
 use serde_json::json;
 
 use super::import_data_sets_text;

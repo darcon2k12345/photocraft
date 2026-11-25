@@ -3,9 +3,9 @@
 //!
 //! One test function: the spill manager is process-wide, so its steps must not interleave.
 
-use photocraft_color::{ColorMode, PixelFormat, SampleType};
-use photocraft_geom::{Rect, TILE_SIZE, TileCoord};
-use photocraft_raster::{Surface, spill};
+use patronusphoto_color::{ColorMode, PixelFormat, SampleType};
+use patronusphoto_geom::{Rect, TILE_SIZE, TileCoord};
+use patronusphoto_raster::{Surface, spill};
 
 const TILE_BYTES: usize = (TILE_SIZE * TILE_SIZE) as usize * 4;
 
@@ -45,7 +45,7 @@ fn check(s: &Surface, seed: u32, n: i32) {
 #[test]
 fn full_or_missing_scratch_disk_pauses_and_recovers() {
     let _scratch = crate::lock(&crate::SCRATCH);
-    let root = std::env::temp_dir().join(format!("photocraft-scratch-recovery-{}", std::process::id()));
+    let root = std::env::temp_dir().join(format!("patronusphoto-scratch-recovery-{}", std::process::id()));
     let dir = root.join("scratch");
     let budget = 8 * TILE_BYTES;
     spill::configure(Some(&dir), budget).unwrap();

@@ -21,12 +21,12 @@ use craft::imaging::ui::scopes::{
 use craft::ui::menu::PanelRow;
 use craft::ui::runtime::commands::{CommandRef, CommandSet as _, CommandState};
 use craft::ui::runtime::env::Label;
-use photocraft_color::ColorMode;
-use photocraft_doc::adjust::ToneSpace;
-use photocraft_doc::{DocId, Document, LayerContent};
+use patronusphoto_color::ColorMode;
+use patronusphoto_doc::adjust::ToneSpace;
+use patronusphoto_doc::{DocId, Document, LayerContent};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::theme::Tokens;
 use crate::tone::{self, HistScope, HistSource, Histograms};
 
@@ -154,7 +154,7 @@ impl HistSourceChoice {
 }
 
 /// Saves the panel options with the preferences.
-pub fn persist_options(app: &mut PhotocraftApp) {
+pub fn persist_options(app: &mut PatronusPhotoApp) {
     if let Ok(value) = serde_json::to_value(&app.ui.histogram.settings) {
         app.session.prefs.edit(|p| {
             p.dialogs.insert(OPTIONS_PREF.into(), value);
@@ -163,7 +163,7 @@ pub fn persist_options(app: &mut PhotocraftApp) {
 }
 
 /// Restores the saved panel options; unreadable ones keep the defaults.
-pub fn restore_options(app: &mut PhotocraftApp) {
+pub fn restore_options(app: &mut PatronusPhotoApp) {
     if let Some(v) = app.session.prefs().dialogs.get(OPTIONS_PREF)
         && let Ok(settings) = serde_json::from_value::<ScopeSettings>(v.clone())
     {
@@ -205,7 +205,7 @@ fn gray(mode: ColorMode) -> bool {
 
 /// The space the panel counts a document of `mode` in.
 pub fn tone_space(mode: ColorMode) -> ToneSpace {
-    photocraft_engine::adjust_params::default_space(mode)
+    patronusphoto_engine::adjust_params::default_space(mode)
 }
 
 /// `want`, or the composite when a document of `mode` doesn't have it.
@@ -257,7 +257,7 @@ pub fn channel_level(mode: ColorMode, channel: HistChannel, rgba: [f32; 4]) -> u
         (ToneSpace::Rgb, Blue) => q(rgb[2]),
         (ToneSpace::Rgb, _) => ((u16::from(q(rgb[0])) + u16::from(q(rgb[1])) + u16::from(q(rgb[2]))) / 3) as u8,
         (ToneSpace::Cmyk, c) => {
-            let ink = photocraft_color::convert::rgb_to_cmyk(rgb);
+            let ink = patronusphoto_color::convert::rgb_to_cmyk(rgb);
             let v = match c {
                 Cyan => ink[0],
                 Magenta => ink[1],
@@ -268,7 +268,7 @@ pub fn channel_level(mode: ColorMode, channel: HistChannel, rgba: [f32; 4]) -> u
             q(1.0 - v)
         }
         (ToneSpace::Lab, c) => {
-            let l = photocraft_color::convert::srgb_to_lab(rgb);
+            let l = patronusphoto_color::convert::srgb_to_lab(rgb);
             match c {
                 A => q((l[1] + 128.0) / 255.0),
                 B => q((l[2] + 128.0) / 255.0),
@@ -310,7 +310,7 @@ pub(crate) type HistJob = (HistKey, std::sync::mpsc::Receiver<(HistKey, f64, Arc
 /// The source the panel counts for `choice` in `st`: Entire Image whenever the choice doesn't
 /// apply (a single layer, no selected layer, or Adjustment Composite without an adjustment layer
 /// selected).
-pub fn resolve_source(st: &photocraft_engine::DocState, choice: HistSourceChoice) -> (HistSourceChoice, HistSource) {
+pub fn resolve_source(st: &patronusphoto_engine::DocState, choice: HistSourceChoice) -> (HistSourceChoice, HistSource) {
     if st.doc.layer_count() < 2 {
         return (HistSourceChoice::EntireImage, tone::IMAGE);
     }
@@ -323,12 +323,12 @@ pub fn resolve_source(st: &photocraft_engine::DocState, choice: HistSourceChoice
 }
 
 /// Whether Adjustment Composite applies to `st` (an adjustment layer is selected).
-fn adjustment_selected(st: &photocraft_engine::DocState) -> bool {
+fn adjustment_selected(st: &patronusphoto_engine::DocState) -> bool {
     st.active_layer.and_then(|id| st.doc.layer(id)).is_some_and(|l| matches!(l.content, LayerContent::Adjustment(_)))
 }
 
 /// Preferences › Performance › Cache Levels: the highest level the panel counts at by default.
-fn max_cache_level(app: &PhotocraftApp) -> u32 {
+fn max_cache_level(app: &PatronusPhotoApp) -> u32 {
     app.session.prefs().performance.cache_levels.clamp(1, tone::MAX_CACHE_LEVEL)
 }
 
@@ -338,7 +338,7 @@ fn source_choice(opts: &ScopeSettings) -> HistSourceChoice {
 }
 
 /// The key of the document's histogram the panel wants now, with the space and source it counts.
-fn committed_key(app: &PhotocraftApp) -> Option<(HistKey, ToneSpace, HistSource)> {
+fn committed_key(app: &PatronusPhotoApp) -> Option<(HistKey, ToneSpace, HistSource)> {
     let st = app.session.active()?;
     let (doc, revision) = (st.doc.id, st.revision);
     let space = tone_space(st.doc.mode);
@@ -357,7 +357,7 @@ fn committed_key(app: &PhotocraftApp) -> Option<(HistKey, ToneSpace, HistSource)
 
 /// The document an open adjustment previews on the canvas (an Image › Adjustments dialog through
 /// its preview layer, or an adjustment layer's Properties drag) and its display key.
-fn adjustment_preview(app: &mut PhotocraftApp) -> Option<(Arc<Document>, u64)> {
+fn adjustment_preview(app: &mut PatronusPhotoApp) -> Option<(Arc<Document>, u64)> {
     let idx = app.session.active_index()?;
     if let Some(shown) = crate::adjust_preview::display_doc(app, idx) {
         return Some(shown);
@@ -376,7 +376,7 @@ struct Want {
     source: HistSource,
 }
 
-fn want(app: &mut PhotocraftApp) -> Option<Want> {
+fn want(app: &mut PatronusPhotoApp) -> Option<Want> {
     let preview = adjustment_preview(app);
     let (committed, space, source) = committed_key(app)?;
     let preview = preview.map(|(d, k)| (d, HistKey { preview: k | 1, ..committed }));
@@ -386,7 +386,7 @@ fn want(app: &mut PhotocraftApp) -> Option<Want> {
 /// Refreshes the memoized selection key for the active document's revision: the panel's keying
 /// asks for it every frame, the hash walks every tile of the selection mask, and any change to
 /// the selection arrives as a new document revision — so the same revision always keeps its key.
-fn refresh_sel_key(app: &mut PhotocraftApp) {
+fn refresh_sel_key(app: &mut PatronusPhotoApp) {
     let Some(st) = app.session.active() else { return };
     if matches!(app.hist_sel_key, Some((d, r, _)) if d == st.doc.id && r == st.revision) {
         return;
@@ -399,7 +399,7 @@ fn refresh_sel_key(app: &mut PhotocraftApp) {
 /// a time, at most every 250 ms per entry). While a count runs, the panel asks the framework to run
 /// it again in 30 ms to land the result: a worker thread cannot wake one settled region, and the
 /// panel's version holds no worker state.
-pub fn update(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub fn update(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     refresh_sel_key(app);
     let want = want(app);
     // A finished worker lands its histogram in the slot its key names — unless it was computed
@@ -490,7 +490,7 @@ fn poll(ctx: &egui::Context) {
 
 /// Counts `doc` for `key` on a worker thread (inline on the web, where there are none, or when a
 /// spawn fails), delivered through `app.hist_job`.
-fn spawn(app: &mut PhotocraftApp, doc: Arc<Document>, key: HistKey, source: HistSource, space: ToneSpace) {
+fn spawn(app: &mut PatronusPhotoApp, doc: Arc<Document>, key: HistKey, source: HistSource, space: ToneSpace) {
     let (tx, rx) = std::sync::mpsc::channel();
     #[cfg(not(target_arch = "wasm32"))]
     let spawned = {
@@ -516,7 +516,7 @@ fn spawn(app: &mut PhotocraftApp, doc: Arc<Document>, key: HistKey, source: Hist
 }
 
 /// Uncached Refresh: recount the active document's current state at cache level 1 (every pixel).
-pub fn uncached_refresh(app: &mut PhotocraftApp) {
+pub fn uncached_refresh(app: &mut PatronusPhotoApp) {
     if let Some(st) = app.session.active() {
         app.hist_uncached = Some((st.doc.id, st.revision));
     }
@@ -533,7 +533,7 @@ struct Shown {
     adjustment: bool,
 }
 
-fn shown(app: &mut PhotocraftApp) -> Option<Shown> {
+fn shown(app: &mut PatronusPhotoApp) -> Option<Shown> {
     let want = want(app)?;
     let st = app.session.active()?;
     let (mode, layers, adjustment) = (st.doc.mode, st.doc.layer_count(), adjustment_selected(st));
@@ -569,7 +569,7 @@ fn scope_channels(h: &Histograms, mode: ColorMode) -> Vec<ScopeChannel<'_>> {
 }
 
 /// The Color Samplers' ticks on the plot: each sampler's level in `channel` (the composite while Colors shows).
-fn sampler_markers(app: &mut PhotocraftApp, mode: ColorMode, channel: HistChannel) -> Vec<(f32, Label)> {
+fn sampler_markers(app: &mut PatronusPhotoApp, mode: ColorMode, channel: HistChannel) -> Vec<(f32, Label)> {
     let mark_channel = if channel == HistChannel::Colors { HistChannel::Composite } else { channel };
     crate::panels::sampler_readouts(app)
         .iter()
@@ -584,7 +584,7 @@ fn sampler_markers(app: &mut PhotocraftApp, mode: ColorMode, channel: HistChanne
 /// Histogram panel (Window › Histogram). A second pass in the same frame draws the same counts and reports only its
 /// own input: `update` lands a finished count once (the job is gone on the second pass) and the output flags come from
 /// the scope panel's pass.
-pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn show(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
     if app.session.active().is_none() {
         ui.label(egui::RichText::new(tl!("No document")).color(t.text_faint));
@@ -625,12 +625,12 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 }
 
 /// The rows of the panel menu: Uncached Refresh, the three views and the two checks.
-pub(crate) fn panel_rows(_app: &PhotocraftApp) -> Vec<PanelRow> {
+pub(crate) fn panel_rows(_app: &PatronusPhotoApp) -> Vec<PanelRow> {
     ScopePanel::panel_rows()
 }
 
 /// The state of every scope command: the radio and check marks from the settings; Uncached Refresh needs a document.
-pub(crate) fn command_states(app: &PhotocraftApp) -> Vec<(CommandRef, CommandState)> {
+pub(crate) fn command_states(app: &PatronusPhotoApp) -> Vec<(CommandRef, CommandState)> {
     let active = app.session.active();
     let has_selection = active.is_some_and(|st| st.doc.selection.is_some());
     ScopeCommand::states(&app.ui.histogram, has_selection)
@@ -644,7 +644,7 @@ pub(crate) fn command_states(app: &PhotocraftApp) -> Vec<(CommandRef, CommandSta
 
 /// Runs a scope command the menu or a key fired: the settings change, then they persist; Uncached Refresh recounts.
 /// Returns whether the command belongs to this panel.
-pub(crate) fn run_fired(app: &mut PhotocraftApp, _ctx: &egui::Context, command: &CommandRef) -> bool {
+pub(crate) fn run_fired(app: &mut PatronusPhotoApp, _ctx: &egui::Context, command: &CommandRef) -> bool {
     let Some(command) = ScopeCommand::from_ref(command) else { return false };
     match ScopePanel::run_command(&mut app.ui.histogram, command) {
         Some(ScopeMenuAction::Refresh) => uncached_refresh(app),
@@ -690,7 +690,7 @@ fn statistics_json(bins: &[u32], levels: Option<[u8; 2]>, pixels: u64) -> Option
 
 /// The panel's state for `ui.inspect` (`histogram`): its options as they apply to the active
 /// document, and the shown histogram's statistics for the selected range.
-pub fn inspect(app: &PhotocraftApp) -> Value {
+pub fn inspect(app: &PatronusPhotoApp) -> Value {
     let opts = &app.ui.histogram.settings;
     let Some(st) = app.session.active() else { return json!({"options": opts}) };
     let mode = st.doc.mode;

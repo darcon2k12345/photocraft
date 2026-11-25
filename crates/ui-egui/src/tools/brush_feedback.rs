@@ -11,13 +11,13 @@ use craft::ui::canvas_controls::StraightLinePreview;
 use craft::ui::canvas_controls::brush::SourceMarker;
 use craft::ui::contract::Show as _;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// Shows the brush feedback over the canvas body. `rect` is the body's rect and `pointer` its
 /// hover position this pass; the parts that follow the pointer show only on the active document's
 /// main canvas. Called once per pass after the displays, in the order the parts stack.
-pub(crate) fn show(ui: &mut egui::Ui, app: &mut PhotocraftApp, rect: egui::Rect, pointer: Option<egui::Pos2>) {
+pub(crate) fn show(ui: &mut egui::Ui, app: &mut PatronusPhotoApp, rect: egui::Rect, pointer: Option<egui::Pos2>) {
     crate::stroke_trail::show(ui, app, rect);
     show_source_marker(ui, app, rect);
     let at = pointer.filter(|p| rect.contains(*p)).and_then(|p| crate::canvas::document_display::doc_point_at(app, p));
@@ -40,7 +40,7 @@ pub(crate) fn show(ui: &mut egui::Ui, app: &mut PhotocraftApp, rect: egui::Rect,
 }
 
 /// The Clone Source crosshair, while a Clone Stamp or Healing Brush stroke paints.
-fn show_source_marker(ui: &mut egui::Ui, app: &PhotocraftApp, rect: egui::Rect) {
+fn show_source_marker(ui: &mut egui::Ui, app: &PatronusPhotoApp, rect: egui::Rect) {
     let Some(at) = crate::canvas::paint_tool::stroking(app).and_then(|s| s.points.last()).map(|p| [p[0], p[1]]) else { return };
     let Some(p) = crate::retouch_ui::source_marker_point(app, Some(at)) else { return };
     SourceMarker::new(tl!("Clone source"), Point::new(p[0], p[1])).show_at(ui, rect);
@@ -49,7 +49,7 @@ fn show_source_marker(ui: &mut egui::Ui, app: &PhotocraftApp, rect: egui::Rect) 
 /// The Clone Source overlay under the brush: the source's pixels at the hover point, shown through
 /// a mapped raster display. It hides while the brush is being resized and while Alt is held (Alt
 /// picks a new source).
-fn show_clone_overlay(ui: &mut egui::Ui, app: &mut PhotocraftApp, at: Option<Point>, rect: egui::Rect) {
+fn show_clone_overlay(ui: &mut egui::Ui, app: &mut PatronusPhotoApp, at: Option<Point>, rect: egui::Rect) {
     let Some(at) = at else { return };
     if !matches!(app.ui.tool, Tool::CloneStamp | Tool::Healing) {
         return;
@@ -65,7 +65,7 @@ fn show_clone_overlay(ui: &mut egui::Ui, app: &mut PhotocraftApp, at: Option<Poi
 
 /// The smoothing string: the line from the brush end to the pointer's end with a dot at the brush
 /// end, while a stroke's live preview has one.
-fn show_smoothing_string(ui: &mut egui::Ui, app: &PhotocraftApp, rect: egui::Rect) {
+fn show_smoothing_string(ui: &mut egui::Ui, app: &PatronusPhotoApp, rect: egui::Rect) {
     let Some(idx) = app.session.active_index() else { return };
     let Some((brush_end, pointer_end)) = crate::canvas::strokes::live_stroke(app, idx).and_then(|l| l.smoothing_string()) else { return };
     StraightLinePreview::new(tl!("Smoothing"), Point::new(brush_end[0], brush_end[1]), Point::new(pointer_end[0], pointer_end[1])).dot().show_at(ui, rect);

@@ -1,7 +1,7 @@
 //! The path dialogs of the Pen's canvas menu, the Paths panel and the Pen options bar: Make
 //! Selection, Stroke Path, Fill Path, Clipping Path, Transform Path, Define Custom Shape and Make
 //! Work Path. Each is a `ParamDialog` opened through `dialogs::params::open_param`, which gives it
-//! the remembered-values key `photocraft.<command>`. Only Stroke Path's Simulate Pressure is
+//! the remembered-values key `patronusphoto.<command>`. Only Stroke Path's Simulate Pressure is
 //! remembered (#10527); every other row opens at its default.
 
 use craft::ui::contract::Bind;
@@ -10,7 +10,7 @@ use craft::ui::runtime::env::Label;
 use serde_json::{Value, json};
 
 use super::pen_pending;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The commands this family's dialogs run.
 const COMMANDS: [&str; 7] =
@@ -55,13 +55,13 @@ fn number(key: &str, label: &str, range: (f64, f64), default: f64, decimals: u32
     plain(key, label, ParamKind::number(Some(range.0), Some(range.1), default, 1.0, decimals))
 }
 
-fn define_custom_shape(_: &PhotocraftApp) -> Vec<Param> {
+fn define_custom_shape(_: &PatronusPhotoApp) -> Vec<Param> {
     vec![plain("name", "Name:", ParamKind::text(""))]
 }
 
 /// Photoshop's Make Selection dialog: Rendering (Feather Radius, Anti-aliased) and Operation.
 /// Without a selection there is nothing to combine with, so only New Selection is available.
-fn make_selection_params(app: &PhotocraftApp) -> Vec<Param> {
+fn make_selection_params(app: &PatronusPhotoApp) -> Vec<Param> {
     let has_selection = app.session.active().is_some_and(|st| st.doc.selection.is_some());
     let operations = MAKE_SELECTION_OPERATIONS.iter().map(|(key, label)| (key.to_string(), tl!(label).to_string().into())).collect();
     let mut mode = plain("mode", "Operation", ParamKind::radio(operations, Some("replace".into())));
@@ -77,7 +77,7 @@ fn make_selection_params(app: &PhotocraftApp) -> Vec<Param> {
     ]
 }
 
-fn fill_params(app: &PhotocraftApp) -> Vec<Param> {
+fn fill_params(app: &PatronusPhotoApp) -> Vec<Param> {
     let fg = app.session.tools.foreground;
     vec![
         plain("color", "Color:", ParamKind::color(Some([fg[0], fg[1], fg[2]]))),
@@ -89,7 +89,7 @@ fn fill_params(app: &PhotocraftApp) -> Vec<Param> {
 
 /// Photoshop's Stroke Path dialog: the brush-based tool to stroke with (painting with that tool's
 /// current options) and Simulate Pressure, the one remembered row (#2978, #10527).
-fn stroke_params(_: &PhotocraftApp) -> Vec<Param> {
+fn stroke_params(_: &PatronusPhotoApp) -> Vec<Param> {
     let tools = STROKE_TOOLS.iter().map(|(key, label)| (key.to_string(), tl!(label).to_string().into())).collect();
     vec![
         plain("tool", "Tool:", ParamKind::choice(tools, Some("brush".into()))),
@@ -97,11 +97,11 @@ fn stroke_params(_: &PhotocraftApp) -> Vec<Param> {
     ]
 }
 
-fn clipping_params(_: &PhotocraftApp) -> Vec<Param> {
+fn clipping_params(_: &PatronusPhotoApp) -> Vec<Param> {
     vec![number("flatness", "Flatness:", (0.0, 100.0), 0.0, 1)]
 }
 
-fn transform_params(_: &PhotocraftApp) -> Vec<Param> {
+fn transform_params(_: &PatronusPhotoApp) -> Vec<Param> {
     vec![
         number("translateX", "Horizontal:", (-30000.0, 30000.0), 0.0, 2),
         number("translateY", "Vertical:", (-30000.0, 30000.0), 0.0, 2),
@@ -112,14 +112,14 @@ fn transform_params(_: &PhotocraftApp) -> Vec<Param> {
 }
 
 /// Photoshop's Make Work Path… asks for the tolerance first.
-fn work_path_params(_: &PhotocraftApp) -> Vec<Param> {
+fn work_path_params(_: &PatronusPhotoApp) -> Vec<Param> {
     vec![number("tolerance", "Tolerance:", (0.5, 10.0), 2.0, 1)]
 }
 
 /// Opens the dialog of `command` for the path `name` (the Paths panel menu, Alt-click on its Stroke
 /// button, the Pen's canvas menu). `name` is unused by Make Work Path, which acts on the selection.
-pub(crate) fn open(app: &mut PhotocraftApp, command: &str, name: &str) {
-    let build: fn(&PhotocraftApp) -> Vec<Param> = match command {
+pub(crate) fn open(app: &mut PatronusPhotoApp, command: &str, name: &str) {
+    let build: fn(&PatronusPhotoApp) -> Vec<Param> = match command {
         "edit.defineCustomShape" => define_custom_shape,
         "path.toSelection" => make_selection_params,
         "path.fill" => fill_params,
@@ -162,7 +162,7 @@ fn title(command: &str) -> &'static str {
 /// path, as ⌘↩ does (#6079); a new selection is the History step Selection Change, as in Photoshop
 /// (#12917). Simulate Pressure is remembered only after the stroke ran. [`check`] ran the command
 /// and named the step; this runs what follows a passed check.
-pub(crate) fn run(app: &mut PhotocraftApp, ctx: &egui::Context, result: ParamResult) {
+pub(crate) fn run(app: &mut PatronusPhotoApp, ctx: &egui::Context, result: ParamResult) {
     match result.key.as_str() {
         "path.toSelection" => {
             let name = result.fields.text("name").unwrap_or_default().to_string();
@@ -176,7 +176,7 @@ pub(crate) fn run(app: &mut PhotocraftApp, ctx: &egui::Context, result: ParamRes
 /// OK held in a dialog of this family: runs the command, so a refusal keeps the dialog open with
 /// its message and leaves the previous step unrenamed. A new selection's step is named here, as
 /// it belongs to the step the command added.
-pub(crate) fn check(app: &mut PhotocraftApp, result: &ParamResult) -> Result<(), Label> {
+pub(crate) fn check(app: &mut PatronusPhotoApp, result: &ParamResult) -> Result<(), Label> {
     let Some(params) = command_params(app, result) else { return Ok(()) };
     let revision = app.session.active().map(|st| st.revision);
     app.run(result.key.as_str(), params.clone()).map_err(Label::from)?;
@@ -187,7 +187,7 @@ pub(crate) fn check(app: &mut PhotocraftApp, result: &ParamResult) -> Result<(),
 }
 
 /// The engine parameters a dialog's confirmed values make; `None` for a key the family does not own.
-fn command_params(app: &PhotocraftApp, result: &ParamResult) -> Option<Value> {
+fn command_params(app: &PatronusPhotoApp, result: &ParamResult) -> Option<Value> {
     let key = result.key.as_str();
     let f = &result.fields;
     let num = |k: &str, default: f64| f.number(k).unwrap_or(default);
@@ -230,7 +230,7 @@ fn command_params(app: &PhotocraftApp, result: &ParamResult) -> Option<Value> {
 /// A new selection is the History step Selection Change. The combining operations keep the
 /// engine's Make Selection (not measured). Only a step this run added is renamed: `revision` is from
 /// before it.
-fn name_make_selection_step(app: &mut PhotocraftApp, params: &Value, revision: Option<u64>) {
+fn name_make_selection_step(app: &mut PatronusPhotoApp, params: &Value, revision: Option<u64>) {
     if params.get("mode").and_then(Value::as_str).is_some_and(|m| m != "replace") {
         return;
     }
@@ -241,7 +241,7 @@ fn name_make_selection_step(app: &mut PhotocraftApp, params: &Value, revision: O
 
 /// The Pen options bar's Make Selection (Path mode, #5703): the canvas menu's Make Selection…
 /// dialog for the path being drawn (committed first, as the menu does) or the active path.
-pub(crate) fn make_selection(app: &mut PhotocraftApp) -> Result<(), String> {
+pub(crate) fn make_selection(app: &mut PatronusPhotoApp) -> Result<(), String> {
     let pending = pen_pending(app);
     // Where `pen_commit` puts the path being drawn: a shape layer or the targeted vector mask,
     // else the Paths panel path it adds to (a selected saved path, or the Work Path), which it

@@ -147,9 +147,9 @@ fn candidates_walk_from_specific_to_general() {
     assert_eq!(candidates("pt_PT"), ["pt-pt", "pt-br", "pt"]);
 }
 
-/// PhotoCraft's Serbian catalog was `sr` and is craft-i18n's `sr-latn`: plain, regional and
+/// Patronus Photo's Serbian catalog was `sr` and is craft-i18n's `sr-latn`: plain, regional and
 /// Cyrillic Serbian tags still reach it, ahead of the bare `sr`, and the Latin tags keep their own
-/// order. Holds without embedded catalogs (the candidates are PhotoCraft's own).
+/// order. Holds without embedded catalogs (the candidates are Patronus Photo's own).
 #[test]
 fn serbian_tags_reach_the_latin_catalog() {
     assert_eq!(candidates("sr"), ["sr-latn", "sr"]);
@@ -274,7 +274,7 @@ fn ukrainian_and_arabic_resolve() {
     assert_eq!(ar.dir(), Dir::Rtl);
 }
 
-/// Every Serbian tag PhotoCraft matched to its `sr` catalog reaches `sr-latn`, as a system tag and
+/// Every Serbian tag Patronus Photo matched to its `sr` catalog reaches `sr-latn`, as a system tag and
 /// as a preference (a saved `sr` included).
 #[test]
 fn serbian_resolves_locales_and_preferences() {
@@ -331,7 +331,7 @@ fn french_resolves() {
     }
 }
 
-/// Counts pick the form PhotoCraft's own plural rules picked before its catalogs moved to
+/// Counts pick the form Patronus Photo's own plural rules picked before its catalogs moved to
 /// craft-i18n, now from CLDR (the crate): per language, the old rule's form index per count.
 /// Exceptions, from the spec's parity list or CLDR: Hungarian, Turkish and Georgian have two forms
 /// (their catalogs repeat the one form), Hebrew's `two` form repeats `other`
@@ -372,7 +372,7 @@ fn counts_pick_the_same_plural_form_as_before() {
     }
 }
 
-/// Hebrew counts read as PhotoCraft's one|other rule did: craft-i18n's Hebrew rows list
+/// Hebrew counts read as Patronus Photo's one|other rule did: craft-i18n's Hebrew rows list
 /// one|two|other with `two` repeating `other`, so 2 reads like 3.
 #[test]
 fn hebrew_counts_read_one_or_other() {
@@ -424,7 +424,7 @@ fn id_rows_keep_the_shape_of_their_label() {
 
 /// The language list is well-formed, and with the catalogs embedded each registered language has
 /// one. Problems in the embedded catalogs' rows are not failed: craft-i18n
-/// checks its rows, a row PhotoCraft can't use shows in English, and `cargo xtask i18n-report`
+/// checks its rows, a row Patronus Photo can't use shows in English, and `cargo xtask i18n-report`
 /// lists what each language lacks.
 #[test]
 fn bundled_catalogs_are_consistent() {
@@ -440,7 +440,7 @@ fn bundled_catalogs_are_consistent() {
     // A build that requires the catalogs (`CRAFT_I18N_REQUIRED=1`) must offer every registered
     // language, not only whichever locales the checkout happens to hold.
     for l in LANGUAGES.iter().filter(|l| l.code != "en") {
-        assert!(!app_catalog(l.code).is_empty(), "{}: no photocraft.tsv at craft-i18n.rev", l.code);
+        assert!(!app_catalog(l.code).is_empty(), "{}: no patronusphoto.tsv at craft-i18n.rev", l.code);
         assert!(Lang::from_code(l.code).is_some(), "{}: registered but not offered", l.code);
     }
     let problems = I18N.check_all();
@@ -451,7 +451,7 @@ fn bundled_catalogs_are_consistent() {
         for line in app.lines().filter(|l| l.starts_with("@id\t")) {
             let id = line.split('\t').nth(1).unwrap_or_default();
             if id != "language.name" && !(crate::menus::is_live(id) || crate::menu_catalog::CATALOG.iter().any(|m| m.3 == id)) {
-                println!("{code}: @id row for a command PhotoCraft doesn't have: {id:?}");
+                println!("{code}: @id row for a command Patronus Photo doesn't have: {id:?}");
             }
         }
     }

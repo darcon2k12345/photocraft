@@ -8,30 +8,30 @@ use egui_kittest::kittest::{NodeT, Queryable};
 use serde_json::json;
 
 use super::{answer, pending};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::{ToolEvent, tool_event};
 use crate::state::Tool;
 
 /// The options bar of `app`, rendered through the real host on the app's own context.
-fn bar(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
+fn bar(app: Box<PatronusPhotoApp>) -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut h =
         Harness::builder().with_size(vec2(1600.0, 200.0)).with_context(app.ctx().clone()).build_ui_state(|ui, app| crate::panels::options_bar(app, ui), app);
     h.run_steps(4);
     h
 }
 
-fn new_app(width: u32, height: u32) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn new_app(width: u32, height: u32) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": width, "height": height})).unwrap();
     app
 }
 
 /// Lassos a square and drops it with Transform On Drop on, which raises the CAM box.
-fn raise_cam_box(app: &mut PhotocraftApp) {
+fn raise_cam_box(app: &mut PatronusPhotoApp) {
     app.ui.tool = Tool::ContentAwareMove;
     app.ui.tool_options.cam_transform_on_drop = true;
     let m = egui::Modifiers::NONE;
-    let drag = |app: &mut PhotocraftApp, path: &[[f64; 2]]| {
+    let drag = |app: &mut PatronusPhotoApp, path: &[[f64; 2]]| {
         let ([x, y], rest) = (path[0], &path[1..]);
         tool_event(app, ToolEvent::Down { x, y, pressure: 1.0 }, m);
         for &[x, y] in rest {

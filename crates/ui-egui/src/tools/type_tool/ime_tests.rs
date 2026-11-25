@@ -3,18 +3,18 @@
 //! editor.
 
 use egui::Modifiers;
-use photocraft_doc::LayerId;
+use patronusphoto_doc::LayerId;
 use serde_json::json;
 
 use super::commit_tests::{edit_active, ime, type_keys};
 use super::mask_replace_selection_tests::click;
 use super::{commit, end_if_left};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing;
 
 /// A document with a Type session on new text reading "abc", the caret at its end.
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 400, "height": 200})).unwrap();
     app.sync_views();
     app.ui.tool = crate::state::Tool::Type;
@@ -24,12 +24,12 @@ fn app() -> Box<PhotocraftApp> {
     app
 }
 
-fn layer_text(app: &PhotocraftApp) -> String {
+fn layer_text(app: &PatronusPhotoApp) -> String {
     let ed = app.ui.text_edit.as_ref().expect("editing");
     super::current_text(app, LayerId(ed.layer)).expect("text layer")
 }
 
-fn set_selection(app: &mut PhotocraftApp, anchor: usize, caret: usize) {
+fn set_selection(app: &mut PatronusPhotoApp, anchor: usize, caret: usize) {
     let ed = app.ui.text_edit.as_mut().expect("editing");
     ed.anchor = anchor;
     ed.caret = caret;

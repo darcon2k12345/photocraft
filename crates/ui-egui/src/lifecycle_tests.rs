@@ -3,21 +3,21 @@
 //! injected step makes itself, and a hidden window keeps painting while input or a capture waits.
 //! The queue itself is the window host's (craft-automation's `synthetic` trials).
 
-use crate::{PhotocraftApp, Services};
+use crate::{PatronusPhotoApp, Services};
 use craft::ui::runtime::windows::WindowHost;
 use eframe::App as _;
 use egui::{Context, RawInput};
-use photocraft_engine::Session;
+use patronusphoto_engine::Session;
 use serde_json::json;
 
-fn app_with_doc() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(Session::new(), Services::default());
+fn app_with_doc() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(Session::new(), Services::default());
     app.run("file.new", json!({"width": 32, "height": 32})).expect("a document");
     app
 }
 
 /// Sends `ui.key V` through a control channel and runs it: the reply waits on the queued input.
-fn queue_key(app: &mut PhotocraftApp, ctx: &Context) -> std::sync::mpsc::Receiver<serde_json::Value> {
+fn queue_key(app: &mut PatronusPhotoApp, ctx: &Context) -> std::sync::mpsc::Receiver<serde_json::Value> {
     let (transport, rx) = std::sync::mpsc::channel();
     app.control = Some(craft::automation::ControlChannel::new(rx));
     let (req, reply) = crate::ControlRequest::new("ui.key", json!({"key": "V"}));
@@ -108,13 +108,13 @@ fn a_logic_tick_requests_a_hidden_paint_for_waiting_captures_and_queued_input() 
 pub(crate) fn app_harness(
     services: Services,
     documents: usize,
-) -> (egui_kittest::Harness<'static, Box<PhotocraftApp>>, std::sync::mpsc::Sender<crate::ControlRequest>) {
+) -> (egui_kittest::Harness<'static, Box<PatronusPhotoApp>>, std::sync::mpsc::Sender<crate::ControlRequest>) {
     let (transport, requests) = std::sync::mpsc::channel();
     let requests = std::cell::Cell::new(Some(requests));
     let services = std::cell::Cell::new(Some(services));
     let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1200.0, 800.0)).with_max_steps(64).build_eframe(move |cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), Session::new(), services.take().expect("one app"));
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), Session::new(), services.take().expect("one app"));
         for _ in 0..documents {
             app.run("file.new", json!({"width": 32, "height": 32})).expect("a document");
         }
@@ -127,7 +127,7 @@ pub(crate) fn app_harness(
 
 /// Sends `method` over the harness's control channel and runs passes until it is answered.
 pub(crate) fn answered(
-    h: &mut egui_kittest::Harness<'static, Box<PhotocraftApp>>,
+    h: &mut egui_kittest::Harness<'static, Box<PatronusPhotoApp>>,
     transport: &std::sync::mpsc::Sender<crate::ControlRequest>,
     method: &str,
     params: serde_json::Value,

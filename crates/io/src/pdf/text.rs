@@ -2,12 +2,12 @@
 
 use craft_pdf::write_raster::{ContentFillRule, ContentOp, ContentPath, DeviceColor, PathElement};
 
-use photocraft_color::ColorMode;
-use photocraft_doc::TextLayer;
+use patronusphoto_color::ColorMode;
+use patronusphoto_doc::TextLayer;
 
 /// Whether any glyph is thickened by faux bold or by a face lacking the weight: rendering
-/// emboldens those glyphs, but [`photocraft_text::render::glyph_outlines`] gives the regular outline.
-fn synthetic_bold(layout: &photocraft_text::TextLayout) -> bool {
+/// emboldens those glyphs, but [`patronusphoto_text::render::glyph_outlines`] gives the regular outline.
+fn synthetic_bold(layout: &patronusphoto_text::TextLayout) -> bool {
     layout
         .glyphs
         .iter()
@@ -18,8 +18,8 @@ fn synthetic_bold(layout: &photocraft_text::TextLayout) -> bool {
 /// Path text is bent along its path when rendered, and the outlines written here are not.
 fn straight_horizontal(layer: &TextLayer, dpi: f32) -> bool {
     layer.warp.is_none()
-        && !matches!(layer.shape, photocraft_doc::text::TextShape::Path { .. })
-        && layer.orientation == photocraft_doc::text::Orientation::Horizontal
+        && !matches!(layer.shape, patronusphoto_doc::text::TextShape::Path { .. })
+        && layer.orientation == patronusphoto_doc::text::Orientation::Horizontal
         && dpi.is_finite()
         && dpi > 0.0
         && layer.transform.m.iter().all(|v| v.is_finite())
@@ -44,7 +44,7 @@ fn channels(mode: ColorMode) -> Option<usize> {
     }
 }
 
-fn device_color(color: &photocraft_color::Color, mode: ColorMode) -> Option<DeviceColor> {
+fn device_color(color: &patronusphoto_color::Color, mode: ColorMode) -> Option<DeviceColor> {
     Some(match mode {
         ColorMode::Grayscale => DeviceColor::Gray(f64::from(color.c[0])),
         ColorMode::Rgb => DeviceColor::Rgb([f64::from(color.c[0]), f64::from(color.c[1]), f64::from(color.c[2])]),
@@ -64,7 +64,7 @@ fn outlines_permitted(bytes: &[u8], index: u32) -> bool {
 /// codes depend on every candidate layer's characters, so the caller builds it afterwards.
 pub(super) struct PreparedText<'a> {
     layer: &'a TextLayer,
-    layout: photocraft_text::TextLayout,
+    layout: patronusphoto_text::TextLayout,
 }
 
 impl PreparedText<'_> {
@@ -81,9 +81,9 @@ pub(super) fn prepare<'a>(layer: &'a TextLayer, mode: ColorMode, dpi: f32) -> Op
         return None;
     }
     if layer.text.is_empty() {
-        return Some(PreparedText { layer, layout: photocraft_text::TextLayout::default() });
+        return Some(PreparedText { layer, layout: patronusphoto_text::TextLayout::default() });
     }
-    let mut engine = photocraft_text::TextEngine::new();
+    let mut engine = patronusphoto_text::TextEngine::new();
     let layout = engine.layout(layer, dpi);
     layout_checks(layer, mode, &layout).then_some(PreparedText { layer, layout })
 }
@@ -91,7 +91,7 @@ pub(super) fn prepare<'a>(layer: &'a TextLayer, mode: ColorMode, dpi: f32) -> Op
 /// Everything that can refuse a laid-out layer independently of the selection font. The text
 /// matrix products are checked here so a layer whose transform overflows is refused during
 /// candidate selection, not halfway through emission.
-fn layout_checks(layer: &TextLayer, mode: ColorMode, layout: &photocraft_text::TextLayout) -> bool {
+fn layout_checks(layer: &TextLayer, mode: ColorMode, layout: &patronusphoto_text::TextLayout) -> bool {
     let Some(channels) = channels(mode) else { return false };
     if synthetic_bold(layout) || layout.faces.iter().any(|face| !outlines_permitted(face.font.data.as_ref(), face.font.index)) {
         return false;
@@ -114,7 +114,7 @@ fn layout_checks(layer: &TextLayer, mode: ColorMode, layout: &photocraft_text::T
         if !height.is_finite() || !width.is_finite() {
             return false;
         }
-        let origin = layer.transform.apply(photocraft_geom::Point::new(f64::from(cluster.x), f64::from(line.baseline)));
+        let origin = layer.transform.apply(patronusphoto_geom::Point::new(f64::from(cluster.x), f64::from(line.baseline)));
         if !origin.x.is_finite() || !origin.y.is_finite() {
             return false;
         }
@@ -135,26 +135,26 @@ pub(super) fn ops(prepared: &PreparedText<'_>, mode: ColorMode, selection_font: 
 /// Write one glyph outline as PDF path operators, refusing any coordinate or derived Bézier
 /// control that is not finite. A quadratic's cubic controls come from finite differences, which
 /// can overflow even when the endpoints are finite.
-fn path_elements(elements: &[photocraft_text::render::PathEl]) -> Option<Vec<PathElement>> {
+fn path_elements(elements: &[patronusphoto_text::render::PathEl]) -> Option<Vec<PathElement>> {
     let mut cur = [0.0f64, 0.0f64];
     let mut out = Vec::with_capacity(elements.len());
     for el in elements {
         match *el {
-            photocraft_text::render::PathEl::MoveTo([x, y]) => {
+            patronusphoto_text::render::PathEl::MoveTo([x, y]) => {
                 if !x.is_finite() || !y.is_finite() {
                     return None;
                 }
                 cur = [x, y];
                 out.push(PathElement::MoveTo([x, y]));
             }
-            photocraft_text::render::PathEl::LineTo([x, y]) => {
+            patronusphoto_text::render::PathEl::LineTo([x, y]) => {
                 if !x.is_finite() || !y.is_finite() {
                     return None;
                 }
                 cur = [x, y];
                 out.push(PathElement::LineTo([x, y]));
             }
-            photocraft_text::render::PathEl::QuadTo([cx, cy], [x, y]) => {
+            patronusphoto_text::render::PathEl::QuadTo([cx, cy], [x, y]) => {
                 if !cx.is_finite() || !cy.is_finite() || !x.is_finite() || !y.is_finite() {
                     return None;
                 }
@@ -168,14 +168,14 @@ fn path_elements(elements: &[photocraft_text::render::PathEl]) -> Option<Vec<Pat
                 cur = [x, y];
                 out.push(PathElement::CubicTo([c1x, c1y], [c2x, c2y], [x, y]));
             }
-            photocraft_text::render::PathEl::CurveTo([c1x, c1y], [c2x, c2y], [x, y]) => {
+            patronusphoto_text::render::PathEl::CurveTo([c1x, c1y], [c2x, c2y], [x, y]) => {
                 if !c1x.is_finite() || !c1y.is_finite() || !c2x.is_finite() || !c2y.is_finite() || !x.is_finite() || !y.is_finite() {
                     return None;
                 }
                 cur = [x, y];
                 out.push(PathElement::CubicTo([c1x, c1y], [c2x, c2y], [x, y]));
             }
-            photocraft_text::render::PathEl::Close => {
+            patronusphoto_text::render::PathEl::Close => {
                 out.push(PathElement::Close);
             }
         }
@@ -184,7 +184,7 @@ fn path_elements(elements: &[photocraft_text::render::PathEl]) -> Option<Vec<Pat
 }
 
 #[cfg(test)]
-fn write_path_elements(out: &mut String, elements: &[photocraft_text::render::PathEl]) -> Option<()> {
+fn write_path_elements(out: &mut String, elements: &[patronusphoto_text::render::PathEl]) -> Option<()> {
     let commands = path_elements(elements)?;
     // A PDF path must have a paint operation. The test exercises geometry encoding, so use a
     // neutral fill while preserving the shared writer's production validation.
@@ -194,12 +194,12 @@ fn write_path_elements(out: &mut String, elements: &[photocraft_text::render::Pa
     Some(())
 }
 
-fn layout_ops(layer: &TextLayer, mode: ColorMode, layout: &photocraft_text::TextLayout, selection_font: &super::SelectionFont) -> Option<Vec<ContentOp>> {
+fn layout_ops(layer: &TextLayer, mode: ColorMode, layout: &patronusphoto_text::TextLayout, selection_font: &super::SelectionFont) -> Option<Vec<ContentOp>> {
     if !layout_checks(layer, mode, layout) {
         return None;
     }
 
-    let outlines = photocraft_text::render::glyph_outlines(layout, &layer.transform, None);
+    let outlines = patronusphoto_text::render::glyph_outlines(layout, &layer.transform, None);
 
     let mut out = Vec::new();
     for glyph in &outlines {
@@ -212,10 +212,10 @@ fn layout_ops(layer: &TextLayer, mode: ColorMode, layout: &photocraft_text::Text
     for d in &layout.decorations {
         let style = layout.styles.get(d.style as usize)?;
         let color = style.color.in_mode(mode);
-        let p0 = layer.transform.apply(photocraft_geom::Point::new(f64::from(d.x0), f64::from(d.y0)));
-        let p1 = layer.transform.apply(photocraft_geom::Point::new(f64::from(d.x1), f64::from(d.y0)));
-        let p2 = layer.transform.apply(photocraft_geom::Point::new(f64::from(d.x1), f64::from(d.y1)));
-        let p3 = layer.transform.apply(photocraft_geom::Point::new(f64::from(d.x0), f64::from(d.y1)));
+        let p0 = layer.transform.apply(patronusphoto_geom::Point::new(f64::from(d.x0), f64::from(d.y0)));
+        let p1 = layer.transform.apply(patronusphoto_geom::Point::new(f64::from(d.x1), f64::from(d.y0)));
+        let p2 = layer.transform.apply(patronusphoto_geom::Point::new(f64::from(d.x1), f64::from(d.y1)));
+        let p3 = layer.transform.apply(patronusphoto_geom::Point::new(f64::from(d.x0), f64::from(d.y1)));
         if !p0.x.is_finite()
             || !p0.y.is_finite()
             || !p1.x.is_finite()
@@ -248,7 +248,7 @@ fn layout_ops(layer: &TextLayer, mode: ColorMode, layout: &photocraft_text::Text
 /// cluster, so paragraph breaks and other whitespace omitted by shaping survive
 /// in the selection; the first span also takes leading characters. Without this a multi-line
 /// layer extracts as one run of text.
-fn selection_ops(out: &mut Vec<ContentOp>, layer: &TextLayer, layout: &photocraft_text::TextLayout, selection_font: &super::SelectionFont) -> Option<()> {
+fn selection_ops(out: &mut Vec<ContentOp>, layer: &TextLayer, layout: &patronusphoto_text::TextLayout, selection_font: &super::SelectionFont) -> Option<()> {
     let [a, b, c, d, _, _] = layer.transform.m;
     let mut current_line = None;
     let mut clusters: Vec<_> = layout.clusters.iter().collect();
@@ -285,7 +285,7 @@ fn selection_ops(out: &mut Vec<ContentOp>, layer: &TextLayer, layout: &photocraf
             return None;
         }
         let x = cluster.x;
-        let origin = layer.transform.apply(photocraft_geom::Point::new(f64::from(x), f64::from(line.baseline)));
+        let origin = layer.transform.apply(patronusphoto_geom::Point::new(f64::from(x), f64::from(line.baseline)));
         if !origin.x.is_finite() || !origin.y.is_finite() {
             return None;
         }
@@ -306,11 +306,11 @@ fn selection_ops(out: &mut Vec<ContentOp>, layer: &TextLayer, layout: &photocraf
 #[cfg(test)]
 mod tests {
     use super::*;
-    use photocraft_geom::Affine;
+    use patronusphoto_geom::Affine;
 
     #[test]
     fn embedding_restrictions_refuse_outlines() {
-        let original = photocraft_text::fonts::INTER_REGULAR.as_slice();
+        let original = patronusphoto_text::fonts::INTER_REGULAR.as_slice();
         assert!(outlines_permitted(original, 0));
         let count = u16::from_be_bytes(original[4..6].try_into().unwrap()) as usize;
         let record = (0..count).map(|i| 12 + 16 * i).find(|at| &original[*at..*at + 4] == b"OS/2").unwrap();
@@ -320,7 +320,7 @@ mod tests {
             restricted[offset + 8..offset + 10].copy_from_slice(&flags.to_be_bytes());
             assert!(!outlines_permitted(&restricted, 0), "fsType {flags:#x}");
             let layer = TextLayer { text: "Restricted".into(), ..Default::default() };
-            let mut layout = photocraft_text::TextEngine::new().layout(&layer, 72.0);
+            let mut layout = patronusphoto_text::TextEngine::new().layout(&layer, 72.0);
             for face in &mut layout.faces {
                 face.font.data = restricted.clone().into();
                 face.font.index = 0;
@@ -336,7 +336,7 @@ mod tests {
         let layer = TextLayer {
             text: "Hello".into(),
             size_pt: 12.0,
-            color: photocraft_color::Color::rgb(0.0, 0.5, 1.0),
+            color: patronusphoto_color::Color::rgb(0.0, 0.5, 1.0),
             transform: Affine::translate(10.0, 20.0),
             ..Default::default()
         };
@@ -354,12 +354,12 @@ mod tests {
 
     #[test]
     fn rejects_warp_and_invalid_alpha() {
-        let warped = TextLayer { text: "Warped".into(), warp: Some(photocraft_doc::text::TextWarp::default()), ..Default::default() };
+        let warped = TextLayer { text: "Warped".into(), warp: Some(patronusphoto_doc::text::TextWarp::default()), ..Default::default() };
         assert!(text_ops(&warped, ColorMode::Rgb, 72.0).is_none());
 
         let transparent = TextLayer {
             text: "Alpha".into(),
-            color: photocraft_color::Color { mode: ColorMode::Rgb, c: [1.0, 0.0, 0.0, 0.0], alpha: 0.5 },
+            color: patronusphoto_color::Color { mode: ColorMode::Rgb, c: [1.0, 0.0, 0.0, 0.0], alpha: 0.5 },
             ..Default::default()
         };
         assert!(text_ops(&transparent, ColorMode::Rgb, 72.0).is_none());
@@ -370,21 +370,21 @@ mod tests {
     fn rejects_path_text_and_synthetic_bold() {
         let on_path = TextLayer {
             text: "Path".into(),
-            shape: photocraft_doc::text::TextShape::Path { path: Default::default(), start: 0.0, end: None, flip: false },
+            shape: patronusphoto_doc::text::TextShape::Path { path: Default::default(), start: 0.0, end: None, flip: false },
             ..Default::default()
         };
         assert!(text_ops(&on_path, ColorMode::Rgb, 72.0).is_none());
 
         let faux_bold = TextLayer {
             text: "Bold".into(),
-            runs: vec![photocraft_doc::text::TextRun { len: 4, style: photocraft_doc::text::CharStyle { faux_bold: true, ..Default::default() } }],
+            runs: vec![patronusphoto_doc::text::TextRun { len: 4, style: patronusphoto_doc::text::CharStyle { faux_bold: true, ..Default::default() } }],
             ..Default::default()
         };
         assert!(text_ops(&faux_bold, ColorMode::Rgb, 72.0).is_none());
 
         // A face without the requested weight is emboldened by font matching.
         let plain = TextLayer { text: "Bold".into(), ..Default::default() };
-        let mut layout = photocraft_text::TextEngine::new().layout(&plain, 72.0);
+        let mut layout = patronusphoto_text::TextEngine::new().layout(&plain, 72.0);
         assert!(!synthetic_bold(&layout));
         for face in &mut layout.faces {
             face.embolden = true;
@@ -396,9 +396,9 @@ mod tests {
     fn decorations_are_emitted_as_rectangles() {
         let layer = TextLayer {
             text: "Underline".into(),
-            runs: vec![photocraft_doc::text::TextRun {
+            runs: vec![patronusphoto_doc::text::TextRun {
                 len: 9,
-                style: photocraft_doc::text::CharStyle { underline: true, color: photocraft_color::Color::rgb(1.0, 0.0, 0.0), ..Default::default() },
+                style: patronusphoto_doc::text::CharStyle { underline: true, color: patronusphoto_color::Color::rgb(1.0, 0.0, 0.0), ..Default::default() },
             }],
             ..Default::default()
         };
@@ -408,7 +408,7 @@ mod tests {
 
     #[test]
     fn quadratic_cubic_controls_that_overflow_are_refused() {
-        use photocraft_text::render::PathEl;
+        use patronusphoto_text::render::PathEl;
         // Finite endpoints whose difference is not finite: 1e308 - -1e308 overflows.
         let mut out = String::new();
         let overflowing = [PathEl::MoveTo([1e308, 0.0]), PathEl::QuadTo([-1e308, 0.0], [1e308, 0.0])];
@@ -427,9 +427,13 @@ mod tests {
         // Whitespace shapes no outlines, so the text matrix is the only place the transform
         // reaches the output. Zero the positions: the products overflow, while the cluster
         // origin they are added to stays finite.
-        let layer =
-            TextLayer { text: " ".into(), size_pt: 100.0, transform: photocraft_geom::Affine { m: [1e308, 1e308, 0.0, 0.0, 0.0, 0.0] }, ..Default::default() };
-        let mut layout = photocraft_text::TextEngine::new().layout(&layer, 72.0);
+        let layer = TextLayer {
+            text: " ".into(),
+            size_pt: 100.0,
+            transform: patronusphoto_geom::Affine { m: [1e308, 1e308, 0.0, 0.0, 0.0, 0.0] },
+            ..Default::default()
+        };
+        let mut layout = patronusphoto_text::TextEngine::new().layout(&layer, 72.0);
         for cluster in &mut layout.clusters {
             cluster.x = 0.0;
             cluster.advance = cluster.advance.abs().max(2.0);
@@ -439,7 +443,7 @@ mod tests {
         }
         let cluster = layout.clusters.first().expect("a whitespace cluster");
         let line = layout.lines.get(cluster.line).expect("a line");
-        let origin = layer.transform.apply(photocraft_geom::Point::new(f64::from(cluster.x), f64::from(line.baseline)));
+        let origin = layer.transform.apply(patronusphoto_geom::Point::new(f64::from(cluster.x), f64::from(line.baseline)));
         assert!(origin.x.is_finite() && origin.y.is_finite(), "the fixture's origin stays finite");
         let font = super::super::SelectionFont::new(std::iter::once(layer.text.as_str()));
         assert!(layout_ops(&layer, ColorMode::Rgb, &layout, &font).is_none(), "overflowing Tm coefficients must not be emitted");

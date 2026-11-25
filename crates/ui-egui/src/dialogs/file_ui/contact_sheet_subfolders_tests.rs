@@ -27,7 +27,7 @@ fn ok_runs_the_sheet_with_both_settings() {
     let _cleanup = Cleanup(dir.clone());
     std::fs::create_dir_all(dir.join("sub")).unwrap();
     for (i, rel) in ["top.png", "sub/inner.png"].into_iter().enumerate() {
-        let mut s = photocraft_engine::Session::new();
+        let mut s = patronusphoto_engine::Session::new();
         s.execute("file.new", json!({"width": 8 + i, "height": 6})).unwrap();
         s.execute("file.saveACopy", json!({"path": dir.join(rel).to_string_lossy()})).unwrap();
     }
@@ -35,7 +35,7 @@ fn ok_runs_the_sheet_with_both_settings() {
         let mut app = app();
         let ctx = app.ctx().clone();
         let id = open_contact_sheet(&mut app);
-        let set = |app: &mut crate::PhotocraftApp, field: &str, value| app.framework.dialogs.set_json_field(&ctx, id, field, value).unwrap();
+        let set = |app: &mut crate::PatronusPhotoApp, field: &str, value| app.framework.dialogs.set_json_field(&ctx, id, field, value).unwrap();
         set(&mut app, "input", json!(dir.to_string_lossy()));
         // No captions: they wait on the app's fonts, which load in the background.
         set(&mut app, "caption", json!(false));

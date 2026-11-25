@@ -3,28 +3,28 @@ use serde_json::json;
 
 use super::*;
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 16, "height": 16})).unwrap();
     app.run("select.rect", json!({"x": 2, "y": 2, "width": 8, "height": 8})).unwrap();
     app.run("select.saveSelection", json!({})).unwrap();
     app
 }
 
-fn channel(app: &PhotocraftApp) -> photocraft_doc::AlphaChannel {
+fn channel(app: &PatronusPhotoApp) -> patronusphoto_doc::AlphaChannel {
     app.session.active().unwrap().doc.channels[0].clone()
 }
 
-fn values(app: &PhotocraftApp, id: DialogId) -> DialogFields {
+fn values(app: &PatronusPhotoApp, id: DialogId) -> DialogFields {
     app.framework.dialogs.get_by_id::<HostedParamDialog>(id).expect("the dialog is open").fields().clone()
 }
 
-fn set(app: &mut PhotocraftApp, id: DialogId, field: &str, value: Value) {
+fn set(app: &mut PatronusPhotoApp, id: DialogId, field: &str, value: Value) {
     let ctx = app.ctx().clone();
     app.framework.dialogs.set_json_field(&ctx, id, field, value).unwrap();
 }
 
-fn close_all(app: &mut PhotocraftApp) {
+fn close_all(app: &mut PatronusPhotoApp) {
     let ctx = app.ctx().clone();
     while let Some(id) = app.framework.dialogs.stack().top() {
         app.framework.dialogs.cancel_by_id(&ctx, id);
@@ -66,7 +66,7 @@ fn saved_selection_becomes_a_spot_channel_with_its_ink_and_solidity() {
 
 #[test]
 fn menu_opens_the_dialog_on_the_targeted_channel_and_refuses_otherwise() {
-    let mut empty = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut empty = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     let ctx = empty.ctx().clone();
     assert!(crate::menus::invoke(&mut empty, &ctx, COMMAND, json!({})).is_err());
 
@@ -122,7 +122,7 @@ fn layer_mask_display_options_set_the_rubylith() {
     // Or with it targeted by `\` (the rubylith), which leaves the Channels target alone.
     app.run("channel.target", json!({"channel": "composite"})).unwrap();
     close_all(&mut app);
-    app.run(photocraft_engine::mask_view_cmds::OVERLAY_ID, json!({})).unwrap();
+    app.run(patronusphoto_engine::mask_view_cmds::OVERLAY_ID, json!({})).unwrap();
     app.sync_mask_targets();
     crate::menus::invoke(&mut app, &ctx, COMMAND, json!({})).unwrap();
     assert_eq!(params::captured(&app, COMMAND)["channel"], json!("mask"));

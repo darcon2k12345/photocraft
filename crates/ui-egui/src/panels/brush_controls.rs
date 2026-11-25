@@ -1,4 +1,4 @@
-use super::{Align2, BlendMode, Color32, PhotocraftApp, Rect, Sense, Stroke, StrokeKind, Tokens, c32, icons, json, pos2, starts_blend_group, vec2, widgets};
+use super::{Align2, BlendMode, Color32, PatronusPhotoApp, Rect, Sense, Stroke, StrokeKind, Tokens, c32, icons, json, pos2, starts_blend_group, vec2, widgets};
 
 /// A painting tool's Mode dropdown over `modes` (`None` is Clear); the wheel over it steps the
 /// mode. Returns the mode picked this frame. A list of every blend mode draws the Layers panel's
@@ -25,7 +25,7 @@ pub(super) fn tool_mode_dropdown(
 /// The Brush's or Pencil's Mode dropdown: the blend modes, with Photoshop's painting-only Clear
 /// after Dissolve (#3439). Clear erases with the brush (`clear`); it shows while chosen, or while
 /// `~` is held (`held`). The wheel over it steps the mode, as over the Layers panel's (#2061).
-pub(super) fn paint_mode_dropdown(ui: &mut egui::Ui, id: &str, b: &mut photocraft_engine::BrushSettings, clear: &mut bool, held: bool) {
+pub(super) fn paint_mode_dropdown(ui: &mut egui::Ui, id: &str, b: &mut patronusphoto_engine::BrushSettings, clear: &mut bool, held: bool) {
     let opts = crate::brush_mode_menu::choices();
     let mut mode = if *clear || held {
         (None, false)
@@ -51,7 +51,7 @@ pub(super) fn paint_mode_dropdown(ui: &mut egui::Ui, id: &str, b: &mut photocraf
 /// picking another mode leaves it. The wheel steps it as it steps the other Mode dropdowns.
 /// Without `behind_enabled` (the Background is the active layer) Behind is greyed, as in the
 /// Shift+right-click menu, and the wheel and the keys step past it.
-pub(super) fn pattern_stamp_mode_dropdown(ui: &mut egui::Ui, id: &str, b: &mut photocraft_engine::BrushSettings, behind_enabled: bool, threshold: bool) {
+pub(super) fn pattern_stamp_mode_dropdown(ui: &mut egui::Ui, id: &str, b: &mut patronusphoto_engine::BrushSettings, behind_enabled: bool, threshold: bool) {
     let mut opts = crate::brush_mode_menu::pattern_stamp_choices();
     if threshold && let Some(normal) = opts.iter_mut().find(|o| o.0 == (Some(BlendMode::Normal), false)) {
         normal.1 = tl!("Threshold");
@@ -68,7 +68,7 @@ pub(super) fn pattern_stamp_mode_dropdown(ui: &mut egui::Ui, id: &str, b: &mut p
 
 /// The Eraser's Smoothing %: whole numbers 0..100 that say when a typed value was past them, for
 /// the reference's alert (#11938). Returns the field and whether to show the alert.
-pub(super) fn smoothing_field_alerting(ui: &mut egui::Ui, b: &mut photocraft_engine::BrushSettings, width: f32) -> (egui::Response, bool) {
+pub(super) fn smoothing_field_alerting(ui: &mut egui::Ui, b: &mut patronusphoto_engine::BrushSettings, width: f32) -> (egui::Response, bool) {
     let mut sm = b.smoothing.amount * 100.0;
     let (r, alert) = widgets::value_field_whole_alerting(ui, tl!("Smoothing"), &mut sm, 0.0..=100.0, "%", width);
     if r.changed() {
@@ -79,7 +79,7 @@ pub(super) fn smoothing_field_alerting(ui: &mut egui::Ui, b: &mut photocraft_eng
 }
 
 /// Options-bar Smoothing % (the brush's stroke smoothing; the live stroke and the commit use it).
-pub(super) fn smoothing_field(ui: &mut egui::Ui, b: &mut photocraft_engine::BrushSettings, width: f32) -> egui::Response {
+pub(super) fn smoothing_field(ui: &mut egui::Ui, b: &mut patronusphoto_engine::BrushSettings, width: f32) -> egui::Response {
     let mut sm = (b.smoothing.amount * 100.0).round();
     let r = widgets::value_field_named(ui, tl!("Smoothing"), &mut sm, 0.0..=100.0, "%", width);
     if r.changed() {
@@ -92,7 +92,7 @@ pub(super) fn smoothing_field(ui: &mut egui::Ui, b: &mut photocraft_engine::Brus
 /// Options-bar gear beside Smoothing: Photoshop's smoothing options popup, edited on the brush
 /// like the Smoothing % (so they stay per tool and reach the live stroke and the commit).
 /// `brush` adds the Brush's "Smoothing Options" title (#11813); the Eraser keeps its popup as it was.
-pub(super) fn smoothing_options(ui: &mut egui::Ui, b: &mut photocraft_engine::BrushSettings, brush: bool) {
+pub(super) fn smoothing_options(ui: &mut egui::Ui, b: &mut patronusphoto_engine::BrushSettings, brush: bool) {
     let resp = icons::button(ui, "settings", 24.0, false, tl!("Set additional smoothing options"));
     let resp = crate::brush_picker::named(resp, "Set additional smoothing options");
     egui::Popup::from_toggle_button_response(&resp).close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside).show(|ui| {
@@ -170,7 +170,7 @@ const MIXER_COMBINATION_GROUPS: [usize; 4] = [1, 4, 7, 10];
 pub(super) fn mixer_combination_dropdown(
     ui: &mut egui::Ui,
     picked: &mut usize,
-    m: &mut photocraft_engine::paint::mixer::MixerSettings,
+    m: &mut patronusphoto_engine::paint::mixer::MixerSettings,
 ) -> Option<egui::Response> {
     const ID: &str = "mixer-combination";
     let opts: Vec<(usize, &str)> = MIXER_COMBINATIONS.iter().enumerate().map(|(i, (label, _))| (i, *label)).collect();
@@ -198,7 +198,7 @@ mod mixer_load_solid_colors_tests;
 /// loaded colour, the sampled tip image after an ⌥-click, or a transparency checkerboard when the
 /// brush is clean. Its menu holds Load Brush, Clean Brush, a separator and the checkable Load Solid
 /// Colors Only.
-pub(super) fn mixer_load_swatch(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub(super) fn mixer_load_swatch(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
     let (r, _) = ui.allocate_exact_size(vec2(40.0, 26.0), Sense::hover());
     let resp = ui.interact(r, ui.scope_id().with("mixer-brush-load"), Sense::click());
@@ -259,7 +259,7 @@ pub(super) fn mixer_load_swatch(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 
 /// Options-bar brush chip: a click shows or hides Photoshop's Brush Preset picker below it (size,
 /// hardness, the preset library), the one a right-click on the canvas opens.
-pub(super) fn brush_preset_chip(ui: &mut egui::Ui, b: &photocraft_engine::BrushSettings, state: &mut crate::state::UiState) {
+pub(super) fn brush_preset_chip(ui: &mut egui::Ui, b: &patronusphoto_engine::BrushSettings, state: &mut crate::state::UiState) {
     let t = Tokens::get(ui.ctx());
     let (r, _) = ui.allocate_exact_size(vec2(44.0, 30.0), Sense::hover());
     let resp = ui.interact(r, crate::brush_picker::chip_id(), Sense::click());

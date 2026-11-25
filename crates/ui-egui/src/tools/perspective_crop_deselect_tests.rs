@@ -8,8 +8,8 @@ use super::*;
 use crate::canvas::testing::{ToolEvent, frame, tool_event};
 
 /// A 200 × 150 document with a selection and the Perspective Crop tool.
-fn app(selection: bool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app(selection: bool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
     if selection {
         app.run("select.rect", json!({"x": 30, "y": 30, "width": 60, "height": 40})).unwrap();
@@ -19,15 +19,15 @@ fn app(selection: bool) -> Box<PhotocraftApp> {
     app
 }
 
-fn selected(app: &PhotocraftApp) -> bool {
+fn selected(app: &PatronusPhotoApp) -> bool {
     app.session.active().unwrap().doc.selection.is_some()
 }
 
-fn steps(app: &PhotocraftApp) -> usize {
+fn steps(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.past_len()
 }
 
-fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2]) {
+fn drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2]) {
     tool_event(app, ToolEvent::Down { x: from[0], y: from[1], pressure: 1.0 }, Modifiers::NONE);
     tool_event(app, ToolEvent::Move { x: to[0], y: to[1], pressure: 1.0 }, Modifiers::NONE);
     tool_event(app, ToolEvent::Up { x: to[0], y: to[1] }, Modifiers::NONE);
@@ -119,7 +119,7 @@ fn a_press_while_a_job_locks_the_document_starts_no_quad() {
             |_, ()| Ok(json!(null)),
         )
         .unwrap();
-    let photocraft_engine::jobs::Started::Job(job) = job else { panic!("ran inline") };
+    let patronusphoto_engine::jobs::Started::Job(job) = job else { panic!("ran inline") };
     // Deselect is refused while the job runs: the press doesn't start a quad that would keep the
     // selection, so it can be tried again once the job is done.
     drag(&mut app, [20.0, 20.0], [180.0, 130.0]);

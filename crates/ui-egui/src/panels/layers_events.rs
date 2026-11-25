@@ -1,4 +1,4 @@
-//! What the Layers panel's events do: each `LayersEvent` becomes the `(command, params)` PhotoCraft's
+//! What the Layers panel's events do: each `LayersEvent` becomes the `(command, params)` Patronus Photo's
 //! own commands take, run through one tail (a type session commits before a select, the target
 //! switches, `Value::Null` params run as the menu item does).
 
@@ -9,11 +9,11 @@ use craft::layers::ui::panel::{
 };
 use craft::layers::ui::rows::LayerPropertyEdit;
 use craft::layers::ui::tree::{LayerPart, LayerRowKey, LockKind, SubRowGroup};
-use photocraft_doc::{Layer, LayerContent, LayerId};
+use patronusphoto_doc::{Layer, LayerContent, LayerId};
 use serde_json::{Value, json};
 
 use super::layers_tree::{self, PhotoLayers};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::mask_thumbs_ui::MaskKind;
 
 type Action = (String, Value);
@@ -68,7 +68,7 @@ fn landed<T>(edit: EditEvent<T>) -> Option<T> {
 }
 
 /// Applies the panel's events of this pass.
-pub(crate) fn apply_layers_events(app: &mut PhotocraftApp, ctx: &egui::Context, events: Vec<LayersEvent<LayerId>>) {
+pub(crate) fn apply_layers_events(app: &mut PatronusPhotoApp, ctx: &egui::Context, events: Vec<LayersEvent<LayerId>>) {
     let mut actions: Vec<Action> = Vec::new();
     for event in events {
         map_event(app, ctx, event, &mut actions);
@@ -78,7 +78,7 @@ pub(crate) fn apply_layers_events(app: &mut PhotocraftApp, ctx: &egui::Context, 
 
 /// The panel's lock indicator reports only an unlock: the Background becomes a normal layer, any other layer loses
 /// every lock.
-fn unlock_action(doc: &photocraft_doc::Document, id: LayerId) -> Action {
+fn unlock_action(doc: &patronusphoto_doc::Document, id: LayerId) -> Action {
     if doc.is_background(id) {
         ("layer.new.layerFromBackground".into(), json!({}))
     } else {
@@ -87,7 +87,7 @@ fn unlock_action(doc: &photocraft_doc::Document, id: LayerId) -> Action {
 }
 
 /// The commands a click or sweep down a column of the panel makes.
-fn toggle_actions(doc: &photocraft_doc::Document, toggle: LayerToggle<LayerId>, actions: &mut Vec<Action>) {
+fn toggle_actions(doc: &patronusphoto_doc::Document, toggle: LayerToggle<LayerId>, actions: &mut Vec<Action>) {
     let layer = |id: &LayerId| doc.layer(*id);
     let filter_index = |id: &LayerId, row: usize| layers_tree::filter_index(doc, id, row);
     // One sweep down the eye column is one gesture, so its steps share a key and are one undo step.
@@ -133,7 +133,7 @@ fn toggle_actions(doc: &photocraft_doc::Document, toggle: LayerToggle<LayerId>, 
 }
 
 /// The commands a click on a layer's thumbnail makes.
-fn thumb_click_actions(doc: &photocraft_doc::Document, id: LayerId, part: LayerPart, mods: Mods, actions: &mut Vec<Action>) {
+fn thumb_click_actions(doc: &patronusphoto_doc::Document, id: LayerId, part: LayerPart, mods: Mods, actions: &mut Vec<Action>) {
     let Some(l) = doc.layer(id) else { return };
     let m = egui_mods(mods);
     if mods.cmd || mods.ctrl {
@@ -163,7 +163,7 @@ fn thumb_click_actions(doc: &photocraft_doc::Document, id: LayerId, part: LayerP
     }
 }
 
-fn map_event(app: &mut PhotocraftApp, ctx: &egui::Context, event: LayersEvent<LayerId>, actions: &mut Vec<Action>) {
+fn map_event(app: &mut PatronusPhotoApp, ctx: &egui::Context, event: LayersEvent<LayerId>, actions: &mut Vec<Action>) {
     let Some(st) = app.session.active() else { return };
     let doc = st.doc.clone();
     let active = st.active_layer;
@@ -311,7 +311,7 @@ fn map_event(app: &mut PhotocraftApp, ctx: &egui::Context, event: LayersEvent<La
 
 /// A click that selected `l` alone: the thumbnail it landed on becomes the target, as the old
 /// thumbnail clicks did; a frame's click picks the frame tool target.
-fn target_on_click(app: &mut PhotocraftApp, l: &Layer, was_active: bool, part: Option<LayerPart>, actions: &mut Vec<Action>) {
+fn target_on_click(app: &mut PatronusPhotoApp, l: &Layer, was_active: bool, part: Option<LayerPart>, actions: &mut Vec<Action>) {
     if l.frame.is_some() {
         let target = match part {
             Some(LayerPart::FrameShape) => crate::frame_tool::Target::Frame,
@@ -336,9 +336,9 @@ fn target_on_click(app: &mut PhotocraftApp, l: &Layer, was_active: bool, part: O
         Some(LayerPart::FilterMask) => actions.push(("ui.filterMaskTarget".into(), json!(l.id.0))),
         Some(_) => {
             // Clicking the layer thumbnail leaves mask view (#196).
-            if let Some(v) = app.session.active().and_then(photocraft_engine::mask_view_cmds::current).filter(|v| v.layer == l.id) {
+            if let Some(v) = app.session.active().and_then(patronusphoto_engine::mask_view_cmds::current).filter(|v| v.layer == l.id) {
                 let mask = if v.filter { "filter" } else { "layer" };
-                actions.push((photocraft_engine::mask_view_cmds::ID.into(), json!({"layer": l.id.0, "mode": "off", "mask": mask})));
+                actions.push((patronusphoto_engine::mask_view_cmds::ID.into(), json!({"layer": l.id.0, "mode": "off", "mask": mask})));
             }
             actions.push(("ui.maskTarget".into(), json!(false)));
         }
@@ -353,9 +353,9 @@ fn target_on_click(app: &mut PhotocraftApp, l: &Layer, was_active: bool, part: O
 
 /// A double click or Enter that isn't a rename.
 fn activate(
-    app: &mut PhotocraftApp,
+    app: &mut PatronusPhotoApp,
     ctx: &egui::Context,
-    doc: &photocraft_doc::Document,
+    doc: &patronusphoto_doc::Document,
     row: LayerRowKey<LayerId>,
     on: ActivateOn,
     actions: &mut Vec<Action>,
@@ -424,7 +424,7 @@ fn activate(
     }
 }
 
-fn properties(app: &mut PhotocraftApp, targets: &[LayerId], edit: LayerPropertyEdit, actions: &mut Vec<Action>) {
+fn properties(app: &mut PatronusPhotoApp, targets: &[LayerId], edit: LayerPropertyEdit, actions: &mut Vec<Action>) {
     if targets.is_empty() {
         return;
     }
@@ -475,7 +475,7 @@ fn properties(app: &mut PhotocraftApp, targets: &[LayerId], edit: LayerPropertyE
 }
 
 /// A pick in the footer.
-fn footer(app: &mut PhotocraftApp, picked: Option<crate::smart_ui::FilterDrag>, action: LayersFooterAction, actions: &mut Vec<Action>) {
+fn footer(app: &mut PatronusPhotoApp, picked: Option<crate::smart_ui::FilterDrag>, action: LayersFooterAction, actions: &mut Vec<Action>) {
     let Some(st) = app.session.active() else { return };
     let doc = st.doc.clone();
     let active = st.active_layer.and_then(|id| doc.layer(id));
@@ -537,7 +537,7 @@ fn footer(app: &mut PhotocraftApp, picked: Option<crate::smart_ui::FilterDrag>, 
 }
 
 /// A pick in a row menu.
-fn menu_pick(app: &mut PhotocraftApp, ctx: &egui::Context, row: &Option<LayerRowKey<LayerId>>, command: &str, actions: &mut Vec<Action>) {
+fn menu_pick(app: &mut PatronusPhotoApp, ctx: &egui::Context, row: &Option<LayerRowKey<LayerId>>, command: &str, actions: &mut Vec<Action>) {
     let layer = row.as_ref().map(|r| *r.layer());
     if command == layers_tree::RENAME {
         if let Some(id) = layer {
@@ -605,7 +605,7 @@ fn select_param_ids(p: &Value) -> Vec<u64> {
 
 /// Runs the actions in order: a type session commits before a select, the mask targets switch,
 /// `Value::Null` params (and the fill layers that open a dialog) run as the menu item does.
-pub(crate) fn run_actions(app: &mut PhotocraftApp, ctx: &egui::Context, actions: Vec<Action>) {
+pub(crate) fn run_actions(app: &mut PatronusPhotoApp, ctx: &egui::Context, actions: Vec<Action>) {
     for (id, p) in actions {
         // A row click commits even when it selects the layer already being edited (#5584); a
         // multi-row selection that leaves the edited layer out is a layer switch (#6483).
@@ -647,7 +647,7 @@ pub(crate) fn run_actions(app: &mut PhotocraftApp, ctx: &egui::Context, actions:
         if crate::shortcut_dispatch::fire_bridged(ctx, &id).is_some() {
             continue;
         }
-        if p.is_null() || id == "layer.newFillLayer.solidColor" || id == photocraft_engine::pattern_fill_cmds::CREATE {
+        if p.is_null() || id == "layer.newFillLayer.solidColor" || id == patronusphoto_engine::pattern_fill_cmds::CREATE {
             let params = if p.is_null() { json!({}) } else { p };
             if let Err(e) = crate::menus::invoke(app, ctx, &id, params) {
                 app.ui.status = e;

@@ -1,6 +1,6 @@
 //! #7520: the options bar's Select and Mask… button follows the command `select.selectAndMask`
 //! (it maps to `select.refineEdge`): greyed out while nothing is selected, live after Select All.
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 use egui::vec2;
 use egui_kittest::{
@@ -9,11 +9,11 @@ use egui_kittest::{
 };
 use serde_json::json;
 
-fn harness() -> Harness<'static, Box<PhotocraftApp>> {
+fn harness() -> Harness<'static, Box<PatronusPhotoApp>> {
     // The whole app: the button's label and enabled state come from the command state its frame publishes.
     let mut h = Harness::builder().with_size(vec2(1440.0, 900.0)).with_max_steps(64).build_eframe(|cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), crate::Services::default());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 64, "height": 64})).unwrap();
         app.sync_views();
         app.ui.tool = Tool::RectMarquee;
@@ -23,7 +23,7 @@ fn harness() -> Harness<'static, Box<PhotocraftApp>> {
     h
 }
 
-fn button<'a>(h: &'a Harness<'static, Box<PhotocraftApp>>) -> egui_kittest::Node<'a> {
+fn button<'a>(h: &'a Harness<'static, Box<PatronusPhotoApp>>) -> egui_kittest::Node<'a> {
     h.get_by_role_and_label(egui::accesskit::Role::Button, "Select and Mask…")
 }
 

@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use photocraft_color::{Color, PixelFormat, SampleType};
-use photocraft_compose::shape_split;
-use photocraft_doc::Fill;
-use photocraft_doc::vector::{Path, ShapeLayer, ShapeStroke, Subpath};
-use photocraft_geom::{Rect, TileCoord};
-use photocraft_raster::Surface;
+use patronusphoto_color::{Color, PixelFormat, SampleType};
+use patronusphoto_compose::shape_split;
+use patronusphoto_doc::Fill;
+use patronusphoto_doc::vector::{Path, ShapeLayer, ShapeStroke, Subpath};
+use patronusphoto_geom::{Rect, TileCoord};
+use patronusphoto_raster::Surface;
 
 /// Source pixels retained to identify a split must count toward its cache budget too.
 #[test]

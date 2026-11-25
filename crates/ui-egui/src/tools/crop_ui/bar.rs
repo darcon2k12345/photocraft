@@ -6,11 +6,11 @@ use craft::ui::dialog::{Alert, HostedAlert};
 use craft::ui::runtime::env::Env;
 
 use super::{document, handle_event, refit, reset, toggle_straighten, words};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// The Crop options inside the options bar's `Bar`.
-pub(crate) fn bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub(crate) fn bar(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let Some(document) = document(app) else { return };
     let mut settings = app.ui.tool_options.crop.clone();
     let users = crate::crop_presets::user_presets(app);
@@ -59,14 +59,14 @@ pub(crate) fn bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
         }
     }
     if let Some(range) = out.out_of_range {
-        let alert = Alert::range(tl!("PhotoCraft").to_owned(), &range, &Env::of(ui));
+        let alert = Alert::range(tl!("Patronus Photo").to_owned(), &range, &Env::of(ui));
         // An `Err` is the alert that was not opened because one is already up.
         let _ = app.framework.dialogs.open_unless_open(HostedAlert::new(alert));
     }
 }
 
 /// The task bar's preset list.
-pub(crate) fn preset_list(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub(crate) fn preset_list(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let Some(document) = document(app) else { return };
     let mut settings = app.ui.tool_options.crop.clone();
     let users = crate::crop_presets::user_presets(app);
@@ -79,7 +79,7 @@ pub(crate) fn preset_list(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 }
 
 /// What a preset pick asks of the app, for the bar and the task bar alike.
-fn preset_outputs(app: &mut PhotocraftApp, ratio: Option<CropRatioChange>, new_preset: bool, delete_preset: bool, selection: bool) {
+fn preset_outputs(app: &mut PatronusPhotoApp, ratio: Option<CropRatioChange>, new_preset: bool, delete_preset: bool, selection: bool) {
     if let Some(change) = ratio {
         refit(app, change.editing);
     }
@@ -96,12 +96,12 @@ fn preset_outputs(app: &mut PhotocraftApp, ratio: Option<CropRatioChange>, new_p
 }
 
 /// The ✓ and ⊘ cells show while a crop is pending or the frame was edited.
-pub(crate) fn commits_shown(app: &PhotocraftApp) -> bool {
+pub(crate) fn commits_shown(app: &PatronusPhotoApp) -> bool {
     app.ui.tool == Tool::Crop && (super::pending(app) || app.canvas_tools.crop.tool.modified())
 }
 
 /// ✓ crops, ⊘ discards.
-pub(crate) fn committed(app: &mut PhotocraftApp, apply: bool) {
+pub(crate) fn committed(app: &mut PatronusPhotoApp, apply: bool) {
     if apply {
         super::apply(app);
     } else {

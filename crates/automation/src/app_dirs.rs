@@ -1,15 +1,15 @@
-//! Where PhotoCraft keeps its per-user data, resolved the same way by the desktop app and
-//! `photocraft-cli` (which finds the app's agent connection file there, see [`crate::agent_link`]).
+//! Where Patronus Photo keeps its per-user data, resolved the same way by the desktop app and
+//! `patronusphoto-cli` (which finds the app's agent connection file there, see [`crate::agent_link`]).
 //!
 //! In order:
-//! 1. `PHOTOCRAFT_CONFIG_DIR`, when set (tests, agents, custom setups).
+//! 1. `PATRONUSPHOTO_CONFIG_DIR`, when set (tests, agents, custom setups).
 //! 2. **Portable mode** (#228): a marker file ([`PORTABLE_MARKERS`]) beside the executable puts
-//!    everything in `<exe dir>/PhotoCraftData`, so a portable copy on a USB stick leaves nothing in
+//!    everything in `<exe dir>/PatronusPhotoData`, so a portable copy on a USB stick leaves nothing in
 //!    `%APPDATA%`. The Windows portable zip ships with `portable.txt`; the MSI doesn't. If that
 //!    folder can't be written (read-only medium, Program Files), the platform folder is used and
 //!    [`DataDir::warning`] says why.
-//! 3. The platform convention: macOS `~/Library/Application Support/Photocraft`, Windows
-//!    `%APPDATA%\Photocraft`, Linux `$XDG_CONFIG_HOME/photocraft` or `~/.config/photocraft`.
+//! 3. The platform convention: macOS `~/Library/Application Support/Patronus Photo`, Windows
+//!    `%APPDATA%\Patronus Photo`, Linux `$XDG_CONFIG_HOME/patronusphoto` or `~/.config/patronusphoto`.
 //!
 //! The desktop app's `app_dirs` resolves it once per process and adds the crash-recovery folder.
 
@@ -17,16 +17,16 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
 /// Files beside the executable that switch on portable mode (either one; contents are ignored).
-pub const PORTABLE_MARKERS: [&str; 2] = ["portable.txt", "PhotoCraft.portable"];
+pub const PORTABLE_MARKERS: [&str; 2] = ["portable.txt", "Patronus Photo.portable"];
 /// The data folder created beside the executable in portable mode.
-pub const PORTABLE_DATA_DIR: &str = "PhotoCraftData";
+pub const PORTABLE_DATA_DIR: &str = "PatronusPhotoData";
 
 /// How [`DataDir::dir`] was chosen.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Mode {
-    /// `PHOTOCRAFT_CONFIG_DIR`.
+    /// `PATRONUSPHOTO_CONFIG_DIR`.
     Override,
-    /// `<exe dir>/PhotoCraftData`.
+    /// `<exe dir>/PatronusPhotoData`.
     Portable,
     /// The platform's per-user config directory.
     Platform,
@@ -44,7 +44,7 @@ pub struct DataDir {
 
 /// Resolve the data directory from the environment (`env`) and the executable's folder.
 pub fn resolve(env: impl Fn(&str) -> Option<OsString>, exe_dir: Option<&Path>) -> DataDir {
-    if let Some(d) = env("PHOTOCRAFT_CONFIG_DIR").filter(|d| !d.is_empty()) {
+    if let Some(d) = env("PATRONUSPHOTO_CONFIG_DIR").filter(|d| !d.is_empty()) {
         return DataDir { dir: Some(PathBuf::from(d)), mode: Mode::Override, warning: None };
     }
     let platform = platform_dir(&env);
@@ -67,12 +67,12 @@ pub fn resolve(env: impl Fn(&str) -> Option<OsString>, exe_dir: Option<&Path>) -
 pub fn platform_dir(env: &impl Fn(&str) -> Option<OsString>) -> Option<PathBuf> {
     let home = env("HOME").filter(|h| !h.is_empty()).map(PathBuf::from);
     if cfg!(target_os = "macos") {
-        return home.map(|h| h.join("Library/Application Support/Photocraft"));
+        return home.map(|h| h.join("Library/Application Support/Patronus Photo"));
     }
     if cfg!(windows) {
-        return env("APPDATA").filter(|a| !a.is_empty()).map(|a| PathBuf::from(a).join("Photocraft"));
+        return env("APPDATA").filter(|a| !a.is_empty()).map(|a| PathBuf::from(a).join("Patronus Photo"));
     }
-    env("XDG_CONFIG_HOME").filter(|x| !x.is_empty()).map(PathBuf::from).or_else(|| home.map(|h| h.join(".config"))).map(|c| c.join("photocraft"))
+    env("XDG_CONFIG_HOME").filter(|x| !x.is_empty()).map(PathBuf::from).or_else(|| home.map(|h| h.join(".config"))).map(|c| c.join("patronusphoto"))
 }
 
 /// The first portable marker file in `exe_dir`, if any.

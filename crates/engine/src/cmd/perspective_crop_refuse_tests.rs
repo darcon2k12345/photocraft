@@ -10,9 +10,9 @@
 //! Keeping shape and fill layers live instead of rasterizing them is #11800, so this file pins
 //! only that they still crop.
 
-use photocraft_doc::{Color, ColorMode, Document, Fill, Group, Layer, LayerContent, SampleType, ShapeLayer, Size, SmartObject, SmartSource, TextLayer};
-use photocraft_geom::{Affine, Rect};
-use photocraft_raster::Surface;
+use patronusphoto_doc::{Color, ColorMode, Document, Fill, Group, Layer, LayerContent, SampleType, ShapeLayer, Size, SmartObject, SmartSource, TextLayer};
+use patronusphoto_geom::{Affine, Rect};
+use patronusphoto_raster::Surface;
 use serde_json::{Value, json};
 
 use crate::Session;
@@ -30,7 +30,7 @@ fn crop_params() -> Value {
     json!({"corners": QUAD, "width": 100, "height": 80})
 }
 
-fn rgb_format() -> photocraft_color::PixelFormat {
+fn rgb_format() -> patronusphoto_color::PixelFormat {
     Document::with_background("f", Size::new(2, 2), ColorMode::Rgb, SampleType::U8, Color::WHITE).pixel_format()
 }
 
@@ -65,7 +65,7 @@ fn smart_layer(visible: bool) -> Layer {
 /// A red rectangle shape layer: what the crop rasterizes today alongside a type layer, so a
 /// refusal that comes before the rasterize leaves it a shape.
 fn shape_layer() -> Layer {
-    let path = photocraft_vector::shapes::rect(20.0, 20.0, 40.0, 30.0);
+    let path = patronusphoto_vector::shapes::rect(20.0, 20.0, 40.0, 30.0);
     Layer::new("Rectangle 1", LayerContent::Shape(ShapeLayer { path, fill: Some(Fill::Solid(Color::rgb(0.8, 0.2, 0.1))), ..Default::default() }))
 }
 

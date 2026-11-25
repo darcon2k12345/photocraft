@@ -5,12 +5,12 @@
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex, PoisonError, Weak};
 
-use photocraft_color::SampleType;
-use photocraft_doc::{Document, Layer, LayerContent, LayerId};
-use photocraft_geom::{Rect, TILE_SIZE, TileCoord};
-use photocraft_raster::Surface;
+use patronusphoto_color::SampleType;
+use patronusphoto_doc::{Document, Layer, LayerContent, LayerId};
+use patronusphoto_geom::{Rect, TILE_SIZE, TileCoord};
+use patronusphoto_raster::Surface;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// Whether `l` is a pixel layer with no visible pixels; an empty group isn't listed. Stored pixels
 /// past the canvas count (they are the layer's, Reveal All brings them back); `canvas` only bounds
@@ -45,7 +45,7 @@ fn has_visible_pixels(s: &Surface, canvas: Option<Rect>) -> bool {
             block.chunks_exact(bpp).fold(0u8, |acc, px| px.get(at..at + size).map_or(acc, |a| a.iter().fold(acc, |acc, b| acc | b))) != 0
         }
     };
-    let tile_visible = |c: &TileCoord, t: &Arc<photocraft_raster::Tile>| {
+    let tile_visible = |c: &TileCoord, t: &Arc<patronusphoto_raster::Tile>| {
         let bytes = t.bytes();
         let r = c.rect();
         let Some(clip) = clip.filter(|clip| !clip.contains_rect(&r)) else { return bytes.chunks(bpp.saturating_mul(1024)).any(visible) };
@@ -94,7 +94,7 @@ type EmptyCache = (Weak<Document>, Arc<HashSet<LayerId>>);
 /// once per document: a layer erased to nothing has every pixel read, too much for every repaint
 /// of the Layers panel. Keyed by the document itself rather than its revision, which also moves
 /// when only the selection does.
-pub fn empty_layers(app: &PhotocraftApp) -> Option<Arc<HashSet<LayerId>>> {
+pub fn empty_layers(app: &PatronusPhotoApp) -> Option<Arc<HashSet<LayerId>>> {
     let d = app.session.active()?;
     let mut cache = EMPTY.lock().unwrap_or_else(PoisonError::into_inner);
     if let Some((doc, set)) = cache.as_ref()

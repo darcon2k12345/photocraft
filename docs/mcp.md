@@ -3,11 +3,11 @@
 ## Connecting the desktop app (no terminal)
 
 **One switch, in the ArtCraft Launcher.** Settings › AI agents › **Let AI agents use Craft apps**
-is the person's consent for every Craft app, PhotoCraft included; PhotoCraft has no switch of its
+is the person's consent for every Craft app, Patronus Photo included; Patronus Photo has no switch of its
 own. **Add** next to an MCP client (Claude Desktop, Claude Code, Cursor, LM Studio) puts one entry
 in it, `ArtCraft`, for every installed Craft app (the `craft-ai-mcp` gateway, which starts
-`photocraft-cli mcp`); **Copy** gives the configuration for any other client. Then restart the
-client. Adding to MCP clients is the launcher's job alone: PhotoCraft writes no client
+`patronusphoto-cli mcp`); **Copy** gives the configuration for any other client. Then restart the
+client. Adding to MCP clients is the launcher's job alone: Patronus Photo writes no client
 configuration. The design is in storytold/craft-ai-integrations#195.
 
 This is behind the Craft suite's `AI-MCP` feature flag (`craft-flags`). Flags are set only in the
@@ -15,31 +15,31 @@ per-user `ArtCraft/flags.toml` (`AI-MCP = true` under `[flags]`; on Windows in
 `%LOCALAPPDATA%\ArtCraft`), which every Craft app and the launcher read, or for one run with
 `CRAFT_FLAGS=AI-MCP`; no app or launcher setting switches them. Without the flag, everything is as
 it was: Preferences › AI Integrations shows Allow Agent Control and Control Port, a Control Port
-already set keeps its connection, and the launcher's switch means nothing to PhotoCraft.
+already set keeps its connection, and the launcher's switch means nothing to Patronus Photo.
 
 While the launcher's switch is on, its app list `ArtCraft/mcp/apps.json` (in the per-user local
-configuration folder; `CRAFT_MCP_DIR` moves it) names `photocraft`, read through
+configuration folder; `CRAFT_MCP_DIR` moves it) names `patronusphoto`, read through
 `craft-ai-agents`, the same crate the launcher writes it with and the gateway reads it with.
-PhotoCraft then serves agents on loopback (any free port by default, or the Control Port) with a
+Patronus Photo then serves agents on loopback (any free port by default, or the Control Port) with a
 token it keeps in its settings folder, and publishes both in `agent-connection.json` there. The
 app looks at the launcher's files every 2 s, so switching there applies without a restart. Allow
 Agent Control off still refuses agents. Started with `--control`, the app ignores all this and the
 launch flags manage the connection, as before.
 
 **Edit › Preferences › AI Integrations** says whether agents can connect (and on which port), and
-keeps what is PhotoCraft's own: the port, the folders agents can open from and save to, and what
-happens when an agent needs PhotoCraft while it is closed (open it, work without a window, or ask
+keeps what is Patronus Photo's own: the port, the folders agents can open from and save to, and what
+happens when an agent needs Patronus Photo while it is closed (open it, work without a window, or ask
 the user to open it).
 
-### `photocraft-cli mcp`
+### `patronusphoto-cli mcp`
 
-Plain `photocraft-cli mcp` works in the open PhotoCraft window when the person lets agents use it,
+Plain `patronusphoto-cli mcp` works in the open Patronus Photo window when the person lets agents use it,
 and otherwise without a window, as it always did. It reads `agent-connection.json` before every
-tool call, so the client configuration holds no port or token and keeps working when PhotoCraft
+tool call, so the client configuration holds no port or token and keeps working when Patronus Photo
 restarts or moves to another port.
 
-- **Agents allowed, PhotoCraft open:** tools work in the window.
-- **Agents allowed, PhotoCraft closed:** When PhotoCraft Is Closed decides (`--when-closed
+- **Agents allowed, Patronus Photo open:** tools work in the window.
+- **Agents allowed, Patronus Photo closed:** When Patronus Photo Is Closed decides (`--when-closed
   <launch|headless|error>` overrides it): start the app and wait for it, serve a headless
   session, or say to open it. The headless session takes `--automation-read-root` and
   `--automation-write-root` when given to `mcp`, each on its own: a given read root replaces the
@@ -49,17 +49,17 @@ restarts or moves to another port.
 - **Agents not allowed:** a headless session with only the roots given to `mcp`, exactly as
   before; the app is never started and its folders aren't used.
 - **`--headless`:** always headless, whatever the switch says.
-- **`--bridge` (or `PHOTOCRAFT_CONTROL_PORT`):** a `photocraft --control` app, as before.
+- **`--bridge` (or `PATRONUSPHOTO_CONTROL_PORT`):** a `patronusphoto --control` app, as before.
 
 A session that went headless stays headless until the MCP client restarts it, so documents don't
 move under the agent. In the Flatpak the connection needs
-`flatpak override --user --share=network ai.storyteller.photocraft`.
+`flatpak override --user --share=network com.patronus.patronusphoto`.
 
 When `mcp` starts the app, macOS goes through LaunchServices (`open -a`) and Windows through
 Explorer, as a double-click would: the app is no child of the CLI, so it keeps running when the
 MCP client ends the CLI's process tree (Claude Code does on Windows), and it stays out of a
 Microsoft Store client's container, where new files under `%APPDATA%` would land in the client's
-package instead of PhotoCraft's settings folder. Linux starts it in its own process group.
+package instead of Patronus Photo's settings folder. Linux starts it in its own process group.
 
 ## Install and register
 
@@ -67,11 +67,11 @@ From the repository root, with the [source-build prerequisites](development.md#p
 installed, install the CLI independently of the build directory:
 
 ```sh
-cargo install --path apps/photocraft-cli --locked
+cargo install --path apps/patronusphoto-cli --locked
 # POSIX shells, for Cargo's default install location:
 export PATH="${CARGO_HOME:-$HOME/.cargo}/bin:$PATH"
-photocraft-cli --help
-photocraft-cli mcp --help
+patronusphoto-cli --help
+patronusphoto-cli mcp --help
 ```
 
 Cargo installs a binary, not a symlink into `target/`, so it survives `cargo clean`.
@@ -85,22 +85,22 @@ the client after changing its environment.
 Register the installed command explicitly (replace `/work/project` with an existing folder):
 
 ```sh
-claude mcp add photocraft -- photocraft-cli mcp --automation-read-root /work/project --automation-write-root /work/project
+claude mcp add patronusphoto -- patronusphoto-cli mcp --automation-read-root /work/project --automation-write-root /work/project
 ```
 
 Other MCP clients can use this bare-name configuration:
 
 ```json
-{"mcpServers":{"photocraft":{"command":"photocraft-cli","args":["mcp","--automation-read-root","/work/project","--automation-write-root","/work/project"]}}}
+{"mcpServers":{"patronusphoto":{"command":"patronusphoto-cli","args":["mcp","--automation-read-root","/work/project","--automation-write-root","/work/project"]}}}
 ```
 
-Linux `.deb` and `.rpm` packages already install `/usr/bin/photocraft-cli`; those users
+Linux `.deb` and `.rpm` packages already install `/usr/bin/patronusphoto-cli`; those users
 can skip the source install. Other release locations are listed in the
 [installed-release guide](../book/src/automation/mcp.md#from-an-installed-release).
 Installing the CLI does not start or register an MCP server automatically.
 
 If a client reports `ENOENT` or "Executable not found in $PATH", verify the install with
-`command -v photocraft-cli` (PowerShell: `Get-Command photocraft-cli`) in the client's
+`command -v patronusphoto-cli` (PowerShell: `Get-Command patronusphoto-cli`) in the client's
 environment. If that environment cannot be changed, set JSON `command` to the absolute
 installed binary path, not a literal `~` or `$HOME` expression. Avoid symlinks into
 `target/release`: cleaning the build directory breaks them. A source build alone does
@@ -108,19 +108,19 @@ not put the CLI on `PATH`.
 
 ## Start a session
 
-PhotoCraft follows the same conventions as FilmCraft #28. Start a headless session (`--headless`:
-without it, `mcp` works in the open PhotoCraft window while the ArtCraft Launcher's agents switch is
+Patronus Photo follows the same conventions as FilmCraft #28. Start a headless session (`--headless`:
+without it, `mcp` works in the open Patronus Photo window while the ArtCraft Launcher's agents switch is
 on, and may start the app; scripts, tests and agents pass it):
 
 ```sh
-photocraft-cli mcp --headless \
+patronusphoto-cli mcp --headless \
   --automation-read-root /work/project \
   --automation-read-root /library/reference \
   --automation-write-root /work/project
 ```
 
 Repeat `--automation-read-root` to grant ordered read directories in headless `mcp`, `serve`,
-or desktop `photocraft --control`. Both `--flag <dir>` and `--flag=<dir>` work and can be mixed;
+or desktop `patronusphoto --control`. Both `--flag <dir>` and `--flag=<dir>` work and can be mixed;
 duplicate read roots are allowed. Relative file requests search the roots in launch order.
 Headless reads select the first existing regular file; only a missing file tries the next root.
 Directory, permission, path-escape and decoding errors stop headless requests instead of falling back.
@@ -149,17 +149,17 @@ directory-bundle access; desktop directory `.pcraft` reads remain scoped to the 
 
 Bridge mode uses `--bridge` and `--control-token-file` as described in
 [development.md](development.md). Configure all roots on the desktop process; passing root flags
-to `photocraft-cli mcp --bridge` is a usage error because the bridge cannot grant them.
+to `patronusphoto-cli mcp --bridge` is a usage error because the bridge cannot grant them.
 UI tools require a running desktop app. The desktop environment variable
-`PHOTOCRAFT_AUTOMATION_READ_ROOT` supplies one fallback directory only when no explicit read-root
+`PATRONUSPHOTO_AUTOMATION_READ_ROOT` supplies one fallback directory only when no explicit read-root
 flags are present; explicit flags replace it, preserving CLI order. Similarly, one explicit
-write-root flag overrides `PHOTOCRAFT_AUTOMATION_WRITE_ROOT`. These variables do not grant
+write-root flag overrides `PATRONUSPHOTO_AUTOMATION_WRITE_ROOT`. These variables do not grant
 headless CLI file access.
 
 A client has the full rights of the roots it is given: it can read any file below the read
 root, and `doc_save`, `doc_export` and the export tools can create files anywhere below the
 write root. `doc_save` and `doc_export` replace an existing file only when its extension is an
-image or document format PhotoCraft writes (PNG, JPEG, TIFF, PSD, PSB, .pcraft, OpenRaster,
+image or document format Patronus Photo writes (PNG, JPEG, TIFF, PSD, PSB, .pcraft, OpenRaster,
 PDF, …) or its bytes are an image; anything else (`src/main.rs`, `.env`) is refused and left
 untouched. The multi-file exports (layers, data sets) never replace a file. An agent reads
 text from documents (layer names, metadata) that may try to steer it, so prefer a dedicated
@@ -167,15 +167,15 @@ output folder as the write root over a whole project.
 
 Use absolute root paths in MCP client configurations, since a relative root is resolved from
 the client's launch directory. In bridge mode, configure roots on the **desktop app**; root
-flags on `photocraft-cli mcp --bridge` are rejected. Explicit `--control-token` and
-`--control-token-file` flags require `--bridge` (or `PHOTOCRAFT_CONTROL_PORT`) and are mutually
-exclusive. Bridge credentials can also come from `PHOTOCRAFT_CONTROL_TOKEN` or `PHOTOCRAFT_CONTROL_TOKEN_FILE`.
+flags on `patronusphoto-cli mcp --bridge` are rejected. Explicit `--control-token` and
+`--control-token-file` flags require `--bridge` (or `PATRONUSPHOTO_CONTROL_PORT`) and are mutually
+exclusive. Bridge credentials can also come from `PATRONUSPHOTO_CONTROL_TOKEN` or `PATRONUSPHOTO_CONTROL_TOKEN_FILE`.
 
 MCP and `serve` launch options (all but `--help`/`-h`) take one non-empty value each and cannot
 be repeated. Missing values, stray positional arguments and options for the wrong mode are
 usage errors (exit 2), reported on stderr before the server starts; stdout stays available for
 protocol messages. For `serve`, explicit credential flags require `--port` (or
-`PHOTOCRAFT_CONTROL_PORT`); stdio needs no control token.
+`PATRONUSPHOTO_CONTROL_PORT`); stdio needs no control token.
 
 ## Tools and resources
 
@@ -230,7 +230,7 @@ No filesystem root is needed for the in-memory commands. External linked sources
 a file read remain refused. See the [control policy](control-protocol.md#engine-commands)
 for the shared restrictions.
 
-`photocraft://document` and `photocraft://commands` return live JSON matching `doc_inspect`
+`patronusphoto://document` and `patronusphoto://commands` return live JSON matching `doc_inspect`
 and `command_list`. Resource reads are uncached; tool/resource catalogs are private and cached
 for ten minutes. List/read responses include the MCP 2026-07-28 result/cache fields.
 

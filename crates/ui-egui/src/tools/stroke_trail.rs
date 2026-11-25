@@ -10,10 +10,10 @@
 use craft::behavior::kurbo::{Point, Rect};
 use craft::ui::canvas_controls::brush::{CoverageMask, StrokeTrail, TrailTone};
 use craft::ui::contract::Show as _;
-use photocraft_paint::{BrushSettings, StrokePoint, StrokeRenderer};
+use patronusphoto_paint::{BrushSettings, StrokePoint, StrokeRenderer};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// A drag's footprint mask.
@@ -33,7 +33,7 @@ struct Dabs {
     /// Any coverage counts in full ([`Trail::feed_reach`]).
     reach: bool,
     /// Document pixels the last "finish now" tail (a lone first dab, smoothing catch-up) covered.
-    tail: photocraft_geom::Rect,
+    tail: patronusphoto_geom::Rect,
 }
 
 impl Trail {
@@ -79,7 +79,7 @@ impl Trail {
     }
 
     /// Show the coverage the brush's own dabs leave along the drag, as the stroke commit renders
-    /// it (`photocraft_paint::retouch::stroke_coverage`): soft edges for a soft brush, the size and
+    /// it (`patronusphoto_paint::retouch::stroke_coverage`): soft edges for a soft brush, the size and
     /// shape each dab takes from pen pressure and dynamics. `brush` is asked for once, on the first
     /// call. What finishing the stroke now would add (the press's lone first dab) shows too.
     pub fn feed_dabs(&mut self, points: &[[f64; 3]], brush: impl FnOnce() -> BrushSettings) {
@@ -107,7 +107,7 @@ impl Trail {
             return;
         }
         let mut dabs =
-            self.dabs.take().unwrap_or_else(|| Dabs { renderer: StrokeRenderer::new(&brush(), None, 1.0), reach, tail: photocraft_geom::Rect::EMPTY });
+            self.dabs.take().unwrap_or_else(|| Dabs { renderer: StrokeRenderer::new(&brush(), None, 1.0), reach, tail: patronusphoto_geom::Rect::EMPTY });
         let new: Vec<StrokePoint> = points
             .get(self.fed..)
             .unwrap_or(&[])
@@ -119,7 +119,7 @@ impl Trail {
         dabs.renderer.push(&new);
         let mut changed = dabs.renderer.take_dirty_rect().union(&dabs.tail);
         let tail = dabs.renderer.tail_preview().map(|mut t| (t.take_dirty_rect(), t));
-        dabs.tail = tail.as_ref().map_or(photocraft_geom::Rect::EMPTY, |(r, _)| *r);
+        dabs.tail = tail.as_ref().map_or(patronusphoto_geom::Rect::EMPTY, |(r, _)| *r);
         changed = changed.union(&dabs.tail);
         let tail = tail.map(|(_, t)| t);
         if !changed.is_empty() {
@@ -156,7 +156,7 @@ fn tone_of(tool: Tool) -> TrailTone {
 /// `app.canvas_tools` is out of the app while its family runs). Quick Selection shows the brush
 /// footprint, the Remove Tool the dabs' whole reach, every other tool the dabs' own coverage.
 /// A pass that feeds the same points again stamps nothing.
-pub(crate) fn feed(app: &mut PhotocraftApp, tool: Tool, points: &[[f64; 3]]) {
+pub(crate) fn feed(app: &mut PatronusPhotoApp, tool: Tool, points: &[[f64; 3]]) {
     let Some(st) = app.session.active() else { return };
     let size = [st.doc.size.width, st.doc.size.height];
     let brush = app.session.tools.brush.clone();
@@ -166,7 +166,7 @@ pub(crate) fn feed(app: &mut PhotocraftApp, tool: Tool, points: &[[f64; 3]]) {
         return;
     }
     let entry = json!({"size": brush.size, "hardness": brush.hardness * 100.0, "spacing": brush.spacing * 100.0});
-    let dabs_brush = || photocraft_engine::retouch_cmds::stroke_brush(&brush, &entry);
+    let dabs_brush = || patronusphoto_engine::retouch_cmds::stroke_brush(&brush, &entry);
     if tool == Tool::Remove {
         trail.feed_reach(points, dabs_brush);
     } else {
@@ -176,7 +176,7 @@ pub(crate) fn feed(app: &mut PhotocraftApp, tool: Tool, points: &[[f64; 3]]) {
 
 /// Shows the live stroke's trail and, while Remove strokes wait for Enter, their tint. A part
 /// with no trail does nothing.
-pub(crate) fn show(ui: &mut egui::Ui, app: &mut PhotocraftApp, rect: egui::Rect) {
+pub(crate) fn show(ui: &mut egui::Ui, app: &mut PatronusPhotoApp, rect: egui::Rect) {
     if let Some(trail) = app.trail.as_mut() {
         let tone = trail.tone;
         trail.show_as(ui, rect, tl!("Stroke footprint"), tone);

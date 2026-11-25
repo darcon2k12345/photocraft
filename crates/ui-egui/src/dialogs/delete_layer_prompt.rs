@@ -3,7 +3,7 @@ use craft::ui::dialog::{PromptAnswer, PromptChoice, StandardPrompt};
 use serde_json::{Value, json};
 
 use super::alerts;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 pub(crate) const PREF: &str = "layer.delete.confirmation";
 const COMMAND: &str = "layer.delete";
@@ -16,13 +16,13 @@ pub(crate) struct PendingDelete {
     params: Value,
 }
 
-pub fn intercept(app: &mut PhotocraftApp, command: &str, params: &Value) -> Option<Result<Value, String>> {
+pub fn intercept(app: &mut PatronusPhotoApp, command: &str, params: &Value) -> Option<Result<Value, String>> {
     if app.automation_input || command != COMMAND || params.get("__trash").and_then(Value::as_bool) != Some(true) || alerts::dismissed(app, PREF) {
         return None;
     }
     let state = app.session.active()?;
     let selected = state.selected_layers();
-    let explicit = params.get("layer").and_then(Value::as_u64).map(photocraft_doc::LayerId);
+    let explicit = params.get("layer").and_then(Value::as_u64).map(patronusphoto_doc::LayerId);
     let ids = explicit.as_ref().map_or(selected, std::slice::from_ref);
     if ids.is_empty() {
         return None;
@@ -38,7 +38,7 @@ pub fn intercept(app: &mut PhotocraftApp, command: &str, params: &Value) -> Opti
 
 /// The `PROMPTS` entry: Delete runs the held command when the document and selection are unchanged
 /// and keeps a ticked "Don't show again" after it succeeded. `false` for another family's answer.
-pub(crate) fn answer(app: &mut PhotocraftApp, _ctx: &egui::Context, answer: &mut PromptAnswer) -> bool {
+pub(crate) fn answer(app: &mut PatronusPhotoApp, _ctx: &egui::Context, answer: &mut PromptAnswer) -> bool {
     let Some(pending) = answer.take_tag::<PendingDelete>() else { return false };
     if answer.choice != PromptChoice::Proceed {
         return true;
@@ -51,7 +51,7 @@ pub(crate) fn answer(app: &mut PhotocraftApp, _ctx: &egui::Context, answer: &mut
     true
 }
 
-fn confirm(app: &mut PhotocraftApp, pending: PendingDelete) -> Result<Value, String> {
+fn confirm(app: &mut PatronusPhotoApp, pending: PendingDelete) -> Result<Value, String> {
     let state = app.session.active().ok_or(tl!("The document is closed"))?;
     if pending.doc != state.doc.id.0 || pending.selected != state.selected_layers().iter().map(|id| id.0).collect::<Vec<_>>() {
         return Err(tl!("The document or selected layers changed. Please request deletion again.").into());
@@ -65,25 +65,25 @@ mod tests {
     use egui_kittest::kittest::Queryable;
     use std::sync::Arc;
 
-    fn session(layer: &str) -> photocraft_engine::Session {
-        let mut s = photocraft_engine::Session::new();
+    fn session(layer: &str) -> patronusphoto_engine::Session {
+        let mut s = patronusphoto_engine::Session::new();
         s.execute("file.new", json!({"width":8,"height":8})).unwrap();
         s.execute("layer.new.layer", json!({"name":layer})).unwrap();
         s
     }
 
-    fn make_app() -> Box<PhotocraftApp> {
-        PhotocraftApp::new(session("Ink"), crate::Services::default())
+    fn make_app() -> Box<PatronusPhotoApp> {
+        PatronusPhotoApp::new(session("Ink"), crate::Services::default())
     }
 
     /// An app whose preferences live in `files`, as one launch of the program.
-    fn launch(files: &Arc<craft::settings::testing::MemoryFiles>, session: photocraft_engine::Session) -> Box<PhotocraftApp> {
-        let scratch = std::env::temp_dir().join("photocraft-delete-layer-prompt");
+    fn launch(files: &Arc<craft::settings::testing::MemoryFiles>, session: patronusphoto_engine::Session) -> Box<PatronusPhotoApp> {
+        let scratch = std::env::temp_dir().join("patronusphoto-delete-layer-prompt");
         let options = craft::settings::OpenOptions::new(craft::settings::Location::Dir(scratch)).files(files.clone());
-        PhotocraftApp::new(session, crate::Services { settings: Some(craft::settings::SettingsStore::open_with(options)), ..Default::default() })
+        PatronusPhotoApp::new(session, crate::Services { settings: Some(craft::settings::SettingsStore::open_with(options)), ..Default::default() })
     }
 
-    fn pending(app: &PhotocraftApp) -> craft::ui::dialog::DialogId {
+    fn pending(app: &PatronusPhotoApp) -> craft::ui::dialog::DialogId {
         alerts::prompt_tagged::<PendingDelete>(app).expect("the delete question is open")
     }
 
@@ -128,9 +128,9 @@ mod tests {
     #[test]
     fn only_trash_click_prompts_and_default_delete_binding_is_unchanged() {
         let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1200.0, 800.0)).with_max_steps(64).build_eframe(|cc| {
-            PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-            // PLAN: assumed `PhotocraftApp::with_context(ctx, session, services)` (hub-w1)
-            PhotocraftApp::with_context(cc.egui_ctx.clone(), session("Ink"), crate::Services::default())
+            PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+            // PLAN: assumed `PatronusPhotoApp::with_context(ctx, session, services)` (hub-w1)
+            PatronusPhotoApp::with_context(cc.egui_ctx.clone(), session("Ink"), crate::Services::default())
         });
         h.run_steps(4);
         let id = h.state().session.active().unwrap().active_layer.unwrap();
@@ -145,7 +145,7 @@ mod tests {
         assert!(h.state().session.active().unwrap().doc.layer(id).is_none());
         // The Delete key is the framework's `edit.delete` binding, which `shortcut_dispatch` runs as Clear, so Delete
         // Layer carries no key of its own.
-        let delete = photocraft_engine::commands::find(COMMAND).unwrap();
+        let delete = patronusphoto_engine::commands::find(COMMAND).unwrap();
         assert_eq!(delete.shortcut, None);
     }
 }

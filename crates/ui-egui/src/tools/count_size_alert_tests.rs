@@ -7,20 +7,20 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 const MARKER: &str = "Marker Size";
 const LABEL: &str = "Label Size";
 
 /// A 100 x 100 document with the Count tool and one count group; the harness draws the options bar.
-fn harness() -> Harness<'static, Box<PhotocraftApp>> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn harness() -> Harness<'static, Box<PatronusPhotoApp>> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 100, "height": 100})).unwrap();
     app.run("count.add", json!({"x": 10, "y": 10})).unwrap();
     app.ui.tool = Tool::Count;
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(vec2(1600.0, 120.0)).build_ui_state(
-        |ui, app: &mut Box<PhotocraftApp>| {
+        |ui, app: &mut Box<PatronusPhotoApp>| {
             if !ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 return;
             }
@@ -28,13 +28,13 @@ fn harness() -> Harness<'static, Box<PhotocraftApp>> {
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::studio());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::studio());
     h.run_steps(4);
     h
 }
 
 /// Types `text` into the field named `field`, then Tabs out of it.
-fn type_into(h: &mut Harness<'static, Box<PhotocraftApp>>, field: &str, text: &str) {
+fn type_into(h: &mut Harness<'static, Box<PatronusPhotoApp>>, field: &str, text: &str) {
     h.query_all_by_role(egui::accesskit::Role::SpinButton)
         .find(|n| n.accesskit_node().label().is_some_and(|l| l.starts_with(field)))
         .unwrap_or_else(|| panic!("the {field} field"))
@@ -48,7 +48,7 @@ fn type_into(h: &mut Harness<'static, Box<PhotocraftApp>>, field: &str, text: &s
 }
 
 /// The current group's (Marker Size, Label Size).
-fn sizes(h: &Harness<'static, Box<PhotocraftApp>>) -> (u32, u32) {
+fn sizes(h: &Harness<'static, Box<PatronusPhotoApp>>) -> (u32, u32) {
     let g = &h.state().session.active().unwrap().doc.measurement.count_groups[0];
     (g.marker_size, g.label_size)
 }

@@ -1,11 +1,11 @@
-use super::{Key, Modifiers, PhotocraftApp, Tool};
+use super::{Key, Modifiers, PatronusPhotoApp, Tool};
 use crate::panels::toolbar::TOOL_SECTIONS;
 use crate::shortcut_dispatch::tests::{app_harness, tap};
 use crate::spring_tools::key_of;
 use std::collections::HashSet;
 
-fn app() -> Box<PhotocraftApp> {
-    PhotocraftApp::new(photocraft_engine::Session::new(), Default::default())
+fn app() -> Box<PatronusPhotoApp> {
+    PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default())
 }
 
 /// A fresh app enters each default letter group at its first toolbar tool under either preference.

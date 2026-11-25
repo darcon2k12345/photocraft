@@ -4,8 +4,8 @@ use craft_psd::{
     atn::{self, AtnAction, AtnEvent, AtnFile, AtnItem},
     descriptor::{Descriptor, Id, UnicodeString, Value as D},
 };
-use photocraft_doc::{LayerId, Rect};
-use photocraft_engine::{
+use patronusphoto_doc::{LayerId, Rect};
+use patronusphoto_engine::{
     Session,
     actions_cmds::{Action, ActionList, ActionStep, ActionsFile},
     atn_cmds,
@@ -40,13 +40,13 @@ fn recorded(event: AtnEvent, descriptor: Descriptor) -> Vec<u8> {
 }
 
 fn load(s: &mut Session, bytes: &[u8]) -> Value {
-    s.execute("actions.load", json!({"data": photocraft_engine::paint::tile::b64_encode(bytes)})).unwrap()
+    s.execute("actions.load", json!({"data": patronusphoto_engine::paint::tile::b64_encode(bytes)})).unwrap()
 }
 
 fn save(s: &mut Session) -> Vec<u8> {
     let saved = s.execute("actions.save", json!({"set": "CAF"})).unwrap();
     assert_eq!(saved["skipped"], json!([]));
-    photocraft_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap()
+    patronusphoto_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap()
 }
 
 /// Match the qualified native fixture, using the action command's default seed.

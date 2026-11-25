@@ -3,7 +3,7 @@
 
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::control::{ControlRequest, Reply, handle};
 use crate::state::{Tool, ToolOptions};
 
@@ -16,12 +16,12 @@ fn the_setting_is_saved_inspected_and_reset() {
     let back: ToolOptions = serde_json::from_value(serde_json::to_value(&options).unwrap()).unwrap();
     assert!(back.path_options.rubber_band);
 
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 200, "height": 200})).unwrap();
     app.sync_views();
     app.ui.tool = Tool::Pen;
     let ctx = app.ctx().clone();
-    let inspect = |app: &mut PhotocraftApp| {
+    let inspect = |app: &mut PatronusPhotoApp| {
         let (req, _rx) = ControlRequest::new("ui.inspect", json!({}));
         match handle(app, &ctx, &req) {
             Reply::Done(v) => v["result"]["toolOptions"]["path_options"]["rubberBand"].clone(),

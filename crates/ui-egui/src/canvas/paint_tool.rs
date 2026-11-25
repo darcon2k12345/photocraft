@@ -19,7 +19,7 @@ use craft::ui::primitives::Draw;
 use super::cursor_policy::{alt_loads_mixer, alt_samples, click_tool_cursor, mixer_target_locked, sample_target};
 use super::document_display::CanvasHost;
 
-use super::PhotocraftApp;
+use super::PatronusPhotoApp;
 use super::paint_mouse::{SecondaryUse, clears, secondary_takes, sync_tool_brush};
 use super::strokes::{
     HOLD_REPEAT_MS, begin_live_stroke, feed_live_stroke, live_stroke, live_stroke_busy, paint_target, snap_aliased_tip, stroke_params, stroke_wants_time,
@@ -97,14 +97,14 @@ pub(crate) fn tool<'a>(scope: &'a ToolScope<'a>, state: &'a mut PaintState, _hos
 
 /// The stroke being drawn, for readers outside the host's run (tests, `retouch_ui`, the clone
 /// overlay's auto-hide). During the run the family state is out of the app.
-pub(crate) fn stroking(app: &PhotocraftApp) -> Option<&PaintStroke> {
+pub(crate) fn stroking(app: &PatronusPhotoApp) -> Option<&PaintStroke> {
     app.canvas_tools.paint.stroke.as_ref()
 }
 
 /// Feeds the live stroke the points the pass's moves added, once per pass and after the host ran,
 /// so the stroke shows them in the same pass. Only the points not yet fed are fed, so a second
 /// pass of the same frame (which sees only its own moves) never repeats the first one's.
-pub(crate) fn drain(app: &mut PhotocraftApp, state: &mut PaintState, _response: &ToolHostResponse) {
+pub(crate) fn drain(app: &mut PatronusPhotoApp, state: &mut PaintState, _response: &ToolHostResponse) {
     let Some(stroke) = state.stroke.as_ref() else { return };
     feed_live_stroke(app, stroke);
     let ctx = app.ctx().clone();
@@ -126,7 +126,7 @@ fn doc_point(cx: &ToolContext<'_>, pos: egui::Pos2) -> Option<[f64; 2]> {
 }
 
 /// Ends the running stroke without a commit.
-fn drop_stroke(app: &mut PhotocraftApp, state: &mut PaintState) {
+fn drop_stroke(app: &mut PatronusPhotoApp, state: &mut PaintState) {
     state.stroke = None;
     app.live_stroke = None;
     app.session.clear_live_stroke();
@@ -136,12 +136,12 @@ fn drop_stroke(app: &mut PhotocraftApp, state: &mut PaintState) {
 /// Is a held pen's repeat point due at `now_ms`, so the stroke's time keeps advancing? Only a
 /// stroke that changes while the pointer is still (airbrush, smoothing catching up) repeats. The
 /// last point's time is the pass's after it repeats, so a second pass of a frame repeats nothing.
-fn hold_due(app: &PhotocraftApp, now_ms: f64) -> bool {
+fn hold_due(app: &PatronusPhotoApp, now_ms: f64) -> bool {
     app.stylus.last_point_ms().is_some_and(|t| now_ms - t >= HOLD_REPEAT_MS) && stroke_wants_time(app)
 }
 
 /// Pushes a point of `stroke` at `at` with the stylus's pressure and records its pose.
-fn push_point(app: &mut PhotocraftApp, stroke: &mut PaintStroke, at: [f64; 2]) {
+fn push_point(app: &mut PatronusPhotoApp, stroke: &mut PaintStroke, at: [f64; 2]) {
     stroke.points.push([at[0], at[1], f64::from(app.stylus.pressure())]);
     app.stylus.record_point();
 }
@@ -150,7 +150,7 @@ fn push_point(app: &mut PhotocraftApp, stroke: &mut PaintStroke, at: [f64; 2]) {
 /// (#11897): at the press of a Brush stroke on the Background's own pixels, Clear (chosen in the
 /// options bar, not a held `~`) is turned off, so the stroke is sent as Normal. A Background whose
 /// pixels are locked refuses the stroke, so Clear stays chosen there.
-fn clear_off_on_background(app: &mut PhotocraftApp, tool: Tool) {
+fn clear_off_on_background(app: &mut PatronusPhotoApp, tool: Tool) {
     let on_background = app.session.active().is_some_and(|st| {
         st.active_layer.is_some_and(|id| {
             st.doc.is_background(id) && {
@@ -166,8 +166,8 @@ fn clear_off_on_background(app: &mut PhotocraftApp, tool: Tool) {
 
 /// Reports why a Mixer Brush press could not start: the two refusals every press would meet get
 /// one alert, anything else the status bar.
-fn mixer_press_failed(app: &mut PhotocraftApp, message: String) {
-    use photocraft_engine::brush_cmds::mixer_live::{BITMAP_REFUSAL, INDEXED_REFUSAL};
+fn mixer_press_failed(app: &mut PatronusPhotoApp, message: String) {
+    use patronusphoto_engine::brush_cmds::mixer_live::{BITMAP_REFUSAL, INDEXED_REFUSAL};
     if message == INDEXED_REFUSAL || message == BITMAP_REFUSAL {
         // `alert` shows one alert even if more presses arrive while it is open.
         let _ = crate::dialogs::alerts::alert(app, message);
@@ -178,7 +178,7 @@ fn mixer_press_failed(app: &mut PhotocraftApp, message: String) {
 }
 
 /// Runs `f` on the brush resize drag with the app, taking the resize out of the app for the call.
-fn with_resize<R>(app: &mut PhotocraftApp, f: impl FnOnce(&mut crate::brush_resize::PaintResize, &mut PhotocraftApp) -> R) -> R {
+fn with_resize<R>(app: &mut PatronusPhotoApp, f: impl FnOnce(&mut crate::brush_resize::PaintResize, &mut PatronusPhotoApp) -> R) -> R {
     let mut resize = std::mem::take(&mut app.brush_resize);
     let out = f(&mut resize, app);
     app.brush_resize = resize;
@@ -188,7 +188,7 @@ fn with_resize<R>(app: &mut PhotocraftApp, f: impl FnOnce(&mut crate::brush_resi
 /// A press the paint tool takes: the resize chord, the HUD Color Picker, a Mixer Brush load (a click
 /// that is done at once), or a stroke.
 /// A Paint Bucket or Magic Eraser press: the fill or the erase runs at the clicked pixel. Returns false for any other tool.
-fn click_tool(app: &mut PhotocraftApp, tool: Tool, at: [f64; 2]) -> bool {
+fn click_tool(app: &mut PatronusPhotoApp, tool: Tool, at: [f64; 2]) -> bool {
     match tool {
         Tool::PaintBucket => {
             let o = app.ui.tool_options.clone();
@@ -209,8 +209,8 @@ fn click_tool(app: &mut PhotocraftApp, tool: Tool, at: [f64; 2]) -> bool {
             match app.run("paint.bucket", params) {
                 // A Bitmap document answers with the reference's alert (#12536), once however many clicks arrive
                 // while it is open; no status-bar error as well.
-                Err(e) if e == photocraft_engine::paint_cmds::BITMAP_REFUSAL => {
-                    let _ = crate::dialogs::alerts::alert(app, tl!(photocraft_engine::paint_cmds::BITMAP_REFUSAL));
+                Err(e) if e == patronusphoto_engine::paint_cmds::BITMAP_REFUSAL => {
+                    let _ = crate::dialogs::alerts::alert(app, tl!(patronusphoto_engine::paint_cmds::BITMAP_REFUSAL));
                 }
                 Err(e) => {
                     app.ui.status = e;
@@ -225,7 +225,7 @@ fn click_tool(app: &mut PhotocraftApp, tool: Tool, at: [f64; 2]) -> bool {
     }
 }
 
-fn begin(app: &mut PhotocraftApp, state: &mut PaintState, pointer: &ToolPointer, at: [f64; 2], cx: &mut ToolContext<'_>) -> ToolAction {
+fn begin(app: &mut PatronusPhotoApp, state: &mut PaintState, pointer: &ToolPointer, at: [f64; 2], cx: &mut ToolContext<'_>) -> ToolAction {
     let tool = app.ui.tool;
     let (mods, button) = (pointer.mods, pointer.button);
     app.stylus.record_pointer(pointer.time * 1000.0, Some(pointer.sample));
@@ -296,7 +296,7 @@ fn begin(app: &mut PhotocraftApp, state: &mut PaintState, pointer: &ToolPointer,
     }
     app.live_stroke = if strokes_live(tool) { begin_live_stroke(app, &stroke) } else { None };
     if tool == Tool::MixerBrush && app.live_stroke.is_none() {
-        use photocraft_engine::brush_cmds::mixer_live::LiveMixer;
+        use patronusphoto_engine::brush_cmds::mixer_live::LiveMixer;
         let p = stroke_params(app, &stroke, &app.stylus.stroke_points(&stroke.points));
         // A tip above the preview size keeps the stroke: the release renders it. Otherwise the
         // first dab itself is invalid; do not queue an unexpected release edit.

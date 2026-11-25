@@ -12,7 +12,7 @@ use egui::Vec2;
 
 use super::options::selected_shape;
 use super::pen::pen_path_op;
-use super::{PenOwner, PhotocraftApp};
+use super::{PatronusPhotoApp, PenOwner};
 use crate::direct_select::{PathRef, still_valid};
 use crate::state::Tool;
 
@@ -79,7 +79,7 @@ impl Default for FreeformPenTool {
 }
 
 /// Refuse a Freeform stroke before drawing when its selected shape cannot be edited.
-pub(crate) fn freeform_locked_shape(app: &PhotocraftApp) -> bool {
+pub(crate) fn freeform_locked_shape(app: &PatronusPhotoApp) -> bool {
     if app.ui.tool_options.vector_mode != craft::draw::ui::VectorMode::Shape || pen_path_op(&app.ui.tool_options).is_none() {
         return false;
     }
@@ -97,7 +97,7 @@ impl FreeformPenTool {
     }
 
     /// The measured case is a normal Freeform trace into the displayed Work Path.
-    pub(super) fn work_path_ends(&mut self, app: &PhotocraftApp, document: usize) {
+    pub(super) fn work_path_ends(&mut self, app: &PatronusPhotoApp, document: usize) {
         self.ends.clear();
         if self.admit != Admit::Open
             || app.session.active_index() != Some(document)

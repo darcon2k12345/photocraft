@@ -28,12 +28,12 @@ use craft::ui::pickers::Select;
 use craft::ui::primitives::IconSpec;
 use craft::ui::runtime::env::Label;
 use craft::ui::runtime::requests::EyedropperRequest;
-use photocraft_color::ColorMode;
-use photocraft_doc::Document;
-use photocraft_engine::installed_profiles::InstalledProfile;
+use patronusphoto_color::ColorMode;
+use patronusphoto_doc::Document;
+use patronusphoto_engine::installed_profiles::InstalledProfile;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 const INDEXED_COLOR: &str = "image.mode.indexedColor";
 pub(crate) const LENS_BLUR: &str = "filter.blur.lensBlur";
@@ -53,7 +53,7 @@ const LUT_SIZE: &str = "lutSize";
 const LUT_ERROR: &str = "lutError";
 
 /// Builds the rows `command`'s dialog shows from the rows `params` the spec parser made.
-pub(crate) fn custom_rows(app: &mut PhotocraftApp, command: &str, params: &mut Vec<Param>) {
+pub(crate) fn custom_rows(app: &mut PatronusPhotoApp, command: &str, params: &mut Vec<Param>) {
     match command {
         INDEXED_COLOR => indexed_color(app, params),
         LENS_BLUR => lens_blur(app, params),
@@ -102,7 +102,7 @@ fn matte_options() -> Vec<(String, Label)> {
     .collect()
 }
 
-fn indexed_color(app: &PhotocraftApp, params: &mut Vec<Param>) {
+fn indexed_color(app: &PatronusPhotoApp, params: &mut Vec<Param>) {
     retype(params, "colors", |old| {
         let default = match old {
             ParamKind::Range { default, .. } => default.round().clamp(2.0, 256.0) as i64,
@@ -128,10 +128,10 @@ fn indexed_color(app: &PhotocraftApp, params: &mut Vec<Param>) {
 ///
 /// The picker and command fields carry document RGB coordinates. Tool swatches are
 /// working-RGB coordinates, so only the named tool choices need this conversion here.
-fn indexed_matte_document_color(app: &PhotocraftApp, doc: &Document, color: [f32; 4]) -> Result<[f32; 3], String> {
-    let destination = match photocraft_engine::color_cmds::mode_space(doc.mode) {
-        ColorSpace::Rgb | ColorSpace::Gray => photocraft_engine::color_cmds::document_profile(doc),
-        _ => photocraft_engine::color_cmds::composite_profile(doc),
+fn indexed_matte_document_color(app: &PatronusPhotoApp, doc: &Document, color: [f32; 4]) -> Result<[f32; 3], String> {
+    let destination = match patronusphoto_engine::color_cmds::mode_space(doc.mode) {
+        ColorSpace::Rgb | ColorSpace::Gray => patronusphoto_engine::color_cmds::document_profile(doc),
+        _ => patronusphoto_engine::color_cmds::composite_profile(doc),
     };
     let source = app.session.color.working(ColorMode::Rgb);
     let options = TransformOptions { intent: app.session.color.settings.intent(), bpc: app.session.color.settings.bpc, ..Default::default() };
@@ -152,7 +152,7 @@ pub(crate) struct MatteColors {
 }
 
 /// The foreground and background in the active document's encoding.
-pub(crate) fn indexed_matte_defaults(app: &PhotocraftApp) -> MatteColors {
+pub(crate) fn indexed_matte_defaults(app: &PatronusPhotoApp) -> MatteColors {
     let Some(doc) = app.session.active().map(|state| state.doc.as_ref()) else { return MatteColors { foreground: None, background: None } };
     let convert = |color| indexed_matte_document_color(app, doc, color).ok();
     MatteColors { foreground: convert(app.session.tools.foreground), background: convert(app.session.tools.background) }
@@ -174,7 +174,7 @@ pub(crate) fn indexed_matte_seed(colors: &MatteColors, value: &str) -> Option<[f
 // --- Lens Blur -------------------------------------------------------------------------------------------------
 
 /// The active document's channel names, in index order.
-fn channel_names(app: &PhotocraftApp) -> Vec<String> {
+fn channel_names(app: &PatronusPhotoApp) -> Vec<String> {
     app.session.active().map(|d| d.doc.channels.iter().map(|c| c.name.clone()).collect()).unwrap_or_default()
 }
 
@@ -201,7 +201,7 @@ pub(crate) fn channel_index(v: &Value, names: &[String]) -> Option<usize> {
 
 /// Lens Blur's Depth Map Source lists the document's alpha channels after None, Transparency
 /// and Layer Mask, as in Photoshop (#7400).
-fn lens_blur(app: &PhotocraftApp, params: &mut [Param]) {
+fn lens_blur(app: &PatronusPhotoApp, params: &mut [Param]) {
     let names = channel_names(app);
     if let Some(depth_map) = row(params, "depthMap") {
         if let ParamKind::Choice { options, default, .. } = &mut depth_map.kind {
@@ -216,7 +216,7 @@ fn lens_blur(app: &PhotocraftApp, params: &mut [Param]) {
 
 /// Opens Lens Blur's values on the menu's own ids: a `channel` source with its `depthChannel` (an index or a
 /// name) becomes `channel:N`; one without a channel this document has (references aren't remembered) is None.
-pub(crate) fn lens_blur_channels(app: &PhotocraftApp, fields: &mut DialogFields) {
+pub(crate) fn lens_blur_channels(app: &PatronusPhotoApp, fields: &mut DialogFields) {
     let names = channel_names(app);
     let depth = fields.remove("depthChannel").and_then(|v| serde_json::to_value(v).ok());
     let source = fields.text("depthMap").map(str::to_owned);
@@ -267,7 +267,7 @@ fn installed_profiles(command: &str, params: &mut [Param]) {
     if !params.iter().any(|p| installed_filter(command, &p.key).is_some()) {
         return;
     }
-    let installed = photocraft_engine::installed_profiles::installed();
+    let installed = patronusphoto_engine::installed_profiles::installed();
     for p in params.iter_mut() {
         let choices = installed_choices(command, &p.key, &installed);
         if let ParamKind::Choice { options, .. } = &mut p.kind {
@@ -288,7 +288,7 @@ fn lut_choice(fields: &DialogFields) -> LutChoice {
         return LutChoice::Folder(PathBuf::from(file));
     }
     let look = fields.text("lut").unwrap_or("none");
-    photocraft_engine::adjust_cmds::LOOKS.iter().find(|(known, _)| *known == look).map_or(LutChoice::None, |(known, _)| LutChoice::Builtin(known))
+    patronusphoto_engine::adjust_cmds::LOOKS.iter().find(|(known, _)| *known == look).map_or(LutChoice::None, |(known, _)| LutChoice::Builtin(known))
 }
 
 /// Writes a picked choice as the command's `lut` / `file` parameters; the loaded LUT already held is no pick.
@@ -316,7 +316,7 @@ fn set_lut_choice(fields: &mut DialogFields, choice: &LutChoice) {
 /// Color Lookup's 3D LUT menu lists the LUT folder's files after the built-in looks (#9754), as the adjustment
 /// layer's Properties do: one picker row over the command's `lut`, `file` and, for a LUT loaded from a file,
 /// `data` and `fileName`.
-fn color_lookup(app: &PhotocraftApp, params: &mut Vec<Param>) {
+fn color_lookup(app: &PatronusPhotoApp, params: &mut Vec<Param>) {
     let at = params.iter().position(|p| p.key == "lut").unwrap_or(params.len());
     params.retain(|p| !matches!(p.key.as_str(), "lut" | "file"));
     let folder = Some(app.session.prefs().file_handling.lut_folder.clone()).filter(|f| !f.is_empty()).map(PathBuf::from);
@@ -356,7 +356,7 @@ fn color_lookup(app: &PhotocraftApp, params: &mut Vec<Param>) {
 
 /// Match Color's source document and the source layer of it, from the documents open now. The layer row reads
 /// the document `source` names, so it follows the menu.
-fn match_color(app: &PhotocraftApp, params: &mut Vec<Param>) {
+fn match_color(app: &PatronusPhotoApp, params: &mut Vec<Param>) {
     let documents = app.session.documents();
     if !params.iter().any(|p| p.key == "source") {
         let mut options = vec![("-1".to_owned(), Label::from(tl!("None")))];
@@ -405,7 +405,7 @@ fn layer_ref(fields: &DialogFields) -> Option<i64> {
 
 /// Replace Color (#4143): the "From" colour starts as the foreground and is sampled from the image with the
 /// canvas droppers; the Result swatch shows the colour after the shift.
-fn replace_color(app: &PhotocraftApp, params: &mut Vec<Param>) {
+fn replace_color(app: &PatronusPhotoApp, params: &mut Vec<Param>) {
     let fg = app.session.tools.foreground;
     retype(params, "color", |_| ParamKind::color(Some([fg[0], fg[1], fg[2]])));
     // Range only applies with Localized Color Clusters on, as in Photoshop.
@@ -454,7 +454,7 @@ fn droppers_row() -> Param {
 
 /// The sampled colour after the Hue, Saturation and Lightness shift.
 fn result_color(fields: &DialogFields) -> [f32; 3] {
-    use photocraft_algo::tone;
+    use patronusphoto_algo::tone;
     let from = fields.color("color").unwrap_or([0.0; 3]);
     let number = |key: &str| fields.number(key).unwrap_or(0.0) as f32;
     tone::replace_color_result(from, number("hue"), number("saturation"), number("lightness")).map(|v| v.clamp(0.0, 1.0))
@@ -463,7 +463,7 @@ fn result_color(fields: &DialogFields) -> [f32; 3] {
 /// Picking a Result in the Color Picker sets Hue, Saturation and Lightness so the sampled colour becomes it (#6278).
 /// The picker's answer is the only write of `resultPicked`, and the pass that reads it removes it.
 fn apply_picked_result(fields: &mut DialogFields) {
-    use photocraft_algo::tone;
+    use patronusphoto_algo::tone;
     let Some(to) = fields.color(RESULT_PICKED) else { return };
     let from = fields.color("color").unwrap_or([0.0; 3]);
     let (hue, saturation, lightness) = tone::replace_color_shift(from, to);
@@ -526,7 +526,7 @@ fn samples_of(fields: &DialogFields) -> ColorSamples {
 /// With the Add to Sample dropper (or Shift) the press adds a sample, with Subtract from
 /// Sample (or Alt) it subtracts one, as in Photoshop and Select › Color Range (#6280); the one rule is
 /// [`ColorSamples::pick`].
-pub(crate) fn replace_color_sample(app: &mut PhotocraftApp, id: DialogId, at: [f64; 2], mods: Mods) -> bool {
+pub(crate) fn replace_color_sample(app: &mut PatronusPhotoApp, id: DialogId, at: [f64; 2], mods: Mods) -> bool {
     let Some((tool, mut samples)) = app
         .framework
         .dialogs

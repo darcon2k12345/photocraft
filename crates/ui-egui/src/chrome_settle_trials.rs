@@ -10,17 +10,17 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
-type H = Harness<'static, Box<PhotocraftApp>>;
+type H = Harness<'static, Box<PatronusPhotoApp>>;
 
 /// The whole app on a new document, with the pointer resting over the canvas.
 fn harness() -> H {
     let mut h = Harness::builder().with_size(vec2(1440.0, 900.0)).with_max_steps(64).with_step_dt(1.0 / 60.0).build_eframe(|cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        let mut session = photocraft_engine::Session::new();
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        let mut session = patronusphoto_engine::Session::new();
         session.execute("file.new", json!({"width": 400, "height": 300})).unwrap();
-        PhotocraftApp::with_context(cc.egui_ctx.clone(), session, crate::Services::default())
+        PatronusPhotoApp::with_context(cc.egui_ctx.clone(), session, crate::Services::default())
     });
     h.run_steps(8);
     let at = h.state().last_canvas_rect.center();

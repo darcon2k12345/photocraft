@@ -3,8 +3,8 @@ use craft_psd::{
     atn::{self, AtnAction, AtnEvent, AtnFile, AtnItem},
     descriptor::{Descriptor, Id, UnicodeString, Value as D},
 };
-use photocraft_engine::actions_cmds::{ActionList, ActionStep, ActionsFile};
-use photocraft_engine::{Session, atn_cmds};
+use patronusphoto_engine::actions_cmds::{ActionList, ActionStep, ActionsFile};
+use patronusphoto_engine::{Session, atn_cmds};
 use serde_json::json;
 
 fn enumeration(kind: &str, value: &str) -> D {
@@ -69,7 +69,7 @@ fn bytes(event: [u8; 4], descriptor: Descriptor) -> Vec<u8> {
 fn load(event: [u8; 4], descriptor: Descriptor, command: &str) -> Session {
     let mut s = Session::new();
     let bytes = bytes(event, descriptor);
-    let report = s.execute("actions.load", json!({"data": photocraft_paint::tile::b64_encode(&bytes)})).unwrap();
+    let report = s.execute("actions.load", json!({"data": patronusphoto_paint::tile::b64_encode(&bytes)})).unwrap();
     assert_eq!(report["unsupported"], json!([]), "recorded {} must map to {command}", String::from_utf8_lossy(&event));
     assert_eq!(s.actions.list.actions()[0].steps[0].command, command);
     s
@@ -159,9 +159,9 @@ fn fixture(mode: &str, depth: u32) -> Session {
         let format = surface.format();
         let data = [[0.0, 0.0, 0.0, 1.0], [0.3, 0.8, 0.2, 1.0], [0.7, 0.2, 0.6, 0.4], [1.0, 1.0, 1.0, 1.0]]
             .into_iter()
-            .flat_map(|p| photocraft_raster::from_rgba(&format, p))
+            .flat_map(|p| patronusphoto_raster::from_rgba(&format, p))
             .collect::<Vec<_>>();
-        surface.write_region(photocraft_doc::Rect::from_xywh(0, 0, 4, 1), &data);
+        surface.write_region(patronusphoto_doc::Rect::from_xywh(0, 0, 4, 1), &data);
         Ok(())
     })
     .unwrap();
@@ -211,7 +211,7 @@ fn set_lab_pixels(s: &mut Session) {
     s.edit("known Lab pixels", |doc, active| {
         let surface = doc.layer_mut(active.unwrap()).unwrap().surface_mut().unwrap();
         surface.write_region(
-            photocraft_doc::Rect::from_xywh(0, 0, 4, 1),
+            patronusphoto_doc::Rect::from_xywh(0, 0, 4, 1),
             &[
                 0.4,
                 128.0 / 255.0,
@@ -344,7 +344,7 @@ fn invalid_replace_descriptors_and_lossy_exports_are_refused() {
     s.actions.list.replace_step(0, 0, stale).unwrap();
     assert!(atn_cmds::export("Direct adjustments", &[&s.actions.list.actions()[0]], &[], false).is_err(), "stale color metadata must not fall through to GdMp");
     for p in [json!({"color":"#ff0000"}), json!({"labMinimum":[40,0,0],"labMaximum":[60,0,0],"hue":0.5})] {
-        let a = photocraft_engine::actions_cmds::Action::new("Native", vec![ActionStep::new("image.adjustments.replaceColor", p)]);
+        let a = patronusphoto_engine::actions_cmds::Action::new("Native", vec![ActionStep::new("image.adjustments.replaceColor", p)]);
         assert!(atn_cmds::export("Direct adjustments", &[&a], &[], false).is_err());
     }
 }
@@ -371,8 +371,8 @@ fn recorded_replace_color_clamps_shifts_and_plays_the_lab_box_at_every_depth() {
         set_lab_pixels(&mut s);
         s.execute("select.rect", json!({"x":1,"y":0,"width":1,"height":1})).unwrap();
         if inverse {
-            let mut mask = photocraft_raster::Surface::with_default(photocraft_doc::PixelFormat::GRAY8, &[1.0]);
-            mask.fill_rect(photocraft_doc::Rect::new(1, 0, 2, 1), &[0.0]);
+            let mut mask = patronusphoto_raster::Surface::with_default(patronusphoto_doc::PixelFormat::GRAY8, &[1.0]);
+            mask.fill_rect(patronusphoto_doc::Rect::new(1, 0, 2, 1), &[0.0]);
             std::sync::Arc::make_mut(s.active_mut().unwrap().doc_mut()).selection = Some(mask);
         }
         let before = raw(&s);
@@ -422,7 +422,7 @@ fn lab_matching_uses_native_channels_and_the_embedded_rgb_profile() {
             s.execute("image.adjustments.replaceColor", json!({"labMinimum":lo,"labMaximum":hi,"fuzziness":0,"lightness":100})).unwrap();
             let after = raw(&s);
             let changed = after.chunks_exact(format.channels()).nth(1).unwrap();
-            let changed = photocraft_raster::to_rgba(&format, changed);
+            let changed = patronusphoto_raster::to_rgba(&format, changed);
             assert!(changed[..3].iter().all(|v| *v > 0.97), "{mode}/{depth}: {changed:?}");
             assert_eq!(&after[..format.channels()], &before[..format.channels()], "black is outside {mode}/{depth}");
             assert!(s.undo());
@@ -440,9 +440,9 @@ fn lab_matching_uses_native_channels_and_the_embedded_rgb_profile() {
 /// Full and selected edits agree across tile edges, including the final partial tiles and Undo.
 #[test]
 fn lab_replace_crosses_tile_edges_without_changing_unselected_native_pixels() {
-    let tile = photocraft_geom::TILE_SIZE;
-    let area = photocraft_doc::Rect::new(0, 0, tile + 4, tile + 3);
-    let window = photocraft_doc::Rect::new(tile - 1, tile - 1, tile + 2, tile + 2);
+    let tile = patronusphoto_geom::TILE_SIZE;
+    let area = patronusphoto_doc::Rect::new(0, 0, tile + 4, tile + 3);
+    let window = patronusphoto_doc::Rect::new(tile - 1, tile - 1, tile + 2, tile + 2);
     let width = area.width() as usize;
     for depth in [8, 16, 32] {
         for selected in ["none", "window", "outside"] {
@@ -452,7 +452,7 @@ fn lab_replace_crosses_tile_edges_without_changing_unselected_native_pixels() {
                 doc.layer_mut(active.unwrap()).unwrap().surface_mut().unwrap().fill_rect(area, &[0.5, 128.0 / 255.0, 128.0 / 255.0, 1.0]);
                 if selected != "none" {
                     let default = if selected == "outside" { 1.0 } else { 0.0 };
-                    let mut mask = photocraft_raster::Surface::with_default(photocraft_doc::PixelFormat::GRAY8, &[default]);
+                    let mut mask = patronusphoto_raster::Surface::with_default(patronusphoto_doc::PixelFormat::GRAY8, &[default]);
                     mask.fill_rect(window, &[1.0 - default]);
                     doc.selection = Some(mask);
                 }
@@ -482,17 +482,17 @@ fn lab_replace_crosses_tile_edges_without_changing_unselected_native_pixels() {
 /// Matching stored pixels change without materializing gaps whose default does not change.
 #[test]
 fn lab_replace_sparse_pixels_preserve_unstored_gaps() {
-    let tile = photocraft_geom::TILE_SIZE;
-    let far = photocraft_doc::Rect::new(4 * tile, 4 * tile, 4 * tile + 1, 4 * tile + 1);
+    let tile = patronusphoto_geom::TILE_SIZE;
+    let far = patronusphoto_doc::Rect::new(4 * tile, 4 * tile, 4 * tile + 1, 4 * tile + 1);
     let second = far.translate(2 * tile, 0);
     let gap = far.translate(tile, 0);
     for (alpha, opacity) in [(true, 0.0), (true, 1.0), (false, 1.0)] {
         let mut s = fixture("lab", 32);
         s.edit("Two distant Lab pixels", |doc, active| {
             let surface = doc.layer_mut(active.unwrap()).unwrap().surface_mut().unwrap();
-            let format = photocraft_doc::PixelFormat { alpha, ..surface.format() };
+            let format = patronusphoto_doc::PixelFormat { alpha, ..surface.format() };
             let channels = format.channels();
-            *surface = photocraft_raster::Surface::with_default(format, &[0.25, 128.0 / 255.0, 128.0 / 255.0, opacity][..channels]);
+            *surface = patronusphoto_raster::Surface::with_default(format, &[0.25, 128.0 / 255.0, 128.0 / 255.0, opacity][..channels]);
             for rect in [far, second] {
                 surface.fill_rect(rect, &[0.5, 128.0 / 255.0, 128.0 / 255.0, 1.0][..channels]);
             }
@@ -519,17 +519,17 @@ fn lab_replace_sparse_pixels_preserve_unstored_gaps() {
 /// Opaque defaults remain visible when the surface has no tiles or only a small exception.
 #[test]
 fn lab_replace_includes_visible_default_pixels_with_and_without_alpha() {
-    let tile = photocraft_geom::TILE_SIZE;
-    let far = photocraft_doc::Rect::new(2 * tile + 1, 2 * tile + 1, 2 * tile + 2, 2 * tile + 2);
+    let tile = patronusphoto_geom::TILE_SIZE;
+    let far = patronusphoto_doc::Rect::new(2 * tile + 1, 2 * tile + 1, 2 * tile + 2, 2 * tile + 2);
     for depth in [8, 16, 32] {
         for alpha in [false, true] {
-            for exception in [None, Some(photocraft_doc::Rect::new(1, 0, 2, 1)), Some(far)] {
+            for exception in [None, Some(patronusphoto_doc::Rect::new(1, 0, 2, 1)), Some(far)] {
                 let mut s = fixture("lab", depth);
                 s.edit("Opaque default Lab", |doc, active| {
                     let surface = doc.layer_mut(active.unwrap()).unwrap().surface_mut().unwrap();
-                    let format = photocraft_doc::PixelFormat { alpha, ..surface.format() };
+                    let format = patronusphoto_doc::PixelFormat { alpha, ..surface.format() };
                     let channels = format.channels();
-                    *surface = photocraft_raster::Surface::with_default(format, &[0.5, 128.0 / 255.0, 128.0 / 255.0, 1.0][..channels]);
+                    *surface = patronusphoto_raster::Surface::with_default(format, &[0.5, 128.0 / 255.0, 128.0 / 255.0, 1.0][..channels]);
                     if let Some(rect) = exception {
                         surface.fill_rect(rect, &[0.25, 128.0 / 255.0, 128.0 / 255.0, 1.0][..channels]);
                     } else {
@@ -542,7 +542,7 @@ fn lab_replace_includes_visible_default_pixels_with_and_without_alpha() {
                 let original = raw(&s);
                 s.execute("image.adjustments.replaceColor", json!({"labMinimum":[49,0,0],"labMaximum":[51,0,0],"fuzziness":0,"lightness":100})).unwrap();
                 for (i, (pixel, original)) in raw(&s).chunks_exact(3 + usize::from(alpha)).zip(original.chunks_exact(3 + usize::from(alpha))).enumerate() {
-                    if exception == Some(photocraft_doc::Rect::new(1, 0, 2, 1)) && i == 1 {
+                    if exception == Some(patronusphoto_doc::Rect::new(1, 0, 2, 1)) && i == 1 {
                         assert_eq!(pixel, original);
                     } else {
                         assert!(pixel[0] > 0.99, "{depth}/{alpha}/{exception:?} pixel {i}: {pixel:?}");
@@ -565,17 +565,17 @@ fn lab_replace_includes_visible_default_pixels_with_and_without_alpha() {
 /// Selection islands and holes retain their coverage over unstored opaque pixels.
 #[test]
 fn lab_replace_selection_controls_opaque_gap_pixels() {
-    let tile = photocraft_geom::TILE_SIZE;
-    let far = photocraft_doc::Rect::new(2 * tile, 2 * tile, 2 * tile + 1, 2 * tile + 1);
+    let tile = patronusphoto_geom::TILE_SIZE;
+    let far = patronusphoto_doc::Rect::new(2 * tile, 2 * tile, 2 * tile + 1, 2 * tile + 1);
     let gap = far.translate(-tile, -tile);
     for implicit in [false, true] {
         let mut s = fixture("lab", 32);
         s.edit("Selected opaque gap", |doc, active| {
             let surface = doc.layer_mut(active.unwrap()).unwrap().surface_mut().unwrap();
-            *surface = photocraft_raster::Surface::with_default(surface.format(), &[0.5, 128.0 / 255.0, 128.0 / 255.0, 1.0]);
+            *surface = patronusphoto_raster::Surface::with_default(surface.format(), &[0.5, 128.0 / 255.0, 128.0 / 255.0, 1.0]);
             surface.fill_rect(far, &[0.25, 128.0 / 255.0, 128.0 / 255.0, 1.0]);
             let coverage = if implicit { 1.0 } else { 0.0 };
-            let mut mask = photocraft_raster::Surface::with_default(photocraft_doc::PixelFormat::GRAY8, &[coverage]);
+            let mut mask = patronusphoto_raster::Surface::with_default(patronusphoto_doc::PixelFormat::GRAY8, &[coverage]);
             mask.fill_rect(gap, &[1.0 - coverage]);
             doc.selection = Some(mask);
             Ok(())
@@ -586,7 +586,7 @@ fn lab_replace_selection_controls_opaque_gap_pixels() {
         let original = before.layer(layer).unwrap().surface().unwrap();
         s.execute("image.adjustments.replaceColor", json!({"labMinimum":[49,0,0],"labMaximum":[51,0,0],"fuzziness":0,"lightness":100})).unwrap();
         let surface = s.active().unwrap().doc.layer(layer).unwrap().surface().unwrap();
-        let canvas_pixel = photocraft_doc::Rect::new(0, 0, 1, 1);
+        let canvas_pixel = patronusphoto_doc::Rect::new(0, 0, 1, 1);
         for (rect, changed) in [(gap, !implicit), (canvas_pixel, implicit)] {
             if changed {
                 assert!(surface.read_region(rect)[0] > 0.99);
@@ -610,10 +610,10 @@ fn legacy_rgb_replace_color_and_ordinary_gradient_exports_are_unchanged() {
     let mut s = fixture("rgb", 32);
     let before = raw(&s);
     let mut expected = before.as_chunks::<4>().0.to_vec();
-    photocraft_algo::tone::replace_color(&mut expected, [0.3, 0.8, 0.2], 40.0, 60.0, 20.0, -10.0);
+    patronusphoto_algo::tone::replace_color(&mut expected, [0.3, 0.8, 0.2], 40.0, 60.0, 20.0, -10.0);
     s.execute("image.adjustments.replaceColor", json!({"color":[0.3,0.8,0.2],"fuzziness":40,"hue":60,"saturation":20,"lightness":-10})).unwrap();
     assert_eq!(raw(&s), expected.as_flattened());
-    let action = photocraft_engine::actions_cmds::Action::new(
+    let action = patronusphoto_engine::actions_cmds::Action::new(
         "Ordinary",
         vec![ActionStep::new("image.adjustments.gradientMap", json!({"stops":[[0,"#000000"],[1,"#ffffff"]]}))],
     );
@@ -647,7 +647,7 @@ fn lab_replace_preserves_alpha_and_rejects_locked_or_mismatched_surfaces() {
     let mut mismatch = fixture("rgb", 32);
     mismatch
         .edit("inconsistent synthetic mode", |doc, _| {
-            doc.mode = photocraft_doc::ColorMode::Cmyk;
+            doc.mode = patronusphoto_doc::ColorMode::Cmyk;
             Ok(())
         })
         .unwrap();
@@ -662,8 +662,8 @@ fn lab_replace_fractional_selection_preserves_f32_alpha_bits() {
     for coverage in [53.0 / 255.0, 127.0 / 255.0] {
         let mut s = fixture("rgb", 32);
         s.edit("fractional alpha and selection", |doc, active| {
-            doc.layer_mut(active.unwrap()).unwrap().surface_mut().unwrap().write_region(photocraft_doc::Rect::new(2, 0, 3, 1), &[0.7, 0.2, 0.6, 0.7]);
-            doc.selection = Some(photocraft_raster::Surface::with_default(photocraft_doc::PixelFormat::GRAY8, &[coverage]));
+            doc.layer_mut(active.unwrap()).unwrap().surface_mut().unwrap().write_region(patronusphoto_doc::Rect::new(2, 0, 3, 1), &[0.7, 0.2, 0.6, 0.7]);
+            doc.selection = Some(patronusphoto_raster::Surface::with_default(patronusphoto_doc::PixelFormat::GRAY8, &[coverage]));
             Ok(())
         })
         .unwrap();
@@ -690,7 +690,7 @@ fn an_unchanged_lab_tone_shift_preserves_native_cmyk_samples() {
                 .unwrap()
                 .surface_mut()
                 .unwrap()
-                .write_region(photocraft_doc::Rect::from_xywh(1, 0, 1, 1), &[0.2, 0.3, 0.4, 0.25, 1.0]);
+                .write_region(patronusphoto_doc::Rect::from_xywh(1, 0, 1, 1), &[0.2, 0.3, 0.4, 0.25, 1.0]);
             Ok(())
         })
         .unwrap();

@@ -1,11 +1,11 @@
 use craft::ui::dialog::DialogId;
 use serde_json::{Value, json};
 
-use crate::{PhotocraftApp, Services};
+use crate::{PatronusPhotoApp, Services};
 
 /// The app with one document and the Image Processor open.
-fn open() -> (Box<PhotocraftApp>, egui::Context, DialogId) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Services::default());
+fn open() -> (Box<PatronusPhotoApp>, egui::Context, DialogId) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Services::default());
     app.run("file.new", json!({"width": 40, "height": 20})).unwrap();
     let ctx = app.ctx().clone();
     let reply = crate::menus::invoke(&mut app, &ctx, super::COMMAND, json!({})).unwrap();
@@ -14,7 +14,7 @@ fn open() -> (Box<PhotocraftApp>, egui::Context, DialogId) {
     (app, ctx, id)
 }
 
-fn set(app: &mut PhotocraftApp, ctx: &egui::Context, id: DialogId, key: &str, value: Value) {
+fn set(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: DialogId, key: &str, value: Value) {
     app.framework.dialogs.set_json_field(ctx, id, key, value).unwrap_or_else(|e| panic!("{key}: {e}"));
 }
 
@@ -57,7 +57,7 @@ fn run_dispatches_all_enabled_formats_with_their_own_dimensions() {
             let path = entry.unwrap().path();
             let ext = path.extension().unwrap().to_str().unwrap().to_owned();
             let bytes = std::fs::read(&path).unwrap();
-            let doc = photocraft_io::import(path.to_str().unwrap(), &bytes).unwrap().document;
+            let doc = patronusphoto_io::import(path.to_str().unwrap(), &bytes).unwrap().document;
             (ext, doc.size.width, doc.size.height)
         })
         .collect();

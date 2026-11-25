@@ -8,8 +8,8 @@ use super::*;
 use crate::control::{ControlRequest, Reply, handle};
 
 /// A 64 × 48 document with a second pixel layer (active) and one count marker at 20,20.
-fn app() -> (Box<PhotocraftApp>, egui::Context) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> (Box<PatronusPhotoApp>, egui::Context) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
     app.run("layer.new.layer", json!({"name": "Ink"})).unwrap();
     app.run("count.add", json!({"x": 20, "y": 20})).unwrap();
@@ -19,7 +19,7 @@ fn app() -> (Box<PhotocraftApp>, egui::Context) {
     (app, ctx)
 }
 
-pub(crate) fn call(app: &mut PhotocraftApp, ctx: &egui::Context, method: &str, params: Value) -> Value {
+pub(crate) fn call(app: &mut PatronusPhotoApp, ctx: &egui::Context, method: &str, params: Value) -> Value {
     let (req, _rx) = ControlRequest::new(method, params);
     match handle(app, ctx, &req) {
         Reply::Done(v) => v,
@@ -29,7 +29,7 @@ pub(crate) fn call(app: &mut PhotocraftApp, ctx: &egui::Context, method: &str, p
 
 /// A secondary click at document point (x, y) over the control channel, delivered to the canvas
 /// (`testing::control`).
-pub(crate) fn right_click(app: &mut PhotocraftApp, x: f64, y: f64) {
+pub(crate) fn right_click(app: &mut PatronusPhotoApp, x: f64, y: f64) {
     let r = crate::canvas::testing::control(
         app,
         "ui.pointer",
@@ -39,13 +39,13 @@ pub(crate) fn right_click(app: &mut PhotocraftApp, x: f64, y: f64) {
 }
 
 /// The open menu's rows as `ui.inspect` lists them: ids, with "―" for separators.
-pub(crate) fn listed(app: &mut PhotocraftApp, ctx: &egui::Context) -> Vec<String> {
+pub(crate) fn listed(app: &mut PatronusPhotoApp, ctx: &egui::Context) -> Vec<String> {
     let inspected = call(app, ctx, "ui.inspect", json!({}));
     let entries = inspected.pointer("/result/canvasToolMenu/entries").and_then(Value::as_array).cloned().unwrap_or_default();
     entries.iter().map(|e| e["id"].as_str().map_or_else(|| "―".to_string(), str::to_string)).collect()
 }
 
-fn markers(app: &PhotocraftApp) -> Vec<[f64; 2]> {
+fn markers(app: &PatronusPhotoApp) -> Vec<[f64; 2]> {
     app.session.active().unwrap().doc.measurement.count_groups.iter().flat_map(|g| g.points.clone()).collect()
 }
 

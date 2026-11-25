@@ -2,29 +2,29 @@ use craft::ui::runtime::commands::CommandRef;
 
 use super::*;
 
-fn app(tool: Tool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app(tool: Tool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     app.ui.tool = tool;
     app
 }
 
-fn layer_blend(app: &PhotocraftApp) -> BlendMode {
+fn layer_blend(app: &PatronusPhotoApp) -> BlendMode {
     let st = app.session.active().unwrap();
     st.doc.layer(st.active_layer.unwrap()).unwrap().blend
 }
 
-fn blend_of(app: &PhotocraftApp, i: usize) -> BlendMode {
+fn blend_of(app: &PatronusPhotoApp, i: usize) -> BlendMode {
     app.session.active().unwrap().doc.layers[i].blend
 }
 
 /// Fires one blend key command through the module's entry point; returns whether it was taken.
-fn key(app: &mut PhotocraftApp, command: impl Into<CommandRef>) -> bool {
+fn key(app: &mut PatronusPhotoApp, command: impl Into<CommandRef>) -> bool {
     fired(app, &test_fired(command.into()))
 }
 
-fn undo_len(app: &PhotocraftApp) -> usize {
+fn undo_len(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.past_len()
 }
 
@@ -159,7 +159,7 @@ fn blend_keys_are_taken_by_tools_without_a_mode() {
         assert_eq!(a.ui.tool, tool);
     }
     // A document-less app takes the key and does nothing.
-    let mut none = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut none = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     none.ui.tool = Tool::Move;
     assert!(key(&mut none, BlendStep::Next));
 }

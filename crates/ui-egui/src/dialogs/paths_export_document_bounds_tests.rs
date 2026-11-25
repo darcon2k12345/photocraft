@@ -5,18 +5,18 @@ use craft::ui::dialog::DialogId;
 use craft::ui::patterns::form_dialogs::{HostedParamDialog, ParamKind};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 const COMMAND: &str = "file.export.pathsToIllustrator";
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 300, "height": 200})).unwrap();
     app
 }
 
 /// Opens the dialog as the menu item does and returns the dropdown's entries and selection.
-fn open(app: &mut PhotocraftApp) -> (Vec<String>, Value) {
+fn open(app: &mut PatronusPhotoApp) -> (Vec<String>, Value) {
     let ctx = app.ctx().clone();
     let r = super::file_ui::invoke(app, &ctx, COMMAND, &json!({})).unwrap().unwrap();
     let id: DialogId = serde_json::from_value(r["dialog"].clone()).expect("the menu opened the dialog");

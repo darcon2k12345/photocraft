@@ -3,8 +3,8 @@
 //! restores the group, and the other two ways of making an artboard keep today's blend and opacity.
 
 use super::*;
-use photocraft_color::BlendMode;
-use photocraft_doc::LayerMask;
+use patronusphoto_color::BlendMode;
+use patronusphoto_doc::LayerMask;
 
 /// 200 x 200 with a top-level group "Group" (one child "Red" with pixels) that has the given
 /// blend, opacity, fill opacity and an optional mask.
@@ -15,7 +15,7 @@ fn session_with_group(blend: BlendMode, opacity: f32, fill_opacity: f32, mask: b
         .edit("Group", |doc, active| {
             let fmt = doc.pixel_format();
             let mut red = Layer::raster("Red", fmt);
-            red.surface_mut().unwrap().fill_rect(Rect { x0: 20, y0: 20, x1: 80, y1: 80 }, &photocraft_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 1.0]));
+            red.surface_mut().unwrap().fill_rect(Rect { x0: 20, y0: 20, x1: 80, y1: 80 }, &patronusphoto_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 1.0]));
             let mut g = Layer::group("Group", vec![red]);
             g.blend = blend;
             g.opacity = opacity;

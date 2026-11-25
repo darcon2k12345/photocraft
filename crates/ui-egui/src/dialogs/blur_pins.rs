@@ -17,7 +17,7 @@ use craft::ui::dialog::StackDialog as _;
 use craft::ui::patterns::form_dialogs::{DialogFields, FieldValue, HostedParamDialog, Param};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 pub const COMMAND: &str = "filter.blurGallery.fieldBlur";
 pub const IRIS: &str = "filter.blurGallery.irisBlur";
@@ -46,7 +46,7 @@ fn amount_key(kind: BlurKind) -> &'static str {
 }
 
 /// The filter's bounds in document pixels: the selection's, else the canvas.
-fn document_bounds(app: &mut PhotocraftApp) -> Option<[f64; 4]> {
+fn document_bounds(app: &mut PatronusPhotoApp) -> Option<[f64; 4]> {
     let (doc, canvas, selection) = app.session.active().map(|st| (st.doc.id, st.doc.bounds(), st.doc.selection.clone()))?;
     let b = selection.map(|s| app.cached_bounds(u64::MAX - doc.0, &s)).filter(|b| !b.is_empty()).unwrap_or(canvas);
     Some([f64::from(b.x0), f64::from(b.y0), f64::from(b.x1), f64::from(b.y1)])
@@ -54,7 +54,7 @@ fn document_bounds(app: &mut PhotocraftApp) -> Option<[f64; 4]> {
 
 /// The kind, bounds and start pin a Blur Gallery `command` opens with; `None` for another command or without a
 /// document. Takes `&mut` because the selection's bounds are cached in the app.
-pub(crate) fn initial(app: &mut PhotocraftApp, command: &str) -> Option<(BlurKind, [f64; 4], BlurPin)> {
+pub(crate) fn initial(app: &mut PatronusPhotoApp, command: &str) -> Option<(BlurKind, [f64; 4], BlurPin)> {
     let kind = kind_of(command)?;
     let bounds = document_bounds(app)?;
     Some((kind, bounds, start_of(&DialogFields::new(), kind)))
@@ -185,7 +185,7 @@ pub(crate) fn blur_row(kind: BlurKind, bounds: [f64; 4], start: BlurPin) -> Para
 /// The pins over the canvas while a Blur Gallery dialog is the top dialog. Called among the canvas body's controls
 /// with the canvas's rect. Each pass reads the pins from the dialog's fields and writes back only its own edit, so a
 /// second pass in one frame applies only the input it has.
-pub(crate) fn overlay(app: &mut PhotocraftApp, ui: &mut egui::Ui, at: egui::Rect) {
+pub(crate) fn overlay(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, at: egui::Rect) {
     let top = app.framework.dialogs.stack().top();
     let kind = app.framework.dialogs.get::<HostedParamDialog>().filter(|d| Some(d.id()) == top).and_then(|d| d.key()).and_then(kind_of);
     let Some(kind) = kind else { return };

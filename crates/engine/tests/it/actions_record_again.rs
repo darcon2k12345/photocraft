@@ -1,5 +1,5 @@
 //! Record Again edits one definition only after its concrete command succeeds.
-use photocraft_engine::{
+use patronusphoto_engine::{
     EngineError, Session,
     actions_cmds::{Action, ActionStep},
     atn_cmds,
@@ -31,7 +31,7 @@ fn successful_rerecording_updates_one_step_and_roundtrips_new_settings() {
         let revision = s.actions.list.revision();
         s.execute("actions.recordAgain", json!({"action": "A", "step": 0, "revision": revision, "params": {"width": 6, "height": 5, "resample": "nearest"}}))
             .unwrap();
-        assert_eq!(s.active().unwrap().doc.size, photocraft_engine::doc::Size::new(6, 5));
+        assert_eq!(s.active().unwrap().doc.size, patronusphoto_engine::doc::Size::new(6, 5));
         assert!(s.active().unwrap().doc.selection.is_none(), "the following step did not play");
         let a = &s.actions.list.actions()[0];
         assert_eq!(a.steps.len(), 2);
@@ -50,7 +50,7 @@ fn successful_rerecording_updates_one_step_and_roundtrips_new_settings() {
 }
 
 /// Permit the wrapper while denying its concrete edit, proving nested authorization remains active.
-fn deny_resize(id: &str, _: &Value) -> photocraft_engine::Result<()> {
+fn deny_resize(id: &str, _: &Value) -> patronusphoto_engine::Result<()> {
     if id == "image.imageSize" { Err(EngineError::Other("resize denied".into())) } else { Ok(()) }
 }
 

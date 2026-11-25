@@ -13,7 +13,7 @@ use craft::ui::runtime::access::PopupKind;
 use craft::ui::runtime::commands::{CommandRef, CommandSet as _, CommandState};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// Every align and distribute action, once.
 fn all() -> impl Iterator<Item = AlignAction> {
@@ -43,13 +43,13 @@ pub(crate) fn command_id(action: AlignAction) -> Option<&'static str> {
 }
 
 /// The enabled state of every action: the session's, as the Layer menu reads it.
-pub(crate) fn command_states(app: &PhotocraftApp) -> Vec<(CommandRef, CommandState)> {
+pub(crate) fn command_states(app: &PatronusPhotoApp) -> Vec<(CommandRef, CommandState)> {
     all().map(|action| (CommandRef::new(action.id()), CommandState::new().enabled(command_id(action).is_some_and(|id| app.session.is_enabled(id))))).collect()
 }
 
 /// Runs a fired `AlignAction`. False when `command` is not one of them. The context is the
 /// command-source shape's; these commands need none.
-pub(crate) fn run_fired(app: &mut PhotocraftApp, _ctx: &egui::Context, command: &CommandRef) -> bool {
+pub(crate) fn run_fired(app: &mut PatronusPhotoApp, _ctx: &egui::Context, command: &CommandRef) -> bool {
     let Some(action) = AlignAction::from_ref(command) else { return false };
     let Some(id) = command_id(action) else { return false };
     if let Err(e) = app.run(id, json!({})) {
@@ -59,7 +59,7 @@ pub(crate) fn run_fired(app: &mut PhotocraftApp, _ctx: &egui::Context, command: 
 }
 
 /// The bar, then the gear.
-pub(crate) fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub(crate) fn show(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     AlignBar::new().show(ui);
     gear(app, ui);
 }
@@ -74,7 +74,7 @@ enum GearOption {
 
 /// The gear after the bar: a menu of the Move tool's three check items, all on by default and
 /// saved with the tool options.
-fn gear(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+fn gear(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let label = tl!("Options").to_string();
     let button = IconButton::new(IconId::new("settings")).label(label.clone()).popup(PopupKind::Menu).show(ui);
     let o = &app.ui.tool_options;
@@ -101,7 +101,7 @@ mod tests {
 
     #[test]
     fn every_align_action_runs_a_live_command() {
-        let specs = photocraft_engine::command_specs();
+        let specs = patronusphoto_engine::command_specs();
         let mut count = 0;
         for action in all() {
             let id = command_id(action).expect("an engine command");

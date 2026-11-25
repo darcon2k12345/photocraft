@@ -8,17 +8,17 @@
 //! at several zooms, with smoothing, pressure, and 8- and 16-bit documents. Skips when no GPU
 //! adapter exists (like `color_managed_canvas.rs`).
 
-use photocraft_ui_egui::PhotocraftApp;
-use photocraft_ui_egui::control::{ControlRequest, handle};
+use patronusphoto_ui_egui::PatronusPhotoApp;
+use patronusphoto_ui_egui::control::{ControlRequest, handle};
 use serde_json::{Value, json};
 
-type Harness = egui_kittest::Harness<'static, Box<PhotocraftApp>>;
+type Harness = egui_kittest::Harness<'static, Box<PatronusPhotoApp>>;
 type Pixels = Vec<[u8; 4]>;
 
 #[test]
 fn raw_pointer_brush_and_mixer_pixels_appear_in_the_input_frame() {
-    use photocraft_ui_egui::state::Tool;
-    let _gpu = photocraft_testkit::gpu_lock();
+    use patronusphoto_ui_egui::state::Tool;
+    let _gpu = patronusphoto_testkit::gpu_lock();
     // One harness for every case: each case closes what the last one left open and sets its own tool, view flip,
     // brush and colours, so a fresh harness per case only repeated the wgpu setup.
     let Some(mut h) = harness() else { return };
@@ -55,7 +55,7 @@ fn raw_pointer_brush_and_mixer_pixels_appear_in_the_input_frame() {
             assert_ne!(image.get_pixel(next.x as u32, next.y as u32).0, before, "{tool:?} flip={flip}: move visible in its own frame");
             if tool == Tool::MixerBrush
                 && !flip
-                && let Ok(path) = std::env::var("PHOTOCRAFT_TEST_SNAPSHOT")
+                && let Ok(path) = std::env::var("PATRONUSPHOTO_TEST_SNAPSHOT")
             {
                 image.save(path).unwrap();
             }
@@ -75,10 +75,10 @@ fn raw_pointer_brush_and_mixer_pixels_appear_in_the_input_frame() {
 fn harness() -> Option<Harness> {
     let built = std::panic::catch_unwind(|| {
         egui_kittest::Harness::builder().with_size(egui::vec2(900.0, 640.0)).with_pixels_per_point(1.0).with_max_steps(64).wgpu().build_eframe(|cc| {
-            PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+            PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
             #[cfg(not(target_arch = "wasm32"))]
-            photocraft_raster::spill::use_test_volume_space();
-            let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), Default::default());
+            patronusphoto_raster::spill::use_test_volume_space();
+            let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), Default::default());
             if let Some(rs) = cc.wgpu_render_state.as_ref() {
                 app.set_wgpu(rs.clone());
             }
@@ -206,7 +206,7 @@ fn max_diff(a: &[[u8; 4]], b: &[[u8; 4]]) -> u8 {
 }
 
 fn the_canvas_shows_the_committed_stroke_part(part: usize) {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut h) = harness() else { return };
     h.run_steps(4);
     // Every zoom once, with every smoothing amount among them, rather than zoom x smoothing: the canvas branches on
@@ -257,8 +257,8 @@ fn the_canvas_shows_the_committed_stroke_part_2() {
 /// Deferred live-tool painting uses the camera changed by this frame's navigation input.
 #[test]
 fn live_tool_camera_navigation_is_visible_in_the_input_frame() {
-    use photocraft_ui_egui::state::Tool;
-    let _gpu = photocraft_testkit::gpu_lock();
+    use patronusphoto_ui_egui::state::Tool;
+    let _gpu = patronusphoto_testkit::gpu_lock();
     // Brush only: no stroke is drawn, and the canvas has no branch on the live tool before a press. Since the canvas
     // moved onto the framework it always runs the tools, then shows the picture with the camera of this pass
     // (`canvas/document_display.rs` `show`: "The tools run after the controls … and before the picture"); the Mixer
@@ -305,7 +305,7 @@ fn live_tool_camera_navigation_is_visible_in_the_input_frame() {
             let settled = h.render().unwrap();
             if flip
                 && zoom
-                && let Ok(path) = std::env::var("PHOTOCRAFT_NAV_SNAPSHOT")
+                && let Ok(path) = std::env::var("PATRONUSPHOTO_NAV_SNAPSHOT")
             {
                 settled.save(path).unwrap();
             }

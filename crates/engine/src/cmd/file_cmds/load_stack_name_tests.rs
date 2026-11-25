@@ -2,7 +2,7 @@
 //! document, not one named after the first file.
 
 use crate::{EngineError, Session};
-use photocraft_doc::{Layer, LayerContent};
+use patronusphoto_doc::{Layer, LayerContent};
 use serde_json::json;
 
 /// Two textured PNGs named a_base.png and b_shift.png (texture, so Auto-Align finds features).
@@ -13,7 +13,7 @@ fn two_files(dir: &std::path::Path) -> Result<Vec<String>, Box<dyn std::error::E
         let surf = doc.layer_mut(active.ok_or(EngineError::NoDocument)?).and_then(Layer::surface_mut).ok_or(EngineError::NoDocument)?;
         for k in 0..40 {
             let (x, y, v) = ((k * 37) % 88, (k * 23) % 66, (k % 7) as f32 / 6.0);
-            surf.fill_rect(photocraft_geom::Rect::new(x, y, x + 3 + k % 5, y + 2 + k % 4), &[v, 1.0 - v, 0.5, 1.0]);
+            surf.fill_rect(patronusphoto_geom::Rect::new(x, y, x + 3 + k % 5, y + 2 + k % 4), &[v, 1.0 - v, 0.5, 1.0]);
         }
         Ok(())
     })?;

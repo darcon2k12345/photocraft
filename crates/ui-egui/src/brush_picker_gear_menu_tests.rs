@@ -4,13 +4,13 @@ use serde_json::json;
 
 use super::*;
 
-fn app() -> Box<PhotocraftApp> {
-    PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default())
+fn app() -> Box<PatronusPhotoApp> {
+    PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default())
 }
 
 #[test]
 fn the_saved_view_round_trips_through_the_prefs_and_old_keys_still_restore() {
-    // Nothing saved: PhotoCraft's default (name and stroke on, tip off, search on).
+    // Nothing saved: Patronus Photo's default (name and stroke on, tip off, search on).
     let mut a = app();
     restore(&mut a);
     let st = &a.ui.brush_picker_state;

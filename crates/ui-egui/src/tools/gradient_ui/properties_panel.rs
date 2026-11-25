@@ -6,16 +6,16 @@ use craft::draw::ui::gradient::{GradientFill, GradientFillEditor, GradientRef};
 use craft::ui::contract::{Bind, ShowContainer as _};
 use craft::ui::patterns::presets::PresetState;
 use craft::ui::sections::Section;
-use photocraft_doc::Layer;
+use patronusphoto_doc::Layer;
 use serde_json::json;
 
 use super::{cmds, edit_stop_color, edited_fill, fill_of, stops};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The Gradient section for `layer`. An edit is one `gradient.fill.set` on commit, and only for the fields it changed. A
 /// drag in progress previews through `LiveGradient::panel` and is dropped on cancel. The editor reads no input in a second
 /// pass of a frame, so the events kept from the pass that did are applied once.
-pub(super) fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui, layer: &Layer) {
+pub(super) fn show(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, layer: &Layer) {
     let Some(fill) = fill_of(layer) else { return };
     let committed = stops::fill_value(fill);
     let preview = app.gradient.panel.clone().filter(|(id, _)| *id == layer.id);

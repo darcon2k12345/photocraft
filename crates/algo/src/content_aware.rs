@@ -28,11 +28,11 @@
 //!
 //! Buffers are interleaved `w × h × ch` normalised floats (any model/depth); deterministic.
 
-use photocraft_geom::Rect;
+use patronusphoto_geom::Rect;
 
 use std::borrow::Cow;
 
-use photocraft_raster::{Cancelled, Interrupt};
+use patronusphoto_raster::{Cancelled, Interrupt};
 
 use crate::inpaint::{Adapt, CompleteParams, Px, complete_masked, complete_masked_owned};
 use crate::par;
@@ -210,7 +210,7 @@ fn variant(src: Src, deg: f32, scale: f32, mirror: bool, ctl: &Interrupt) -> Res
 /// nothing can be sampled.
 pub fn fill(w: usize, h: usize, ch: usize, img: &[f32], hole: &[bool], source: &[bool], opts: &FillOptions) -> Vec<f32> {
     // Never cancelled; the fallback (the input unchanged) is unreachable.
-    fill_with(w, h, ch, img, hole, source, opts, &photocraft_raster::Interrupt::NONE).unwrap_or_else(|_| img.to_vec())
+    fill_with(w, h, ch, img, hole, source, opts, &patronusphoto_raster::Interrupt::NONE).unwrap_or_else(|_| img.to_vec())
 }
 
 /// [`fill`] that can be cancelled (see [`crate::inpaint::complete_with`]) and reports progress.
@@ -223,8 +223,8 @@ pub fn fill_with(
     hole: &[bool],
     source: &[bool],
     opts: &FillOptions,
-    ctl: &photocraft_raster::Interrupt,
-) -> Result<Vec<f32>, photocraft_raster::Cancelled> {
+    ctl: &patronusphoto_raster::Interrupt,
+) -> Result<Vec<f32>, patronusphoto_raster::Cancelled> {
     fill_cow(w, h, ch, Cow::Borrowed(img), hole, source, opts, ctl)
 }
 
@@ -239,8 +239,8 @@ pub fn fill_owned(
     hole: &[bool],
     source: &[bool],
     opts: &FillOptions,
-    ctl: &photocraft_raster::Interrupt,
-) -> Result<Vec<f32>, photocraft_raster::Cancelled> {
+    ctl: &patronusphoto_raster::Interrupt,
+) -> Result<Vec<f32>, patronusphoto_raster::Cancelled> {
     fill_cow(w, h, ch, Cow::Owned(img), hole, source, opts, ctl)
 }
 
@@ -455,8 +455,8 @@ fn fill_cow(
     hole: &[bool],
     source: &[bool],
     opts: &FillOptions,
-    ctl: &photocraft_raster::Interrupt,
-) -> Result<Vec<f32>, photocraft_raster::Cancelled> {
+    ctl: &patronusphoto_raster::Interrupt,
+) -> Result<Vec<f32>, patronusphoto_raster::Cancelled> {
     assert_eq!(img.len(), w * h * ch);
     assert_eq!(hole.len(), w * h);
     assert_eq!(source.len(), w * h);
@@ -472,7 +472,7 @@ fn fill_cow(
     // The completion is nearly all the work.
     let cancel = || ctl.cancelled();
     let progress = |f: f32| ctl.progress(f * 0.99);
-    let inner = photocraft_raster::Interrupt::new(&cancel, &progress);
+    let inner = patronusphoto_raster::Interrupt::new(&cancel, &progress);
     // One completion for every option set but the measured one: it fills the caller's buffer in
     // place when it owns one. The measured set may be asked a second time (see `fill_retry`).
     if params.patch_radius != MEASURED_STRUCTURE_PATCH_RADIUS {
@@ -525,7 +525,7 @@ fn fill_cow_measured(
     specs: &[(f32, f32, bool)],
     params: &mut CompleteParams,
     inner: &Interrupt,
-    ctl: &photocraft_raster::Interrupt,
+    ctl: &patronusphoto_raster::Interrupt,
 ) -> Result<Vec<f32>, Cancelled> {
     match fill_retry(w, h, ch, img, hole, ok, specs, params, inner, ctl)? {
         Some(f) => Ok(f),

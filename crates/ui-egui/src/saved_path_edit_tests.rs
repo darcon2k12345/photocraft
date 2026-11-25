@@ -4,19 +4,19 @@
 //! not be selected or changed.
 
 use egui::Modifiers;
-use photocraft_doc::vector::Path;
-use photocraft_geom::Point;
+use patronusphoto_doc::vector::Path;
+use patronusphoto_geom::Point;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing;
 use crate::direct_select::PathRef;
 use crate::state::Tool;
 
 const NAME: &str = "Path 1";
 
-fn app(tool: Tool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app(tool: Tool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 200, "height": 200})).unwrap();
     app.sync_views();
     app.ui.tool = tool;
@@ -28,12 +28,12 @@ fn square(x: f64, y: f64, w: f64) -> serde_json::Value {
 }
 
 /// A saved path, a square from (40, 40) to (120, 120), selected in the Paths panel.
-fn with_saved_path(app: &mut PhotocraftApp) {
+fn with_saved_path(app: &mut PatronusPhotoApp) {
     app.run("path.set", json!({"name": NAME, "path": square(40.0, 40.0, 80.0)})).unwrap();
     app.ui.selected_path = Some(NAME.into());
 }
 
-fn saved(app: &PhotocraftApp) -> Path {
+fn saved(app: &PatronusPhotoApp) -> Path {
     app.session.active().unwrap().doc.paths.iter().find(|p| p.name == NAME).unwrap().path.clone()
 }
 
@@ -41,11 +41,11 @@ fn anchors(p: &Path) -> Vec<Point> {
     p.subpaths.iter().flat_map(|s| s.knots.iter().map(|k| k.anchor)).collect()
 }
 
-fn steps(app: &PhotocraftApp) -> usize {
+fn steps(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.entries().len()
 }
 
-fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2], mods: Modifiers) {
+fn drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2], mods: Modifiers) {
     testing::press(app, from, mods);
     let mid = [(from[0] + to[0]) / 2.0, (from[1] + to[1]) / 2.0];
     testing::move_to(app, mid, mods);
@@ -148,9 +148,9 @@ fn a_saved_path_read_from_a_psd_is_editable() {
     let mut src = app(Tool::DirectSelection);
     with_saved_path(&mut src);
     let doc = src.session.active().unwrap().doc.clone();
-    let bytes = photocraft_io::export(&doc, "psd", &Default::default()).unwrap().bytes;
+    let bytes = patronusphoto_io::export(&doc, "psd", &Default::default()).unwrap().bytes;
     let mut app = app(Tool::DirectSelection);
-    photocraft_engine::file_cmds::open_bytes_as(&mut app.session, "paths.psd", &bytes, None, None).unwrap();
+    patronusphoto_engine::file_cmds::open_bytes_as(&mut app.session, "paths.psd", &bytes, None, None).unwrap();
     app.sync_views();
     assert!(app.session.active().unwrap().doc.paths.iter().any(|p| p.name == NAME), "the PSD keeps its saved path");
     app.ui.selected_path = Some(NAME.into());

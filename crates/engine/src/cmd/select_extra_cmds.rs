@@ -1,6 +1,6 @@
 //! Select › Sky, Select › Isolate Layers and Select › Transform Selection.
 //!
-//! * `select.sky` runs the classical sky segmentation of `photocraft_algo::segment::sky` on the
+//! * `select.sky` runs the classical sky segmentation of `patronusphoto_algo::segment::sky` on the
 //!   composite (or the active layer) and combines it with the selection.
 //! * `select.isolateLayers` toggles the Layers panel's isolation filter: only the layers selected
 //!   when it was turned on are listed ([`crate::DocState::isolated_layers`], view state).
@@ -8,13 +8,13 @@
 //!   quad (distort / perspective), an affine matrix, scale / rotate / skew / move about a
 //!   reference point, or a warp (same params as `edit.transform.warp`).
 
-use photocraft_algo::segment::sky::{self, SkyParams};
-use photocraft_algo::segment::{Sampler, SurfaceSampler};
-use photocraft_algo::selection::{SelectionMode, combine_region};
-use photocraft_algo::transform::{Homography, Interp};
-use photocraft_algo::warp::warp_mesh_gray;
-use photocraft_doc::{Document, LayerId};
-use photocraft_geom::Rect;
+use patronusphoto_algo::segment::sky::{self, SkyParams};
+use patronusphoto_algo::segment::{Sampler, SurfaceSampler};
+use patronusphoto_algo::selection::{SelectionMode, combine_region};
+use patronusphoto_algo::transform::{Homography, Interp};
+use patronusphoto_algo::warp::warp_mesh_gray;
+use patronusphoto_doc::{Document, LayerId};
+use patronusphoto_geom::Rect;
 use serde_json::{Value, json};
 
 use crate::commands::CommandSpec;
@@ -40,7 +40,7 @@ struct CompositeSampler<'a>(&'a Document);
 
 impl Sampler for CompositeSampler<'_> {
     fn rgba(&self, r: Rect) -> Vec<[f32; 4]> {
-        photocraft_compose::render(self.0, r).into_px()
+        patronusphoto_compose::render(self.0, r).into_px()
     }
 }
 
@@ -369,7 +369,7 @@ mod tests {
     /// nested stack: the isolated layer, every group that holds it, nothing else.
     #[test]
     fn isolation_lists_the_groups_around_an_isolated_layer() {
-        use photocraft_doc::{Layer, PixelFormat};
+        use patronusphoto_doc::{Layer, PixelFormat};
         fn by_scan(doc: &Document, isolated: &[LayerId], id: LayerId) -> bool {
             fn contains(l: &Layer, set: &[LayerId]) -> bool {
                 l.children().is_some_and(|ch| ch.iter().any(|c| set.contains(&c.id) || contains(c, set)))

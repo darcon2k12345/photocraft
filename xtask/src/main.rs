@@ -52,17 +52,17 @@ commands:
                   $NEXTEST_PARTITION (`--gpu`: all of nextest's gpu test group, whatever the partition, each
                   test's output shown;
                   `--no-gpu`: every other test); `doctest` runs the doctests; `build` only builds what `tests`
-                  builds. $PHOTOCRAFT_CI_EXCLUDE (packages separated by spaces) leaves
+                  builds. $PATRONUSPHOTO_CI_EXCLUDE (packages separated by spaces) leaves
                   packages out of the test build and the doctests
   corpus [--all | --pngsuite | --psd | --psd-tools | --pixls | --atn | --photoshop | --gimp] [--local] [--update-manifest]
                   show where test corpora live and their pins (xtask/src/corpus_pins.rs), or fetch
                   them into corpus/ (pinned commits, sha256-verified; --all = every corpus but pixls,
-                  --photoshop/--gimp --local copy from ../photocraft-corpus or $PHOTOCRAFT_CORPUS_REPO)
+                  --photoshop/--gimp --local copy from ../patronusphoto-corpus or $PATRONUSPHOTO_CORPUS_REPO)
   test-corpus [-p <crate>]... [--changed] [--pixls] [--local] [-- <test args>]
                   fetch every corpus, then cargo test --release --features corpus on the corpus
                   crates; --changed runs only if psd/io/codecs/compose/gpu/text/format/raw changed;
                   --pixls (or -p raw) also fetches corpus/pixls and runs the raw corpus tests;
-                  --local takes corpus/photoshop and corpus/gimp from the photocraft-corpus authoring clone
+                  --local takes corpus/photoshop and corpus/gimp from the patronusphoto-corpus authoring clone
   stats [--exact] count tests and lines per crate (--exact: ask the test harness via `-- --list`)
   parity          Photoshop menu parity; rewrites docs/parity-checklist.md
   i18n-report     report UI translation coverage, the missing strings and the rows kept in English per
@@ -77,7 +77,7 @@ commands:
                   print the workspace version, or set it (Cargo.toml + Cargo.lock)
   ico <out.ico> <in.png>...
                   pack square PNGs (<= 256 px) into a Windows .ico (see packaging/icons.sh)
-  psd-write-oracle <recipes.json> <corpus-dir> <photocraft-cli> <new-output-dir>
+  psd-write-oracle <recipes.json> <corpus-dir> <patronusphoto-cli> <new-output-dir>
                   run PSD export recipes and write a JSON report and manifest
 ";
 
@@ -235,7 +235,7 @@ fn wasm_set() -> Result<Vec<String>, String> {
 
 /// Optional features that official builds enable and the web app ships, also checked for wasm32:
 /// (package, feature).
-const WASM_FEATURES: &[(&str, &str)] = &[("photocraft-io", "heif")];
+const WASM_FEATURES: &[(&str, &str)] = &[("patronusphoto-io", "heif")];
 
 /// One `cargo check` for the whole set: each crate is checked once, and `--keep-going` still
 /// reports every failing crate. Features unify across the set, so each crate is checked with the
@@ -331,7 +331,7 @@ struct CiOptions {
     /// carries says which part of the split binaries it runs.
     shard: Option<usize>,
     selection: Selection,
-    /// Workspace packages left out of the test build and the doctests ($PHOTOCRAFT_CI_EXCLUDE).
+    /// Workspace packages left out of the test build and the doctests ($PATRONUSPHOTO_CI_EXCLUDE).
     exclude: Vec<String>,
 }
 
@@ -446,7 +446,7 @@ fn nextest_args(o: &CiOptions, panic_hunt: bool, gpu: Option<&str>, shard: Optio
     let mut filters = Vec::new();
     if panic_hunt {
         args.extend(["--run-ignored", "only"].map(String::from));
-        filters.push("binary_id(photocraft-engine::panic_hunt)".to_string());
+        filters.push("binary_id(patronusphoto-engine::panic_hunt)".to_string());
     }
     if let Some(dir) = &o.from {
         let target = dir.join("target");
@@ -500,8 +500,8 @@ fn step_tests(o: &CiOptions, panic_hunt: bool) -> Result<(), String> {
     if o.partition.is_none() && o.selection == Selection::All && !nextest_available() {
         if panic_hunt {
             // `-- --ignored` across the workspace would run every ignored test, not only the hunt. The
-            // engine has no `heif` feature of its own; it reaches the decoder through photocraft-io.
-            c.args(["test", "-p", "photocraft-engine", "--locked", "--features", "photocraft-io/heif", "--test", "panic_hunt", "--", "--ignored"]);
+            // engine has no `heif` feature of its own; it reaches the decoder through patronusphoto-io.
+            c.args(["test", "-p", "patronusphoto-engine", "--locked", "--features", "patronusphoto-io/heif", "--test", "panic_hunt", "--", "--ignored"]);
         } else {
             eprintln!("note: cargo-nextest is not installed, running cargo test (cargo install cargo-nextest --locked)");
             c.arg("test").args(test_build_args(&o.exclude));
@@ -646,14 +646,14 @@ fn cmd_doctest() -> Result<(), String> {
 
 fn cmd_parity() -> Result<(), String> {
     let mut c = cargo();
-    c.args(["run", "-q", "-p", "photocraft-ui-egui", "--example", "parity", "--", "--write", "docs/parity-checklist.md"]);
-    run(c, "cargo run -p photocraft-ui-egui --example parity")
+    c.args(["run", "-q", "-p", "patronusphoto-ui-egui", "--example", "parity", "--", "--write", "docs/parity-checklist.md"]);
+    run(c, "cargo run -p patronusphoto-ui-egui --example parity")
 }
 
 /// The packages the gate leaves out of a test build: the Windows legs skip the browser apps, and
 /// on pull requests the packages nothing changed reaches (.github/workflows/ci.yml).
 fn ci_exclude() -> Vec<String> {
-    std::env::var("PHOTOCRAFT_CI_EXCLUDE").unwrap_or_default().split_whitespace().map(String::from).collect()
+    std::env::var("PATRONUSPHOTO_CI_EXCLUDE").unwrap_or_default().split_whitespace().map(String::from).collect()
 }
 
 /// The steps `cargo xtask ci <args>` runs, and how: no argument runs every step; a part (`lint`,
@@ -818,15 +818,15 @@ mod ci_tests {
             shard: None,
             partition: Some("hash:2/3".into()),
             selection: Selection::NoGpu,
-            exclude: vec!["photocraft-web".into()],
+            exclude: vec!["patronusphoto-web".into()],
         };
-        let build = "--workspace --locked --features heif --exclude photocraft-web --lib --bins --tests";
+        let build = "--workspace --locked --features heif --exclude patronusphoto-web --lib --bins --tests";
         let args = nextest_args(&options, false, Some("package(g)"), None).join(" ");
         assert_eq!(args, format!("nextest run --profile ci {build} --partition hash:2/3 -E not (package(g))"));
         let gpu = CiOptions { selection: Selection::Gpu, partition: None, ..options.clone() };
         let hunt = nextest_args(&gpu, true, Some("package(g)"), None).join(" ");
         assert!(hunt.contains("--run-ignored only") && hunt.contains("--no-tests warn") && hunt.contains("--success-output immediate"), "{hunt}");
-        assert!(hunt.ends_with("-E binary_id(photocraft-engine::panic_hunt) & (package(g))"), "{hunt}");
+        assert!(hunt.ends_with("-E binary_id(patronusphoto-engine::panic_hunt) & (package(g))"), "{hunt}");
         // The whole run keeps nextest's default: a panic hunt that matches nothing fails.
         let here = CiOptions { partition: None, selection: Selection::All, ..options };
         assert!(!nextest_args(&here, true, None, None).join(" ").contains("--no-tests"));
@@ -839,7 +839,7 @@ mod ci_tests {
         assert_eq!((options.shard, options.partition.as_deref()), (Some(2), None));
         let args = nextest_args(&options, true, Some("package(g)"), Some("not (binary_id(=ui))")).join(" ");
         assert!(args.contains("--no-tests warn") && !args.contains("--partition"), "{args}");
-        assert!(args.ends_with("-E binary_id(photocraft-engine::panic_hunt) & not (package(g)) & (not (binary_id(=ui)))"), "{args}");
+        assert!(args.ends_with("-E binary_id(patronusphoto-engine::panic_hunt) & not (package(g)) & (not (binary_id(=ui)))"), "{args}");
         // A shard may hold no runnable test; the build job's plan check guarantees the coverage.
         assert!(nextest_args(&options, false, None, None).join(" ").contains("--no-tests warn"));
         assert!(ci_from_args(&["tests", "--shard", "2"], Vec::new()).is_err(), "--shard without --from");
@@ -885,6 +885,6 @@ mod ci_tests {
         assert_eq!(gpu_filter(&config).unwrap(), "(package(a)) | (test(c))");
         assert!(gpu_filter(&toml::from_str("[profile.default]").unwrap()).is_err());
         // The workspace's own group exists and parses.
-        assert!(read_gpu_filter().unwrap().contains("package(photocraft-gpu)"));
+        assert!(read_gpu_filter().unwrap().contains("package(patronusphoto-gpu)"));
     }
 }

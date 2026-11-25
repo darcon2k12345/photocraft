@@ -195,7 +195,7 @@ fn catalogs_do_not_restore_retired_display_names() {
     };
     let mut scanned = 0;
     for entry in std::fs::read_dir(PathBuf::from(root).join("locales")).expect("craft-i18n locales directory") {
-        let path = entry.expect("locale entry").path().join("photocraft.tsv");
+        let path = entry.expect("locale entry").path().join("patronusphoto.tsv");
         if !path.is_file() {
             continue;
         }
@@ -212,7 +212,7 @@ fn catalogs_do_not_restore_retired_display_names() {
             }
         }
     }
-    assert!(scanned > 30, "only {scanned} photocraft.tsv catalogs under CRAFT_I18N_DIR");
+    assert!(scanned > 30, "only {scanned} patronusphoto.tsv catalogs under CRAFT_I18N_DIR");
 }
 
 #[test]

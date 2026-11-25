@@ -6,7 +6,7 @@ use craft::ui::patterns::form_dialogs::{DialogFields, Param, ParamDialog, ParamK
 use craft::ui::runtime::env::Label;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::dialogs::params::{self, ParamFamily};
 
 const COMMAND: &str = "actions.insertMenuItem";
@@ -29,7 +29,7 @@ pub(crate) struct Held {
 
 /// Open without recording a step or sampling the selected command's current settings. The chooser inserts after
 /// `at` (or at the end) of `action`.
-pub(super) fn open(app: &mut PhotocraftApp, action: usize, at: Option<usize>) -> Result<Value, String> {
+pub(super) fn open(app: &mut PatronusPhotoApp, action: usize, at: Option<usize>) -> Result<Value, String> {
     // The dialog's open state is the signal: a chooser closed without a result no longer holds anything.
     if app.held_insert_menu.as_ref().is_some_and(|held| app.framework.dialogs.stack().contains(held.dialog)) {
         return Err(tl!("Confirm or cancel the pending menu item first.").to_string());
@@ -42,7 +42,7 @@ pub(super) fn open(app: &mut PhotocraftApp, action: usize, at: Option<usize>) ->
     let gate = app.session.authorize.or(if app.automation_input { app.services.automation_authorize } else { None });
     let automated = app.automation_input || gate.is_some();
     // Only menu identities the existing ATN event table can encode unambiguously.
-    let options: Vec<(String, Label)> = photocraft_engine::atn_cmds::menu_item_commands()
+    let options: Vec<(String, Label)> = patronusphoto_engine::atn_cmds::menu_item_commands()
         .into_iter()
         .map(|command| (command.to_string(), Label::from(super::label_of(command).to_string())))
         .collect();
@@ -57,7 +57,7 @@ pub(super) fn open(app: &mut PhotocraftApp, action: usize, at: Option<usize>) ->
 /// The insertion the chooser's answer asks for, once the chooser, its action list and its authority are unchanged:
 /// the captured target with the picked command. Consent inserts only into the captured action and uses both the
 /// retained and the current authority.
-fn vet(app: &PhotocraftApp, result: &ParamResult) -> Result<Value, String> {
+fn vet(app: &PatronusPhotoApp, result: &ParamResult) -> Result<Value, String> {
     let held = app
         .held_insert_menu
         .as_ref()
@@ -79,12 +79,12 @@ fn vet(app: &PhotocraftApp, result: &ParamResult) -> Result<Value, String> {
 
 /// Refuses an answer for a changed list, another dialog or changed permissions, so the dialog stays open with the
 /// reason.
-fn check(app: &mut PhotocraftApp, result: &ParamResult) -> Result<(), Label> {
+fn check(app: &mut PatronusPhotoApp, result: &ParamResult) -> Result<(), Label> {
     vet(app, result).map(|_| ()).map_err(Label::from)
 }
 
 /// Inserts the picked menu item into the captured action and selects the new step.
-fn run(app: &mut PhotocraftApp, _ctx: &egui::Context, result: ParamResult) {
+fn run(app: &mut PatronusPhotoApp, _ctx: &egui::Context, result: ParamResult) {
     let params = match vet(app, &result) {
         Ok(params) => params,
         Err(error) => return super::dialogs::report(app, error),
@@ -107,7 +107,7 @@ fn run(app: &mut PhotocraftApp, _ctx: &egui::Context, result: ParamResult) {
 }
 
 /// Only its own Cancel may release the chooser's target.
-pub(crate) fn cancel(app: &mut PhotocraftApp, dialog: DialogId) {
+pub(crate) fn cancel(app: &mut PatronusPhotoApp, dialog: DialogId) {
     if app.held_insert_menu.as_ref().is_some_and(|held| held.dialog == dialog) {
         app.held_insert_menu = None;
     }

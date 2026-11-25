@@ -10,10 +10,10 @@ use craft::ui::patterns::canvas::NavigatorPanel;
 use craft::ui::primitives::ContentPainterCx;
 use egui::{Pos2, Rect, pos2};
 
-use super::PhotocraftApp;
+use super::PatronusPhotoApp;
 use crate::canvas::document_display;
 
-pub(super) fn navigator(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub(super) fn navigator(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let ctx = ui.ctx().clone();
     let Some(idx) = app.session.active_index() else {
         let _ = Notice::new(Tone::Neutral, tl!("No document")).layout(NoticeLayout::Centred).show(ui);
@@ -49,7 +49,7 @@ pub(super) fn navigator(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 
 /// The document's picture in the preview box `rect`: the GPU canvas's own texture at this size while the
 /// canvas is on the GPU (#4518), the checkerboard while that texture is not ready, else the CPU thumbnail.
-fn picture(app: &mut PhotocraftApp, ctx: &egui::Context, idx: usize, painter: &ContentPainterCx<'_>, rect: Rect) {
+fn picture(app: &mut PatronusPhotoApp, ctx: &egui::Context, idx: usize, painter: &ContentPainterCx<'_>, rect: Rect) {
     if let Some(params) = crate::canvas::navigator_gpu_view(app, idx, rect, ctx) {
         crate::gpu_canvas::GpuCanvas::paint(&painter.painter, rect, params);
         return;

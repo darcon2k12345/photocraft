@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use cap_std::ambient_authority;
 use cap_std::fs::{Dir, OpenOptions};
-use photocraft_format::atomic::RenameRetry;
+use patronusphoto_format::atomic::RenameRetry;
 use serde_json::Value;
 
 use crate::AutomationError;
@@ -126,7 +126,7 @@ impl AuthorizedWorkspace {
     /// first matching read root. Directory opens never establish an implicit save target.
     /// `read` serves regular files only (the zip form), so a regular file at the
     /// path is reported as `Ok(None)` for the caller to fall back to.
-    pub fn open_pcraft(&self, path: &str) -> Result<Option<photocraft_doc::Document>, AutomationError> {
+    pub fn open_pcraft(&self, path: &str) -> Result<Option<patronusphoto_doc::Document>, AutomationError> {
         if self.read.is_empty() {
             return Err(AutomationError::BadRequest(format!("{DENIED}: read authority is absent")));
         }
@@ -143,7 +143,7 @@ impl AuthorizedWorkspace {
                 Err(error) => return Err(file_error("read", path, error)),
             };
             let source = DirHandle { dir };
-            return Ok(Some(photocraft_format::load_bytes_source(&source, &photocraft_format::LoadOptions::default())?));
+            return Ok(Some(patronusphoto_format::load_bytes_source(&source, &patronusphoto_format::LoadOptions::default())?));
         }
         match not_found {
             Some(error) => Err(file_error("read", path, error)),
@@ -153,12 +153,12 @@ impl AuthorizedWorkspace {
 
     /// Create or replace one file below the configured write root, crash-safely: the bytes go to
     /// a temporary file beside the target, which is synced and renamed over it (the same steps
-    /// as [`photocraft_format::atomic_write`], through the directory capability). On failure
+    /// as [`patronusphoto_format::atomic_write`], through the directory capability). On failure
     /// the previous file is untouched and the temporary file is removed.
     ///
     /// Replacing a file carries its extended attributes — macOS Finder tags, Linux `user.*` —
     /// onto the file that takes its place (#7095), through the two open descriptors rather than
-    /// their paths. The rest of what [`photocraft_format::atomic_write`] preserves does not
+    /// their paths. The rest of what [`patronusphoto_format::atomic_write`] preserves does not
     /// follow: its permission step is tracked in #4963, and the Windows `ReplaceFileW` swap is
     /// path-based, which this path may not use.
     ///
@@ -179,12 +179,12 @@ impl AuthorizedWorkspace {
     /// [`Self::write`] with the file's bytes produced by `write` straight into the temporary
     /// file (it may seek back to patch lengths), so a large PSD/PSB is never held in memory
     /// whole (#5333). The same refusals, the same atomic replace.
-    pub fn write_stream(&self, path: &str, write: &mut photocraft_format::atomic::StreamWriter<'_>) -> Result<(), AutomationError> {
+    pub fn write_stream(&self, path: &str, write: &mut patronusphoto_format::atomic::StreamWriter<'_>) -> Result<(), AutomationError> {
         let relative = request_path(path, self.write.as_ref())?;
         let root = self.write.as_ref().ok_or_else(|| AutomationError::BadRequest(format!("{DENIED}: write authority is absent")))?;
         let leaf = relative.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
         // The bytes are an image or document whatever the name says (`format` picks them), so
-        // only a file of a kind PhotoCraft writes is replaced: never source, settings or notes
+        // only a file of a kind Patronus Photo writes is replaced: never source, settings or notes
         // that share the root (`src/main.rs`, `.env`; #9439). A new file may have any name, and
         // an image saved under one (`out` with `format: png`) can be saved over again.
         let exists = root.dir.symlink_metadata(&relative).is_ok();
@@ -196,11 +196,11 @@ impl AuthorizedWorkspace {
         }
         if exists && !written_kind(&leaf) && !holds_image(&root.dir, &relative) {
             return Err(AutomationError::BadRequest(format!(
-                "automation write refused: `{path}` already exists and is not an image or document file PhotoCraft writes; save to a new name"
+                "automation write refused: `{path}` already exists and is not an image or document file Patronus Photo writes; save to a new name"
             )));
         }
         let parent = relative.parent().map(Path::to_path_buf).unwrap_or_default();
-        let tmp = parent.join(photocraft_format::atomic::temp_name(&leaf));
+        let tmp = parent.join(patronusphoto_format::atomic::temp_name(&leaf));
         let mut options = OpenOptions::new();
         options.write(true).create_new(true);
         let opened = root.dir.open_with(&tmp, &options);
@@ -217,15 +217,15 @@ impl AuthorizedWorkspace {
                 // succeeds for a document whose Finder tag could not come along.
                 if let Ok(old) = root.dir.open(&relative) {
                     let old = old.into_std();
-                    let _ = photocraft_format::atomic::meta::copy_xattrs(old.as_fd(), file.as_fd());
+                    let _ = patronusphoto_format::atomic::meta::copy_xattrs(old.as_fd(), file.as_fd());
                     // The creation time too (#9388), through the same handles.
-                    let _ = photocraft_format::atomic::meta::copy_created_file(&old, &file);
+                    let _ = patronusphoto_format::atomic::meta::copy_created_file(&old, &file);
                 }
             }
             // Falls back to a plain fsync on shares that refuse a full flush (#1336).
-            photocraft_format::atomic::sync_file(&file)
+            patronusphoto_format::atomic::sync_file(&file)
         });
-        let renamed = written.and_then(|()| photocraft_format::atomic::retry_rename(RenameRetry::platform(), || rename_in(root, &tmp, &relative)));
+        let renamed = written.and_then(|()| patronusphoto_format::atomic::retry_rename(RenameRetry::platform(), || rename_in(root, &tmp, &relative)));
         if let Err(e) = renamed {
             return Err(file_error("write", path, e));
         }
@@ -235,7 +235,7 @@ impl AuthorizedWorkspace {
         {
             let dir = if parent.as_os_str().is_empty() { PathBuf::from(".") } else { parent };
             if let Ok(d) = root.dir.open(&dir) {
-                let _ = photocraft_format::atomic::sync_file(&d.into_std());
+                let _ = patronusphoto_format::atomic::sync_file(&d.into_std());
             }
         }
         Ok(())
@@ -258,25 +258,25 @@ impl Drop for TempRemoval<'_> {
     }
 }
 
-/// Whether `name`'s extension is one of the formats PhotoCraft saves or exports. The image codec
-/// registry, not `photocraft_formats`: that one also names text and office files PhotoCraft only
+/// Whether `name`'s extension is one of the formats Patronus Photo saves or exports. The image codec
+/// registry, not `patronusphoto_formats`: that one also names text and office files Patronus Photo only
 /// reads (`txt`, `md`, `csv`, `rtf`…), and notes must never be replaced (#14355). A codec counts
 /// only if this build writes it: PCX, XPM, DICOM and HEIF are read-only.
 fn written_kind(name: &str) -> bool {
     let Some((_, ext)) = name.rsplit_once('.') else { return false };
     let ext = ext.to_ascii_lowercase();
-    ["psd", "psb", "ora", "pdf", photocraft_format::EXTENSION].contains(&ext.as_str())
-        || photocraft_codecs::from_extension(&ext).is_some_and(|format| format.caps().write)
+    ["psd", "psb", "ora", "pdf", patronusphoto_format::EXTENSION].contains(&ext.as_str())
+        || patronusphoto_codecs::from_extension(&ext).is_some_and(|format| format.caps().write)
 }
 
-/// Whether the file at `relative` starts like an image PhotoCraft writes (PSD/PSB or a writable
+/// Whether the file at `relative` starts like an image Patronus Photo writes (PSD/PSB or a writable
 /// codec's magic). Containers that also hold other things (zip, PDF) are judged by name only.
 fn holds_image(dir: &Dir, relative: &Path) -> bool {
     let mut head = [0u8; 64];
     let Ok(mut file) = dir.open(relative) else { return false };
     let Ok(n) = file.read(&mut head) else { return false };
     let head = &head[..n];
-    head.starts_with(b"8BPS") || photocraft_codecs::detect(head).is_some_and(|format| format.caps().write)
+    head.starts_with(b"8BPS") || patronusphoto_codecs::detect(head).is_some_and(|format| format.caps().write)
 }
 
 fn read_to_observed_length(reader: &mut impl Read, observed_length: u64) -> Result<Vec<u8>, AutomationError> {
@@ -611,16 +611,16 @@ struct DirHandle {
     dir: Dir,
 }
 
-impl photocraft_format::ByteSource for DirHandle {
-    fn get(&self, path: &str, max: usize) -> photocraft_format::Result<Vec<u8>> {
-        let missing = || photocraft_format::FormatError::Corrupt(format!("missing `{path}`"));
+impl patronusphoto_format::ByteSource for DirHandle {
+    fn get(&self, path: &str, max: usize) -> patronusphoto_format::Result<Vec<u8>> {
+        let missing = || patronusphoto_format::FormatError::Corrupt(format!("missing `{path}`"));
         let mut file = self.dir.open(path).map_err(|_| missing())?;
         let metadata = file.metadata().map_err(|_| missing())?;
         if !metadata.is_file() {
             // A FIFO or device would block the open and stream without end.
-            return Err(photocraft_format::FormatError::Corrupt(format!("`{path}` is not a regular file")));
+            return Err(patronusphoto_format::FormatError::Corrupt(format!("`{path}` is not a regular file")));
         }
-        photocraft_format::read_entry(&mut file, metadata.len(), max, path)
+        patronusphoto_format::read_entry(&mut file, metadata.len(), max, path)
     }
 }
 
@@ -696,15 +696,15 @@ pub fn authorize_desktop_engine_command(id: &str, params: &Value) -> Result<(), 
     Ok(())
 }
 
-/// [`authorize_engine_command`] as the function pointer [`photocraft_engine::Session::authorize`]
+/// [`authorize_engine_command`] as the function pointer [`patronusphoto_engine::Session::authorize`]
 /// stores. `actions.play` calls it for every nested step.
-pub fn authorize_engine_step(id: &str, params: &Value) -> photocraft_engine::Result<()> {
-    authorize_engine_command(id, params).map_err(|e| photocraft_engine::EngineError::Other(e.to_string()))
+pub fn authorize_engine_step(id: &str, params: &Value) -> patronusphoto_engine::Result<()> {
+    authorize_engine_command(id, params).map_err(|e| patronusphoto_engine::EngineError::Other(e.to_string()))
 }
 
-/// [`authorize_desktop_engine_command`] as a [`photocraft_engine::Session::authorize`] hook.
-pub fn authorize_desktop_engine_step(id: &str, params: &Value) -> photocraft_engine::Result<()> {
-    authorize_desktop_engine_command(id, params).map_err(|e| photocraft_engine::EngineError::Other(e.to_string()))
+/// [`authorize_desktop_engine_command`] as a [`patronusphoto_engine::Session::authorize`] hook.
+pub fn authorize_desktop_engine_step(id: &str, params: &Value) -> patronusphoto_engine::Result<()> {
+    authorize_desktop_engine_command(id, params).map_err(|e| patronusphoto_engine::EngineError::Other(e.to_string()))
 }
 
 fn params_contain_ambient_path(id: &str, params: &Value) -> bool {

@@ -50,14 +50,14 @@ fn import(s: &mut Session, p: &Value) -> Result<Value> {
                 // The parser validates ordering; widen before subtraction for signed bounds.
                 let width = u32::try_from(i64::from(right) - i64::from(left)).map_err(|_| bad(CMD, "shape width exceeds supported bounds"))?;
                 let height = u32::try_from(i64::from(bottom) - i64::from(top)).map_err(|_| bad(CMD, "shape height exceeds supported bounds"))?;
-                let path = photocraft_io::vector_map::path_from_records(&shape.path, width, height);
+                let path = patronusphoto_io::vector_map::path_from_records(&shape.path, width, height);
                 if path.is_empty() {
                     return Err(bad(CMD, format!("shape {:?} has no path", shape.name)));
                 }
                 let path = fit(&path, [0.0, 0.0, 100.0, 100.0], true);
                 // Photoshop stores some preset names as `$$$/…/Key=Shown`. The Shapes panel
                 // renders the stored name, so keep the text after `=`.
-                let shown = photocraft_doc::pattern::display_name(&shape.name);
+                let shown = patronusphoto_doc::pattern::display_name(&shape.name);
                 let name = if shown.trim().is_empty() { "Shape".to_owned() } else { shown.to_owned() };
                 // Keep opaque IDs unchanged. An anonymous preset remains usable by name;
                 // repeated IDs are checked against geometry when a filter resolves them.

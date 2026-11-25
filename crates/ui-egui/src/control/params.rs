@@ -1,5 +1,5 @@
 #[cfg(test)]
-use super::PhotocraftApp;
+use super::PatronusPhotoApp;
 use super::{Reply, Value, json};
 
 /// The fields `ui.set` reads. Anything else is rejected before a field is applied, and every
@@ -194,7 +194,7 @@ pub(super) fn input_modifiers(p: &Value, flags: &[&str]) -> std::result::Result<
 /// Screen position of document point (x, y) on the main canvas, where a `ui.pointer` event lands;
 /// the canvas centre when it can't be mapped.
 #[cfg(test)]
-pub(super) fn screen_point(app: &PhotocraftApp, x: f64, y: f64) -> [f32; 2] {
+pub(super) fn screen_point(app: &PatronusPhotoApp, x: f64, y: f64) -> [f32; 2] {
     let p = crate::canvas::document_display::active_view(app)
         .map(|view| view.to_screen(craft::behavior::kurbo::Point::new(x, y)))
         .filter(|p| p.is_finite())

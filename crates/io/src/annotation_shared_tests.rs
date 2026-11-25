@@ -1,4 +1,4 @@
-//! Frozen valid-wire writer oracle from PhotoCraft5bdbcc118.
+//! Frozen valid-wire writer oracle from Patronus Photo5bdbcc118.
 //! Original wire writer Brandon Thomas aa87012a; saturating icon fix wstock0d6e58e2.
 use super::*;
 fn pascal(out: &mut Vec<u8>, s: &str) {
@@ -73,20 +73,20 @@ fn shared_writer_matches_valid_legacy_bytes() {
 }
 #[test]
 fn every_export_path_refuses_excess_notes() {
-    for mode in [photocraft_doc::ColorMode::Rgb, photocraft_doc::ColorMode::Multichannel, photocraft_doc::ColorMode::Bitmap] {
-        let mut d = Document::new("notes", photocraft_doc::Size::new(1, 1), mode, photocraft_doc::SampleType::U8);
+    for mode in [patronusphoto_doc::ColorMode::Rgb, patronusphoto_doc::ColorMode::Multichannel, patronusphoto_doc::ColorMode::Bitmap] {
+        let mut d = Document::new("notes", patronusphoto_doc::Size::new(1, 1), mode, patronusphoto_doc::SampleType::U8);
         d.notes = vec![Note::default(); 4097];
         assert!(export_blocks(&d, vec![]).is_err());
         assert!(crate::document_to_psd(&d).is_err());
         assert!(crate::document_to_psd_with(&d, &Default::default()).is_err());
-        assert!(crate::encode_with(&d, "psd", &Default::default(), &photocraft_raster::Interrupt::NONE).is_err());
+        assert!(crate::encode_with(&d, "psd", &Default::default(), &patronusphoto_raster::Interrupt::NONE).is_err());
         // Flat TIFF intentionally does not encode annotations. Exercise the actual layered
         // Photoshop-data path; Multichannel has no TIFF layer representation.
-        if mode != photocraft_doc::ColorMode::Multichannel {
-            d.layers.push(photocraft_doc::Layer::raster("notes layer", d.pixel_format()));
+        if mode != patronusphoto_doc::ColorMode::Multichannel {
+            d.layers.push(patronusphoto_doc::Layer::raster("notes layer", d.pixel_format()));
             let opts = crate::ExportOptions { tiff_layers: true, ..Default::default() };
             assert!(crate::tiff_layers::would_write_layers(&d));
-            assert!(crate::encode_with(&d, "tiff", &opts, &photocraft_raster::Interrupt::NONE).is_err());
+            assert!(crate::encode_with(&d, "tiff", &opts, &patronusphoto_raster::Interrupt::NONE).is_err());
         }
     }
 }
@@ -120,7 +120,7 @@ fn unchanged_legacy_text_keeps_raw_bytes_without_utf16_rewrite() {
     block[key - 4..key].copy_from_slice(&(size + 12).to_be_bytes());
     let record = u32::try_from(block.len() - 8).unwrap();
     block[8..12].copy_from_slice(&record.to_be_bytes());
-    let mut doc = Document::new("notes", photocraft_doc::Size::new(1, 1), photocraft_doc::ColorMode::Rgb, photocraft_doc::SampleType::U8);
+    let mut doc = Document::new("notes", patronusphoto_doc::Size::new(1, 1), patronusphoto_doc::ColorMode::Rgb, patronusphoto_doc::SampleType::U8);
     doc.notes = parse_anno(&block).unwrap();
     assert!(write_anno(&doc.notes, &[]).is_err());
     let blocks = vec![(*b"8BIM", ANNO, Arc::new(block))];

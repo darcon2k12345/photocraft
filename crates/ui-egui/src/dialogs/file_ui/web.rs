@@ -12,10 +12,10 @@ use craft::ui::patterns::form_dialogs::{
 };
 use craft::ui::runtime::env::Label;
 use egui::load::SizedTexture;
-use photocraft_engine::web_cmds::{self, WebSettings};
+use patronusphoto_engine::web_cmds::{self, WebSettings};
 use serde_json::{Value, json};
 
-use super::{PhotocraftApp, web_preview};
+use super::{PatronusPhotoApp, web_preview};
 
 /// The engine's name of each format; the one table `options_of` and `params_of` share.
 const WEB_FORMATS: [(WebFormat, &str); 6] = [
@@ -204,7 +204,7 @@ fn texture(ctx: &egui::Context, key: egui::Id, image: egui::ColorImage, shown: e
 }
 
 /// The Original pane's picture: the flattened document, reduced to at most 2048 px on its long side.
-fn original_texture(ctx: &egui::Context, doc: &photocraft_doc::Document) -> SizedTexture {
+fn original_texture(ctx: &egui::Context, doc: &patronusphoto_doc::Document) -> SizedTexture {
     let (w, h) = (f64::from(doc.size.width).max(1.0), f64::from(doc.size.height).max(1.0));
     let k = (2048.0 / w.max(h)).min(1.0);
     let params = json!({});
@@ -215,7 +215,7 @@ fn original_texture(ctx: &egui::Context, doc: &photocraft_doc::Document) -> Size
         .map(|(proxy, _, _)| {
             let (pw, ph) = (proxy.size.width as usize, proxy.size.height as usize);
             let rgba: Vec<u8> =
-                photocraft_compose::flatten(&proxy).into_px().iter().flat_map(|q| q.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8)).collect();
+                patronusphoto_compose::flatten(&proxy).into_px().iter().flat_map(|q| q.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8)).collect();
             egui::ColorImage::from_rgba_unmultiplied([pw, ph], &rgba)
         })
         .unwrap_or_else(|_| egui::ColorImage::from_rgba_unmultiplied([1, 1], &[0; 4]));
@@ -227,7 +227,7 @@ fn original_texture(ctx: &egui::Context, doc: &photocraft_doc::Document) -> Size
 /// own full size.
 ///
 /// `None` without a document.
-pub fn open_web(app: &mut PhotocraftApp) -> Option<DialogId> {
+pub fn open_web(app: &mut PatronusPhotoApp) -> Option<DialogId> {
     let ctx = app.ctx().clone();
     let doc = app.session.active()?.doc.clone();
     let mut seed = app.session.prefs().dialogs.get(WEB_COMMAND).cloned().unwrap_or_else(|| json!({}));
@@ -246,7 +246,7 @@ pub fn open_web(app: &mut PhotocraftApp) -> Option<DialogId> {
     let slices = if doc.slices.is_empty() {
         Vec::new()
     } else {
-        photocraft_doc::slices::resolve(&doc)
+        patronusphoto_doc::slices::resolve(&doc)
             .iter()
             .map(|r| {
                 WebSlice::new(
@@ -268,10 +268,10 @@ pub fn open_web(app: &mut PhotocraftApp) -> Option<DialogId> {
 }
 
 /// The notice under the preview captions when the document has more slices than are resolved (`overflow_warning`):
-/// how many were ignored past the first [`photocraft_doc::slices::MAX_RESOLVED_SLICES`]. `None` otherwise.
-pub(super) fn slice_warning(doc: &photocraft_doc::Document) -> Option<Label> {
-    photocraft_doc::slices::overflow_warning(doc)?;
-    let max = photocraft_doc::slices::MAX_RESOLVED_SLICES;
+/// how many were ignored past the first [`patronusphoto_doc::slices::MAX_RESOLVED_SLICES`]. `None` otherwise.
+pub(super) fn slice_warning(doc: &patronusphoto_doc::Document) -> Option<Label> {
+    patronusphoto_doc::slices::overflow_warning(doc)?;
+    let max = patronusphoto_doc::slices::MAX_RESOLVED_SLICES;
     let ignored = doc.slices.list.len().saturating_sub(max).to_string();
     let text =
         crate::i18n::fmt(tl!("{count} stored slices past the first {max} were ignored"), &[("count", ignored.as_str()), ("max", max.to_string().as_str())]);
@@ -279,17 +279,20 @@ pub(super) fn slice_warning(doc: &photocraft_doc::Document) -> Option<Label> {
 }
 
 /// Seek a preview copy, preserving any edits to the source's currently displayed frame.
-pub(super) fn web_frame_document(doc: &photocraft_doc::Document, frame: Option<usize>) -> Result<photocraft_doc::Document, photocraft_engine::EngineError> {
+pub(super) fn web_frame_document(
+    doc: &patronusphoto_doc::Document,
+    frame: Option<usize>,
+) -> Result<patronusphoto_doc::Document, patronusphoto_engine::EngineError> {
     let Some(frame) = frame else { return Ok(doc.clone()) };
-    let mut preview = photocraft_engine::Session::new();
+    let mut preview = patronusphoto_engine::Session::new();
     preview.add_document(doc.clone(), None);
     preview.execute("timeline.setFrame", json!({"frame": frame}))?;
-    Ok((*preview.active().ok_or(photocraft_engine::EngineError::NoDocument)?.doc).clone())
+    Ok((*preview.active().ok_or(patronusphoto_engine::EngineError::NoDocument)?.doc).clone())
 }
 
 /// The picture of one wanted pane: the options' encode of the document's `frame`, reduced to a proxy of at most
 /// 2048 px, with the size and palette the dialog shows.
-fn encode(ctx: &egui::Context, app: &PhotocraftApp, wanted: &WantedVariant, frame: Option<usize>) -> WebVariant {
+fn encode(ctx: &egui::Context, app: &PatronusPhotoApp, wanted: &WantedVariant, frame: Option<usize>) -> WebVariant {
     let (index, revision) = (wanted.index, wanted.request.revision);
     let fail = |message: String| WebVariant::failed(index, revision, message);
     let Some(st) = app.session.active() else { return fail("no document".into()) };
@@ -306,7 +309,7 @@ fn encode(ctx: &egui::Context, app: &PhotocraftApp, wanted: &WantedVariant, fram
         let size = json!({"width": (fw * k).round().max(1.0), "height": (fh * k).round().max(1.0), "resample": web_preview::proxy_resample(&p, k)});
         let (proxy, _, _) = web_cmds::web_document(&doc, &size, settings).map_err(|e| e.to_string())?;
         let (w, h) = (proxy.size.width, proxy.size.height);
-        Ok((photocraft_compose::flatten(&proxy).into_px(), w, h))
+        Ok((patronusphoto_compose::flatten(&proxy).into_px(), w, h))
     };
     let encoded = match web_preview::optimized(ctx, pane_key(doc.id.0, index), &signature, &p, source) {
         Ok(encoded) => encoded,
@@ -326,11 +329,11 @@ fn encode(ctx: &egui::Context, app: &PhotocraftApp, wanted: &WantedVariant, fram
     variant
 }
 
-fn has_slices(app: &PhotocraftApp) -> bool {
+fn has_slices(app: &PatronusPhotoApp) -> bool {
     app.session.active().is_some_and(|st| !st.doc.slices.is_empty())
 }
 
-fn report(app: &mut PhotocraftApp, error: String) {
+fn report(app: &mut PatronusPhotoApp, error: String) {
     app.ui.status = error;
     app.ui.status_error = true;
 }
@@ -343,7 +346,7 @@ fn engine_ext(options: &SaveForWebOptions) -> String {
 /// Answers what the open Save for Web dialog asked for since the last call: the panes to encode, the colour
 /// pick (the matte and the colour-table cells), the save path, and OK. Each request is taken once, so a second
 /// pass in the same frame finds nothing left.
-pub(super) fn take(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(super) fn take(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     if let Some(result) = app.framework.dialogs.take::<HostedSaveForWeb>() {
         if let DialogResult::Ok(result) = result {
             finish(app, ctx, result);
@@ -380,10 +383,10 @@ pub(super) fn take(app: &mut PhotocraftApp, ctx: &egui::Context) {
 
 /// Save… was pressed: the export policy judges the parameters (with the generated palette) before any picker
 /// opens, then the save picker answers the dialog's path request `key`.
-fn pick_save(app: &mut PhotocraftApp, id: DialogId, key: String, current: &SaveForWebOptions) {
+fn pick_save(app: &mut PatronusPhotoApp, id: DialogId, key: String, current: &SaveForWebOptions) {
     let slices = has_slices(app);
     let checked = web_params(current, slices).and_then(|p| checked_params(app, &p));
-    let refuse = |app: &mut PhotocraftApp, error: String| {
+    let refuse = |app: &mut PatronusPhotoApp, error: String| {
         if let Some(dialog) = app.framework.dialogs.get_mut_by_id::<HostedSaveForWeb>(id) {
             dialog.cancel_requests();
         }
@@ -393,7 +396,7 @@ fn pick_save(app: &mut PhotocraftApp, id: DialogId, key: String, current: &SaveF
         return refuse(app, error);
     }
     let Some(doc) = app.session.active().map(|st| st.doc.clone()) else { return refuse(app, "no document".into()) };
-    let base = photocraft_doc::slices::base_name(&doc);
+    let base = patronusphoto_doc::slices::base_name(&doc);
     let suggested = if slices && current.html { format!("{base}.html") } else { format!("{base}.{}", engine_ext(current)) };
     let doc_id = doc.id;
     // PLAN: `pick_export` has no cancel hook, so a cancelled picker leaves Save… waiting until `cancel_requests`; the owner of file_dialog.rs adds the hook.
@@ -410,7 +413,7 @@ fn pick_save(app: &mut PhotocraftApp, id: DialogId, key: String, current: &SaveF
 }
 
 /// OK: the export runs with the confirmed options and the picked path; the settings are remembered once it succeeded.
-fn finish(app: &mut PhotocraftApp, ctx: &egui::Context, result: SaveForWebResult) {
+fn finish(app: &mut PatronusPhotoApp, ctx: &egui::Context, result: SaveForWebResult) {
     let slices = has_slices(app);
     let outcome = web_params(&result.options, slices).and_then(|mut p| {
         let path = result.path.to_string_lossy().into_owned();
@@ -420,7 +423,7 @@ fn finish(app: &mut PhotocraftApp, ctx: &egui::Context, result: SaveForWebResult
             // The suggested name kept: only the folder, so a recorded action saves each document under its own
             // name, as in Photoshop (#5305). A document renamed since the picker opened no longer matches the
             // picked name, so the whole path is used.
-            let base = app.session.active().map(|st| photocraft_doc::slices::base_name(&st.doc)).ok_or("no document")?;
+            let base = app.session.active().map(|st| patronusphoto_doc::slices::base_name(&st.doc)).ok_or("no document")?;
             match kept_name_folder(&path, &base, &engine_ext(&result.options)) {
                 Some(folder) => p["folder"] = json!(folder),
                 None => p["path"] = json!(path),
@@ -436,7 +439,7 @@ fn finish(app: &mut PhotocraftApp, ctx: &egui::Context, result: SaveForWebResult
 
 /// Whether the export policy lets `p` through. Checked while the control/input policy is still installed,
 /// before an asynchronous picker can outlive the request.
-fn authorize_web(app: &PhotocraftApp, p: &Value) -> Result<(), String> {
+fn authorize_web(app: &PatronusPhotoApp, p: &Value) -> Result<(), String> {
     if let Some(authorize) = app.session.authorize.or(if app.automation_input { app.services.automation_authorize } else { None }) {
         authorize(WEB_COMMAND, p).map_err(|e| e.to_string())?;
     }
@@ -449,7 +452,7 @@ fn authorize_web(app: &PhotocraftApp, p: &Value) -> Result<(), String> {
 }
 
 /// `p` with its generated palette, after the policy approved both the request and the palette-bearing parameters.
-fn checked_params(app: &PhotocraftApp, p: &Value) -> Result<Value, String> {
+fn checked_params(app: &PatronusPhotoApp, p: &Value) -> Result<Value, String> {
     authorize_web(app, p)?;
     let mut prepared = p.clone();
     web_preview::prepare_table(app, &mut prepared)?;
@@ -460,7 +463,7 @@ fn checked_params(app: &PhotocraftApp, p: &Value) -> Result<Value, String> {
 }
 
 /// Runs Save for Web with the final parameters `p`, which say where to write.
-pub(super) fn web_confirm(app: &mut PhotocraftApp, p: &Value) -> Result<Value, String> {
+pub(super) fn web_confirm(app: &mut PatronusPhotoApp, p: &Value) -> Result<Value, String> {
     let p = checked_params(app, p)?;
     save_for_web(app, p)
 }
@@ -469,13 +472,13 @@ pub(super) fn web_confirm(app: &mut PhotocraftApp, p: &Value) -> Result<Value, S
 /// alone: `base` (a name usable on Windows as it is) with the format's own extension `ext`.
 fn kept_name_folder(path: &str, base: &str, ext: &str) -> Option<String> {
     let file = std::path::Path::new(path);
-    let portable = photocraft_engine::file_cmds::portable_device_name(base.to_string()) == base;
+    let portable = patronusphoto_engine::file_cmds::portable_device_name(base.to_string()) == base;
     let kept = portable && file.file_stem().is_some_and(|s| s.to_string_lossy() == base) && file.extension().is_some_and(|e| e.to_string_lossy() == ext);
     kept.then(|| file.parent().map(|d| d.to_string_lossy().into_owned()).unwrap_or_default())
 }
 
 /// Runs Save for Web with `p`, which says where to write.
-fn save_for_web(app: &mut PhotocraftApp, p: Value) -> Result<Value, String> {
+fn save_for_web(app: &mut PatronusPhotoApp, p: Value) -> Result<Value, String> {
     #[cfg(target_arch = "wasm32")]
     let result = download_for_web(app, p);
     #[cfg(not(target_arch = "wasm32"))]
@@ -496,11 +499,11 @@ fn save_for_web(app: &mut PhotocraftApp, p: Value) -> Result<Value, String> {
 }
 
 #[cfg(any(test, target_arch = "wasm32"))]
-pub(super) fn download_for_web(app: &mut PhotocraftApp, mut p: Value) -> Result<Value, String> {
+pub(super) fn download_for_web(app: &mut PatronusPhotoApp, mut p: Value) -> Result<Value, String> {
     // Browser downloads have no directory hierarchy. Keep the HTML's image and spacer URLs
     // beside the downloaded page, matching the names handed to the platform service.
     p["imagesFolder"] = json!("");
     let write = app.services.write.as_mut().ok_or("no download service")?;
-    web_cmds::save_for_web_with_writer(&mut app.session, &p, &mut |path, bytes| write(path, bytes).map_err(photocraft_engine::EngineError::Other))
+    web_cmds::save_for_web_with_writer(&mut app.session, &p, &mut |path, bytes| write(path, bytes).map_err(patronusphoto_engine::EngineError::Other))
         .map_err(|e| e.to_string())
 }

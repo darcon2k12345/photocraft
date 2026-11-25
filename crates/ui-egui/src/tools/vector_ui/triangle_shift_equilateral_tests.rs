@@ -5,12 +5,12 @@
 use egui::Modifiers;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::{ToolEvent, tool_event};
 use crate::state::Tool;
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 1000, "height": 800})).unwrap();
     app.sync_views();
     app.ui.tool = Tool::Triangle;
@@ -18,7 +18,7 @@ fn app() -> Box<PhotocraftApp> {
 }
 
 /// `shape.info` of the active layer.
-fn info(app: &mut PhotocraftApp) -> Value {
+fn info(app: &mut PatronusPhotoApp) -> Value {
     let id = app.session.active().unwrap().active_layer.unwrap().0;
     app.session.execute("shape.info", json!({"layer": id})).unwrap()
 }

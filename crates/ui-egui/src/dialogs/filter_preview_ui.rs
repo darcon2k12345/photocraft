@@ -11,10 +11,10 @@ use craft::ui::dialog::{DialogId, StackDialog as _};
 use craft::ui::patterns::form_dialogs::HostedParamDialog;
 use egui::load::SizedTexture;
 use egui::{Pos2, pos2};
-use photocraft_doc::Document;
+use patronusphoto_doc::Document;
 use serde_json::Value;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::filter_dialog::FilterPreviewKey;
 
 /// What a dialog's preview shows: the command it edits, that command's params as the dialog holds them now,
@@ -28,7 +28,7 @@ struct Subject {
 
 /// What `dialog` previews, or `None` when it has no preview picture: a filter dialog, or the Blending Options
 /// dialog of a smart filter.
-fn subject(app: &PhotocraftApp, dialog: &HostedParamDialog) -> Option<Subject> {
+fn subject(app: &PatronusPhotoApp, dialog: &HostedParamDialog) -> Option<Subject> {
     let key = dialog.key()?;
     // The smart filter an open edits: the open's captured value, not a dialog field.
     let captured = crate::dialogs::params::captured(app, key);
@@ -47,9 +47,9 @@ fn subject(app: &PhotocraftApp, dialog: &HostedParamDialog) -> Option<Subject> {
 /// stacked dialog from showing another's preview; the Preview checkbox decides whether the filtered result
 /// (rather than the original) is shown.
 fn filtered_preview(
-    app: &PhotocraftApp,
+    app: &PatronusPhotoApp,
     id: DialogId,
-    doc: photocraft_doc::DocId,
+    doc: patronusphoto_doc::DocId,
     previewed: &str,
     previewing: bool,
 ) -> Option<(FilterPreviewKey, std::sync::Arc<Document>)> {
@@ -62,7 +62,7 @@ fn filtered_preview(
 /// The fallback must be the factor the canvas will ask for, not the document's own: since #6326 the canvas caps it
 /// with the view's zoom, and a pane that sized its textures from the uncapped factor built a proxy the canvas never
 /// asked for, then rebuilt it the moment the first result arrived, shifting the pane's mapping for a frame.
-fn picture_factor(app: &PhotocraftApp, id: DialogId, dialog: &HostedParamDialog, doc: &Document, subject: &Subject) -> u32 {
+fn picture_factor(app: &PatronusPhotoApp, id: DialogId, dialog: &HostedParamDialog, doc: &Document, subject: &Subject) -> u32 {
     filtered_preview(app, id, doc.id, &subject.previewed, dialog.is_previewing())
         .map(|(key, _)| key.k)
         .unwrap_or_else(|| crate::canvas::filter_preview_factor(app, doc, &subject.command, &subject.params))
@@ -72,7 +72,7 @@ fn picture_factor(app: &PhotocraftApp, id: DialogId, dialog: &HostedParamDialog,
 ///
 /// A second pass in one frame hands the same picture: nothing here reads the frame's input or drains a queue, and
 /// the texture cache uploads nothing for a picture that did not change.
-pub(crate) fn feed(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(crate) fn feed(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     let ids: Vec<DialogId> = app.framework.dialogs.stack().ids().collect();
     for id in ids {
         let Some(picture) = picture(app, ctx, id) else { continue };
@@ -84,7 +84,7 @@ pub(crate) fn feed(app: &mut PhotocraftApp, ctx: &egui::Context) {
 
 /// The picture of dialog `id`: `None` when the dialog has no preview pane, `Some(None)` when it has one and there
 /// is nothing to show.
-fn picture(app: &PhotocraftApp, ctx: &egui::Context, id: DialogId) -> Option<Option<SizedTexture>> {
+fn picture(app: &PatronusPhotoApp, ctx: &egui::Context, id: DialogId) -> Option<Option<SizedTexture>> {
     let dialog = app.framework.dialogs.get_by_id::<HostedParamDialog>(id)?;
     let subject = subject(app, dialog)?;
     let Some(st) = app.session.active() else { return Some(None) };
@@ -129,7 +129,7 @@ fn picture(app: &PhotocraftApp, ctx: &egui::Context, id: DialogId) -> Option<Opt
 /// The top dialog, when it has the preview pane: the image under it is then the preview's locator (another dialog
 /// opened over it takes the input). Not while the image is something else of the dialog's: the Blur Gallery's pins
 /// (`blur_pins`) or a dropper armed on the canvas.
-pub(crate) fn locator(app: &PhotocraftApp) -> Option<DialogId> {
+pub(crate) fn locator(app: &PatronusPhotoApp) -> Option<DialogId> {
     if app.dialog_dropper.is_some() {
         return None;
     }
@@ -141,7 +141,7 @@ pub(crate) fn locator(app: &PhotocraftApp) -> Option<DialogId> {
 /// Centre the top dialog's preview pane on document point `point`, clamped to the image, as a click on the image
 /// does in Photoshop's filter dialogs (#9648). Only the pane's view moves: no command runs, the document and its
 /// history are untouched. `false` when no dialog with a preview pane is on top or the point is not finite.
-pub(crate) fn centre_on(app: &mut PhotocraftApp, point: [f64; 2]) -> bool {
+pub(crate) fn centre_on(app: &mut PatronusPhotoApp, point: [f64; 2]) -> bool {
     let Some(id) = locator(app) else { return false };
     if !point.iter().all(|v| v.is_finite()) {
         return false;
@@ -177,7 +177,7 @@ pub(crate) fn shows(command: &str) -> bool {
 }
 
 /// A composite as monitor pixels, matching the canvas (`canvas::display_image`).
-fn upload(ctx: &egui::Context, app: &PhotocraftApp, name: &str, doc: &Document) -> egui::TextureHandle {
+fn upload(ctx: &egui::Context, app: &PatronusPhotoApp, name: &str, doc: &Document) -> egui::TextureHandle {
     // Reduce only the display texture when a full-resolution result exceeds the device limit.
     // The cached document and the pane's document-pixel coordinates stay at full size.
     let factor = texture_factor(doc.size.width, doc.size.height, ctx.input(|i| i.max_texture_side));
@@ -189,7 +189,7 @@ fn upload(ctx: &egui::Context, app: &PhotocraftApp, name: &str, doc: &Document) 
         let image = egui::ColorImage::new([width as usize, height as usize], pixels);
         return ctx.load_texture(name, image, egui::TextureOptions::LINEAR);
     }
-    let buf = if factor == 1 { photocraft_compose::flatten(doc) } else { photocraft_compose::render_reduced(doc, width, height) };
+    let buf = if factor == 1 { patronusphoto_compose::flatten(doc) } else { patronusphoto_compose::render_reduced(doc, width, height) };
     let (display, _) = crate::canvas::canvas_display(app, doc, None);
     let img = crate::canvas::display_image(display.as_deref(), &buf);
     ctx.load_texture(name, img, egui::TextureOptions::LINEAR)
@@ -205,7 +205,7 @@ pub(crate) fn texture_factor(w: u32, h: u32, max_side: usize) -> u32 {
 #[derive(Clone, PartialEq)]
 enum TexKey {
     Filtered(FilterPreviewKey),
-    Original(photocraft_doc::DocId, u64, u32),
+    Original(patronusphoto_doc::DocId, u64, u32),
 }
 
 #[derive(Clone)]
@@ -221,7 +221,7 @@ struct CachedTex {
 struct Cache {
     filtered: Option<CachedTex>,
     original: Option<CachedTex>,
-    view: Option<(photocraft_engine::channel_cmds::ChannelView, bool, Option<photocraft_doc::LayerId>)>,
+    view: Option<(patronusphoto_engine::channel_cmds::ChannelView, bool, Option<patronusphoto_doc::LayerId>)>,
 }
 
 #[cfg(test)]
@@ -232,18 +232,18 @@ mod tests {
     use super::*;
 
     /// The id of the dialog on top of the host's stack: the one a test just opened.
-    fn top_dialog(app: &PhotocraftApp) -> DialogId {
+    fn top_dialog(app: &PatronusPhotoApp) -> DialogId {
         app.framework.dialogs.stack().top().expect("a dialog is open")
     }
 
     /// Cancels the dialog on top.
-    fn close_top(app: &mut PhotocraftApp) {
+    fn close_top(app: &mut PatronusPhotoApp) {
         let (ctx, id) = (app.ctx().clone(), top_dialog(app));
         assert!(app.framework.dialogs.cancel_by_id(&ctx, id));
     }
 
     /// One frame of the dialogs: the picture fed first, as `dialogs::run` does, then the host's pass.
-    fn frame(app: &mut PhotocraftApp) -> egui::FullOutput {
+    fn frame(app: &mut PatronusPhotoApp) -> egui::FullOutput {
         let ctx = app.ctx().clone();
         ctx.run_ui(Default::default(), |ui| {
             feed(app, ui.ctx());
@@ -253,7 +253,7 @@ mod tests {
 
     #[test]
     fn full_resolution_preview_textures_respect_the_device_limit() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         let ctx = app.ctx().clone();
         let limit = ctx.input(|i| i.max_texture_side) as u32;
         let width = limit + 2;
@@ -263,7 +263,7 @@ mod tests {
                 app.run("channel.new", json!({"name": "Alpha", "fill": "black"})).unwrap();
                 app.session
                     .edit("Fixture", |doc, _| {
-                        doc.channels[0].surface.fill_rect(photocraft_geom::Rect::new(0, 0, (width / 2) as i32, 2), &[1.0]);
+                        doc.channels[0].surface.fill_rect(patronusphoto_geom::Rect::new(0, 0, (width / 2) as i32, 2), &[1.0]);
                         Ok(())
                     })
                     .unwrap();
@@ -284,14 +284,14 @@ mod tests {
 
     #[test]
     fn uploaded_preview_shows_the_filtered_alpha_at_every_depth_and_proxy_scale() {
-        use photocraft_engine::channel_cmds::ChannelTarget;
+        use patronusphoto_engine::channel_cmds::ChannelTarget;
         for depth in [8, 16, 32] {
-            let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
             app.run("file.new", json!({"width": 16, "height": 16, "depth": depth})).unwrap();
             app.run("channel.new", json!({"name": "Alpha", "fill": "black"})).unwrap();
             app.session
                 .edit("Fixture", |doc, _| {
-                    doc.channels[0].surface.fill_rect(photocraft_geom::Rect::new(0, 0, 8, 16), &[1.0]);
+                    doc.channels[0].surface.fill_rect(patronusphoto_geom::Rect::new(0, 0, 8, 16), &[1.0]);
                     Ok(())
                 })
                 .unwrap();
@@ -328,8 +328,8 @@ mod tests {
 
     #[test]
     fn original_texture_refreshes_when_the_channel_view_changes_without_an_edit() {
-        use photocraft_engine::channel_cmds::ChannelTarget;
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        use patronusphoto_engine::channel_cmds::ChannelTarget;
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 16, "height": 16})).unwrap();
         app.run("channel.new", json!({"name": "White", "fill": "white"})).unwrap();
         app.run("channel.new", json!({"name": "Black", "fill": "black"})).unwrap();
@@ -397,7 +397,7 @@ mod tests {
 
     #[test]
     fn a_point_on_the_image_centres_the_top_preview_pane() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 4000, "height": 3000})).unwrap();
         // No dialog: nothing to centre.
         assert!(!centre_on(&mut app, [10.0, 10.0]));
@@ -419,7 +419,7 @@ mod tests {
         let k = crate::canvas::filter_preview_factor(&app, &app.session.active().unwrap().doc, "filter.sharpen.unsharpMask", &params);
         // The pane shows its picture from the second pass on.
         frame(&mut app).textures_delta.clear();
-        let centre = |app: &PhotocraftApp| app.framework.dialogs.get_by_id::<HostedParamDialog>(id).unwrap().preview_centre();
+        let centre = |app: &PatronusPhotoApp| app.framework.dialogs.get_by_id::<HostedParamDialog>(id).unwrap().preview_centre();
         let near = |at: Option<Pos2>, document: [f64; 2]| {
             let want = picture_point(document, k);
             at.is_some_and(|at| (at.x - want.x).abs() < 1.0 && (at.y - want.y).abs() < 1.0)

@@ -8,13 +8,13 @@ use craft::color_ui::ui::ColorPickerDialog;
 use craft::imaging::ui::adjust::{AdjustContext, AdjustDialogCx, AdjustSession, ColorBalanceTone, LevelsClip, TonePicker};
 use craft::theme::Srgba;
 use craft::ui::dialog::DialogId;
-use photocraft_doc::{Adjustment, ColorMode, LayerId};
-use photocraft_engine::adjust_params;
+use patronusphoto_doc::{Adjustment, ColorMode, LayerId};
+use patronusphoto_engine::adjust_params;
 use serde_json::{Value, json};
 
 use super::values::{self, ValueCx};
 use super::{AdjustAsk, AdjustValue, EditorSetup, answer_color, black_white_auto, editor, gradient_presets, is_gray, swatches};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::color_picker_ui::PickWindow;
 use crate::theme::Tokens;
 use crate::tone::{self, HistSource};
@@ -98,8 +98,8 @@ fn zeroed(mut value: AdjustValue) -> AdjustValue {
 /// found if it edited them since (or since the last Reset), else to the defaults (Tone choice kept
 /// in the first case, Midtones shown in the second); either way it is part of the layer's edit
 /// step. Other kinds go to the defaults for the document's mode.
-pub fn layer_reset(app: &mut PhotocraftApp, id: LayerId, adj: &Adjustment) -> Value {
-    let kind = photocraft_engine::commands::adjustment_kind(adj);
+pub fn layer_reset(app: &mut PatronusPhotoApp, id: LayerId, adj: &Adjustment) -> Value {
+    let kind = patronusphoto_engine::commands::adjustment_kind(adj);
     let mode = app.session.active().map_or(ColorMode::Rgb, |s| s.doc.mode);
     let committed = adjust_params::to_params(adj);
     let mut params = if photoshop_session(kind) {
@@ -137,7 +137,7 @@ pub fn layer_reset(app: &mut PhotocraftApp, id: LayerId, adj: &Adjustment) -> Va
 ///
 /// Each pass applies only the edit events its own editor run reports, so a second pass in the same
 /// frame repeats nothing.
-pub fn layer_editor(app: &mut PhotocraftApp, ui: &mut egui::Ui, id: LayerId, adj: &Adjustment) {
+pub fn layer_editor(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, id: LayerId, adj: &Adjustment) {
     let t = Tokens::get(ui.ctx());
     match adj {
         Adjustment::ColorLookup { .. } => return crate::adjust_ui::color_lookup_editor(app, ui, id, adj),
@@ -152,7 +152,7 @@ pub fn layer_editor(app: &mut PhotocraftApp, ui: &mut egui::Ui, id: LayerId, adj
         }
         _ => {}
     }
-    let kind = photocraft_engine::commands::adjustment_kind(adj);
+    let kind = patronusphoto_engine::commands::adjustment_kind(adj);
     let Some((doc, mode)) = app.session.active().map(|s| (s.doc.id.0, s.doc.mode)) else { return };
     let committed_params = adjust_params::to_params(adj);
     let vcx = value_cx(mode, &committed_params);
@@ -252,7 +252,7 @@ pub fn layer_editor(app: &mut PhotocraftApp, ui: &mut egui::Ui, id: LayerId, adj
 /// Runs one `layer.setAdjustment` for `value` unless it is the layer's committed value, and ends
 /// the preview. `coalesce` joins the edit to the step before it.
 fn commit(
-    app: &mut PhotocraftApp,
+    app: &mut PatronusPhotoApp,
     id: LayerId,
     record: &mut PropertiesAdjust,
     committed: &AdjustValue,
@@ -278,7 +278,7 @@ fn commit(
 
 /// A colour well's Color Picker while it is open: its colour previews on the layer. Once it
 /// closed, OK's colour is one edit and Cancel (or OK without a colour) leaves the layer as it was.
-fn follow_color_pick(app: &mut PhotocraftApp, id: LayerId, record: &mut PropertiesAdjust, committed: &AdjustValue, vcx: &ValueCx) {
+fn follow_color_pick(app: &mut PatronusPhotoApp, id: LayerId, record: &mut PropertiesAdjust, committed: &AdjustValue, vcx: &ValueCx) {
     let Some(pick) = record.pick.take() else { return };
     match app.framework.dialogs.get_by_id::<ColorPickerDialog>(pick.dialog).map(ColorPickerDialog::current) {
         Some(current) => {

@@ -24,7 +24,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// How long (seconds) a tool letter must stay down for its tool to be temporary.
@@ -61,7 +61,7 @@ pub fn key_of(letter: char) -> Option<egui::Key> {
 }
 
 /// The key `letter` came up at the input time `at` (its tool command's `FirePhase::Release`): it no longer counts as held.
-pub fn released(app: &mut PhotocraftApp, letter: char, at: f64) {
+pub fn released(app: &mut PatronusPhotoApp, letter: char, at: f64) {
     if let Some(s) = app.ui.spring.as_mut() {
         s.keys.retain(|k| *k != letter);
         if s.keys.is_empty() {
@@ -72,7 +72,7 @@ pub fn released(app: &mut PhotocraftApp, letter: char, at: f64) {
 
 /// A tool letter switched the tool from `before` (the switch is already made). `plain` is false
 /// when ⇧ or ⌥ was held: those switches are permanent. `at` is the press's input time (`Fired::time`).
-pub fn pressed(app: &mut PhotocraftApp, letter: char, before: Tool, plain: bool, at: f64) {
+pub fn pressed(app: &mut PatronusPhotoApp, letter: char, before: Tool, plain: bool, at: f64) {
     let active = app.ui.spring.as_ref().is_some_and(|s| !s.released);
     if !plain {
         app.ui.spring = None;
@@ -95,12 +95,12 @@ pub fn pressed(app: &mut PhotocraftApp, letter: char, before: Tool, plain: bool,
 
 /// Is `tool` in effect only while its letter is held (or its drag finishes)? A tap that turns out
 /// permanent has no spring left by then (`tick`).
-pub fn holds(app: &PhotocraftApp, tool: Tool) -> bool {
+pub fn holds(app: &PatronusPhotoApp, tool: Tool) -> bool {
     app.ui.tool == tool && app.ui.spring.as_ref().is_some_and(|s| s.tool == tool)
 }
 
 /// The canvas was pressed: a held letter's tool becomes temporary.
-pub fn note_canvas_press(app: &mut PhotocraftApp) {
+pub fn note_canvas_press(app: &mut PatronusPhotoApp) {
     if let Some(s) = app.ui.spring.as_mut().filter(|s| !s.released) {
         s.used = true;
     }
@@ -108,7 +108,7 @@ pub fn note_canvas_press(app: &mut PhotocraftApp) {
 
 /// Once a pass, after the fired commands ran ([`released`] has taken the letters that came up): give the previous
 /// tool back when the switch was temporary and no drag is in progress.
-pub fn tick(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub fn tick(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     let Some(mut s) = app.ui.spring.take() else { return };
     // Type editing begun with the temporary Type tool keeps it: the edit owns the tool now. So
     // does a tool picked another way while the letter is down.

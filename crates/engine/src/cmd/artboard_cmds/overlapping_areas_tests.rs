@@ -3,7 +3,7 @@
 //! boards below never do, and the source document is left alone.
 
 use super::*;
-use photocraft_geom::Rect;
+use patronusphoto_geom::Rect;
 
 const RED: [u8; 3] = [220, 30, 30];
 const BLUE: [u8; 3] = [30, 30, 220];
@@ -31,7 +31,7 @@ fn paint(s: &mut Session, board: u64, name: &str, rect: Rect, color: [u8; 3]) {
         let fmt = doc.pixel_format();
         let mut l = Layer::raster(name, fmt);
         let [r, g, b] = color.map(|c| f32::from(c) / 255.0);
-        l.surface_mut().unwrap().fill_rect(rect, &photocraft_raster::from_rgba(&fmt, [r, g, b, 1.0]));
+        l.surface_mut().unwrap().fill_rect(rect, &patronusphoto_raster::from_rgba(&fmt, [r, g, b, 1.0]));
         doc.layer_mut(LayerId(board)).unwrap().children_mut().unwrap().push(l);
         Ok(())
     })
@@ -42,7 +42,7 @@ struct Out(std::path::PathBuf);
 
 impl Out {
     fn new(tag: &str) -> Self {
-        let dir = std::env::temp_dir().join(format!("photocraft-overlap-{tag}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("patronusphoto-overlap-{tag}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         Out(dir)
@@ -69,12 +69,12 @@ fn export(s: &mut Session, out: &Out, board: u64, extra: Value) -> Document {
     let files = r["files"].as_array().unwrap();
     assert_eq!(files.len(), 1, "{r}");
     let path = files[0].as_str().unwrap();
-    photocraft_io::import(&format!("x.{format}"), &std::fs::read(path).unwrap()).unwrap().document
+    patronusphoto_io::import(&format!("x.{format}"), &std::fs::read(path).unwrap()).unwrap().document
 }
 
 /// The file's composite pixel at (x, y) as 8-bit RGBA.
 fn px(d: &Document, x: i32, y: i32) -> [u8; 4] {
-    let flat = photocraft_compose::flatten(d);
+    let flat = patronusphoto_compose::flatten(d);
     let w = d.size.width as usize;
     flat.px[y as usize * w + x as usize].map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8)
 }
@@ -129,10 +129,10 @@ fn an_overlapping_psd_holds_the_board_above_as_a_plain_group_with_its_background
     let kids = group.children().unwrap();
     assert_eq!(names(kids), ["Background for Blue Board", "Blue"]);
     // Blue (130,40-230,140 in the source) is cut to the file: 130,40-200,140.
-    let blue = photocraft_compose::bounds::content_bounds(kids[1].surface().unwrap());
+    let blue = patronusphoto_compose::bounds::content_bounds(kids[1].surface().unwrap());
     assert_eq!(blue, Rect::new(130, 40, 200, 140));
     // The background covers where the boards overlap: 120..200 x 30..150.
-    let bg = photocraft_compose::bounds::content_bounds(kids[0].surface().unwrap());
+    let bg = patronusphoto_compose::bounds::content_bounds(kids[0].surface().unwrap());
     assert_eq!(bg, Rect::new(120, 30, 200, 150));
     assert_eq!(rgb(px(&psd, 150, 60)), BLUE);
     assert_eq!(rgb(px(&psd, 125, 35)), WHITE);
@@ -193,7 +193,7 @@ fn the_layers_of_the_board_above_stay_inside_their_board() {
 fn a_fill_layer_in_the_board_above_stays_inside_its_board() {
     let (mut s, [red, blue, _]) = session(8);
     s.edit("Fill", |doc, _| {
-        let fill = Layer::new("Green", LayerContent::Fill(photocraft_doc::Fill::Solid(Color::rgb(0.0, 1.0, 0.0))));
+        let fill = Layer::new("Green", LayerContent::Fill(patronusphoto_doc::Fill::Solid(Color::rgb(0.0, 1.0, 0.0))));
         doc.layer_mut(LayerId(blue)).unwrap().children_mut().unwrap().push(fill);
         Ok(())
     })
@@ -211,15 +211,15 @@ fn a_fill_layer_in_the_board_above_stays_inside_its_board() {
 /// into it, as it does in the document: its pixels are not cut away before the effect is built.
 #[test]
 fn a_shadow_cast_into_the_exported_board_from_outside_it_still_shows() {
-    use photocraft_doc::effects::{Contour, FxCommon, Shadow};
+    use patronusphoto_doc::effects::{Contour, FxCommon, Shadow};
     let (mut s, [red, blue, _]) = session(8);
     // Caster at 210..240 x 160..180 (in Blue Board, outside Red Board); its shadow, 40 px up and
     // to the left, falls on 170..200 x 120..140, inside Red Board.
     paint(&mut s, blue, "Caster", Rect::new(210, 160, 240, 180), [0, 160, 0]);
     s.edit("Shadow", |doc, _| {
         let caster = doc.layer_mut(LayerId(blue)).unwrap().children_mut().unwrap().last_mut().unwrap();
-        caster.effects.items.push(photocraft_doc::Effect::DropShadow(Shadow {
-            common: FxCommon::new(photocraft_color::BlendMode::Normal, 1.0),
+        caster.effects.items.push(patronusphoto_doc::Effect::DropShadow(Shadow {
+            common: FxCommon::new(patronusphoto_color::BlendMode::Normal, 1.0),
             color: Color::rgb(0.0, 0.0, 0.0),
             angle: -45.0,
             use_global_light: false,
@@ -295,9 +295,9 @@ fn a_mask_on_the_board_above_still_hides_its_part() {
     s.edit("Mask", |doc, _| {
         let board = doc.layer_mut(LayerId(blue)).unwrap();
         // A canvas-wide fill reaches past the board, so the export clips the board to its rect.
-        let fill = Layer::new("Green", LayerContent::Fill(photocraft_doc::Fill::Solid(Color::rgb(0.0, 1.0, 0.0))));
+        let fill = Layer::new("Green", LayerContent::Fill(patronusphoto_doc::Fill::Solid(Color::rgb(0.0, 1.0, 0.0))));
         board.children_mut().unwrap().insert(0, fill);
-        let mut mask = photocraft_doc::LayerMask::reveal_all();
+        let mut mask = patronusphoto_doc::LayerMask::reveal_all();
         mask.surface.fill_rect(Rect::new(140, 50, 160, 70), &[0.0]);
         board.mask = Some(mask);
         Ok(())
@@ -321,11 +321,11 @@ fn a_multiply_layer_in_a_normal_board_above_does_not_blend_with_its_background()
     let (mut s, [red, blue, _]) = session(8);
     s.edit("Normal", |doc, _| {
         let board = doc.layer_mut(LayerId(blue)).unwrap();
-        board.blend = photocraft_color::BlendMode::Normal;
+        board.blend = patronusphoto_color::BlendMode::Normal;
         if let LayerContent::Group(g) = &mut board.content {
-            g.artboard.as_mut().unwrap().background = photocraft_doc::ArtboardBackground::Custom(Color::rgb(0.0, 1.0, 0.0));
+            g.artboard.as_mut().unwrap().background = patronusphoto_doc::ArtboardBackground::Custom(Color::rgb(0.0, 1.0, 0.0));
         }
-        board.children_mut().unwrap().last_mut().unwrap().blend = photocraft_color::BlendMode::Multiply;
+        board.children_mut().unwrap().last_mut().unwrap().blend = patronusphoto_color::BlendMode::Multiply;
         Ok(())
     })
     .unwrap();

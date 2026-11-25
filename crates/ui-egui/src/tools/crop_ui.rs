@@ -11,7 +11,7 @@ use craft::draw::ui::crop::{CropBarWords, CropCommit, CropDocKey, CropDocument, 
 use craft::ui::canvas::ShieldColor;
 use craft::ui::runtime::env::{Env, Units};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 pub(crate) mod bar;
@@ -32,7 +32,7 @@ pub(crate) struct CropRun {
 
 impl CropRun {
     /// The run for this pass; `None` unless the Crop tool is current on a document.
-    pub(crate) fn of(app: &PhotocraftApp) -> Option<CropRun> {
+    pub(crate) fn of(app: &PatronusPhotoApp) -> Option<CropRun> {
         if app.ui.tool != Tool::Crop {
             return None;
         }
@@ -46,17 +46,17 @@ impl CropRun {
 }
 
 /// The units of the app's root scope, for code that runs outside a pass.
-pub(crate) fn units(app: &PhotocraftApp) -> Units {
+pub(crate) fn units(app: &PatronusPhotoApp) -> Units {
     Env::of_root(app.ctx()).units()
 }
 
 /// The crop bar's words, for code that runs outside a pass.
-pub(crate) fn words(app: &PhotocraftApp) -> std::sync::Arc<CropBarWords> {
+pub(crate) fn words(app: &PatronusPhotoApp) -> std::sync::Arc<CropBarWords> {
     Env::of_root(app.ctx()).words::<CropBarWords>()
 }
 
 /// The active document as the Crop tool sees it: identity, size, resolution and the selection's bounds on the canvas.
-pub(crate) fn document(app: &PhotocraftApp) -> Option<CropDocument> {
+pub(crate) fn document(app: &PatronusPhotoApp) -> Option<CropDocument> {
     let st = app.session.active()?;
     let canvas = st.doc.bounds();
     let selection = st.doc.selection.as_ref().map(|s| s.content_bounds().intersect(&canvas)).filter(|b| !b.is_empty());
@@ -66,14 +66,14 @@ pub(crate) fn document(app: &PhotocraftApp) -> Option<CropDocument> {
 }
 
 /// Maps what a pass of the tool reported to the app.
-pub(crate) fn finish(app: &mut PhotocraftApp, output: CropOutput) {
+pub(crate) fn finish(app: &mut PatronusPhotoApp, output: CropOutput) {
     for event in output.events {
         handle_event(app, event);
     }
 }
 
 /// Runs once per pass: while another tool is current, a drawn frame is cropped as leaving the tool does.
-pub(crate) fn each_pass(app: &mut PhotocraftApp) {
+pub(crate) fn each_pass(app: &mut PatronusPhotoApp) {
     if app.ui.tool == Tool::Crop {
         return;
     }
@@ -85,7 +85,7 @@ pub(crate) fn each_pass(app: &mut PhotocraftApp) {
 }
 
 /// The one commit: the menus, the bar, the task bar and the canvas menu call it. True when the document was cropped.
-pub(crate) fn apply(app: &mut PhotocraftApp) -> bool {
+pub(crate) fn apply(app: &mut PatronusPhotoApp) -> bool {
     let Some(document) = document(app) else { return false };
     let (settings, units) = (app.ui.tool_options.crop.clone(), units(app));
     let event = app.canvas_tools.crop.tool.apply(&settings, &document, &units);
@@ -93,13 +93,13 @@ pub(crate) fn apply(app: &mut PhotocraftApp) -> bool {
 }
 
 /// Drops the pending frame (Esc, the cancel button).
-pub(crate) fn discard(app: &mut PhotocraftApp) {
+pub(crate) fn discard(app: &mut PatronusPhotoApp) {
     let event = app.canvas_tools.crop.tool.discard();
     handle_event(app, event);
 }
 
 /// Reset: the default frame again.
-pub(crate) fn reset(app: &mut PhotocraftApp) {
+pub(crate) fn reset(app: &mut PatronusPhotoApp) {
     let Some(document) = document(app) else { return };
     let (settings, units) = (app.ui.tool_options.crop.clone(), units(app));
     let event = app.canvas_tools.crop.tool.reset_frame(&settings, &document, &units);
@@ -107,7 +107,7 @@ pub(crate) fn reset(app: &mut PhotocraftApp) {
 }
 
 /// Fits the frame to the options after the ratio or W × H × Resolution changed; `editing` while a ratio field is scrubbed.
-pub(crate) fn refit(app: &mut PhotocraftApp, editing: bool) {
+pub(crate) fn refit(app: &mut PatronusPhotoApp, editing: bool) {
     let Some(document) = document(app) else { return };
     let (settings, units) = (app.ui.tool_options.crop.clone(), units(app));
     let event = app.canvas_tools.crop.tool.refit(&settings, &document, &units, editing);
@@ -115,12 +115,12 @@ pub(crate) fn refit(app: &mut PhotocraftApp, editing: bool) {
 }
 
 /// The Straighten button.
-pub(crate) fn toggle_straighten(app: &mut PhotocraftApp) {
+pub(crate) fn toggle_straighten(app: &mut PatronusPhotoApp) {
     app.canvas_tools.crop.tool.toggle_straighten();
 }
 
 /// Runs one event of the tool. True for an `Apply` that cropped the document.
-pub(super) fn handle_event(app: &mut PhotocraftApp, event: impl Into<Option<CropEvent>>) -> bool {
+pub(super) fn handle_event(app: &mut PatronusPhotoApp, event: impl Into<Option<CropEvent>>) -> bool {
     match event.into() {
         Some(CropEvent::Apply(commit)) => apply_commit(app, &commit),
         Some(CropEvent::Discard(key)) => {
@@ -138,7 +138,7 @@ pub(super) fn handle_event(app: &mut PhotocraftApp, event: impl Into<Option<Crop
 }
 
 /// `image.crop` for `commit`; the tool is told whether the document took it.
-fn apply_commit(app: &mut PhotocraftApp, commit: &CropCommit) -> bool {
+fn apply_commit(app: &mut PatronusPhotoApp, commit: &CropCommit) -> bool {
     let rect = commit.frame.rect;
     let px = |v: f64| v.round().max(1.0) as u64;
     let mut params = json!({
@@ -177,7 +177,7 @@ fn apply_commit(app: &mut PhotocraftApp, commit: &CropCommit) -> bool {
 }
 
 /// The default mode turned the view of the document whose frame was dropped: it goes upright (Classic Mode never turns it).
-fn upright_view(app: &mut PhotocraftApp, key: CropDocKey) {
+fn upright_view(app: &mut PatronusPhotoApp, key: CropDocKey) {
     if !app.ui.tool_options.crop.image_mode() {
         return;
     }
@@ -190,55 +190,55 @@ fn upright_view(app: &mut PhotocraftApp, key: CropDocKey) {
 }
 
 /// A crop is pending: a frame was drawn, moved, resized, turned or keyed, not just the untouched default one.
-pub fn pending(app: &PhotocraftApp) -> bool {
+pub fn pending(app: &PatronusPhotoApp) -> bool {
     app.ui.tool == Tool::Crop && app.canvas_tools.crop.tool.session().pending()
 }
 
 #[cfg(test)]
 /// The frame is the untouched default one, not a drawn, moved, resized or turned box.
-pub(crate) fn is_default_frame(app: &PhotocraftApp) -> bool {
+pub(crate) fn is_default_frame(app: &PatronusPhotoApp) -> bool {
     app.canvas_tools.crop.tool.session().is_default()
 }
 
 #[cfg(test)]
 /// A drag of the frame or a Straighten line runs.
-pub(crate) fn dragging(app: &PhotocraftApp) -> bool {
+pub(crate) fn dragging(app: &PatronusPhotoApp) -> bool {
     app.ui.tool == Tool::Crop && (app.canvas_tools.crop.tool.dragging() || app.canvas_tools.crop.tool.session().straighten().on())
 }
 
 #[cfg(test)]
 /// The Straighten line is armed or held.
-pub(crate) fn straightening(app: &PhotocraftApp) -> bool {
+pub(crate) fn straightening(app: &PatronusPhotoApp) -> bool {
     app.canvas_tools.crop.tool.straighten_armed() || app.canvas_tools.crop.tool.session().straighten().on()
 }
 
 /// The frame after the last pass.
-pub fn frame(app: &PhotocraftApp) -> Option<CropBox> {
+pub fn frame(app: &PatronusPhotoApp) -> Option<CropBox> {
     app.canvas_tools.crop.tool.frame()
 }
 
 /// The canvas shows the pixels past its edges under the shield.
-pub(crate) fn shows_beyond_canvas(app: &PhotocraftApp) -> bool {
+pub(crate) fn shows_beyond_canvas(app: &PatronusPhotoApp) -> bool {
     app.ui.tool == Tool::Crop && app.canvas_tools.crop.tool.shows_beyond_canvas()
 }
 
 /// Show Cropped Area is off with the Crop tool showing a frame: nothing outside it shows.
-pub(crate) fn hides_canvas_edge(app: &PhotocraftApp) -> bool {
+pub(crate) fn hides_canvas_edge(app: &PatronusPhotoApp) -> bool {
     app.ui.tool == Tool::Crop && frame(app).is_some() && !app.ui.tool_options.crop.shield.shows_cropped_area()
 }
 
 /// The gestures move and turn the image rather than the frame (default mode with the Crop tool).
-pub(crate) fn moves_view(app: &PhotocraftApp) -> bool {
+pub(crate) fn moves_view(app: &PatronusPhotoApp) -> bool {
     app.ui.tool == Tool::Crop && app.ui.tool_options.crop.image_mode()
 }
 
 /// The Crop tool drives the view: it shows a frame on the active document.
-pub(crate) fn turns_view(app: &PhotocraftApp) -> bool {
+pub(crate) fn turns_view(app: &PatronusPhotoApp) -> bool {
     app.ui.tool == Tool::Crop && frame(app).is_some() && app.session.active().is_some()
 }
 
 /// The Info panel's W and H while the Crop tool shows a frame: its own size before any turn.
-pub fn info_size(app: &PhotocraftApp) -> Option<[f64; 2]> {
+pub fn info_size(app: &PatronusPhotoApp) -> Option<[f64; 2]> {
     if app.ui.tool != Tool::Crop {
         return None;
     }
@@ -249,7 +249,7 @@ pub fn info_size(app: &PhotocraftApp) -> Option<[f64; 2]> {
 
 /// While the Crop tool has box history, Undo/Redo step the box, not the document. `Some(enabled)` for those commands,
 /// else `None` so the caller falls back to document history.
-pub fn is_enabled(app: &PhotocraftApp, id: &str) -> Option<bool> {
+pub fn is_enabled(app: &PatronusPhotoApp, id: &str) -> Option<bool> {
     let session = app.canvas_tools.crop.tool.session();
     if app.ui.tool != Tool::Crop || !session.owns_undo() {
         return None;
@@ -264,7 +264,7 @@ pub fn is_enabled(app: &PhotocraftApp, id: &str) -> Option<bool> {
 
 /// Intercepts Undo/Redo/Toggle Last State while the Crop tool owns box history, for every caller (menus, shortcuts, the
 /// control channel).
-pub fn intercept(app: &mut PhotocraftApp, id: &str) -> Option<Result<Value, String>> {
+pub fn intercept(app: &mut PatronusPhotoApp, id: &str) -> Option<Result<Value, String>> {
     if holds_history(app, id) {
         return Some(Err("Commit or cancel the crop first".into()));
     }
@@ -286,12 +286,12 @@ pub fn intercept(app: &mut PhotocraftApp, id: &str) -> Option<Result<Value, Stri
 }
 
 /// A History jump waits for a drawn frame: it would resize the document under the frame, which keeps its coordinates.
-pub fn holds_history(app: &PhotocraftApp, id: &str) -> bool {
+pub fn holds_history(app: &PatronusPhotoApp, id: &str) -> bool {
     pending(app) && matches!(id, "history.selectState" | "history.selectSnapshot" | "history.stepBackward" | "history.stepForward" | "history.deleteState")
 }
 
 /// Menu commands Photoshop greys out while a crop is pending, until it is committed or cancelled.
-pub fn blocks(app: &PhotocraftApp, id: &str) -> bool {
+pub fn blocks(app: &PatronusPhotoApp, id: &str) -> bool {
     pending(app) && !available_while_pending(id)
 }
 
@@ -328,7 +328,7 @@ pub(crate) fn available_while_pending(id: &str) -> bool {
 }
 
 /// The Color Picker's OK for the custom shield colour (`"#rrggbb"`).
-pub(crate) fn set_shield_color(app: &mut PhotocraftApp, hex: &str) -> Result<(), String> {
+pub(crate) fn set_shield_color(app: &mut PatronusPhotoApp, hex: &str) -> Result<(), String> {
     let rgb = crate::color_picker_ui::parse_hex(hex).ok_or_else(|| format!("not a colour: {hex}"))?;
     let shield = &mut app.ui.tool_options.crop.shield;
     shield.custom_color = rgb.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8);

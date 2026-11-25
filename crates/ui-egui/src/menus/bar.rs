@@ -3,7 +3,7 @@ use std::sync::{PoisonError, RwLock};
 
 use craft::menu::{Labeled, MenuBarUi};
 
-use super::PhotocraftApp;
+use super::PatronusPhotoApp;
 use super::items;
 use super::menu_gate;
 
@@ -25,7 +25,7 @@ pub(super) const TOP_PREFERRED: [(&str, char); 10] = [
 /// Draws the in-window menu bar over the one menu model. Picks are fired commands from
 /// `FireSource::Menu`, run by the frame's command drain; the bar's keys wait while a dialog or the
 /// shortcut recorder has the keyboard.
-pub fn menu_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn menu_bar(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let (gate, _) = menu_gate(app);
     let ctx = ui.ctx().clone();
     let model = items::model(app, &ctx);
@@ -74,7 +74,7 @@ fn english_of(model: &items::MenuModel) -> impl Fn(Labeled<'_>) -> Option<String
 
 /// The commands of the menu model's bar as the command palette lists them, with each path and English name. The bar
 /// is laid out with the options the model was built with, so the palette and the bars agree.
-pub(crate) fn help_entries(app: &mut PhotocraftApp, ctx: &egui::Context) -> Vec<craft::ui::menu::HelpEntry> {
+pub(crate) fn help_entries(app: &mut PatronusPhotoApp, ctx: &egui::Context) -> Vec<craft::ui::menu::HelpEntry> {
     use craft::menu::{LayoutOptions, Target};
     let lang = crate::i18n::current();
     let model = items::model(app, ctx);

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>Patronus Photo</title>
+  <link data-trunk rel="rust" data-bin="patronusphoto-web" data-cargo-profile="wasm-release" data-cargo-features="heif" data-wasm-opt="z" data-wasm-opt-params="--converge" data-weak-refs />
+  <style>
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #262626; }
+    #patronusphoto_canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    #patronusphoto_loading { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 0 16px; text-align: center; color: #b8b8b8; font: 14px system-ui, sans-serif; pointer-events: none; }
+    #patronusphoto_loading p { margin: 0 0 8px; max-width: 420px; line-height: 1.5; }
+    #patronusphoto_loading a { color: #e0e0e0; pointer-events: auto; }
+    /* The app removes this element once it runs. If the WebAssembly never downloads or doesn't match
+       this page, no Rust runs to say so, so the page itself shows what to do after a while. */
+    #patronusphoto_stalled { color: #8c8c8c; visibility: hidden; animation: patronusphoto-stalled 0s 20s forwards; }
+    @keyframes patronusphoto-stalled { to { visibility: visible; } }
+    /* Revealed by the app when the module traps (an allocation it could not satisfy, or a panic):
+       the page would otherwise sit on the last frame, frozen. Static text, so it shows even if Rust
+       can no longer build any. */
+    #patronusphoto_stopped { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 0 16px; text-align: center; color: #e0e0e0; background: rgba(38, 38, 38, 0.92); font: 14px system-ui, sans-serif; pointer-events: auto; }
+    #patronusphoto_stopped[hidden] { display: none; }
+    #patronusphoto_stopped p { margin: 0 0 8px; max-width: 460px; line-height: 1.5; }
+    #patronusphoto_stopped a { color: #ffffff; }
+    #patronusphoto_stopped_detail { color: #b8b8b8; }
+  </style>
+</head>
+<body>
+  <canvas id="patronusphoto_canvas"></canvas>
+  <div id="patronusphoto_loading">
+    <p>Loading Patronus Photo&hellip;</p>
+    <p id="patronusphoto_stalled">This is taking longer than usual. If Patronus Photo doesn't start, its files may have failed to
+      download or come from a different version of this page. <a href="">Reload</a> to try again; the browser
+      console lists what failed.</p>
+  </div>
+  <div id="patronusphoto_stopped" hidden role="alert">
+    <p><strong>Patronus Photo stopped.</strong></p>
+    <p>Changes since the last save in this tab can't be recovered. <a href="">Reload</a> to start again.</p>
+    <p id="patronusphoto_stopped_detail"></p>
+  </div>
+</body>
+</html>

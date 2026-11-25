@@ -2,13 +2,13 @@
 //! and the indexed encode a palette edit recolours without re-quantizing.
 use std::sync::Arc;
 
-use photocraft_engine::web_cmds::{self, Optimized, WebSettings};
+use patronusphoto_engine::web_cmds::{self, Optimized, WebSettings};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// Export dimensions, using the same percent/width/height precedence as web_document.
-pub fn dimensions(doc: &photocraft_doc::Document, p: &Value) -> Result<(f64, f64), String> {
+pub fn dimensions(doc: &patronusphoto_doc::Document, p: &Value) -> Result<(f64, f64), String> {
     let (w0, h0) = (f64::from(doc.size.width).max(1.0), f64::from(doc.size.height).max(1.0));
     let positive = |k: &str| p.get(k).and_then(Value::as_f64).filter(|v| v.is_finite() && *v > 0.0);
     let (w, h) = match (positive("percent"), positive("width"), positive("height")) {
@@ -33,7 +33,7 @@ pub fn proxy_resample(p: &Value, scale: f64) -> &str {
 /// Adds the generated `colorTable` to the export parameters `p` of an indexed format that has none, so the file
 /// holds the palette the preview showed. Only palette-affecting options shape it; the table is built from a
 /// proxy of at most 2048 px.
-pub fn prepare_table(app: &PhotocraftApp, p: &mut Value) -> Result<(), String> {
+pub fn prepare_table(app: &PatronusPhotoApp, p: &mut Value) -> Result<(), String> {
     if !matches!(p.get("format").and_then(Value::as_str).unwrap_or("jpeg"), "gif" | "png8") || p.get("colorTable").is_some() {
         return Ok(());
     }
@@ -57,7 +57,7 @@ pub fn prepare_table(app: &PhotocraftApp, p: &mut Value) -> Result<(), String> {
         m.insert("resample".into(), json!(proxy_resample(&source, scale)));
     }
     let (doc, _, _) = web_cmds::web_document(&st.doc, &proxy, &settings).map_err(|e| e.to_string())?;
-    let buf = photocraft_compose::flatten(&doc);
+    let buf = patronusphoto_compose::flatten(&doc);
     let mut optimized = web_cmds::optimize(&buf.px, doc.size.width as usize, doc.bounds(), &settings, None, None, None, doc.resolution_dpi, false)
         .map_err(|e| e.to_string())?;
     // Tiny transparent features may disappear in the proxy; keep room for their index.
@@ -107,7 +107,7 @@ pub fn optimized(
         let settings = WebSettings::from_params(&base, "preview").map_err(|e| e.to_string())?;
         let (px, w, h) = source(&settings)?;
         let encoded = Arc::new(
-            web_cmds::optimize(&px, w as usize, photocraft_geom::Rect::new(0, 0, w as i32, h as i32), &settings, None, None, None, 72.0, true)
+            web_cmds::optimize(&px, w as usize, patronusphoto_geom::Rect::new(0, 0, w as i32, h as i32), &settings, None, None, None, 72.0, true)
                 .map_err(|e| e.to_string())?,
         );
         ctx.data_mut(|d| d.insert_temp(key, (signature, encoded.clone())));
@@ -166,8 +166,12 @@ mod tests {
 
     #[test]
     fn absurd_dimensions_are_refused() {
-        let doc =
-            photocraft_doc::Document::new("fixture", photocraft_geom::Size::new(100, 50), photocraft_color::ColorMode::Rgb, photocraft_color::SampleType::U8);
+        let doc = patronusphoto_doc::Document::new(
+            "fixture",
+            patronusphoto_geom::Size::new(100, 50),
+            patronusphoto_color::ColorMode::Rgb,
+            patronusphoto_color::SampleType::U8,
+        );
         assert!(dimensions(&doc, &json!({"percent": 1e308})).is_err());
         assert!(dimensions(&doc, &json!({"width": 1e300})).is_err());
     }

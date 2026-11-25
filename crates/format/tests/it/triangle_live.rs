@@ -1,9 +1,9 @@
 //! A live triangle (#13350) is saved in `triangle_live`, beside `live`, so builds from before the
 //! kind still open the file and show the saved path.
 
-use photocraft_color::{ColorMode, SampleType};
-use photocraft_doc::{Document, Fill, Layer, LayerContent, LiveShape, Path, ShapeLayer, Subpath};
-use photocraft_format::*;
+use patronusphoto_color::{ColorMode, SampleType};
+use patronusphoto_doc::{Document, Fill, Layer, LayerContent, LiveShape, Path, ShapeLayer, Subpath};
+use patronusphoto_format::*;
 use serde_json::{Value, json};
 
 fn triangle_json() -> Value {
@@ -15,10 +15,10 @@ fn path() -> Path {
 }
 
 fn document(live: LiveShape) -> Document {
-    let mut doc = Document::new("Triangle", photocraft_doc::Size::new(800, 600), ColorMode::Rgb, SampleType::U8);
+    let mut doc = Document::new("Triangle", patronusphoto_doc::Size::new(800, 600), ColorMode::Rgb, SampleType::U8);
     doc.layers.push(Layer::new(
         "Triangle 1",
-        LayerContent::Shape(ShapeLayer { path: path(), fill: Some(Fill::Solid(photocraft_doc::Color::BLACK)), live: Some(live), ..Default::default() }),
+        LayerContent::Shape(ShapeLayer { path: path(), fill: Some(Fill::Solid(patronusphoto_doc::Color::BLACK)), live: Some(live), ..Default::default() }),
     ));
     doc
 }

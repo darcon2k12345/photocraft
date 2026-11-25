@@ -36,7 +36,7 @@ fn load(items: Vec<AtnItem>) -> (Session, Value) {
         ..Default::default()
     };
     let mut s = Session::new();
-    let r = s.execute("actions.load", json!({"data": photocraft_paint::tile::b64_encode(&atn::write(&file).unwrap())})).unwrap();
+    let r = s.execute("actions.load", json!({"data": patronusphoto_paint::tile::b64_encode(&atn::write(&file).unwrap())})).unwrap();
     (s, r)
 }
 
@@ -44,7 +44,7 @@ fn load(items: Vec<AtnItem>) -> (Session, Value) {
 fn saved(s: &mut Session) -> Vec<AtnItem> {
     let r = s.execute("actions.save", json!({"action": "A"})).unwrap();
     assert_eq!(r["skipped"], json!([]), "{r}");
-    atn::parse(&photocraft_paint::tile::b64_decode(r["data"].as_str().unwrap()).unwrap()).unwrap().actions.remove(0).items
+    atn::parse(&patronusphoto_paint::tile::b64_decode(r["data"].as_str().unwrap()).unwrap()).unwrap().actions.remove(0).items
 }
 
 /// The recorded step loads as a custom scale and saves back byte for byte, whatever class its
@@ -88,7 +88,7 @@ fn a_loaded_scale_step_plays_and_undoes() {
     assert_eq!(s.execute(SET_SCALE, json!({})).unwrap()["default"], json!(true));
 }
 
-/// The step PhotoCraft writes for a native custom scale is the measured form, with `T   ` of
+/// The step Patronus Photo writes for a native custom scale is the measured form, with `T   ` of
 /// class `measurementScale`, and it loads back without a stored descriptor.
 #[test]
 fn a_native_scale_saves_the_measured_form() {

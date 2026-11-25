@@ -1,15 +1,15 @@
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use photocraft_ui_egui::PhotocraftApp;
-use photocraft_ui_egui::control::{ControlRequest, Reply};
+use patronusphoto_ui_egui::PatronusPhotoApp;
+use patronusphoto_ui_egui::control::{ControlRequest, Reply};
 use serde_json::{Value, json};
 
-type H = Harness<'static, Box<PhotocraftApp>>;
+type H = Harness<'static, Box<PatronusPhotoApp>>;
 
-fn harness(app: Box<PhotocraftApp>) -> H {
+fn harness(app: Box<PatronusPhotoApp>) -> H {
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(egui::vec2(900.0, 700.0)).build_ui_state(
-        |ui, app: &mut Box<PhotocraftApp>| {
-            photocraft_ui_egui::dialogs::run(app, ui);
+        |ui, app: &mut Box<PatronusPhotoApp>| {
+            patronusphoto_ui_egui::dialogs::run(app, ui);
         },
         app,
     );
@@ -21,7 +21,7 @@ fn harness(app: Box<PhotocraftApp>) -> H {
 fn control(h: &mut H, method: &str, params: Value) -> Value {
     let (request, _) = ControlRequest::new(method, params);
     let ctx = h.ctx.clone();
-    match photocraft_ui_egui::control::handle(h.state_mut(), &ctx, &request) {
+    match patronusphoto_ui_egui::control::handle(h.state_mut(), &ctx, &request) {
         Reply::Done(value) => value,
         _ => panic!("{method} did not answer at once"),
     }
@@ -34,7 +34,7 @@ fn refused(reply: &Value) -> bool {
 /// Opens a menu's dialog and returns its id.
 fn open(h: &mut H, menu: &str) -> String {
     let ctx = h.ctx.clone();
-    let reply = photocraft_ui_egui::menus::invoke(h.state_mut(), &ctx, menu, json!({})).unwrap();
+    let reply = patronusphoto_ui_egui::menus::invoke(h.state_mut(), &ctx, menu, json!({})).unwrap();
     h.run_steps(3);
     reply["dialog"].as_str().expect("the menu opens a dialog").to_string()
 }
@@ -74,14 +74,14 @@ fn blue_row(dir: &tempfile::TempDir, name: &str) -> Value {
 fn pixel_replacement_harness() -> (tempfile::TempDir, H, String) {
     let dir = tempfile::tempdir().unwrap();
     for (name, color) in [("blue.png", "#0000ff"), ("red.png", "#ff0000")] {
-        let mut source = photocraft_engine::Session::new();
+        let mut source = patronusphoto_engine::Session::new();
         source.execute("file.new", json!({"width": 8, "height": 8, "background": color})).unwrap();
-        let png = photocraft_io::export(&source.active().unwrap().doc, "png", &photocraft_io::ExportOptions::default()).unwrap().bytes;
+        let png = patronusphoto_io::export(&source.active().unwrap().doc, "png", &patronusphoto_io::ExportOptions::default()).unwrap().bytes;
         std::fs::write(dir.path().join(name), png).unwrap();
     }
     #[cfg(not(target_arch = "wasm32"))]
-    photocraft_raster::spill::use_test_volume_space();
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), photocraft_ui_egui::Services::default());
+    patronusphoto_raster::spill::use_test_volume_space();
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), patronusphoto_ui_egui::Services::default());
     app.run("file.new", json!({"width": 8, "height": 8, "background": "white"})).unwrap();
     let layer = app.session.active().unwrap().active_layer.unwrap();
     let mut h = harness(app);

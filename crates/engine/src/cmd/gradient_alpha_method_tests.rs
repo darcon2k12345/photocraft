@@ -21,7 +21,7 @@ fn drawn(extra: Value) -> Session {
 fn alpha_at(s: &Session, x: i32) -> f32 {
     let d = s.active().unwrap();
     let l = d.doc.layer(d.active_layer.unwrap()).unwrap();
-    let photocraft_doc::LayerContent::Raster(surface) = &l.content else { panic!("a pixel layer") };
+    let patronusphoto_doc::LayerContent::Raster(surface) = &l.content else { panic!("a pixel layer") };
     surface.pixel(x, 300)[3] * 255.0
 }
 
@@ -58,7 +58,7 @@ fn opaque_gradients_paint_the_same_with_a_method() {
     fn alpha_and_red(s: &Session, x: i32) -> Vec<f32> {
         let d = s.active().unwrap();
         let l = d.doc.layer(d.active_layer.unwrap()).unwrap();
-        let photocraft_doc::LayerContent::Raster(surface) = &l.content else { panic!() };
+        let patronusphoto_doc::LayerContent::Raster(surface) = &l.content else { panic!() };
         surface.pixel(x, 4)
     }
     // The colours still follow the method; the alpha stays opaque.
@@ -110,7 +110,7 @@ fn legacy_colours_keep_their_own_alpha() {
 // 97 positions and must not be cut into four per interval (385 stops).
 #[test]
 fn smooth_transparency_keeps_one_stop_per_sampled_position() {
-    use photocraft_color::Color;
+    use patronusphoto_color::Color;
     let black = Color::rgb(0.0, 0.0, 0.0);
     let stops = super::paint_cmds::smooth_split_stops((vec![(0.0, black), (1.0, black)], vec![(0.0, 1.0), (1.0, 0.0)]));
     assert_eq!(stops.len(), 97);

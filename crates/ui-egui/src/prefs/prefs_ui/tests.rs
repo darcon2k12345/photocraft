@@ -9,7 +9,7 @@ use craft::settings::{Location, OpenOptions, Settings, SettingsFiles, SettingsSt
 use craft::theme::ThemeId;
 use craft::ui::patterns::preferences::{PrefValue, SettingsDraft};
 use egui::{Color32, vec2};
-use photocraft_engine::prefs::{self, AppearanceMode};
+use patronusphoto_engine::prefs::{self, AppearanceMode};
 use serde_json::{Value, json};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -17,7 +17,7 @@ use std::time::{Duration, Instant};
 // --- helpers --------------------------------------------------------------------------------------------------
 
 /// The folder of the scratch settings store; its file lives in memory.
-const DIR: &str = "/memory/photocraft";
+const DIR: &str = "/memory/patronusphoto";
 
 /// The title of the notice a failed preferences save posts.
 const SAVE_NOTICE: &str = "Preferences can't be saved";
@@ -34,27 +34,27 @@ fn services_on(files: &Arc<MemoryFiles>) -> crate::Services {
 }
 
 /// One upkeep pass at the current time. A trial that steps the store's clock calls `save::tick` with its own `Instant`.
-fn tick(app: &mut PhotocraftApp, ctx: &egui::Context) {
+fn tick(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     super::save::tick(app, ctx, Instant::now());
 }
 
 /// An app whose preferences live in `files`.
-fn app_on(files: &Arc<MemoryFiles>) -> Box<PhotocraftApp> {
-    PhotocraftApp::new(photocraft_engine::Session::new(), services_on(files))
+fn app_on(files: &Arc<MemoryFiles>) -> Box<PatronusPhotoApp> {
+    PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services_on(files))
 }
 
-pub(super) fn app_with_store() -> (Box<PhotocraftApp>, Arc<MemoryFiles>) {
+pub(super) fn app_with_store() -> (Box<PatronusPhotoApp>, Arc<MemoryFiles>) {
     let files = Arc::new(MemoryFiles::new());
     (app_on(&files), files)
 }
 
 /// An app that starts on a file holding `saved` (the JSON form of the preferences), at the current schema version.
-fn app_with_json(saved: &Value) -> (Box<PhotocraftApp>, Arc<MemoryFiles>) {
+fn app_with_json(saved: &Value) -> (Box<PatronusPhotoApp>, Arc<MemoryFiles>) {
     app_with_json_at(saved, Some(<prefs::SavedPrefs as Settings>::SCHEMA_VERSION))
 }
 
 /// An app that starts on a file holding `saved` with the given `schema_version` (`None`: no version key).
-fn app_with_json_at(saved: &Value, version: Option<u32>) -> (Box<PhotocraftApp>, Arc<MemoryFiles>) {
+fn app_with_json_at(saved: &Value, version: Option<u32>) -> (Box<PatronusPhotoApp>, Arc<MemoryFiles>) {
     let files = Arc::new(MemoryFiles::new());
     seed(&files, saved, version);
     (app_on(&files), files)
@@ -63,13 +63,13 @@ fn app_with_json_at(saved: &Value, version: Option<u32>) -> (Box<PhotocraftApp>,
 /// An app that starts on a legacy `preferences.json` holding `saved` with the given `version` key (`None`: none), the
 /// file the settings store imports on its first run, before it has a `config.toml`. Only the import reads values one by
 /// one and migrates a file by its version; a `config.toml` section that does not fit resets as a whole.
-fn app_with_legacy_json(saved: &Value, version: Option<u32>) -> (Box<PhotocraftApp>, Arc<MemoryFiles>) {
+fn app_with_legacy_json(saved: &Value, version: Option<u32>) -> (Box<PatronusPhotoApp>, Arc<MemoryFiles>) {
     static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
     let mut saved = saved.clone();
     if let (Some(map), Some(version)) = (saved.as_object_mut(), version) {
         map.insert("version".into(), json!(version));
     }
-    let dir = std::env::temp_dir().join(format!("photocraft-legacy-{}-{}", std::process::id(), NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)));
+    let dir = std::env::temp_dir().join(format!("patronusphoto-legacy-{}-{}", std::process::id(), NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("preferences.json");
     std::fs::write(&path, saved.to_string()).unwrap();
@@ -77,7 +77,7 @@ fn app_with_legacy_json(saved: &Value, version: Option<u32>) -> (Box<PhotocraftA
     let legacy = vec![craft::settings::LegacyFile { path, parse: prefs::parse_legacy_prefs }];
     let options = OpenOptions::new(Location::Dir(DIR.into())).debounce(Duration::ZERO).files(files.clone()).legacy(legacy);
     let services = crate::Services { settings: Some(SettingsStore::<prefs::SavedPrefs>::open_with(options)), ..Default::default() };
-    let app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     std::fs::remove_dir_all(&dir).ok();
     (app, files)
 }
@@ -115,13 +115,13 @@ fn saved_text(files: &MemoryFiles) -> Option<String> {
 }
 
 /// Opens Preferences on `section`.
-fn open_prefs(app: &mut PhotocraftApp, section: &str) {
+fn open_prefs(app: &mut PatronusPhotoApp, section: &str) {
     open_preferences(app, section);
     assert!(window_open(app), "Preferences did not open");
 }
 
 /// Edits the open window's draft the way a row does.
-fn edit(app: &mut PhotocraftApp, key: &str, value: PrefValue) {
+fn edit(app: &mut PatronusPhotoApp, key: &str, value: PrefValue) {
     assert!(set_draft(app, key, value), "{key}: the window refused the value");
 }
 
@@ -130,12 +130,12 @@ fn prefs_harness(
     files: &Arc<MemoryFiles>,
     section: &'static str,
     size: egui::Vec2,
-    setup: impl FnOnce(&mut PhotocraftApp) + 'static,
-) -> egui_kittest::Harness<'static, Box<PhotocraftApp>> {
+    setup: impl FnOnce(&mut PatronusPhotoApp) + 'static,
+) -> egui_kittest::Harness<'static, Box<PatronusPhotoApp>> {
     let files = files.clone();
     let mut h = egui_kittest::Harness::builder().with_size(size).build_eframe(move |cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), services_on(&files));
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), services_on(&files));
         setup(&mut app);
         open_prefs(&mut app, section);
         app
@@ -145,7 +145,7 @@ fn prefs_harness(
 }
 
 /// The Appearance menu's rows (items only).
-fn theme_rows(app: &PhotocraftApp) -> Vec<craft::menu::Item> {
+fn theme_rows(app: &PatronusPhotoApp) -> Vec<craft::menu::Item> {
     let nodes = theme_menu(app).items(&ThemeLabels::default());
     nodes.into_iter().filter_map(|node| if let Node::Item(item) = node { Some(item) } else { None }).collect()
 }
@@ -156,7 +156,7 @@ fn theme_row<'a>(rows: &'a [craft::menu::Item], choice: &ThemeChoice) -> &'a cra
 }
 
 /// Runs a theme choice as the menu does.
-fn pick_theme(app: &mut PhotocraftApp, ctx: &egui::Context, choice: &ThemeChoice) {
+fn pick_theme(app: &mut PatronusPhotoApp, ctx: &egui::Context, choice: &ThemeChoice) {
     let command = choice.command();
     crate::menus::invoke(app, ctx, &command.id, command.params.clone()).unwrap();
 }
@@ -166,7 +166,7 @@ fn chord(text: &str) -> Chord {
 }
 
 /// The shortcut the menu shows for `id`.
-fn menu_shortcut(app: &PhotocraftApp, id: &str) -> Option<Chord> {
+fn menu_shortcut(app: &PatronusPhotoApp, id: &str) -> Option<Chord> {
     let rows = crate::menus::menu_rows(app);
     rows.iter().find(|row| row.command.id == id).unwrap_or_else(|| panic!("no menu row {id}")).shortcut
 }
@@ -214,7 +214,7 @@ fn shown(theme: AppTheme) -> (ThemeId, bool) {
 
 #[test]
 fn breeze_themes_are_chosen_by_preference_and_fix_the_matching_mode() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     for (id, kind, mode) in [
         ("breezeLight", AppTheme::breeze_light(), AppearanceMode::Light),
@@ -247,7 +247,7 @@ fn auto_uses_native_system_theme_when_egui_does_not_report_one() {
 
 #[test]
 fn next_appearance_mode_cycles_modes_without_losing_theme_choices() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     app.run("prefs.set", json!({"values": {"interface.darkTheme": "studio", "interface.lightTheme": "classic"}})).unwrap();
     for (mode, visible) in
@@ -263,11 +263,11 @@ fn next_appearance_mode_cycles_modes_without_losing_theme_choices() {
 
 #[test]
 fn darken_and_lighten_interface_step_through_photoshops_brightnesses_and_stop_at_the_ends() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     sync_appearance(&mut app, &ctx);
     assert_eq!(app.ui.theme, AppTheme::pro_medium(), "Photoshop's default brightness");
-    let press = |app: &mut PhotocraftApp, id: &str| crate::menus::invoke(app, &ctx, id, json!({})).unwrap();
+    let press = |app: &mut PatronusPhotoApp, id: &str| crate::menus::invoke(app, &ctx, id, json!({})).unwrap();
     for expected in [AppTheme::pro_light_gray(), AppTheme::pro_light(), AppTheme::pro_light()] {
         press(&mut app, "view.lightenInterface");
         assert_eq!(app.ui.theme, expected);
@@ -297,7 +297,7 @@ fn darken_and_lighten_interface_step_through_photoshops_brightnesses_and_stop_at
 
 /// One upkeep frame after the OS reports `appearance`; `None` reports nothing, so a context that never had a report
 /// has no answer, and one that had keeps its last (the reader holds the OS's latest colour scheme).
-fn appearance_frame(app: &mut PhotocraftApp, ctx: &egui::Context, appearance: Option<egui::Theme>) {
+fn appearance_frame(app: &mut PatronusPhotoApp, ctx: &egui::Context, appearance: Option<egui::Theme>) {
     if let Some(theme) = appearance {
         craft::ui::testing::style::report_os_theme(ctx, theme == egui::Theme::Dark);
     }
@@ -323,7 +323,7 @@ fn auto_appearance_follows_live_changes_without_saving_resolved_palettes() {
     for (dark, light) in [(AppTheme::pro_medium(), AppTheme::studio_light()), (AppTheme::solarized_dark(), AppTheme::adwaita())] {
         let (mut app, store) = app_with_store();
         let ctx = egui::Context::default();
-        PhotocraftApp::setup_context(&ctx, Default::default());
+        PatronusPhotoApp::setup_context(&ctx, Default::default());
         app.run("prefs.set", json!({"values": {"interface.appearanceMode": "auto", "interface.darkTheme": dark.id(), "interface.lightTheme": light.id()}}))
             .unwrap();
         appearance_frame(&mut app, &ctx, Some(egui::Theme::Light));
@@ -348,7 +348,7 @@ fn auto_appearance_follows_live_changes_without_saving_resolved_palettes() {
         for (appearance, expected) in [(Some(egui::Theme::Light), light.clone()), (Some(egui::Theme::Dark), dark.clone()), (None, dark.clone())] {
             let mut restarted = app_on(&store);
             let fresh = egui::Context::default();
-            PhotocraftApp::setup_context(&fresh, Default::default());
+            PatronusPhotoApp::setup_context(&fresh, Default::default());
             appearance_frame(&mut restarted, &fresh, appearance);
             assert_palette(&fresh, &expected);
             assert_eq!(restarted.ui.theme, expected);
@@ -368,7 +368,7 @@ fn auto_appearance_follows_live_changes_without_saving_resolved_palettes() {
 fn manual_theme_tokens_and_global_styles_stay_fixed_across_os_changes() {
     let (mut app, store) = app_with_store();
     let ctx = egui::Context::default();
-    PhotocraftApp::setup_context(&ctx, Default::default());
+    PatronusPhotoApp::setup_context(&ctx, Default::default());
     for kind in AppTheme::all() {
         app.save_theme(&kind).unwrap();
         appearance_frame(&mut app, &ctx, Some(egui::Theme::Dark));
@@ -392,7 +392,7 @@ fn manual_theme_tokens_and_global_styles_stay_fixed_across_os_changes() {
 fn system_theme_menu_choice_stays_checked_as_the_appearance_changes() {
     let (mut app, store) = app_with_store();
     let ctx = egui::Context::default();
-    PhotocraftApp::setup_context(&ctx, Default::default());
+    PatronusPhotoApp::setup_context(&ctx, Default::default());
     app.run("prefs.set", json!({"values": {"interface.darkTheme": "solarizedDark", "interface.lightTheme": "adwaita"}})).unwrap();
     appearance_frame(&mut app, &ctx, Some(egui::Theme::Light));
     pick_theme(&mut app, &ctx, &ThemeChoice::System);
@@ -442,13 +442,13 @@ fn preferences_interface_offers_and_applies_sync_with_system() {
     assert_eq!(app.session.prefs().interface.dark_theme, interface.dark_theme);
     assert_eq!(app.session.prefs().interface.light_theme, interface.light_theme);
     let ctx = egui::Context::default();
-    PhotocraftApp::setup_context(&ctx, Default::default());
+    PatronusPhotoApp::setup_context(&ctx, Default::default());
     appearance_frame(&mut app, &ctx, Some(egui::Theme::Light));
     assert_palette(&ctx, &AppTheme::adwaita());
     assert_eq!(stored(&store)["interface"]["appearanceMode"], "auto");
     let mut restarted = app_on(&store);
     let fresh = egui::Context::default();
-    PhotocraftApp::setup_context(&fresh, Default::default());
+    PatronusPhotoApp::setup_context(&fresh, Default::default());
     appearance_frame(&mut restarted, &fresh, Some(egui::Theme::Dark));
     assert_palette(&fresh, &AppTheme::solarized_dark());
     assert_eq!(restarted.session.prefs().interface.appearance_mode, AppearanceMode::Auto);
@@ -666,7 +666,7 @@ fn intermediate_ui_scale_choices_can_be_applied_from_preferences() {
 fn ui_font_size_commands_follow_themes_and_dpi_and_reset_live() {
     let (mut app, _) = app_with_store();
     let ctx = egui::Context::default();
-    PhotocraftApp::setup_context(&ctx, AppTheme::pro());
+    PatronusPhotoApp::setup_context(&ctx, AppTheme::pro());
     let mut input = egui::RawInput::default();
     input.viewports.get_mut(&egui::ViewportId::ROOT).unwrap().native_pixels_per_point = Some(1.5);
     for (theme, scale, expected) in
@@ -689,8 +689,8 @@ fn ui_font_size_commands_follow_themes_and_dpi_and_reset_live() {
 
 // --- remembered state -----------------------------------------------------------------------------------------------
 
-type SetState = Box<dyn Fn(&mut PhotocraftApp, &egui::Context)>;
-type CheckState = Box<dyn Fn(&mut PhotocraftApp, &egui::Context, &Value)>;
+type SetState = Box<dyn Fn(&mut PatronusPhotoApp, &egui::Context)>;
+type CheckState = Box<dyn Fn(&mut PatronusPhotoApp, &egui::Context, &Value)>;
 
 /// One case of a remembered-state table: what is set (or seeded) in the first app, and what holds after a restart
 /// on the same store.
@@ -723,13 +723,13 @@ fn run_cases(cases: Vec<Case>) {
 }
 
 /// A case that only seeds a file and checks what the app loads from it.
-fn loaded(name: &'static str, seed: Value, check: impl Fn(&PhotocraftApp) + 'static) -> Case {
+fn loaded(name: &'static str, seed: Value, check: impl Fn(&PatronusPhotoApp) + 'static) -> Case {
     Case { name, seed: Some(seed), set: Box::new(|_, _| {}), check: Box::new(move |app, _, _| check(app)) }
 }
 
 fn restart_cases() -> Vec<Case> {
     use crate::state::Tool;
-    let mem = photocraft_engine::preset_store::MemBackend::default();
+    let mem = patronusphoto_engine::preset_store::MemBackend::default();
     let (early, late) = (mem.clone(), mem.clone());
     vec![
         Case {
@@ -839,7 +839,7 @@ fn restart_cases() -> Vec<Case> {
             name: "tool brushes",
             seed: None,
             set: Box::new(|app, ctx| {
-                let set_size = |app: &mut PhotocraftApp, size: f32| {
+                let set_size = |app: &mut PatronusPhotoApp, size: f32| {
                     app.session.tools.brush.size = size;
                     app.session.tools.brush.opacity = size / 100.0;
                     app.session.tools.brush_changed();
@@ -946,14 +946,14 @@ fn restart_cases() -> Vec<Case> {
                 tick(app, ctx);
                 app.run("brush.presets.save", json!({"name": "Early"})).unwrap();
                 assert!(early.files.lock().unwrap().is_empty());
-                tx.send(photocraft_engine::preset_store::open(Box::new(early.clone()))).unwrap();
+                tx.send(patronusphoto_engine::preset_store::open(Box::new(early.clone()))).unwrap();
                 tick(app, ctx);
                 assert!(app.services.preset_store.is_none() && app.session.preset_store.is_some());
                 app.run("brush.presets.save", json!({"name": "Late"})).unwrap();
             }),
             check: Box::new(move |_, _, _| {
-                let mut session = photocraft_engine::Session::new();
-                assert!(session.attach_preset_store(photocraft_engine::preset_store::open(Box::new(late.clone()))).is_empty());
+                let mut session = patronusphoto_engine::Session::new();
+                assert!(session.attach_preset_store(patronusphoto_engine::preset_store::open(Box::new(late.clone()))).is_empty());
                 for n in ["Early", "Late"] {
                     assert!(session.tools.presets.iter().any(|p| p.name == n), "{n}");
                 }
@@ -1055,7 +1055,7 @@ fn damaged_cases() -> Vec<Case> {
         },
     ));
     // CMYK picks: the table is bounded, and malformed or out-of-range entries are dropped.
-    let limit = photocraft_engine::ToolState::CMYK_PICKS;
+    let limit = patronusphoto_engine::ToolState::CMYK_PICKS;
     let mut picks: Vec<Value> = (0..limit + 3).map(|i| json!([[i as f32 / 16.0, 0.2, 0.3], [0.1, 0.2, 0.3, 0.4]])).collect();
     picks.extend([json!("bad"), json!([[0, 0, 0], [1, 0, 0]]), json!([[0, 0, 0], [2, 0, 0, 0]]), json!([[1e100, 0, 0], [1, 0, 0, 0]])]);
     cases.push(loaded("CMYK picks", json!({"toolColors": {"foreground": [0.2, 0.4, 0.6, 1.0], "cmykPicks": picks}}), move |app| {
@@ -1186,7 +1186,7 @@ fn group_tools_are_flushed_on_exit_without_another_frame() {
 }
 
 /// A frame as far as the tools go: the key handling, then what is remembered.
-fn tool_frame(app: &mut PhotocraftApp, ctx: &egui::Context, events: Vec<egui::Event>) {
+fn tool_frame(app: &mut PatronusPhotoApp, ctx: &egui::Context, events: Vec<egui::Event>) {
     ctx.begin_pass(egui::RawInput { events, ..Default::default() });
     crate::shortcuts::handle(app, ctx);
     ctx.end_pass().textures_delta.clear();
@@ -1266,7 +1266,7 @@ fn a_launch_alone_saves_no_group_tools() {
 #[test]
 fn the_saved_brush_owner_follows_the_saved_last_brush() {
     use crate::state::Tool;
-    use photocraft_engine::paint::{GrayTile, TipShape};
+    use patronusphoto_engine::paint::{GrayTile, TipShape};
     let (mut app, store) = app_with_store();
     let ctx = egui::Context::default();
     tick(&mut app, &ctx);
@@ -1344,7 +1344,7 @@ fn reset_tools_clear_the_remembered_options_and_brushes() {
     let saved = stored(&store);
     assert!(saved["toolOptions"].is_null(), "{saved}");
     let starting =
-        |brushes: &[(Tool, photocraft_engine::BrushSettings)]| brushes.iter().all(|(t, b)| *b == crate::paint_mouse::fresh_brush(*t, b) && b.size != 77.0);
+        |brushes: &[(Tool, patronusphoto_engine::BrushSettings)]| brushes.iter().all(|(t, b)| *b == crate::paint_mouse::fresh_brush(*t, b) && b.size != 77.0);
     assert!(starting(&app.ui.tool_brushes), "{saved}");
     let app2 = app_on(&store);
     assert_eq!(app2.ui.tool_options, crate::state::ToolOptions::default());
@@ -1416,13 +1416,13 @@ fn autosave_runs_for_dirty_documents() {
     let saved: Saved = Arc::default();
     let s2 = saved.clone();
     let services = crate::Services {
-        autosave: Some(Box::new(move |doc: &Arc<photocraft_doc::Document>, rev: u64, _path: Option<&str>| {
+        autosave: Some(Box::new(move |doc: &Arc<patronusphoto_doc::Document>, rev: u64, _path: Option<&str>| {
             s2.lock().unwrap().push((doc.id.0, rev));
             Ok(())
         })),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 8, "height": 8})).unwrap();
     tick(&mut app, &ctx);
@@ -1463,7 +1463,7 @@ fn recovered_documents_adopt_their_entries_until_saved_or_closed() {
     type Log = Arc<Mutex<Vec<String>>>;
     let log: Log = Arc::default();
     let (l1, l2, l3) = (log.clone(), log.clone(), log.clone());
-    use photocraft_doc::{Color, ColorMode, Document, SampleType, Size};
+    use patronusphoto_doc::{Color, ColorMode, Document, SampleType, Size};
     let doc = || Document::with_background("R", Size::new(4, 4), ColorMode::Rgb, SampleType::U8, Color::WHITE);
     let services = crate::Services {
         autosave: Some(Box::new(move |d: &Arc<Document>, _: u64, _: Option<&str>| {
@@ -1477,7 +1477,7 @@ fn recovered_documents_adopt_their_entries_until_saved_or_closed() {
         adopt_autosave: Some(Box::new(move |id: u64, key: &str| l3.lock().unwrap().push(format!("adopt {id} {key}")))),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     let ctx = app.ctx().clone();
     tick(&mut app, &ctx);
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
@@ -1525,7 +1525,7 @@ fn edit_dialogs_open() {
 
 #[test]
 fn tool_colors_first_saves_keep_other_instances_separate_edits() {
-    for initial in [None, Some(json!({})), Some(json!({"toolColors": photocraft_engine::prefs::ToolColors::default().0}))] {
+    for initial in [None, Some(json!({})), Some(json!({"toolColors": patronusphoto_engine::prefs::ToolColors::default().0}))] {
         for background_first in [false, true] {
             let files = Arc::new(MemoryFiles::new());
             if let Some(initial) = &initial {
@@ -1545,7 +1545,7 @@ fn tool_colors_first_saves_keep_other_instances_separate_edits() {
             let restored = app_on(&files);
             assert_eq!(restored.session.tools.foreground, fg);
             assert_eq!(restored.session.tools.background, bg);
-            assert_eq!(restored.session.tools.other_colors, photocraft_engine::ToolState::MASK_COLORS);
+            assert_eq!(restored.session.tools.other_colors, patronusphoto_engine::ToolState::MASK_COLORS);
         }
     }
 }
@@ -1565,8 +1565,8 @@ fn tool_colors_restore_cmyk_inks_for_picker_and_fill_after_swapping_and_exiting_
     let (mut app, store) = app_with_store();
     let cyan = [1.0, 0.0, 0.0, 0.0];
     let magenta = [0.0, 1.0, 0.0, 0.0];
-    let fg = photocraft_color::convert::cmyk_to_rgb(cyan).map(|c| c.clamp(0.0, 1.0));
-    let bg = photocraft_color::convert::cmyk_to_rgb(magenta).map(|c| c.clamp(0.0, 1.0));
+    let fg = patronusphoto_color::convert::cmyk_to_rgb(cyan).map(|c| c.clamp(0.0, 1.0));
+    let bg = patronusphoto_color::convert::cmyk_to_rgb(magenta).map(|c| c.clamp(0.0, 1.0));
     app.run(
         "tools.setColors",
         json!({
@@ -1592,7 +1592,7 @@ fn tool_colors_restore_cmyk_inks_for_picker_and_fill_after_swapping_and_exiting_
         restored.run(command, json!({})).unwrap();
         let st = restored.session.active().unwrap();
         let surface = st.doc.layer(st.active_layer.unwrap()).unwrap().surface().unwrap();
-        let pixel = surface.read_region(photocraft_geom::Rect::new(0, 0, 1, 1));
+        let pixel = surface.read_region(patronusphoto_geom::Rect::new(0, 0, 1, 1));
         assert!(pixel.iter().take(4).zip(expected).all(|(a, b)| (a - b).abs() < 0.01), "{command}: {pixel:?}");
     }
 }
@@ -1675,9 +1675,9 @@ fn scratch_disk_browse_sets_only_its_draft_entry_and_cancel_keeps_it() {
     let scripted = Arc::new(ScriptedFiles::answering([Picked::Paths(vec!["/tmp/scratch".into()]), Picked::Cancelled]));
     let (store, picks) = (Arc::new(MemoryFiles::new()), scripted.clone());
     let mut h = egui_kittest::Harness::builder().with_size(vec2(1280.0, 800.0)).build_eframe(move |cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
         let services = crate::Services { files: Some(picks), ..services_on(&store) };
-        let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), services);
+        let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), services);
         open_prefs(&mut app, "scratchDisks");
         app
     });

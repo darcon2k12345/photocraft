@@ -7,10 +7,10 @@ use craft::ui::dialog::{Alert, HostedAlert};
 use craft::ui::runtime::env::Env;
 use craft::ui::shell::{RecentSort, RecentView};
 use craft::ui::text::InvalidZoom;
-use photocraft_doc::{Document, LayerContent};
+use patronusphoto_doc::{Document, LayerContent};
 use serde::{Deserialize, Serialize};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::render_path::CpuReason;
 
 /// Shell-only chrome state (serialised with the UI state, so `ui.inspect` reports it).
@@ -83,7 +83,7 @@ pub(crate) fn set_status_item(chrome: &mut ChromeState, item: StatusItem) {
 
 /// What the status bar readout knows about the active document. Items without a value here show a dash.
 /// The document's values are computed once per document revision and language.
-pub(crate) fn status_values(app: &PhotocraftApp) -> StatusValues {
+pub(crate) fn status_values(app: &PatronusPhotoApp) -> StatusValues {
     let Some(st) = app.session.active() else { return StatusValues::default() };
     let mut values = app.doc_queries.status(&app.session, st, || {
         let doc: &Document = &st.doc;
@@ -101,7 +101,7 @@ pub(crate) fn status_values(app: &PhotocraftApp) -> StatusValues {
 
 /// Opens the Invalid zoom alert for a zoom entry the field cut to its range. The status bar, the options bar and the
 /// Navigator open it here; the field reports the entry once, in the pass that committed it.
-pub(crate) fn zoom_alert(app: &mut PhotocraftApp, invalid: Option<InvalidZoom>) {
+pub(crate) fn zoom_alert(app: &mut PatronusPhotoApp, invalid: Option<InvalidZoom>) {
     let Some(invalid) = invalid else { return };
     let message = invalid.message(&Env::of_root(app.ctx()));
     app.framework.dialogs.open(HostedAlert::new(Alert::new(tl!("Invalid Zoom"), message)));
@@ -141,10 +141,10 @@ pub(crate) fn profile_name(doc: &Document) -> String {
     let Some(bytes) = doc.icc_profile.as_ref() else {
         return crate::i18n::fmt(tl!("Untagged {mode}"), &[("mode", tl!(mode))]);
     };
-    let Ok(profile) = photocraft_engine::color_cmds::profile_from_bytes(bytes) else {
+    let Ok(profile) = patronusphoto_engine::color_cmds::profile_from_bytes(bytes) else {
         return crate::i18n::fmt(tl!("Invalid {mode} profile"), &[("mode", tl!(mode))]);
     };
-    if profile.color_space != photocraft_engine::color_cmds::mode_space(doc.mode) {
+    if profile.color_space != patronusphoto_engine::color_cmds::mode_space(doc.mode) {
         return crate::i18n::fmt(tl!("Invalid {mode} profile"), &[("mode", tl!(mode))]);
     }
     let name: String = profile.description.chars().filter(|c| !c.is_control()).take(128).collect();
@@ -157,7 +157,7 @@ pub(crate) fn profile_name(doc: &Document) -> String {
 
 /// What the status bar says about the active document's render path: its label, tooltip and
 /// the command a click runs, or None on the GPU.
-pub(crate) fn render_path_label(app: &PhotocraftApp) -> Option<(&'static str, String, &'static str)> {
+pub(crate) fn render_path_label(app: &PatronusPhotoApp) -> Option<(&'static str, String, &'static str)> {
     let doc = app.session.active().map(|st| st.doc.id.0)?;
     let reason = app.render_path.current(doc);
     // The measured fit (also on a switch to a document whose canvas is current) or the reason
@@ -231,7 +231,7 @@ mod tests {
     use serde_json::json;
 
     fn doc() -> Document {
-        let mut s = photocraft_engine::Session::new();
+        let mut s = patronusphoto_engine::Session::new();
         s.execute("file.new", json!({"width": 2400, "height": 1500, "resolution": 72, "background": "white"})).unwrap();
         (*s.active().unwrap().doc).clone()
     }
@@ -239,7 +239,7 @@ mod tests {
     /// The label the status bar shows for the active document, given a measured fit (the document id's offset from
     /// the active document, bytes needed, budget) and an optional CPU reason.
     fn label(fit: Option<(i64, u64, u64)>, reason: Option<CpuReason>) -> Option<(&'static str, String, &'static str)> {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 800, "height": 600})).unwrap();
         let doc = app.session.active().unwrap().doc.id.0;
         if let Some((offset, needed, budget)) = fit {
@@ -274,37 +274,37 @@ mod tests {
     #[test]
     fn the_profile_name_describes_each_profile_and_leaves_the_document_alone() {
         let mut rgb = doc();
-        rgb.icc_profile = Some(photocraft_engine::color_cmds::working_profile(rgb.mode).to_bytes());
+        rgb.icc_profile = Some(patronusphoto_engine::color_cmds::working_profile(rgb.mode).to_bytes());
         let before = rgb.icc_profile.clone();
         assert_eq!(profile_name(&rgb), "sRGB IEC61966-2.1");
         assert_eq!(rgb.icc_profile, before);
 
         let mut gray = doc();
-        gray.mode = photocraft_doc::ColorMode::Grayscale;
-        gray.icc_profile = Some(photocraft_engine::color_cmds::working_profile(gray.mode).to_bytes());
-        assert_eq!(profile_name(&gray), "Dot Gain 20%-compatible (gamma 1.732, PhotoCraft)");
+        gray.mode = patronusphoto_doc::ColorMode::Grayscale;
+        gray.icc_profile = Some(patronusphoto_engine::color_cmds::working_profile(gray.mode).to_bytes());
+        assert_eq!(profile_name(&gray), "Dot Gain 20%-compatible (gamma 1.732, Patronus Photo)");
 
-        let mut custom = (*photocraft_engine::color_cmds::working_profile(photocraft_doc::ColorMode::Cmyk)).clone();
-        custom.description = "PhotoCraft Studio CMYK".into();
+        let mut custom = (*patronusphoto_engine::color_cmds::working_profile(patronusphoto_doc::ColorMode::Cmyk)).clone();
+        custom.description = "Patronus Photo Studio CMYK".into();
         let mut custom_doc = doc();
-        custom_doc.mode = photocraft_doc::ColorMode::Cmyk;
+        custom_doc.mode = patronusphoto_doc::ColorMode::Cmyk;
         custom_doc.icc_profile = Some(custom.with_encoded_bytes().to_bytes());
-        assert_eq!(profile_name(&custom_doc), "PhotoCraft Studio CMYK");
+        assert_eq!(profile_name(&custom_doc), "Patronus Photo Studio CMYK");
 
         let mut malformed = doc();
         malformed.icc_profile = Some(std::sync::Arc::new(vec![1, 2, 3]));
         assert_eq!(profile_name(&malformed), "Invalid RGB profile");
 
-        let mut unnamed_profile = (*photocraft_engine::color_cmds::working_profile(photocraft_doc::ColorMode::Cmyk)).clone();
+        let mut unnamed_profile = (*patronusphoto_engine::color_cmds::working_profile(patronusphoto_doc::ColorMode::Cmyk)).clone();
         unnamed_profile.description.clear();
         let mut unnamed = doc();
-        unnamed.mode = photocraft_doc::ColorMode::Cmyk;
+        unnamed.mode = patronusphoto_doc::ColorMode::Cmyk;
         unnamed.icc_profile = Some(unnamed_profile.with_encoded_bytes().to_bytes());
         assert_eq!(profile_name(&unnamed), "Unnamed CMYK profile");
 
         let mut mismatched = doc();
-        mismatched.mode = photocraft_doc::ColorMode::Grayscale;
-        mismatched.icc_profile = Some(photocraft_engine::color_cmds::working_profile(photocraft_doc::ColorMode::Rgb).to_bytes());
+        mismatched.mode = patronusphoto_doc::ColorMode::Grayscale;
+        mismatched.icc_profile = Some(patronusphoto_engine::color_cmds::working_profile(patronusphoto_doc::ColorMode::Rgb).to_bytes());
         assert_eq!(profile_name(&mismatched), "Invalid Gray profile");
     }
 

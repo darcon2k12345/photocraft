@@ -1,7 +1,7 @@
 use super::{Contour, Effect, FxPaint, Glow, GlowSource, GlowTechnique};
-use photocraft_color::{BlendMode, Color, ColorMode, SampleType};
-use photocraft_doc::{Document, FxCommon, Layer};
-use photocraft_geom::{Rect, Size};
+use patronusphoto_color::{BlendMode, Color, ColorMode, SampleType};
+use patronusphoto_doc::{Document, FxCommon, Layer};
+use patronusphoto_geom::{Rect, Size};
 
 fn inner_glow(size: f32) -> Glow {
     Glow {

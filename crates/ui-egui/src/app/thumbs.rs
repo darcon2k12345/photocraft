@@ -4,7 +4,7 @@ use std::cell::OnceCell;
 use craft::behavior::PixelSize;
 use craft::ui::primitives::{Revision, ThumbRender, ThumbRequest, ThumbSource, thumb_image as frame_image};
 
-use super::{DocId, Document, PhotocraftApp};
+use super::{DocId, Document, PatronusPhotoApp};
 use crate::channels_panel::Row;
 
 /// The History panel's snapshot thumbnails (#2966): the composite of each snapshot of one document. A snapshot's
@@ -12,12 +12,12 @@ use crate::channels_panel::Row;
 /// the revision follows.
 pub(crate) struct SnapshotThumbs<'a> {
     doc: DocId,
-    snapshots: &'a [photocraft_engine::history_cmds::Snapshot],
+    snapshots: &'a [patronusphoto_engine::history_cmds::Snapshot],
 }
 
 impl<'a> SnapshotThumbs<'a> {
     /// The thumbnails of the snapshots of document `doc` (none when it is not open).
-    pub(crate) fn new(app: &'a PhotocraftApp, doc: DocId) -> Self {
+    pub(crate) fn new(app: &'a PatronusPhotoApp, doc: DocId) -> Self {
         let snapshots = app.session.documents().iter().find(|st| st.doc.id == doc).map_or(&[][..], |st| st.snapshots());
         Self { doc, snapshots }
     }
@@ -31,24 +31,24 @@ impl ThumbSource<u64> for SnapshotThumbs<'_> {
 
     fn render(&self, key: &u64, request: &ThumbRequest) -> ThumbRender {
         let Some(snap) = self.snapshots.iter().find(|s| s.id == *key) else { return ThumbRender::Blank };
-        let comp = photocraft_compose::thumbnail(&snap.doc, request.side);
+        let comp = patronusphoto_compose::thumbnail(&snap.doc, request.side);
         ThumbRender::Ready(egui::ColorImage::from_rgba_unmultiplied([comp.width as usize, comp.height as usize], &comp.pixels))
     }
 }
 
 /// The document area a layer thumbnail frames: the canvas, or with `clip` the layer's pixels on
 /// it (the canvas again when it has none there, so an empty layer still shows the page shape).
-pub(crate) fn layer_thumb_frame(layer: &photocraft_doc::Layer, canvas: photocraft_geom::Rect, clip: bool) -> photocraft_geom::Rect {
+pub(crate) fn layer_thumb_frame(layer: &patronusphoto_doc::Layer, canvas: patronusphoto_geom::Rect, clip: bool) -> patronusphoto_geom::Rect {
     if !clip {
         return canvas;
     }
-    let bounds = layer.surface().map_or(photocraft_geom::Rect::EMPTY, photocraft_compose::bounds::content_bounds).intersect(&canvas);
+    let bounds = layer.surface().map_or(patronusphoto_geom::Rect::EMPTY, patronusphoto_compose::bounds::content_bounds).intersect(&canvas);
     if bounds.is_empty() { canvas } else { bounds }
 }
 
-impl PhotocraftApp {
+impl PatronusPhotoApp {
     /// Cached `Surface::content_bounds` keyed by an id and the surface's generation.
-    pub fn cached_bounds(&mut self, key: u64, surface: &photocraft_raster::Surface) -> photocraft_geom::Rect {
+    pub fn cached_bounds(&mut self, key: u64, surface: &patronusphoto_raster::Surface) -> patronusphoto_geom::Rect {
         let rev = surface.generation();
         if let Some((r, b)) = self.bounds_cache.get(&key)
             && *r == rev
@@ -65,7 +65,7 @@ impl PhotocraftApp {
 
     /// [`Self::cached_bounds`] where only a shared borrow is at hand: the cached box if `surface`
     /// hasn't changed since, else a scan (not cached).
-    pub fn known_bounds(&self, key: u64, surface: &photocraft_raster::Surface) -> photocraft_geom::Rect {
+    pub fn known_bounds(&self, key: u64, surface: &patronusphoto_raster::Surface) -> patronusphoto_geom::Rect {
         match self.bounds_cache.get(&key) {
             Some((r, b)) if *r == surface.generation() => *b,
             _ => surface.content_bounds(),
@@ -75,9 +75,9 @@ impl PhotocraftApp {
     /// The box Properties › Transform shows for `layer` (X, Y, W, H): its pixels' bounds, but a
     /// soft shape's path and stroke, whose Density and Feather render past them (#5846), as its
     /// transform frame does.
-    pub fn layer_frame_bounds(&mut self, layer: &photocraft_doc::Layer, surface: &photocraft_raster::Surface) -> photocraft_geom::Rect {
+    pub fn layer_frame_bounds(&mut self, layer: &patronusphoto_doc::Layer, surface: &patronusphoto_raster::Surface) -> patronusphoto_geom::Rect {
         match &layer.content {
-            photocraft_doc::LayerContent::Shape(sh) if sh.has_soft_mask() => {
+            patronusphoto_doc::LayerContent::Shape(sh) if sh.has_soft_mask() => {
                 // Cached per rendering, like the pixel bounds: the frame renders strips of the shape.
                 let (key, rev) = (layer.id.0 | 1 << 63, surface.generation());
                 if let Some((r, b)) = self.bounds_cache.get(&key)
@@ -86,7 +86,7 @@ impl PhotocraftApp {
                     return *b;
                 }
                 let canvas = self.session.active().map_or_else(|| surface.content_bounds(), |st| st.doc.bounds());
-                let b = photocraft_compose::soft_shape_frame(sh, surface.format(), canvas).unwrap_or(photocraft_geom::Rect::EMPTY);
+                let b = patronusphoto_compose::soft_shape_frame(sh, surface.format(), canvas).unwrap_or(patronusphoto_geom::Rect::EMPTY);
                 if self.bounds_cache.len() > 256 {
                     self.bounds_cache.clear();
                 }
@@ -111,12 +111,12 @@ struct Reduced {
 impl Reduced {
     fn of(doc: &Document) -> Reduced {
         // `thumbnail(&doc, 56)` with its proxy kept, so the ink thumbnails sample the same proxy instead of building another.
-        let proxy = photocraft_compose::thumbnail_proxy(doc, 56);
+        let proxy = patronusphoto_compose::thumbnail_proxy(doc, 56);
         let src = proxy.as_ref().unwrap_or(doc);
-        let (tw, th) = photocraft_compose::thumbnail_size(doc, 56);
-        let comp = photocraft_compose::render_reduced(src, tw, th).to_rgba8();
+        let (tw, th) = patronusphoto_compose::thumbnail_size(doc, 56);
+        let comp = patronusphoto_compose::render_reduced(src, tw, th).to_rgba8();
         let (w, h) = (comp.width as usize, comp.height as usize);
-        let inks = (doc.pixel_format().mode == photocraft_doc::ColorMode::Cmyk).then(|| match &proxy {
+        let inks = (doc.pixel_format().mode == patronusphoto_doc::ColorMode::Cmyk).then(|| match &proxy {
             Some(proxy) => ink_thumbnail(proxy, w, h),
             None => match ink_proxy(doc, 56) {
                 Some(proxy) => ink_thumbnail(&proxy, w, h),
@@ -136,14 +136,14 @@ impl Reduced {
 
 /// The Channels panel's pictures of one document, made per pass: the source the framework thumbnail store asks.
 pub(crate) struct ChannelThumbs<'a> {
-    st: &'a photocraft_engine::DocState,
+    st: &'a patronusphoto_engine::DocState,
     show_color: bool,
     reduced: OnceCell<Reduced>,
 }
 
 impl<'a> ChannelThumbs<'a> {
     /// The thumbnails of `doc`, tinted as the preferences' Show Channels in Color says.
-    pub(crate) fn new(app: &'a PhotocraftApp, doc: &'a photocraft_engine::DocState) -> Self {
+    pub(crate) fn new(app: &'a PatronusPhotoApp, doc: &'a patronusphoto_engine::DocState) -> Self {
         Self { st: doc, show_color: app.session.prefs().interface.show_channels_in_color, reduced: OnceCell::new() }
     }
 
@@ -152,7 +152,7 @@ impl<'a> ChannelThumbs<'a> {
     }
 
     /// The surface a mask, alpha or Quick Mask row shows.
-    fn surface(&self, key: &Row) -> Option<&photocraft_raster::Surface> {
+    fn surface(&self, key: &Row) -> Option<&patronusphoto_raster::Surface> {
         let doc = &self.st.doc;
         match *key {
             Row::Alpha(i) => doc.channels.get(i).map(|c| &c.surface),
@@ -179,7 +179,7 @@ impl ThumbSource<Row> for ChannelThumbs<'_> {
         match key {
             Row::Composite | Row::Color(_) => Revision::of(&(doc.id.0, self.st.pixel_revision, self.show_color, size)),
             // A channel-list change with empty damage still refreshes these: they follow their own surface.
-            _ => Revision::of(&(doc.id.0, self.st.active_layer, self.surface(key).map(photocraft_raster::Surface::generation), size)),
+            _ => Revision::of(&(doc.id.0, self.st.active_layer, self.surface(key).map(patronusphoto_raster::Surface::generation), size)),
         }
     }
 
@@ -206,7 +206,7 @@ impl ThumbSource<Row> for ChannelThumbs<'_> {
                         Some(inks) => 1.0 - inks[i][k],
                         None => {
                             let p = &r.pixels[i * 4..i * 4 + 4];
-                            photocraft_raster::from_rgba(&fmt, [p[0], p[1], p[2], 255].map(|v| f32::from(v) / 255.0))[k]
+                            patronusphoto_raster::from_rgba(&fmt, [p[0], p[1], p[2], 255].map(|v| f32::from(v) / 255.0))[k]
                         }
                     };
                     let byte = (g.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
@@ -229,7 +229,7 @@ impl ThumbSource<Row> for ChannelThumbs<'_> {
 /// The inks of a CMYK document's `w`×`h` channel thumbnails, row by row: the document's own
 /// inks, not the RGB thumbnail separated again (#8359). Sampled at the thumbnail's pixel centres
 /// from `src`: the document, or on large documents the proxy its composite thumbnail is reduced
-/// from ([`photocraft_compose::thumbnail_proxy`]).
+/// from ([`patronusphoto_compose::thumbnail_proxy`]).
 fn ink_thumbnail(src: &Document, w: usize, h: usize) -> Vec<[f32; 4]> {
     let (sw, sh) = (src.size.width.max(1) as f32, src.size.height.max(1) as f32);
     let xs: Vec<i32> = (0..w).map(|x| ((x as f32 + 0.5) * sw / w as f32) as i32).collect();
@@ -246,14 +246,14 @@ fn ink_thumbnail(src: &Document, w: usize, h: usize) -> Vec<[f32; 4]> {
 fn ink_proxy(doc: &Document, max_side: u32) -> Option<Document> {
     let b = doc.bounds();
     let k = b.width().max(b.height()).max(1) / max_side.max(1).saturating_mul(2);
-    (k >= 2 && crate::canvas::channel_view::proxy_matches(doc)).then(|| photocraft_compose::proxy::proxy_document(doc, k))
+    (k >= 2 && crate::canvas::channel_view::proxy_matches(doc)).then(|| patronusphoto_compose::proxy::proxy_document(doc, k))
 }
 
 /// A channel thumbnail pixel whose lightness is `byte` (255 = white: full light, no ink).
 /// Preferences ▸ Interface ▸ Show Channels in Color tints RGB channels from black to their
 /// primary and CMYK channels from white to their ink, as Photoshop does; otherwise grey.
-fn channel_tint(mode: photocraft_doc::ColorMode, k: usize, byte: u8, in_color: bool) -> egui::Color32 {
-    use photocraft_doc::ColorMode::{Cmyk, Rgb};
+fn channel_tint(mode: patronusphoto_doc::ColorMode, k: usize, byte: u8, in_color: bool) -> egui::Color32 {
+    use patronusphoto_doc::ColorMode::{Cmyk, Rgb};
     if !in_color {
         return egui::Color32::from_gray(byte);
     }
@@ -272,7 +272,7 @@ fn channel_tint(mode: photocraft_doc::ColorMode, k: usize, byte: u8, in_color: b
 mod channel_tint_tests {
     use super::channel_tint;
     use egui::Color32;
-    use photocraft_doc::ColorMode::{Cmyk, Grayscale, Rgb};
+    use patronusphoto_doc::ColorMode::{Cmyk, Grayscale, Rgb};
 
     #[test]
     fn channels_in_color_tint_rgb_from_black_and_cmyk_inks_from_white() {
@@ -292,7 +292,7 @@ mod channel_tint_tests {
 #[cfg(test)]
 mod ink_thumbnail_tests {
     use super::ink_thumbnail;
-    use photocraft_engine::Session;
+    use patronusphoto_engine::Session;
     use serde_json::json;
 
     /// Rich black 100/100/100/0 keeps its inks in the channel thumbnails: no K (#8359).
@@ -303,7 +303,7 @@ mod ink_thumbnail_tests {
         s.execute("tools.setColors", json!({"foregroundCmyk": [1.0, 1.0, 1.0, 0.0]})).unwrap();
         s.execute("edit.fillForeground", json!({})).unwrap();
         let doc = &s.active().unwrap().doc;
-        let (w, h) = photocraft_compose::thumbnail_size(doc, 56);
+        let (w, h) = patronusphoto_compose::thumbnail_size(doc, 56);
         let inks = ink_thumbnail(doc, w as usize, h as usize);
         assert_eq!(inks.len(), (w * h) as usize);
         assert!(inks.iter().all(|p| p.iter().zip([1.0, 1.0, 1.0, 0.0]).all(|(a, b)| (a - b).abs() < 0.01)), "{:?}", inks[0]);
@@ -322,9 +322,9 @@ mod ink_thumbnail_tests {
         s.execute("edit.fillForeground", json!({})).unwrap();
         s.execute("select.deselect", json!({})).unwrap();
         let doc = s.active().unwrap().doc.clone();
-        assert!(photocraft_compose::thumbnail_proxy(&doc, 56).is_none(), "3.8 MP: the composite reduces the document");
+        assert!(patronusphoto_compose::thumbnail_proxy(&doc, 56).is_none(), "3.8 MP: the composite reduces the document");
         let proxy = super::ink_proxy(&doc, 56).expect("plain layers: the inks sample a proxy");
-        let (w, h) = photocraft_compose::thumbnail_size(&doc, 56);
+        let (w, h) = patronusphoto_compose::thumbnail_size(&doc, 56);
         let (w, h) = (w as usize, h as usize);
         assert_eq!(ink_thumbnail(&proxy, w, h), ink_thumbnail(&doc, w, h));
         // A feather is in document pixels, which the proxy doesn't scale.
@@ -347,8 +347,8 @@ mod ink_thumbnail_tests {
         s.execute("tools.setColors", json!({"foregroundCmyk": [1.0, 1.0, 1.0, 0.0]})).unwrap();
         s.execute("edit.fillForeground", json!({})).unwrap();
         let doc = &s.active().unwrap().doc;
-        let proxy = photocraft_compose::thumbnail_proxy(doc, 56).expect("a 17.6 MP document thumbnails from a proxy");
-        let (w, h) = photocraft_compose::thumbnail_size(doc, 56);
+        let proxy = patronusphoto_compose::thumbnail_proxy(doc, 56).expect("a 17.6 MP document thumbnails from a proxy");
+        let (w, h) = patronusphoto_compose::thumbnail_size(doc, 56);
         let inks = ink_thumbnail(&proxy, w as usize, h as usize);
         let at = |x: u32, y: u32| inks[(y * w + x) as usize];
         let near = |p: [f32; 4], q: [f32; 4]| p.iter().zip(q).all(|(a, b)| (a - b).abs() < 0.01);

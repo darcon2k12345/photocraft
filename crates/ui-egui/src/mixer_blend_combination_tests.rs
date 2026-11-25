@@ -7,19 +7,19 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 const LIST: &str = "Useful mixer brush combinations";
 
-fn harness() -> Harness<'static, Box<PhotocraftApp>> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn harness() -> Harness<'static, Box<PatronusPhotoApp>> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 64, "height": 64})).unwrap();
     app.ui.tool = Tool::MixerBrush;
     crate::paint_mouse::sync_tool_brush(&mut app);
     app.run("tools.setBrush", json!({"brush": {"mixer": {"flow": 0.42}}})).unwrap();
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(vec2(1800.0, 700.0)).build_ui_state(
-        |ui, app: &mut Box<PhotocraftApp>| {
+        |ui, app: &mut Box<PatronusPhotoApp>| {
             if !ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 return;
             }
@@ -27,21 +27,21 @@ fn harness() -> Harness<'static, Box<PhotocraftApp>> {
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::studio());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::studio());
     h.run_steps(4);
     h
 }
 
-fn has_fonts(h: &Harness<'static, Box<PhotocraftApp>>) -> bool {
+fn has_fonts(h: &Harness<'static, Box<PatronusPhotoApp>>) -> bool {
     h.ctx.fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into())))
 }
 
 /// An entry of the open list (not the Wet field, which shares the "Wet" label).
-fn entry_node<'a>(h: &'a Harness<'static, Box<PhotocraftApp>>, entry: &'a str) -> egui_kittest::Node<'a> {
+fn entry_node<'a>(h: &'a Harness<'static, Box<PatronusPhotoApp>>, entry: &'a str) -> egui_kittest::Node<'a> {
     h.get_all_by_label(entry).rfind(|n| n.accesskit_node().role() != egui::accesskit::Role::SpinButton).unwrap_or_else(|| panic!("no entry {entry}"))
 }
 
-fn set_brush_count(h: &Harness<'static, Box<PhotocraftApp>>) -> usize {
+fn set_brush_count(h: &Harness<'static, Box<PatronusPhotoApp>>) -> usize {
     h.state().session.journal.iter().filter(|(id, _)| id == "tools.setBrush").count()
 }
 

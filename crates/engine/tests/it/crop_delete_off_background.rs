@@ -3,9 +3,9 @@
 //! layer. Delete on keeps the Background, and Image › Reveal All is unchanged (#10867).
 
 use craft_psd::{atn, descriptor::Value as D};
-use photocraft_engine::actions_cmds::{Action, ActionList, ActionStep, ActionsFile};
-use photocraft_engine::{EngineError, Session, atn_cmds};
-use photocraft_geom::Rect;
+use patronusphoto_engine::actions_cmds::{Action, ActionList, ActionStep, ActionsFile};
+use patronusphoto_engine::{EngineError, Session, atn_cmds};
+use patronusphoto_geom::Rect;
 use serde_json::{Value, json};
 
 const MAGENTA: [f32; 4] = [1.0, 0.0, 1.0, 1.0];
@@ -25,7 +25,7 @@ fn doc() -> Session {
     s
 }
 
-fn d(s: &Session) -> &photocraft_doc::Document {
+fn d(s: &Session) -> &patronusphoto_doc::Document {
     &s.active().unwrap().doc
 }
 
@@ -37,7 +37,7 @@ fn past(s: &Session) -> usize {
     s.active().unwrap().history.past_len()
 }
 
-fn bottom(s: &Session) -> &photocraft_doc::Layer {
+fn bottom(s: &Session) -> &patronusphoto_doc::Layer {
     &d(s).layers[0]
 }
 

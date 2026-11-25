@@ -5,7 +5,7 @@
 use egui::Modifiers;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::{ToolEvent, tool_event};
 use crate::state::Tool;
 
@@ -14,8 +14,8 @@ const GREEN: [f32; 4] = [30.0 / 255.0, 180.0 / 255.0, 60.0 / 255.0, 1.0];
 
 /// An 800 × 600 document whose pixel layer is red left of x 200 and green from there on, with the
 /// Mixer Brush active.
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 800, "height": 600, "background": "white"})).unwrap();
     app.run("layer.new.layer", json!({"name": "Split"})).unwrap();
     app.run("select.rect", json!({"x": 0, "y": 0, "width": 200, "height": 600})).unwrap();
@@ -29,7 +29,7 @@ fn app() -> Box<PhotocraftApp> {
     app
 }
 
-fn alt_click(app: &mut PhotocraftApp, x: f64, y: f64) {
+fn alt_click(app: &mut PatronusPhotoApp, x: f64, y: f64) {
     tool_event(app, ToolEvent::Down { x, y, pressure: 1.0 }, Modifiers::ALT);
     tool_event(app, ToolEvent::Up { x, y }, Modifiers::ALT);
 }

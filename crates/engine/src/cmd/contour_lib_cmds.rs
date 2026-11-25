@@ -7,8 +7,8 @@
 //! history. A user contour is applied to an effect as a `contour` curve object (see
 //! [`contour_param`]); `.shc` files go through `craft_psd::shc` (see [`contours_from_shc`]).
 
-use photocraft_doc::Contour;
-use photocraft_doc::adjust::CurvePoint;
+use patronusphoto_doc::Contour;
+use patronusphoto_doc::adjust::CurvePoint;
 use serde_json::{Value, json};
 
 use crate::commands::CommandSpec;
@@ -168,7 +168,7 @@ fn save(s: &mut Session, p: &Value) -> Result<Value> {
             crate::file_cmds::write_file(path, &bytes)?;
             out["path"] = json!(path);
         }
-        None => out["data"] = json!(photocraft_paint::tile::b64_encode(&bytes)),
+        None => out["data"] = json!(patronusphoto_paint::tile::b64_encode(&bytes)),
     }
     Ok(out)
 }

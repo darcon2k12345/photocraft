@@ -6,8 +6,8 @@ use crate::canvas::testing;
 use craft::draw::ui::shape::VectorMode;
 
 /// A 200 by 200 document with a pixel layer above the Background, the Pen in Shape mode.
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 200, "height": 200})).unwrap();
     app.sync_views();
     app.run("layer.new.layer", json!({})).unwrap();
@@ -16,30 +16,30 @@ fn app() -> Box<PhotocraftApp> {
     app
 }
 
-fn click(app: &mut PhotocraftApp, x: f64, y: f64) {
+fn click(app: &mut PatronusPhotoApp, x: f64, y: f64) {
     testing::click(app, [x, y], egui::Modifiers::NONE);
 }
 
-fn key(app: &mut PhotocraftApp, key: egui::Key) {
+fn key(app: &mut PatronusPhotoApp, key: egui::Key) {
     testing::key(app, key, egui::Modifiers::NONE);
 }
 
 /// Edit › Undo and Redo as the menu, the shortcut and the control channel run them.
-fn menu(app: &mut PhotocraftApp, id: &str) {
+fn menu(app: &mut PatronusPhotoApp, id: &str) {
     let ctx = app.ctx().clone();
     crate::menus::invoke(app, &ctx, id, json!({})).unwrap();
 }
 
-fn steps(app: &PhotocraftApp) -> usize {
+fn steps(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.past_len()
 }
 
-fn undo_label(app: &PhotocraftApp) -> Option<String> {
+fn undo_label(app: &PatronusPhotoApp) -> Option<String> {
     app.session.active().unwrap().history.undo_label().map(str::to_string)
 }
 
 /// Every shape layer of the document, bottom to top: its name and shape.
-fn shapes(app: &PhotocraftApp) -> Vec<(String, photocraft_doc::ShapeLayer)> {
+fn shapes(app: &PatronusPhotoApp) -> Vec<(String, patronusphoto_doc::ShapeLayer)> {
     let doc = &app.session.active().unwrap().doc;
     doc.layers
         .iter()
@@ -51,30 +51,31 @@ fn shapes(app: &PhotocraftApp) -> Vec<(String, photocraft_doc::ShapeLayer)> {
 }
 
 /// The anchors of each subpath of a shape and whether it is closed.
-fn subpaths(sh: &photocraft_doc::ShapeLayer) -> Vec<(bool, Vec<[f64; 2]>)> {
+fn subpaths(sh: &patronusphoto_doc::ShapeLayer) -> Vec<(bool, Vec<[f64; 2]>)> {
     sh.path.subpaths.iter().map(|s| (s.closed, s.knots.iter().map(|k| [k.anchor.x, k.anchor.y]).collect())).collect()
 }
 
-fn draft_len(app: &PhotocraftApp) -> Option<usize> {
+fn draft_len(app: &PatronusPhotoApp) -> Option<usize> {
     app.ui.pen.as_ref().map(|p| p.draft.knots.len())
 }
 
 fn covered(path: &Path, x: i32, y: i32) -> f32 {
-    photocraft_vector::fill_rasterizer(path, photocraft_vector::DEFAULT_TOLERANCE).render(photocraft_geom::Rect::from_xywh(x, y, 1, 1))[0]
+    patronusphoto_vector::fill_rasterizer(path, patronusphoto_vector::DEFAULT_TOLERANCE).render(patronusphoto_geom::Rect::from_xywh(x, y, 1, 1))[0]
 }
 
 /// The issue's three anchors, (500,100), (700,100) and (700,300), scaled.
 const TRIANGLE: [(f64, f64); 3] = [(125.0, 25.0), (175.0, 25.0), (175.0, 75.0)];
 
-fn triangle(app: &mut PhotocraftApp) {
+fn triangle(app: &mut PatronusPhotoApp) {
     for (x, y) in TRIANGLE {
         click(app, x, y);
     }
 }
 
 /// Refuse `shape.edit`, so the next anchor stays the draft's alone.
-fn refuse_edits(app: &mut PhotocraftApp) {
-    app.session.authorize = Some(|id, _| if id == "shape.edit" { Err(photocraft_engine::EngineError::Other("refused edit fixture".into())) } else { Ok(()) });
+fn refuse_edits(app: &mut PatronusPhotoApp) {
+    app.session.authorize =
+        Some(|id, _| if id == "shape.edit" { Err(patronusphoto_engine::EngineError::Other("refused edit fixture".into())) } else { Ok(()) });
 }
 
 #[test]

@@ -3,26 +3,26 @@
 
 use craft::layers::ui::thumbs::{LayerThumb, ThumbContents};
 use craft::ui::primitives::textures::{ThumbRequest, ThumbSource};
-use photocraft_doc::LayerId;
-use photocraft_geom::Rect;
+use patronusphoto_doc::LayerId;
+use patronusphoto_geom::Rect;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::panels::layers_tree::PhotoThumbs;
 
 /// A 2000 by 1000 document with a 20 by 10 red speck on layer "Speck".
-fn app() -> (Box<PhotocraftApp>, LayerId) {
-    let mut s = photocraft_engine::Session::new();
+fn app() -> (Box<PatronusPhotoApp>, LayerId) {
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 2000, "height": 1000})).unwrap();
     let id = s.execute("layer.new.layer", json!({"name": "Speck"})).unwrap()["layer"].as_u64().unwrap();
     s.execute("select.rect", json!({"x": 100, "y": 200, "width": 20, "height": 10})).unwrap();
     s.execute("edit.fill", json!({"color": "#ff0000"})).unwrap();
     s.execute("select.deselect", json!({})).unwrap();
-    (PhotocraftApp::new(s, crate::Services::default()), LayerId(id))
+    (PatronusPhotoApp::new(s, crate::Services::default()), LayerId(id))
 }
 
 /// The contents the panel asks the speck's thumbnail for, the frame it shows and its revision.
-fn thumb(app: &PhotocraftApp, id: LayerId) -> (ThumbContents, Rect, u64) {
+fn thumb(app: &PatronusPhotoApp, id: LayerId) -> (ThumbContents, Rect, u64) {
     let contents = crate::layers_panel_ui::thumbnail_contents(app);
     let doc = &app.session.active().unwrap().doc;
     let frame = crate::layer_thumb_frame(doc.layer(id).unwrap(), doc.bounds(), contents == ThumbContents::LayerBounds);
@@ -49,8 +49,8 @@ fn layer_thumbnails_frame_the_canvas_until_clip_to_layer_bounds_is_on() {
 #[test]
 fn empty_and_off_canvas_layers_keep_the_canvas_frame() {
     let canvas = Rect::new(0, 0, 50, 40);
-    let raster = photocraft_raster::Surface::new(photocraft_color::PixelFormat::RGBA8);
-    let mut empty = photocraft_doc::Layer::new("Empty", photocraft_doc::LayerContent::Raster(raster));
+    let raster = patronusphoto_raster::Surface::new(patronusphoto_color::PixelFormat::RGBA8);
+    let mut empty = patronusphoto_doc::Layer::new("Empty", patronusphoto_doc::LayerContent::Raster(raster));
     assert_eq!(crate::layer_thumb_frame(&empty, canvas, true), canvas);
     empty.surface_mut().unwrap().write_pixel(-10, -10, &[1.0, 0.0, 0.0, 1.0]);
     assert_eq!(crate::layer_thumb_frame(&empty, canvas, true), canvas, "pixels only off the canvas");

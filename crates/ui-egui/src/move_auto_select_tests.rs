@@ -2,17 +2,17 @@
 //! visible layer with pixels under the pointer (or its outermost group in Group mode) and the drag
 //! then moves it; ⌘/Ctrl held at the press inverts the option for that click.
 
-use photocraft_doc::LayerId;
-use photocraft_geom::Rect;
+use patronusphoto_doc::LayerId;
+use patronusphoto_geom::Rect;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::ToolEvent;
 use crate::state::Tool;
 
 /// A 64×64 document with two painted layers: A covers (8..24)², B covers (40..56)². B is active.
-fn app() -> (Box<PhotocraftApp>, LayerId, LayerId) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> (Box<PatronusPhotoApp>, LayerId, LayerId) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 64, "height": 64})).unwrap();
     app.sync_views();
     let mut ids = Vec::new();
@@ -33,15 +33,15 @@ fn app() -> (Box<PhotocraftApp>, LayerId, LayerId) {
     (app, ids[0], ids[1])
 }
 
-fn bounds(app: &PhotocraftApp, id: LayerId) -> Rect {
+fn bounds(app: &PatronusPhotoApp, id: LayerId) -> Rect {
     app.session.active().unwrap().doc.layer(id).unwrap().surface().unwrap().content_bounds()
 }
 
-fn active(app: &PhotocraftApp) -> Option<LayerId> {
+fn active(app: &PatronusPhotoApp) -> Option<LayerId> {
     app.session.active().unwrap().active_layer
 }
 
-fn drag(app: &mut PhotocraftApp, from: [f64; 2], by: [f64; 2], mods: egui::Modifiers) {
+fn drag(app: &mut PatronusPhotoApp, from: [f64; 2], by: [f64; 2], mods: egui::Modifiers) {
     crate::canvas::tool_event(app, ToolEvent::Down { x: from[0], y: from[1], pressure: 1.0 }, mods);
     let mid = [from[0] + by[0] / 2.0, from[1] + by[1] / 2.0];
     crate::canvas::tool_event(app, ToolEvent::Move { x: mid[0], y: mid[1], pressure: 1.0 }, mods);
@@ -117,7 +117,7 @@ fn shift_click_adds_the_layer_under_the_pointer() {
 #[test]
 fn shift_click_adds_shape_layers_one_after_another() {
     // Shapes, as in Photoshop: a click selects one, each ⇧-click adds the one under it.
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 200, "height": 200})).unwrap();
     for rect in [[10, 10, 40, 40], [80, 10, 40, 40], [10, 100, 40, 40]] {
         app.session.execute("shape.create", json!({"kind": "rect", "rect": rect, "fill": "#ff0000"})).unwrap();
@@ -137,7 +137,7 @@ fn shift_click_adds_shape_layers_one_after_another() {
 
 /// Opens B's transform controls (Show Transform Controls on) and resizes the box to twice B's
 /// size from its top-left corner, so it covers (40..72)².
-fn resized_box() -> (Box<PhotocraftApp>, LayerId, LayerId) {
+fn resized_box() -> (Box<PatronusPhotoApp>, LayerId, LayerId) {
     let (mut app, a, b) = app();
     app.ui.tool_options.move_show_transform = true;
     crate::transform_tool::begin(&mut app, &egui::Context::default()).unwrap();
@@ -149,7 +149,7 @@ fn resized_box() -> (Box<PhotocraftApp>, LayerId, LayerId) {
 }
 
 /// A plain click (press and release without moving) at document point `p`.
-fn click(app: &mut PhotocraftApp, p: [f64; 2]) {
+fn click(app: &mut PatronusPhotoApp, p: [f64; 2]) {
     crate::canvas::tool_event(app, ToolEvent::Down { x: p[0], y: p[1], pressure: 1.0 }, egui::Modifiers::NONE);
     crate::canvas::tool_event(app, ToolEvent::Up { x: p[0], y: p[1] }, egui::Modifiers::NONE);
 }

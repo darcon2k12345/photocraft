@@ -12,16 +12,16 @@
 //! - [`inspect`], the border in progress for `ui.inspect`.
 //!
 //! The border follows the edges of the visible composite, whichever layer is active; documents that
-//! are not RGB keep following the active layer's own pixels (`photocraft_engine::magnetic_cmds`).
+//! are not RGB keep following the active layer's own pixels (`patronusphoto_engine::magnetic_cmds`).
 
 use craft::behavior::kurbo::Point;
 use craft::imaging::ui::select::{EdgeSearch, EdgeTracer, MagneticLassoTool};
-use photocraft_algo::magnetic::Settings;
-use photocraft_engine::Session;
-use photocraft_engine::magnetic_cmds::EdgeSource;
+use patronusphoto_algo::magnetic::Settings;
+use patronusphoto_engine::Session;
+use patronusphoto_engine::magnetic_cmds::EdgeSource;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::tool_feedback::mode_name;
 
 /// The edge finder over the pixels being traced: a snapshot of the document, rebuilt when the
@@ -61,19 +61,19 @@ impl EdgeTracer for PcEdges {
 
 /// Gives the tool this pass's app state, before the host runs it: the edge snapshot, the options
 /// bar's settings.
-pub(crate) fn prepare(app: &PhotocraftApp, tool: &mut MagneticLassoTool<PcEdges>) {
+pub(crate) fn prepare(app: &PatronusPhotoApp, tool: &mut MagneticLassoTool<PcEdges>) {
     tool.tracer_mut().sync(&app.session);
     *tool.settings_mut() = app.ui.tool_options.magnetic;
 }
 
 /// Writes the tool's settings back after the run, so `[` and `]` reach the options store.
-pub(crate) fn store(app: &mut PhotocraftApp, tool: &MagneticLassoTool<PcEdges>) {
+pub(crate) fn store(app: &mut PatronusPhotoApp, tool: &MagneticLassoTool<PcEdges>) {
     app.ui.tool_options.magnetic = *tool.settings();
 }
 
 /// Selects the closed border as drawn, in `mode` (the family's operation-to-mode name). Fewer than
 /// three points select nothing; an error goes to the status line.
-pub(crate) fn commit(app: &mut PhotocraftApp, points: &[Point], mode: &str) {
+pub(crate) fn commit(app: &mut PatronusPhotoApp, points: &[Point], mode: &str) {
     if points.len() < 3 {
         return;
     }
@@ -88,7 +88,7 @@ pub(crate) fn commit(app: &mut PhotocraftApp, points: &[Point], mode: &str) {
 
 /// The border in progress for `ui.inspect`: `path`, `anchors` (indices into `path`), `live` and the
 /// selection `mode`; empty and `""` when no border is open.
-pub(crate) fn inspect(app: &PhotocraftApp) -> Value {
+pub(crate) fn inspect(app: &PatronusPhotoApp) -> Value {
     let Some(o) = app.canvas_tools.selection.magnetic.outline() else {
         return json!({"path": [], "anchors": [], "live": [], "mode": ""});
     };

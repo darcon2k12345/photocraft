@@ -13,15 +13,15 @@ use craft::ui::primitives::ContentPainterCx;
 use craft::ui::primitives::textures::TextureCache;
 use craft::ui::runtime::env::Env;
 use egui::{ColorImage, Pos2, Rect, pos2};
-use photocraft_engine::BrushSettings;
-use photocraft_engine::brush_key_cmds::panel_layout;
-use photocraft_engine::brush_preset_cmds::MAX_FOLDER_DEPTH;
-use photocraft_engine::paint::{BrushPreset, MAX_BRUSH_SIZE};
+use patronusphoto_engine::BrushSettings;
+use patronusphoto_engine::brush_key_cmds::panel_layout;
+use patronusphoto_engine::brush_preset_cmds::MAX_FOLDER_DEPTH;
+use patronusphoto_engine::paint::{BrushPreset, MAX_BRUSH_SIZE};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::{UNGROUPED, commit_keyed, run_or_status};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::brush_preview;
 use crate::theme::Tokens;
 
@@ -110,7 +110,7 @@ pub(crate) fn tip_paint(b: &BrushSettings) -> impl Fn(&ContentPainterCx, Rect) +
 
 /// The rows of every preset in the engine's panel order (the order `,` and `.` step through): a
 /// group row before the first preset of each group and each folder, with its count.
-pub(crate) fn preset_rows(app: &PhotocraftApp, env: &Env, parts: BrushCardParts) -> Vec<PresetRow<BrushKey>> {
+pub(crate) fn preset_rows(app: &PatronusPhotoApp, env: &Env, parts: BrushCardParts) -> Vec<PresetRow<BrushKey>> {
     let presets = app.session.tools.presets.as_ref();
     let mut counts: std::collections::HashMap<(&str, &[String]), usize> = std::collections::HashMap::new();
     for p in presets {
@@ -146,7 +146,7 @@ pub(crate) fn preset_rows(app: &PhotocraftApp, env: &Env, parts: BrushCardParts)
 }
 
 /// The `brushes` registry body: the Size field over the presets, in a list or a grid.
-pub(crate) fn panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub(crate) fn panel(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let env = Env::of(ui);
     let rows = preset_rows(app, &env, parts_of(app.ui.brushes_panel.view));
     let keys: Vec<BrushKey> = rows.iter().map(|row| row.key.clone()).collect();
@@ -167,7 +167,7 @@ pub(crate) fn panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 
 /// One edit event of the Size field as a `tools.setBrush`: a gesture's events share a journal key,
 /// a `Set` is a step of its own, `Begin` changes nothing.
-fn set_size(app: &mut PhotocraftApp, event: &EditEvent<f64>) {
+fn set_size(app: &mut PatronusPhotoApp, event: &EditEvent<f64>) {
     let Some(&size) = event.landed() else { return };
     let before = app.session.tools.brush.clone();
     let mut after = before.clone();
@@ -177,7 +177,7 @@ fn set_size(app: &mut PhotocraftApp, event: &EditEvent<f64>) {
 
 /// The one mapping from the framework's picks to commands, for the Brushes panel and the Brush
 /// Preset picker. `OpenSettings` is the picker's own.
-pub(crate) fn run_picks(app: &mut PhotocraftApp, picks: Vec<BrushPick<BrushKey>>, rows: &[BrushKey]) {
+pub(crate) fn run_picks(app: &mut PatronusPhotoApp, picks: Vec<BrushPick<BrushKey>>, rows: &[BrushKey]) {
     for pick in picks {
         match pick {
             BrushPick::Select(key) => apply_events(app, vec![PresetEvent::select(key, Mods::default())], rows),
@@ -197,7 +197,7 @@ pub(crate) fn run_picks(app: &mut PhotocraftApp, picks: Vec<BrushPick<BrushKey>>
 
 /// The one mapping from preset events to commands. `rows` are the keys shown, in order, which a
 /// reorder's position counts in. Errors go to the status line.
-pub(crate) fn apply_events(app: &mut PhotocraftApp, events: Vec<PresetEvent<BrushKey>>, rows: &[BrushKey]) {
+pub(crate) fn apply_events(app: &mut PatronusPhotoApp, events: Vec<PresetEvent<BrushKey>>, rows: &[BrushKey]) {
     for event in events {
         if let Some((id, params)) = command_of(app, event, rows) {
             run_or_status(app, id, params);
@@ -205,7 +205,7 @@ pub(crate) fn apply_events(app: &mut PhotocraftApp, events: Vec<PresetEvent<Brus
     }
 }
 
-fn command_of(app: &PhotocraftApp, event: PresetEvent<BrushKey>, rows: &[BrushKey]) -> Option<(&'static str, Value)> {
+fn command_of(app: &PatronusPhotoApp, event: PresetEvent<BrushKey>, rows: &[BrushKey]) -> Option<(&'static str, Value)> {
     let presets = app.session.tools.presets.as_ref();
     match event {
         PresetEvent::Select { key: BrushKey::Preset(name), .. } => Some(("tools.setBrush", json!({ "preset": name }))),

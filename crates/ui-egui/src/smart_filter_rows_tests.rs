@@ -4,17 +4,17 @@
 use egui::Pos2;
 use egui::accesskit::Role;
 use egui_kittest::kittest::{NodeT, Queryable};
-use photocraft_doc::{LayerContent, LayerId};
+use patronusphoto_doc::{LayerContent, LayerId};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// Smart objects "Smart A" (Gaussian Blur and Offset) and "Smart B" (no filters), and a pixel
 /// layer "Pixels" on top: (harness, A, B, pixels).
-fn panel() -> (egui_kittest::Harness<'static, Box<PhotocraftApp>>, u64, u64, u64) {
-    let mut s = photocraft_engine::Session::new();
+fn panel() -> (egui_kittest::Harness<'static, Box<PatronusPhotoApp>>, u64, u64, u64) {
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 16, "height": 16})).unwrap();
-    let smart = |s: &mut photocraft_engine::Session, name: &str| {
+    let smart = |s: &mut patronusphoto_engine::Session, name: &str| {
         s.execute("layer.new.layer", json!({})).unwrap();
         s.execute("edit.fill", json!({"contents": "black"})).unwrap();
         let id = s.execute("layer.smartObjects.convertToSmartObject", json!({})).unwrap()["layer"].as_u64().unwrap();
@@ -29,14 +29,14 @@ fn panel() -> (egui_kittest::Harness<'static, Box<PhotocraftApp>>, u64, u64, u64
     s.execute("layer.setProps", json!({"layer": c, "name": "Pixels"})).unwrap();
     // 60 fps steps, so a double-click's two clicks fall inside egui's 0.3 s window.
     let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1200.0, 900.0)).with_max_steps(64).with_step_dt(1.0 / 60.0).build_eframe(|cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::with_context(cc.egui_ctx.clone(), s, crate::Services::default())
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        PatronusPhotoApp::with_context(cc.egui_ctx.clone(), s, crate::Services::default())
     });
     h.run_steps(4);
     (h, a, b, c)
 }
 
-fn filters(h: &egui_kittest::Harness<'static, Box<PhotocraftApp>>, id: u64) -> Vec<String> {
+fn filters(h: &egui_kittest::Harness<'static, Box<PatronusPhotoApp>>, id: u64) -> Vec<String> {
     match &h.state().session.active().unwrap().doc.layer(LayerId(id)).unwrap().content {
         LayerContent::Smart(sm) => sm.smart_filters.iter().map(|f| f.command.clone()).collect(),
         _ => Vec::new(),
@@ -44,15 +44,15 @@ fn filters(h: &egui_kittest::Harness<'static, Box<PhotocraftApp>>, id: u64) -> V
 }
 
 /// The centre of the Layers panel row named `label`, or of the footer button.
-fn at(h: &egui_kittest::Harness<'static, Box<PhotocraftApp>>, label: &str) -> Pos2 {
+fn at(h: &egui_kittest::Harness<'static, Box<PatronusPhotoApp>>, label: &str) -> Pos2 {
     if crate::layers_panel_nodes::row_drawn(h, label) { crate::layers_panel_nodes::row(h, label).center() } else { h.get_by_label(label).rect().center() }
 }
 
-fn selected(h: &egui_kittest::Harness<'static, Box<PhotocraftApp>>, label: &str) -> bool {
+fn selected(h: &egui_kittest::Harness<'static, Box<PatronusPhotoApp>>, label: &str) -> bool {
     h.get_by_role_and_label(Role::TreeItem, label).accesskit_node().is_selected() == Some(true)
 }
 
-fn click_at(h: &mut egui_kittest::Harness<'static, Box<PhotocraftApp>>, p: Pos2) {
+fn click_at(h: &mut egui_kittest::Harness<'static, Box<PatronusPhotoApp>>, p: Pos2) {
     h.hover_at(p);
     h.run_steps(1);
     h.drag_at(p);
@@ -67,8 +67,8 @@ fn click_at(h: &mut egui_kittest::Harness<'static, Box<PhotocraftApp>>, p: Pos2)
 /// Delete deletes the active layer as usual.
 #[test]
 fn the_delete_key_and_a_selected_filter() {
-    type Case = (&'static str, &'static str, fn(&mut egui_kittest::Harness<'static, Box<PhotocraftApp>>, u64), egui::Key, usize, bool);
-    let none: fn(&mut egui_kittest::Harness<'static, Box<PhotocraftApp>>, u64) = |_, _| {};
+    type Case = (&'static str, &'static str, fn(&mut egui_kittest::Harness<'static, Box<PatronusPhotoApp>>, u64), egui::Key, usize, bool);
+    let none: fn(&mut egui_kittest::Harness<'static, Box<PatronusPhotoApp>>, u64) = |_, _| {};
     let cases: [Case; 5] = [
         ("Delete removes the selected filter", "Gaussian Blur", none, egui::Key::Delete, 1, false),
         ("Backspace on the Smart Filters row clears them", "Smart Filters", none, egui::Key::Backspace, 0, false),

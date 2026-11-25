@@ -1,19 +1,19 @@
 # Actions files (`.atn`)
 
-PhotoCraft loads and saves action sets in the reference application's `.atn` format: Load Actions and
+Patronus Photo loads and saves action sets in the reference application's `.atn` format: Load Actions and
 Save Actions in the Actions panel menu, `actions.load` / `actions.save` for agents, and
-`photocraft batch --actions set.atn` on the command line. Reading and writing the file lives in
+`patronusphoto batch --actions set.atn` on the command line. Reading and writing the file lives in
 `craft-psd` (`crates/psd/src/atn.rs`, version 16 sets, exact round trip); the mapping between the
-application's events and PhotoCraft commands lives in `photocraft-engine`
+application's events and Patronus Photo commands lives in `patronusphoto-engine`
 (`crates/engine/src/cmd/atn_cmds/`, table `EVENTS` in `events.rs`).
 
-A step whose event is in the table below loads as the PhotoCraft command it names, plays, and saves back
+A step whose event is in the table below loads as the Patronus Photo command it names, plays, and saves back
 as the same event. Any other step loads as a kept step (`actions.photoshopStep`), and Save Actions writes
 it back unchanged. Playback stops at an enabled kept step with its name, so an action never silently skips
 work. Kept steps with no effect on the document (tool selections and the like) are imported switched off,
 so playback skips them.
 
-This page covers the events PhotoCraft maps today, the settings some of them still lose, how steps name
+This page covers the events Patronus Photo maps today, the settings some of them still lose, how steps name
 layers and documents, newer and older events and files, and a measured reference for the events it does not
 map yet, with everything needed to implement them without
 the reference application.
@@ -33,7 +33,7 @@ seconds, saved as `actions.performance` (`accelerated` / `step` / `pause`) and
 `actions.pauseSeconds` and set by `actions.setPlayback`. Measured 2026-11-05: one Play plays the
 whole action in every mode; Step by Step waits about 1.15 s between steps and Pause For adds its
 seconds to that, with no wait before the first step or after the last; with the history option on
-it is still one `Action: <name>` state. PhotoCraft waits 1 s plus Pause For's seconds and redraws
+it is still one `Action: <name>` state. Patronus Photo waits 1 s plus Pause For's seconds and redraws
 between steps; Esc and the panel's Stop button end the play there keeping the applied steps (the
 reference application's Stop does the same). Agents, the CLI and Batch always play at once.
 Pause For Audio Annotation (Mac only) is not offered.
@@ -61,7 +61,7 @@ row; the action still adds only one Undo entry.
 
 ## Supported events
 
-| Code | String ID | Label | PhotoCraft command(s) |
+| Code | String ID | Label | Patronus Photo command(s) |
 |---|---|---|---|
 | `AdNs` | addNoise | Add Noise | `filter.noise.addNoise` |
 | `Algn` | align | Align | `layer.align.leftEdges`, `layer.align.horizontalCenters`, `layer.align.rightEdges`, `layer.align.topEdges`, `layer.align.verticalCenters`, `layer.align.bottomEdges` |
@@ -281,7 +281,7 @@ plays as `layer.new.frameFromLayers` on that layer, and the frame fits that
 layer's bounds whatever is selected. The dialog's width and height are not in the
 step. `layerSectionStart` and `layerSectionEnd` are ids of the recording session:
 a loaded step saves back its recorded descriptor, session ids included, while it
-still frames the same layer with the same name, and a step recorded in PhotoCraft
+still frames the same layer with the same name, and a step recorded in Patronus Photo
 writes `null`, `From` and `Nm  ` (only for a name that isn't blank) without them. A
 native step without a layer of its own frames the selected layers and writes
 `From` = the target layer, a form the recordings don't show. Another `From`, a
@@ -297,7 +297,7 @@ Undo restores an edit. Explicit native layer lists cannot be exported as these t
 The four Smart Object file events use Open/Place's `Pth `/`txtu` path encoding.
 Export Contents uses `null` for its path; Convert to Linked uses the current-layer
 `null` reference and `Usng` for its path; Relink and Replace use `null` for the path.
-A positive integer `LyrI` is a recording-session hint, never a PhotoCraft layer
+A positive integer `LyrI` is a recording-session hint, never a Patronus Photo layer
 identity, and is omitted on save under the normalization rule below. Undecodable
 paths or extra keys keep the entire step. File access happens at playback; a
 missing or unusable file reports the native command's error.
@@ -335,7 +335,7 @@ step the same without it. A Duotone, Indexed Color, Bitmap or Multichannel targe
 the class-reference form recorded from a Bitmap document, and any other form stay
 a kept step. A loaded step saves back with its recorded descriptor (message or
 none, class, key order), and once its settings change it saves them into that
-descriptor. A step recorded in PhotoCraft saves class `cjsp`, an empty `Msge`, its
+descriptor. A step recorded in Patronus Photo saves class `cjsp`, an empty `Msge`, its
 source modes in the measured order (all eight for a step without `from`) and the
 target object. A native step with an empty or unknown source list, or another
 target, refuses export.
@@ -348,7 +348,7 @@ Layer › New › Artboard and Layer › New › Artboard from Layers are a Make
 layers, at their bounds. `Nm  ` is the board's name. `layerSectionStart` and
 `layerSectionEnd` are ids of the recording session: a loaded step saves back its
 recorded descriptor, session ids included, while it still makes the same board,
-and a step recorded in PhotoCraft writes the other keys without them (`Nm  ` only
+and a step recorded in Patronus Photo writes the other keys without them (`Nm  ` only
 for a name of its own). Both or neither of `artboardRect` and `From`, another
 `From` target, a repeated or extra key, or a value of another type stays a kept
 step. The step records no background, preset or size of the dialog's own, so a
@@ -373,7 +373,7 @@ languages). `Msge` is the script's own text, not a setting: the reference plays 
 step the same with the recorded text, an empty one, unrelated text or the key
 removed, so the three-key form without `Msge` maps too. A loaded step saves back
 with its recorded descriptor (message or none, class, key order), and once its
-settings change it saves them into that descriptor. A step recorded in PhotoCraft
+settings change it saves them into that descriptor. A step recorded in Patronus Photo
 saves class `cjsp` and an empty `Msge`. Another unit, a side of 0, a repeated `Msge`,
 a missing `Wdth`, `Hght` or `limit`, or an extra key stays a kept step. A native
 step with a missing or 0 side (the document's own size) or a resampling method
@@ -384,7 +384,7 @@ property. `T   ` holds `pixelLength` (a long above 0), `logicalLength` (a double
 above 0) and `logicalUnits` (text that isn't blank), and the step plays as
 `image.analysis.setMeasurementScale` with preset `custom`. A loaded step saves back
 its recorded descriptor while it still sets the same scale. A step recorded in
-PhotoCraft writes `T   ` with class `measurementScale`, since the recordings don't
+Patronus Photo writes `T   ` with class `measurementScale`, since the recordings don't
 pin that class down. Another target, another value type, a missing or extra key, or
 a value the native command refuses stays a kept step. A native step that reads the
 scale, resets it to the default, leaves a value to the current scale or has a
@@ -733,7 +733,7 @@ remain open under #10705; this is not full Batch parity.
 #### Gradient Map (direct)
 
 - Event: `GrMp` (no string ID)
-- PhotoCraft command: `image.adjustments.gradientMap`
+- Patronus Photo command: `image.adjustments.gradientMap`
 - Supported: classic (`Gcls`, also when omitted), 2..64 ordered custom RGB stops at midpoint 50, smoothness 4096, and the two opaque endpoint transparency stops. Fractional RGB components retain their precision and the recorded name and event survive save.
 - Other interpolation methods, midpoints, transparency, unsorted stops and unsupported descriptor forms remain kept steps. This does not change the separate legacy `GdMp` event mapping.
 
@@ -778,7 +778,7 @@ Nested values as recorded (defaults):
 #### Replace Color
 
 - Event: `RplC` / `replaceColor`
-- PhotoCraft command: `image.adjustments.replaceColor`
+- Patronus Photo command: `image.adjustments.replaceColor`
 - Supported: the explicit D50 Lab minimum/maximum box and `colorModel` 0, with the four integer settings clamped to the ranges below. Matching uses original pixel channels through the document profile. Unsupported color models, malformed or missing samples and unknown keys remain kept steps.
 - Measured with example values in a prepared document: the Value column shows what was sent and recorded, not a factory default (a step always carries the values the user set).
 
@@ -808,7 +808,7 @@ Nested values as recorded (example values):
 A mapped event can still lose a setting. The original 117-event mapping was checked on 2026-11-01: the 5 296 steps of
 the `.atn` corpus (sets the reference application recorded) and factory descriptors measured in the
 reference application went through `actions.load` and `actions.save`, and each saved descriptor was compared
-with the original. Then every step PhotoCraft saves for the cases in
+with the original. Then every step Patronus Photo saves for the cases in
 `every_mapped_command_exports_and_imports_back` was played in the reference application: 128 of 151 ran.
 Three failed on a wrong code (Vibrance, Gradient Map, Stroke Outside); the others needed a document the test
 did not have (a mask, a group, a named pattern or channel). Checking every code the mapping writes found
@@ -876,7 +876,7 @@ no new Photoshop recording or pixel-equivalence measurement is claimed.
 
 How the reference application resolves a layer or document a step names, measured on 2026-11-01 by
 playing `select` and `move` steps with each form (documents with and without a Background, a group,
-layers above and below it). A recorded step can use any of these; PhotoCraft reads names and the target
+layers above and below it). A recorded step can use any of these; Patronus Photo reads names and the target
 today.
 
 ### Layers
@@ -910,7 +910,7 @@ index inside a group puts the layer into that group.
 | By offset (`rele`) | That many documents after (positive) or before (negative) the active one, in opening order, **wrapping around** at the ends. 0 fails. | -1 D1, +1 D3, -2 D3, +2 D1 |
 | By index (`indx`) | 1-based, in opening order; 0 fails. | 1 D1, 2 D2, 3 D3 |
 
-PhotoCraft's `document.activate {"offset"}` refuses to wrap (#7103); the reference application wraps.
+Patronus Photo's `document.activate {"offset"}` refuses to wrap (#7103); the reference application wraps.
 
 ### Layer comps
 
@@ -927,13 +927,13 @@ Measured with three comps (CompA, CompB, CompC) that each show a different layer
 | Ordinal (`Ordn`) `Trgt`, `Nxt `, `Prvs` | Applies the current (last applied) comp; `Nxt ` and `Prvs` do not move. |
 | Ordinal `Frst`, `Lst `, `Al  ` | Applies the **first** comp (also for `Lst `). |
 
-Delete (`Dlt `) by index uses the same 1-based numbering. PhotoCraft's `applyComp` import reads only the
+Delete (`Dlt `) by index uses the same 1-based numbering. Patronus Photo's `applyComp` import reads only the
 name form today; the index, ID and ordinal forms load as kept steps.
 
 ## Newer events (string ID only)
 
 The original survey covered menu events that were neither mapped nor in the reference below:
-63 candidates from PhotoCraft's menu catalogue, each run in the reference
+63 candidates from Patronus Photo's menu catalogue, each run in the reference
 application without a dialog on a document prepared for it (layers, a selection, a smart object, a type
 layer, a layer style or a group) on 2026-11-01. 27 more menu items record no event of their own (puppet
 warp and warp splits, combine shapes, scripts such as Load Files into Stack and Statistics, artboard and
@@ -1042,7 +1042,7 @@ commands record).
   with more than one layer is refused.
 - **Load Actions** with a set whose name is already in the panel adds a second set of that name; nothing is replaced.
 
-- PhotoCraft preserves fractional recorded RGB values exactly. Native actions with partial settings export an empty preset and guide list when absent.
+- Patronus Photo preserves fractional recorded RGB values exactly. Native actions with partial settings export an empty preset and guide list when absent.
   An absent native color exports as white: it matches the native custom-color fallback and is visually ignored for white, black and transparent backgrounds.
   A custom background without a color uses the White variant (type 1); an explicit custom white color keeps type 4.
   This is canonical export metadata, not a claim about the reference application's remembered color. Imported steps retain their recorded color instead.
@@ -1172,7 +1172,7 @@ Measured with a folder `in` holding `a.png`, `b.png`, `notes.txt` and `sub/a.png
   at once; the file being processed is not saved (12 of 60 written in the test). There is no progress
   bar: the documents open and close in the window as they are processed.
 
-Batch cancellation conformance (Photoshop 2026 observation above; PhotoCraft's producer is
+Batch cancellation conformance (Photoshop 2026 observation above; Patronus Photo's producer is
 `file_cmds::batch_run::process_batch_outputs`, and its desktop consumer is `jobs_ui::tick`):
 
 | Reference step | Acceptance gate | Status |
@@ -1207,7 +1207,7 @@ points with `Anch` in pixels).
 
 What the reference application records when a user works normally, measured on 2026-11-01 by recording
 an action through the panel, mouse and keyboard on a document with layers A, B and C and a second open
-document, then reading the steps back. This is the form PhotoCraft's recorder should write (AUTO-219-1);
+document, then reading the steps back. This is the form Patronus Photo's recorder should write (AUTO-219-1);
 today it copies journal entries with explicit layer ids.
 
 | User action | Recorded step |
@@ -1244,7 +1244,7 @@ The same recording played on two other documents (Play from step 2, skipping the
 
 ## Older files: version 12
 
-Action sets saved by the reference application's version 5 era use file version 12. PhotoCraft rejects
+Action sets saved by the reference application's version 5 era use file version 12. Patronus Photo rejects
 them today; this is what reading them needs. Checked on 2026-11-01 on 325 real version 12 sets (all parse
 to the end with this layout) and against AtnKit (MIT), which reads version 12 but gets two details wrong
 (noted below).
@@ -1281,7 +1281,7 @@ reference item := form [4] + class [4] + (prop: key [4] | Clss: nothing | Enmr: 
 AtnKit reads `indx` without its class code and has no case for `UnFl`, `ObAr` and `Pth `; with those
 fixed, all 325 files parse. `Idnt` was not seen in a version 12 file; its layout follows `indx`.
 
-**Into PhotoCraft's model:** every id becomes a 4-character code; the step descriptor gets the empty name
+**Into Patronus Photo's model:** every id becomes a 4-character code; the step descriptor gets the empty name
 and class `null` that version 16 files use for code events; nested classes get the empty name. Save Actions
 keeps writing version 16. Version 7 files (a different layout with 8-bit strings) and sets wrapped in
 MacBinary stay rejected.
@@ -1289,9 +1289,9 @@ MacBinary stay rejected.
 ## Event reference: measured specs
 
 Each entry below is an event the reference application records, as measured there: its 4-character code
-and string ID, the PhotoCraft command it maps to (or should map to), and every key the step carries, in the
+and string ID, the Patronus Photo command it maps to (or should map to), and every key the step carries, in the
 order it is recorded, with type, unit, factory default and allowed values. The Supported events table says
-which of them PhotoCraft maps today; for the others an entry has everything needed to implement them. When
+which of them Patronus Photo maps today; for the others an entry has everything needed to implement them. When
 an event is implemented, add it to that table in the same change.
 Current support and limits of the newer events are described under [Newer event mapping boundaries](#newer-event-mapping-boundaries).
 
@@ -1310,9 +1310,9 @@ Current support and limits of the newer events are described under [Newer event 
   unchanged are listed. A value outside the list should keep the step as a kept step.
 - **Names:** keys are stored by their 4-character code. The string ID column is a label; where one code
   has two names in the application, the one that fits the setting is shown.
-- **Filter Gallery effects:** the "PhotoCraft today" column compares each value with PhotoCraft's own
+- **Filter Gallery effects:** the "Patronus Photo today" column compares each value with Patronus Photo's own
   effect parameters (`crates/algo/src/artistic.rs`). All ranges and defaults already match; 26 parameters
-  have a different name in PhotoCraft, given in that column.
+  have a different name in Patronus Photo, given in that column.
 
 ### What an implementation needs to do
 
@@ -1329,14 +1329,14 @@ Current support and limits of the newer events are described under [Newer event 
 
 ### Group A: The 47 Filter Gallery effects
 
-Each Filter Gallery effect is recorded as its own event (one per effect), carrying a `GEfk` key with the effect id plus the effect's settings. Today only Spatter (`GEfk` = `Spt`) is mapped (to `filter.gallery.spatter`); the other effects load as kept steps that stop at playback. PhotoCraft already has every effect (`crates/algo/src/artistic.rs`) behind `filter.filterGallery`; this issue only maps them. Where our own range or default differs from the measured one, fix ours to match (marked in each table).
+Each Filter Gallery effect is recorded as its own event (one per effect), carrying a `GEfk` key with the effect id plus the effect's settings. Today only Spatter (`GEfk` = `Spt`) is mapped (to `filter.gallery.spatter`); the other effects load as kept steps that stop at playback. Patronus Photo already has every effect (`crates/algo/src/artistic.rs`) behind `filter.filterGallery`; this issue only maps them. Where our own range or default differs from the measured one, fix ours to match (marked in each table).
 
 #### Accented Edges
 
 - Event: `AccE` / `accentedEdges`
-- PhotoCraft command: `filter.filterGallery effect "accentedEdges"`
+- Patronus Photo command: `filter.filterGallery effect "accentedEdges"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `EdgW` | edgeWidth | integer |  | 2 | 1 .. 14 (out-of-range values are clamped) | same |
 | `EdgB` | edgeBrightness | integer |  | 38 | 0 .. 50 (out-of-range values are clamped) | same |
@@ -1345,9 +1345,9 @@ Each Filter Gallery effect is recorded as its own event (one per effect), carryi
 #### Angled Strokes
 
 - Event: `AngS` / `angledStrokes`
-- PhotoCraft command: `filter.filterGallery effect "angledStrokes"`
+- Patronus Photo command: `filter.filterGallery effect "angledStrokes"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `DrcB` | directionBalance | integer |  | 50 | 0 .. 100 (out-of-range values are clamped) | same |
 | `StrL` | strokeLength | integer |  | 15 | 3 .. 50 (out-of-range values are clamped) | same |
@@ -1356,9 +1356,9 @@ Each Filter Gallery effect is recorded as its own event (one per effect), carryi
 #### Bas Relief
 
 - Event: `BsRl` / `basRelief`
-- PhotoCraft command: `filter.filterGallery effect "basRelief"`
+- Patronus Photo command: `filter.filterGallery effect "basRelief"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `Dtl ` | detail | integer |  | 13 | 1 .. 15 (out-of-range values are clamped) | same |
 | `Smth` | smoothness | integer |  | 3 | 1 .. 15 (out-of-range values are clamped) | same |
@@ -1367,9 +1367,9 @@ Each Filter Gallery effect is recorded as its own event (one per effect), carryi
 #### Chalk Charcoal
 
 - Event: `ChlC` / `chalkCharcoal`
-- PhotoCraft command: `filter.filterGallery effect "chalkCharcoal"`
+- Patronus Photo command: `filter.filterGallery effect "chalkCharcoal"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `ChrA` | charcoalArea | integer |  | 6 | 0 .. 20 (out-of-range values are clamped) | same |
 | `ChlA` | chalkArea | integer |  | 6 | 0 .. 20 (out-of-range values are clamped) | same |
@@ -1378,9 +1378,9 @@ Each Filter Gallery effect is recorded as its own event (one per effect), carryi
 #### Charcoal
 
 - Event: `Chrc` / `charcoal`
-- PhotoCraft command: `filter.filterGallery effect "charcoal"`
+- Patronus Photo command: `filter.filterGallery effect "charcoal"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `ChAm` | charcoalAmount | integer |  | 1 | 1 .. 7 (out-of-range values are clamped) | maps to our `charcoalThickness` (same range and default) |
 | `Dtl ` | detail | integer |  | 5 | 0 .. 5 (out-of-range values are clamped) | same |
@@ -1389,9 +1389,9 @@ Each Filter Gallery effect is recorded as its own event (one per effect), carryi
 #### Chrome
 
 - Event: `Chrm` / `chrome`
-- PhotoCraft command: `filter.filterGallery effect "chrome"`
+- Patronus Photo command: `filter.filterGallery effect "chrome"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `Dtl ` | detail | integer |  | 4 | 0 .. 10 (out-of-range values are clamped) | same |
 | `Smth` | smoothness | integer |  | 7 | 0 .. 10 (out-of-range values are clamped) | same |
@@ -1399,9 +1399,9 @@ Each Filter Gallery effect is recorded as its own event (one per effect), carryi
 #### Colored Pencil
 
 - Event: `ClrP` / `coloredPencil`
-- PhotoCraft command: `filter.filterGallery effect "coloredPencil"`
+- Patronus Photo command: `filter.filterGallery effect "coloredPencil"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `Pncl` | pencilWidth | integer |  | 4 | 1 .. 24 (out-of-range values are clamped) | maps to our `pencilWidth` (same range and default) |
 | `StrP` | strokePressure | integer |  | 8 | 0 .. 15 (out-of-range values are clamped) | same |
@@ -1410,9 +1410,9 @@ Each Filter Gallery effect is recorded as its own event (one per effect), carryi
 #### Conte Crayon
 
 - Event: `CntC` / `conteCrayon`
-- PhotoCraft command: `filter.filterGallery effect "conteCrayon"`
+- Patronus Photo command: `filter.filterGallery effect "conteCrayon"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `FrgL` | foregroundLevel | integer |  | 11 | 1 .. 15 (out-of-range values are clamped) | same |
 | `BckL` | backgroundLevel | integer |  | 7 | 1 .. 15 (out-of-range values are clamped) | maps to our `backgroundLevel` (same range and default) |
@@ -1425,9 +1425,9 @@ Each Filter Gallery effect is recorded as its own event (one per effect), carryi
 #### Craquelure
 
 - Event: `Crql` / `craquelure`
-- PhotoCraft command: `filter.filterGallery effect "craquelure"`
+- Patronus Photo command: `filter.filterGallery effect "craquelure"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `CrcS` | crackSpacing | integer |  | 15 | 2 .. 100 (out-of-range values are clamped) | same |
 | `CrcD` | crackDepth | integer |  | 6 | 0 .. 10 (out-of-range values are clamped) | same |
@@ -1436,9 +1436,9 @@ Each Filter Gallery effect is recorded as its own event (one per effect), carryi
 #### Crosshatch
 
 - Event: `Crsh` / `crosshatch`
-- PhotoCraft command: `filter.filterGallery effect "crosshatch"`
+- Patronus Photo command: `filter.filterGallery effect "crosshatch"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `StrL` | strokeLength | integer |  | 9 | 3 .. 50 (out-of-range values are clamped) | same |
 | `Shrp` | sharpness | integer |  | 6 | 0 .. 20 (out-of-range values are clamped) | maps to our `sharpness` (same range and default) |
@@ -1447,9 +1447,9 @@ Each Filter Gallery effect is recorded as its own event (one per effect), carryi
 #### Cutout
 
 - Event: `Ct  ` / `cutout`
-- PhotoCraft command: `filter.filterGallery effect "cutout"`
+- Patronus Photo command: `filter.filterGallery effect "cutout"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `NmbL` | numberOfLayers | integer |  | 4 | 2 .. 8 (out-of-range values are clamped) | maps to our `numberOfLevels` (same range and default) |
 | `EdgS` | edgeSimplicity | integer |  | 4 | 0 .. 10 (out-of-range values are clamped) | same |
@@ -1458,9 +1458,9 @@ Each Filter Gallery effect is recorded as its own event (one per effect), carryi
 #### Dark Strokes
 
 - Event: `DrkS` / `darkStrokes`
-- PhotoCraft command: `filter.filterGallery effect "darkStrokes"`
+- Patronus Photo command: `filter.filterGallery effect "darkStrokes"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `Blnc` | balance | integer |  | 5 | 0 .. 10 (out-of-range values are clamped) | same |
 | `BlcI` | blackIntensity | integer |  | 6 | 0 .. 10 (out-of-range values are clamped) | same |
@@ -1469,9 +1469,9 @@ Each Filter Gallery effect is recorded as its own event (one per effect), carryi
 #### Diffuse Glow
 
 - Event: `DfsG` / `diffuseGlow`
-- PhotoCraft command: `filter.filterGallery effect "diffuseGlow"`
+- Patronus Photo command: `filter.filterGallery effect "diffuseGlow"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `Grns` | graininess | integer |  | 6 | 0 .. 10 (out-of-range values are clamped) | same |
 | `GlwA` | glowAmount | integer |  | 10 | 0 .. 20 (out-of-range values are clamped) | same |
@@ -1480,9 +1480,9 @@ Each Filter Gallery effect is recorded as its own event (one per effect), carryi
 #### Dry Brush
 
 - Event: `DryB` / `dryBrush`
-- PhotoCraft command: `filter.filterGallery effect "dryBrush"`
+- Patronus Photo command: `filter.filterGallery effect "dryBrush"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `BrsS` | brushSize | integer |  | 2 | 0 .. 10 (out-of-range values are clamped) | same |
 | `BrsD` | brushDetail | integer |  | 8 | 0 .. 10 (out-of-range values are clamped) | same |
@@ -1491,9 +1491,9 @@ Each Filter Gallery effect is recorded as its own event (one per effect), carryi
 #### Film Grain
 
 - Event: `FlmG` / `filmGrain`
-- PhotoCraft command: `filter.filterGallery effect "filmGrain"`
+- Patronus Photo command: `filter.filterGallery effect "filmGrain"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `Grn ` | grain | integer |  | 4 | 0 .. 20 (out-of-range values are clamped) | same |
 | `HghA` | highlightArea | integer |  | 0 | 0 .. 20 (out-of-range values are clamped) | same |
@@ -1502,9 +1502,9 @@ Each Filter Gallery effect is recorded as its own event (one per effect), carryi
 #### Fresco
 
 - Event: `Frsc` / `fresco`
-- PhotoCraft command: `filter.filterGallery effect "fresco"`
+- Patronus Photo command: `filter.filterGallery effect "fresco"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `BrsS` | brushSize | integer |  | 2 | 0 .. 10 (out-of-range values are clamped) | same |
 | `BrsD` | brushDetail | integer |  | 8 | 0 .. 10 (out-of-range values are clamped) | same |
@@ -1513,9 +1513,9 @@ Each Filter Gallery effect is recorded as its own event (one per effect), carryi
 #### Glass
 
 - Event: `Gls ` / `glass`
-- PhotoCraft command: `filter.filterGallery effect "glass"`
+- Patronus Photo command: `filter.filterGallery effect "glass"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `Dstr` | distortion | integer |  | 5 | 0 .. 20 (out-of-range values are clamped) | maps to our `distortion` (same range and default) |
 | `Smth` | smoothness | integer |  | 3 | 1 .. 15 (out-of-range values are clamped) | same |
@@ -1526,9 +1526,9 @@ Each Filter Gallery effect is recorded as its own event (one per effect), carryi
 #### Glowing Edges
 
 - Event: `GlwE` / `glowingEdges`
-- PhotoCraft command: `filter.filterGallery effect "glowingEdges"`
+- Patronus Photo command: `filter.filterGallery effect "glowingEdges"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `EdgW` | edgeWidth | integer |  | 2 | 1 .. 14 (out-of-range values are clamped) | same |
 | `EdgB` | edgeBrightness | integer |  | 6 | 0 .. 20 (out-of-range values are clamped) | same |
@@ -1537,9 +1537,9 @@ Each Filter Gallery effect is recorded as its own event (one per effect), carryi
 #### Graphic Pen
 
 - Event: `GraP` / `graphicPen`
-- PhotoCraft command: `filter.filterGallery effect "graphicPen"`
+- Patronus Photo command: `filter.filterGallery effect "graphicPen"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `StrL` | strokeLength | integer |  | 15 | 1 .. 15 (out-of-range values are clamped) | same |
 | `LgDr` | lightDark | integer |  | 50 | 0 .. 100 (out-of-range values are clamped) | maps to our `lightDarkBalance` (same range and default) |
@@ -1548,9 +1548,9 @@ Each Filter Gallery effect is recorded as its own event (one per effect), carryi
 #### Halftone Screen
 
 - Event: `HlfS` / `halftoneScreen`
-- PhotoCraft command: `filter.filterGallery effect "halftonePattern"`
+- Patronus Photo command: `filter.filterGallery effect "halftonePattern"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `HlSz` | halftoneSize | integer |  | 1 | 1 .. 12 (out-of-range values are clamped) | maps to our `size` (same range and default) |
 | `Cntr` | contrast | integer |  | 5 | 0 .. 50 (out-of-range values are clamped) | maps to our `contrast` (same range and default) |
@@ -1559,9 +1559,9 @@ Each Filter Gallery effect is recorded as its own event (one per effect), carryi
 #### Ink Outlines
 
 - Event: `InkO` / `inkOutlines`
-- PhotoCraft command: `filter.filterGallery effect "inkOutlines"`
+- Patronus Photo command: `filter.filterGallery effect "inkOutlines"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `StrL` | strokeLength | integer |  | 4 | 1 .. 50 (out-of-range values are clamped) | same |
 | `DrkI` | darkIntensity | integer |  | 20 | 0 .. 50 (out-of-range values are clamped) | same |
@@ -1570,9 +1570,9 @@ Each Filter Gallery effect is recorded as its own event (one per effect), carryi
 #### Mosaic  Tiles
 
 - Event: `MscT` (no string ID)
-- PhotoCraft command: `filter.filterGallery effect "mosaicTiles"`
+- Patronus Photo command: `filter.filterGallery effect "mosaicTiles"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `TlSz` | tileSize | integer |  | 12 | 2 .. 100 (out-of-range values are clamped) | same |
 | `GrtW` | groutWidth | integer |  | 3 | 1 .. 15 (out-of-range values are clamped) | same |
@@ -1581,9 +1581,9 @@ Each Filter Gallery effect is recorded as its own event (one per effect), carryi
 #### Neon Glow
 
 - Event: `NGlw` / `neonGlow`
-- PhotoCraft command: `filter.filterGallery effect "neonGlow"`
+- Patronus Photo command: `filter.filterGallery effect "neonGlow"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `Sz  ` | size | integer |  | 5 | -24 .. 24 (out-of-range values are clamped) | maps to our `glowSize` (same range and default) |
 | `Brgh` | brightness | integer |  | 15 | 0 .. 50 (out-of-range values are clamped) | maps to our `glowBrightness` (same range and default) |
@@ -1599,9 +1599,9 @@ Nested values as recorded (defaults):
 #### Note Paper
 
 - Event: `NtPr` / `notePaper`
-- PhotoCraft command: `filter.filterGallery effect "notePaper"`
+- Patronus Photo command: `filter.filterGallery effect "notePaper"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `ImgB` | imageBalance | integer |  | 25 | 0 .. 50 (out-of-range values are clamped) | same |
 | `Grns` | graininess | integer |  | 10 | 0 .. 20 (out-of-range values are clamped) | same |
@@ -1610,9 +1610,9 @@ Nested values as recorded (defaults):
 #### Ocean Ripple
 
 - Event: `OcnR` / `oceanRipple`
-- PhotoCraft command: `filter.filterGallery effect "oceanRipple"`
+- Patronus Photo command: `filter.filterGallery effect "oceanRipple"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `RplS` | rippleSize | integer |  | 9 | 1 .. 15 (out-of-range values are clamped) | same |
 | `RplM` | rippleMagnitude | integer |  | 9 | 0 .. 20 (out-of-range values are clamped) | same |
@@ -1620,9 +1620,9 @@ Nested values as recorded (defaults):
 #### Paint Daubs
 
 - Event: `PntD` / `paintDaubs`
-- PhotoCraft command: `filter.filterGallery effect "paintDaubs"`
+- Patronus Photo command: `filter.filterGallery effect "paintDaubs"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `Sz  ` | size | integer |  | 8 | 1 .. 50 (out-of-range values are clamped) | maps to our `brushSize` (same range and default) |
 | `Shrp` | sharpness | integer |  | 7 | 0 .. 40 (out-of-range values are clamped) | maps to our `sharpness` (same range and default) |
@@ -1631,9 +1631,9 @@ Nested values as recorded (defaults):
 #### Palette Knife
 
 - Event: `PltK` / `paletteKnife`
-- PhotoCraft command: `filter.filterGallery effect "paletteKnife"`
+- Patronus Photo command: `filter.filterGallery effect "paletteKnife"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `StrS` | strokeSize | integer |  | 25 | 1 .. 50 (out-of-range values are clamped) | same |
 | `StDt` | strokeDetail | integer |  | 3 | 1 .. 3 (out-of-range values are clamped) | same |
@@ -1642,9 +1642,9 @@ Nested values as recorded (defaults):
 #### Patchwork
 
 - Event: `Ptch` / `patchwork`
-- PhotoCraft command: `filter.filterGallery effect "patchwork"`
+- Patronus Photo command: `filter.filterGallery effect "patchwork"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `SqrS` | squareSize | integer |  | 4 | 0 .. 10 (out-of-range values are clamped) | same |
 | `Rlf ` | relief | integer |  | 8 | 0 .. 25 (out-of-range values are clamped) | same |
@@ -1652,9 +1652,9 @@ Nested values as recorded (defaults):
 #### Photocopy
 
 - Event: `Phtc` / `photocopy`
-- PhotoCraft command: `filter.filterGallery effect "photocopy"`
+- Patronus Photo command: `filter.filterGallery effect "photocopy"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `Dtl ` | detail | integer |  | 7 | 1 .. 24 (out-of-range values are clamped) | same |
 | `Drkn` | darkness | integer |  | 8 | 1 .. 50 (out-of-range values are clamped) | maps to our `darkness` (same range and default) |
@@ -1662,9 +1662,9 @@ Nested values as recorded (defaults):
 #### Plaster
 
 - Event: `Plst` / `plaster`
-- PhotoCraft command: `filter.filterGallery effect "plaster"`
+- Patronus Photo command: `filter.filterGallery effect "plaster"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `ImgB` | imageBalance | integer |  | 20 | 0 .. 50 (out-of-range values are clamped) | same |
 | `Smth` | smoothness | integer |  | 2 | 1 .. 15 (out-of-range values are clamped) | same |
@@ -1673,9 +1673,9 @@ Nested values as recorded (defaults):
 #### Plastic Wrap
 
 - Event: `PlsW` / `plasticWrap`
-- PhotoCraft command: `filter.filterGallery effect "plasticWrap"`
+- Patronus Photo command: `filter.filterGallery effect "plasticWrap"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `HghS` | highlightStrength | integer |  | 15 | 0 .. 20 (out-of-range values are clamped) | same |
 | `Dtl ` | detail | integer |  | 9 | 1 .. 15 (out-of-range values are clamped) | same |
@@ -1684,9 +1684,9 @@ Nested values as recorded (defaults):
 #### Poster Edges
 
 - Event: `PstE` / `posterEdges`
-- PhotoCraft command: `filter.filterGallery effect "posterEdges"`
+- Patronus Photo command: `filter.filterGallery effect "posterEdges"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `EdgT` | edgeThickness | integer |  | 2 | 0 .. 10 (out-of-range values are clamped) | same |
 | `EdgI` | edgeIntensity | integer |  | 1 | 0 .. 10 (out-of-range values are clamped) | same |
@@ -1695,9 +1695,9 @@ Nested values as recorded (defaults):
 #### Reticulation
 
 - Event: `Rtcl` / `reticulation`
-- PhotoCraft command: `filter.filterGallery effect "reticulation"`
+- Patronus Photo command: `filter.filterGallery effect "reticulation"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `Dnst` | density | integer |  | 12 | 0 .. 50 (out-of-range values are clamped) | same |
 | `BlcL` | blackLevel | integer |  | 40 | 0 .. 50 (out-of-range values are clamped) | maps to our `foregroundLevel` (same range and default) |
@@ -1706,9 +1706,9 @@ Nested values as recorded (defaults):
 #### Rough Pastels
 
 - Event: `RghP` / `roughPastels`
-- PhotoCraft command: `filter.filterGallery effect "roughPastels"`
+- Patronus Photo command: `filter.filterGallery effect "roughPastels"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `StrL` | strokeLength | integer |  | 6 | 0 .. 40 (out-of-range values are clamped) | same |
 | `StDt` | strokeDetail | integer |  | 4 | 1 .. 20 (out-of-range values are clamped) | same |
@@ -1721,9 +1721,9 @@ Nested values as recorded (defaults):
 #### Smudge Stick
 
 - Event: `SmdS` / `smudgeStick`
-- PhotoCraft command: `filter.filterGallery effect "smudgeStick"`
+- Patronus Photo command: `filter.filterGallery effect "smudgeStick"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `StrL` | strokeLength | integer |  | 2 | 0 .. 10 (out-of-range values are clamped) | same |
 | `HghA` | highlightArea | integer |  | 0 | 0 .. 20 (out-of-range values are clamped) | same |
@@ -1732,9 +1732,9 @@ Nested values as recorded (defaults):
 #### Spatter
 
 - Event: `Spt ` / `spatter`
-- PhotoCraft command: `filter.filterGallery effect "spatter"`
+- Patronus Photo command: `filter.filterGallery effect "spatter"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `SprR` | sprayRadius | integer |  | 10 | 0 .. 25 (out-of-range values are clamped) | same |
 | `Smth` | smoothness | integer |  | 5 | 1 .. 15 (out-of-range values are clamped) | same |
@@ -1742,9 +1742,9 @@ Nested values as recorded (defaults):
 #### Sponge
 
 - Event: `Spng` / `sponge`
-- PhotoCraft command: `filter.filterGallery effect "sponge"`
+- Patronus Photo command: `filter.filterGallery effect "sponge"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `BrsS` | brushSize | integer |  | 2 | 0 .. 10 (out-of-range values are clamped) | same |
 | `Dfnt` | definition | integer |  | 12 | 0 .. 25 (out-of-range values are clamped) | same |
@@ -1753,9 +1753,9 @@ Nested values as recorded (defaults):
 #### Sprayed Strokes
 
 - Event: `SprS` / `sprayedStrokes`
-- PhotoCraft command: `filter.filterGallery effect "sprayedStrokes"`
+- Patronus Photo command: `filter.filterGallery effect "sprayedStrokes"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `StrL` | strokeLength | integer |  | 12 | 0 .. 20 (out-of-range values are clamped) | same |
 | `SprR` | sprayRadius | integer |  | 7 | 0 .. 25 (out-of-range values are clamped) | same |
@@ -1764,9 +1764,9 @@ Nested values as recorded (defaults):
 #### Stained Glass
 
 - Event: `StnG` / `stainedGlass`
-- PhotoCraft command: `filter.filterGallery effect "stainedGlass"`
+- Patronus Photo command: `filter.filterGallery effect "stainedGlass"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `ClSz` | cellSize | integer |  | 10 | 2 .. 50 (out-of-range values are clamped) | same |
 | `BrdT` | borderThickness | integer |  | 4 | 1 .. 20 (out-of-range values are clamped) | same |
@@ -1775,9 +1775,9 @@ Nested values as recorded (defaults):
 #### Stamp
 
 - Event: `Stmp` / `stamp`
-- PhotoCraft command: `filter.filterGallery effect "stamp"`
+- Patronus Photo command: `filter.filterGallery effect "stamp"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `LgDr` | lightDark | integer |  | 25 | 0 .. 50 (out-of-range values are clamped) | maps to our `lightDarkBalance` (same range and default) |
 | `Smth` | smoothness | integer |  | 5 | 1 .. 50 (out-of-range values are clamped) | same |
@@ -1785,9 +1785,9 @@ Nested values as recorded (defaults):
 #### Sumie
 
 - Event: `Smie` / `sumie`
-- PhotoCraft command: `filter.filterGallery effect "sumiE"`
+- Patronus Photo command: `filter.filterGallery effect "sumiE"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `StrW` | strokeWidth | integer |  | 10 | 3 .. 15 (out-of-range values are clamped) | same |
 | `StrP` | strokePressure | integer |  | 2 | 0 .. 15 (out-of-range values are clamped) | same |
@@ -1796,9 +1796,9 @@ Nested values as recorded (defaults):
 #### Texturizer
 
 - Event: `Txtz` / `texturizer`
-- PhotoCraft command: `filter.filterGallery effect "texturizer"`
+- Patronus Photo command: `filter.filterGallery effect "texturizer"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `TxtT` | textureType | enumerated |  | `TxCa` texTypeCanvas | `TxBr` texTypeBrick, `TxBu` texTypeBurlap, `TxCa` texTypeCanvas, `TxSt` texTypeSandstone |  |
 | `Scln` | scaling | integer |  | 100 | 50 .. 200 (out-of-range values are clamped) | same |
@@ -1809,9 +1809,9 @@ Nested values as recorded (defaults):
 #### Torn Edges
 
 - Event: `TrnE` / `tornEdges`
-- PhotoCraft command: `filter.filterGallery effect "tornEdges"`
+- Patronus Photo command: `filter.filterGallery effect "tornEdges"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `ImgB` | imageBalance | integer |  | 25 | 0 .. 50 (out-of-range values are clamped) | same |
 | `Smth` | smoothness | integer |  | 11 | 1 .. 15 (out-of-range values are clamped) | same |
@@ -1820,9 +1820,9 @@ Nested values as recorded (defaults):
 #### Underpainting
 
 - Event: `Undr` / `underpainting`
-- PhotoCraft command: `filter.filterGallery effect "underpainting"`
+- Patronus Photo command: `filter.filterGallery effect "underpainting"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `BrsS` | brushSize | integer |  | 6 | 0 .. 40 (out-of-range values are clamped) | same |
 | `TxtC` | textureCoverage | integer |  | 16 | 0 .. 40 (out-of-range values are clamped) | maps to our `textureCoverage` (same range and default) |
@@ -1835,9 +1835,9 @@ Nested values as recorded (defaults):
 #### Water Paper
 
 - Event: `WtrP` / `waterPaper`
-- PhotoCraft command: `filter.filterGallery effect "waterPaper"`
+- Patronus Photo command: `filter.filterGallery effect "waterPaper"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `FbrL` | fiberLength | integer |  | 15 | 3 .. 50 (out-of-range values are clamped) | same |
 | `Brgh` | brightness | integer |  | 60 | 0 .. 100 (out-of-range values are clamped) | same |
@@ -1846,9 +1846,9 @@ Nested values as recorded (defaults):
 #### Watercolor
 
 - Event: `Wtrc` / `watercolor`
-- PhotoCraft command: `filter.filterGallery effect "watercolor"`
+- Patronus Photo command: `filter.filterGallery effect "watercolor"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `BrsD` | brushDetail | integer |  | 9 | 1 .. 14 (out-of-range values are clamped) | same |
 | `ShdI` | shadingIntensity | integer |  | 1 | 0 .. 10 (out-of-range values are clamped) | maps to our `shadowIntensity` (same range and default) |
@@ -1857,9 +1857,9 @@ Nested values as recorded (defaults):
 #### Grain
 
 - Event: `Grn ` / `grain`
-- PhotoCraft command: `filter.filterGallery effect "grain"`
+- Patronus Photo command: `filter.filterGallery effect "grain"`
 
-| Key | String ID | Type | Unit | Default | Allowed | PhotoCraft today |
+| Key | String ID | Type | Unit | Default | Allowed | Patronus Photo today |
 |---|---|---|---|---|---|---|
 | `Intn` | intensity | integer |  | 40 | 0 .. 100 (out-of-range values are clamped) | same |
 | `Cntr` | contrast | integer |  | 50 | 0 .. 100 (out-of-range values are clamped) | maps to our `contrast` (same range and default) |
@@ -1867,12 +1867,12 @@ Nested values as recorded (defaults):
 
 ### Group B: The Render filters Clouds, Difference Clouds, Fibers and Lens Flare
 
-All four commands exist in PhotoCraft; only the `.atn` mapping is missing. Lighting Effects is covered with the events that need a recorded step (its lights are only recorded through the dialog).
+All four commands exist in Patronus Photo; only the `.atn` mapping is missing. Lighting Effects is covered with the events that need a recorded step (its lights are only recorded through the dialog).
 
 #### Clouds
 
 - Event: `Clds` / `clouds`
-- PhotoCraft command: `filter.render.clouds`
+- Patronus Photo command: `filter.render.clouds`
 - Uses the current foreground and background colours; the step itself carries no colours.
 
 No parameters: the step carries an empty descriptor.
@@ -1880,7 +1880,7 @@ No parameters: the step carries an empty descriptor.
 #### Difference Clouds
 
 - Event: `DfrC` / `differenceClouds`
-- PhotoCraft command: `filter.render.differenceClouds`
+- Patronus Photo command: `filter.render.differenceClouds`
 - Same as Clouds, blended with Difference.
 
 No parameters: the step carries an empty descriptor.
@@ -1888,7 +1888,7 @@ No parameters: the step carries an empty descriptor.
 #### Fibers
 
 - Event: `Fbrs` (no string ID)
-- PhotoCraft command: `filter.render.fibers`
+- Patronus Photo command: `filter.render.fibers`
 - `randomSeed` makes playback reproduce the recorded result; keep it.
 
 | Key | String ID | Type | Unit | Default | Allowed |
@@ -1900,7 +1900,7 @@ No parameters: the step carries an empty descriptor.
 #### Lens Flare
 
 - Event: `LnsF` / `lensFlare`
-- PhotoCraft command: `filter.render.lensFlare`
+- Patronus Photo command: `filter.render.lensFlare`
 - Lens types: `Zm  ` 50-300 mm Zoom, `Nkn ` 35 mm Prime, `Nkn1` 105 mm Prime, `PnVs` Movie Prime.
 
 | Key | String ID | Type | Unit | Default | Allowed |
@@ -1917,12 +1917,12 @@ Nested values as recorded (defaults):
 
 ### Group C: The Distort filters (Pinch, Polar Coordinates, Shear, Spherize, Twirl, Wave, ZigZag)
 
-The Distort events below map to PhotoCraft's `filter.distort.*` commands for their documented supported forms, including complete Shear curves and the recorded Windows Displace form.
+The Distort events below map to Patronus Photo's `filter.distort.*` commands for their documented supported forms, including complete Shear curves and the recorded Windows Displace form.
 
 #### Pinch
 
 - Event: `Pnch` / `pinch`
-- PhotoCraft command: `filter.distort.pinch`
+- Patronus Photo command: `filter.distort.pinch`
 
 | Key | String ID | Type | Unit | Default | Allowed |
 |---|---|---|---|---|---|
@@ -1931,7 +1931,7 @@ The Distort events below map to PhotoCraft's `filter.distort.*` commands for the
 #### Polar Coordinates
 
 - Event: `Plr ` / `polar`
-- PhotoCraft command: `filter.distort.polarCoordinates`
+- Patronus Photo command: `filter.distort.polarCoordinates`
 
 | Key | String ID | Type | Unit | Default | Allowed |
 |---|---|---|---|---|---|
@@ -1940,7 +1940,7 @@ The Distort events below map to PhotoCraft's `filter.distort.*` commands for the
 #### Shear
 
 - Event: `Shr ` / `shear`
-- PhotoCraft command: `filter.distort.shear`
+- Patronus Photo command: `filter.distort.shear`
 - `shearPoints` is a list of curve points; keep their order and count.
 
 Supported for complete curves: import clamps finite grid coordinates to the measured ranges below,
@@ -1976,7 +1976,7 @@ Nested values as recorded (defaults):
 #### Spherize
 
 - Event: `Sphr` / `spherize`
-- PhotoCraft command: `filter.distort.spherize`
+- Patronus Photo command: `filter.distort.spherize`
 
 | Key | String ID | Type | Unit | Default | Allowed |
 |---|---|---|---|---|---|
@@ -1986,7 +1986,7 @@ Nested values as recorded (defaults):
 #### Twirl
 
 - Event: `Twrl` / `twirl`
-- PhotoCraft command: `filter.distort.twirl`
+- Patronus Photo command: `filter.distort.twirl`
 
 | Key | String ID | Type | Unit | Default | Allowed |
 |---|---|---|---|---|---|
@@ -1995,7 +1995,7 @@ Nested values as recorded (defaults):
 #### Wave
 
 - Event: `Wave` / `wave`
-- PhotoCraft command: `filter.distort.wave`
+- Patronus Photo command: `filter.distort.wave`
 - `randomSeed`: keep it so playback reproduces the recorded result.
 
 | Key | String ID | Type | Unit | Default | Allowed |
@@ -2014,7 +2014,7 @@ Nested values as recorded (defaults):
 #### ZigZag
 
 - Event: `ZgZg` / `zigZag`
-- PhotoCraft command: `filter.distort.zigZag`
+- Patronus Photo command: `filter.distort.zigZag`
 
 | Key | String ID | Type | Unit | Default | Allowed |
 |---|---|---|---|---|---|
@@ -2032,12 +2032,12 @@ Alias paths, other enum values, and malformed or incomplete descriptors stay as 
 
 ### Group D: The Stylize and Pixelate filters
 
-All commands exist in PhotoCraft (`filter.stylize.*`, `filter.pixelate.*`); only the `.atn` mapping is missing.
+All commands exist in Patronus Photo (`filter.stylize.*`, `filter.pixelate.*`); only the `.atn` mapping is missing.
 
 #### Extrude
 
 - Event: `Extr` / `extrude`
-- PhotoCraft command: `filter.stylize.extrude`
+- Patronus Photo command: `filter.stylize.extrude`
 
 | Key | String ID | Type | Unit | Default | Allowed |
 |---|---|---|---|---|---|
@@ -2051,21 +2051,21 @@ All commands exist in PhotoCraft (`filter.stylize.*`, `filter.pixelate.*`); only
 #### Find Edges
 
 - Event: `FndE` / `findEdges`
-- PhotoCraft command: `filter.stylize.findEdges`
+- Patronus Photo command: `filter.stylize.findEdges`
 
 No parameters: the step carries an empty descriptor.
 
 #### Solarize
 
 - Event: `Slrz` / `solarize`
-- PhotoCraft command: `filter.stylize.solarize`
+- Patronus Photo command: `filter.stylize.solarize`
 
 No parameters: the step carries an empty descriptor.
 
 #### Trace Contour
 
 - Event: `TrcC` / `traceContour`
-- PhotoCraft command: `filter.stylize.traceContour`
+- Patronus Photo command: `filter.stylize.traceContour`
 
 | Key | String ID | Type | Unit | Default | Allowed |
 |---|---|---|---|---|---|
@@ -2075,7 +2075,7 @@ No parameters: the step carries an empty descriptor.
 #### Wind
 
 - Event: `Wnd ` / `wind`
-- PhotoCraft command: `filter.stylize.wind`
+- Patronus Photo command: `filter.stylize.wind`
 
 | Key | String ID | Type | Unit | Default | Allowed |
 |---|---|---|---|---|---|
@@ -2085,7 +2085,7 @@ No parameters: the step carries an empty descriptor.
 #### Tiles
 
 - Event: `Tls ` / `tiles`
-- PhotoCraft command: `filter.stylize.tiles`
+- Patronus Photo command: `filter.stylize.tiles`
 
 | Key | String ID | Type | Unit | Default | Allowed |
 |---|---|---|---|---|---|
@@ -2096,7 +2096,7 @@ No parameters: the step carries an empty descriptor.
 #### Color Halftone
 
 - Event: `ClrH` / `colorHalftone`
-- PhotoCraft command: `filter.pixelate.colorHalftone`
+- Patronus Photo command: `filter.pixelate.colorHalftone`
 
 | Key | String ID | Type | Unit | Default | Allowed |
 |---|---|---|---|---|---|
@@ -2109,21 +2109,21 @@ No parameters: the step carries an empty descriptor.
 #### Facet
 
 - Event: `Fct ` / `facet`
-- PhotoCraft command: `filter.pixelate.facet`
+- Patronus Photo command: `filter.pixelate.facet`
 
 No parameters: the step carries an empty descriptor.
 
 #### Fragment
 
 - Event: `Frgm` / `fragment`
-- PhotoCraft command: `filter.pixelate.fragment`
+- Patronus Photo command: `filter.pixelate.fragment`
 
 No parameters: the step carries an empty descriptor.
 
 #### Mezzotint
 
 - Event: `Mztn` / `mezzotint`
-- PhotoCraft command: `filter.pixelate.mezzotint`
+- Patronus Photo command: `filter.pixelate.mezzotint`
 
 | Key | String ID | Type | Unit | Default | Allowed |
 |---|---|---|---|---|---|
@@ -2132,7 +2132,7 @@ No parameters: the step carries an empty descriptor.
 #### Mosaic
 
 - Event: `Msc ` / `mosaic`
-- PhotoCraft command: `filter.pixelate.mosaic`
+- Patronus Photo command: `filter.pixelate.mosaic`
 
 | Key | String ID | Type | Unit | Default | Allowed |
 |---|---|---|---|---|---|
@@ -2141,7 +2141,7 @@ No parameters: the step carries an empty descriptor.
 #### Pointillize
 
 - Event: `Pntl` / `pointillize`
-- PhotoCraft command: `filter.pixelate.pointillize`
+- Patronus Photo command: `filter.pixelate.pointillize`
 
 | Key | String ID | Type | Unit | Default | Allowed |
 |---|---|---|---|---|---|
@@ -2149,12 +2149,12 @@ No parameters: the step carries an empty descriptor.
 
 ### Group E: Video, Other and matting filters and the direct Gradient Map / Replace Color adjustments
 
-All commands exist in PhotoCraft. The two direct adjustments, classic Gradient Map and Lab-range Replace Color, are supported above; the remaining events below still need their `.atn` mappings. These direct adjustments are separate from adjustment layers.
+All commands exist in Patronus Photo. The two direct adjustments, classic Gradient Map and Lab-range Replace Color, are supported above; the remaining events below still need their `.atn` mappings. These direct adjustments are separate from adjustment layers.
 
 #### De-Interlace
 
 - Event: `Dntr` / `deInterlace`
-- PhotoCraft command: `filter.video.deInterlace`
+- Patronus Photo command: `filter.video.deInterlace`
 
 | Key | String ID | Type | Unit | Default | Allowed |
 |---|---|---|---|---|---|
@@ -2164,14 +2164,14 @@ All commands exist in PhotoCraft. The two direct adjustments, classic Gradient M
 #### NTSC Colors
 
 - Event: `NTSC` (no string ID)
-- PhotoCraft command: `filter.video.ntscColors`
+- Patronus Photo command: `filter.video.ntscColors`
 
 No parameters: the step carries an empty descriptor.
 
 #### HSB/HSL
 
 - Event: `HsbP` (no string ID)
-- PhotoCraft command: `filter.other.hsbHsl`
+- Patronus Photo command: `filter.other.hsbHsl`
 
 | Key | String ID | Type | Unit | Default | Allowed |
 |---|---|---|---|---|---|
@@ -2181,21 +2181,21 @@ No parameters: the step carries an empty descriptor.
 #### Remove Black Matte
 
 - Event: `RmvB` / `removeBlackMatte`
-- PhotoCraft command: `layer.matting.removeBlackMatte`
+- Patronus Photo command: `layer.matting.removeBlackMatte`
 
 No parameters: the step carries an empty descriptor.
 
 #### Remove White Matte
 
 - Event: `RmvW` / `removeWhiteMatte`
-- PhotoCraft command: `layer.matting.removeWhiteMatte`
+- Patronus Photo command: `layer.matting.removeWhiteMatte`
 
 No parameters: the step carries an empty descriptor.
 
 #### Average
 
 - Event: `Avrg` (no string ID)
-- PhotoCraft command: `filter.blur.average`
+- Patronus Photo command: `filter.blur.average`
 - Measured with example values in a prepared document: the Value column shows what was sent and recorded, not a factory default (a step always carries the values the user set).
 
 No parameters: the step carries an empty descriptor.
@@ -2203,7 +2203,7 @@ No parameters: the step carries an empty descriptor.
 #### Custom
 
 - Event: `Cstm` / `custom`
-- PhotoCraft command: `filter.other.custom`
+- Patronus Photo command: `filter.other.custom`
 - Measured with example values in a prepared document: the Value column shows what was sent and recorded, not a factory default (a step always carries the values the user set).
 
 | Key | String ID | Type | Unit | Example value | Allowed |
@@ -2219,7 +2219,7 @@ Steps recorded in an ordinary editing session. The values below were measured in
 #### Add to Selection (rectangle)
 
 - Event: `AddT` / `addTo`
-- PhotoCraft command: `select.rect {"mode":"add"}`
+- Patronus Photo command: `select.rect {"mode":"add"}`
 - Shift-drag with the Rectangular Marquee.
 - Measured with example values in a prepared document: the Value column shows what was sent and recorded, not a factory default (a step always carries the values the user set).
 
@@ -2239,7 +2239,7 @@ Nested values as recorded (example values):
 #### Add to Selection (ellipse)
 
 - Event: `AddT` / `addTo`
-- PhotoCraft command: `select.rect {"mode":"add","ellipse":true}`
+- Patronus Photo command: `select.rect {"mode":"add","ellipse":true}`
 - Same event with an `Elps` target and anti-aliasing.
 - Measured with example values in a prepared document: the Value column shows what was sent and recorded, not a factory default (a step always carries the values the user set).
 
@@ -2260,7 +2260,7 @@ Nested values as recorded (example values):
 #### Subtract from Selection
 
 - Event: `SbtF` / `subtractFrom`
-- PhotoCraft command: `select.rect {"mode":"subtract"}`
+- Patronus Photo command: `select.rect {"mode":"subtract"}`
 - Measured with example values in a prepared document: the Value column shows what was sent and recorded, not a factory default (a step always carries the values the user set).
 
 | Key | String ID | Type | Unit | Example value | Allowed |
@@ -2279,7 +2279,7 @@ Nested values as recorded (example values):
 #### Intersect with Selection
 
 - Event: `IntW` / `interfaceWhite`
-- PhotoCraft command: `select.rect {"mode":"intersect"}`
+- Patronus Photo command: `select.rect {"mode":"intersect"}`
 - Measured with example values in a prepared document: the Value column shows what was sent and recorded, not a factory default (a step always carries the values the user set).
 
 | Key | String ID | Type | Unit | Example value | Allowed |
@@ -2298,7 +2298,7 @@ Nested values as recorded (example values):
 #### Paste Into
 
 - Event: `PstI` / `pasteInto`
-- PhotoCraft command: `edit.pasteSpecial.pasteInto`
+- Patronus Photo command: `edit.pasteSpecial.pasteInto`
 - Measured with example values in a prepared document: the Value column shows what was sent and recorded, not a factory default (a step always carries the values the user set).
 
 | Key | String ID | Type | Unit | Example value | Allowed |
@@ -2309,7 +2309,7 @@ Nested values as recorded (example values):
 #### Paste Outside
 
 - Event: `PstO` / `pasteOutside`
-- PhotoCraft command: `edit.pasteSpecial.pasteOutside`
+- Patronus Photo command: `edit.pasteSpecial.pasteOutside`
 - Measured with example values in a prepared document: the Value column shows what was sent and recorded, not a factory default (a step always carries the values the user set).
 
 | Key | String ID | Type | Unit | Example value | Allowed |
@@ -2320,7 +2320,7 @@ Nested values as recorded (example values):
 #### Fade
 
 - Event: `Fade` / `fade`
-- PhotoCraft command: `edit.fade`
+- Patronus Photo command: `edit.fade`
 - Recorded right after the step it fades.
 - Measured with example values in a prepared document: the Value column shows what was sent and recorded, not a factory default (a step always carries the values the user set).
 
@@ -2332,7 +2332,7 @@ Nested values as recorded (example values):
 #### Link Layers
 
 - Event: `` / `linkSelectedLayers`
-- PhotoCraft command: `layer.linkLayers`
+- Patronus Photo command: `layer.linkLayers`
 - Measured with example values in a prepared document: the Value column shows what was sent and recorded, not a factory default (a step always carries the values the user set).
 
 | Key | String ID | Type | Unit | Example value | Allowed |
@@ -2342,7 +2342,7 @@ Nested values as recorded (example values):
 #### Distribute
 
 - Event: `Dstr` / `distort`
-- PhotoCraft command: `layer.distribute.leftEdges (one command per edge)`
+- Patronus Photo command: `layer.distribute.leftEdges (one command per edge)`
 - `Usng` selects the edge or centre; one enum value per Distribute menu item.
 - Measured with example values in a prepared document: the Value column shows what was sent and recorded, not a factory default (a step always carries the values the user set).
 
@@ -2354,7 +2354,7 @@ Nested values as recorded (example values):
 #### Remove Layer Mask (older files)
 
 - Event: `RmvL` / `removeLayerMask`
-- PhotoCraft command: `layer.layerMask.delete`
+- Patronus Photo command: `layer.layerMask.delete`
 - The reference application asks "Apply mask before deleting?" when this step plays without the apply choice; see the table for the key it records.
 - Measured with example values in a prepared document: the Value column shows what was sent and recorded, not a factory default (a step always carries the values the user set).
 
@@ -2363,14 +2363,14 @@ No parameters: the step carries an empty descriptor.
 #### Define Pattern
 
 - Event: `DfnP` / `definePattern`
-- PhotoCraft command: `edit.definePattern`
+- Patronus Photo command: `edit.definePattern`
 
 No parameters: the step carries an empty descriptor.
 
 #### Merge Layers (older files)
 
 - Event: `MrgL` (no string ID)
-- PhotoCraft command: `layer.mergeLayers`
+- Patronus Photo command: `layer.mergeLayers`
 
 No parameters: the step carries an empty descriptor.
 
@@ -2381,7 +2381,7 @@ Channel and colour steps. Trap was measured in a CMYK document (it only exists t
 #### Split Channels
 
 - Event: `SplC` / `splitChannels`
-- PhotoCraft command: `channel.split`
+- Patronus Photo command: `channel.split`
 - Measured with example values in a prepared document: the Value column shows what was sent and recorded, not a factory default (a step always carries the values the user set).
 
 | Key | String ID | Type | Unit | Example value | Allowed |
@@ -2398,7 +2398,7 @@ Nested values as recorded (example values):
 #### Merge Spot Channel
 
 - Event: `MSpt` / `mergeSpotChannel`
-- PhotoCraft command: `channel.mergeSpot`
+- Patronus Photo command: `channel.mergeSpot`
 - Measured with example values in a prepared document: the Value column shows what was sent and recorded, not a factory default (a step always carries the values the user set).
 
 No parameters: the step carries an empty descriptor.
@@ -2406,7 +2406,7 @@ No parameters: the step carries an empty descriptor.
 #### Trap
 
 - Event: `Trap` / `trap`
-- PhotoCraft command: `image.trap`
+- Patronus Photo command: `image.trap`
 - Measured with example values in a prepared document: the Value column shows what was sent and recorded, not a factory default (a step always carries the values the user set).
 
 | Key | String ID | Type | Unit | Example value | Allowed |
@@ -2416,7 +2416,7 @@ No parameters: the step carries an empty descriptor.
 #### Match Color
 
 - Event: `` / `matchColor`
-- PhotoCraft command: `image.adjustments.matchColor`
+- Patronus Photo command: `image.adjustments.matchColor`
 
 | Key | String ID | Type | Unit | Default | Allowed |
 |---|---|---|---|---|---|
@@ -2432,21 +2432,21 @@ These events only have a string ID (no 4-character code). Steps recorded in newe
 #### Select > Focus Area
 
 - Event: `` / `focusMask`
-- PhotoCraft command: `select.focusArea`
+- Patronus Photo command: `select.focusArea`
 
 No parameters: the step carries an empty descriptor.
 
 #### Remove Background (quick action)
 
 - Event: `` / `removeBackground`
-- PhotoCraft command: `layer.removeBackground`
+- Patronus Photo command: `layer.removeBackground`
 
 No parameters: the step carries an empty descriptor.
 
 #### Select > Sky
 
 - Event: `` / `selectSky`
-- PhotoCraft command: `select.sky`
+- Patronus Photo command: `select.sky`
 
 | Key | String ID | Type | Unit | Default | Allowed |
 |---|---|---|---|---|---|
@@ -2455,7 +2455,7 @@ No parameters: the step carries an empty descriptor.
 #### Filter > Stylize > Oil Paint
 
 - Event: `` / `oilPaint`
-- PhotoCraft command: `filter.stylize.oilPaint`
+- Patronus Photo command: `filter.stylize.oilPaint`
 
 | Key | String ID | Type | Unit | Default | Allowed |
 |---|---|---|---|---|---|
@@ -2470,7 +2470,7 @@ No parameters: the step carries an empty descriptor.
 #### Filter > Sharpen > Smart Sharpen
 
 - Event: `` / `smartSharpen`
-- PhotoCraft command: `filter.sharpen.smartSharpen`
+- Patronus Photo command: `filter.sharpen.smartSharpen`
 
 | Key | String ID | Type | Unit | Default | Allowed |
 |---|---|---|---|---|---|
@@ -2489,11 +2489,11 @@ their tables will be added once a recorded step was read.
 
 | Event | Why |
 |---|---|
-| Generative Fill (`syntheticFill`) | AI feature: in PhotoCraft this goes through the shared AI layer; until then such steps stay kept steps. |
+| Generative Fill (`syntheticFill`) | AI feature: in Patronus Photo this goes through the shared AI layer; until then such steps stay kept steps. |
 
 ### Recorded under another event
 
-Some older events are no longer what the application records; PhotoCraft already maps the current one:
+Some older events are no longer what the application records; Patronus Photo already maps the current one:
 Clear (recorded as Delete), Rasterize Type (`rasterizeLayer`), Convert to Profile (`convertToProfile`),
 Copy and Paste Layer Style (`copyEffects`, `pasteEffects`), Align (`align`), Rename Layer (Set of the
 layer's name), Deselect (Set of the selection to None). Steps recorded with Backlight, Fill Flash, Color

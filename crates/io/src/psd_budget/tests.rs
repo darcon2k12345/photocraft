@@ -60,7 +60,7 @@ fn large_off_canvas_layer_is_rejected_without_decoding_its_tiny_data() {
         assert!(matches!(crate::import("huge.psd", &bytes), Err(IoError::PsdApprovalRequired { .. } | IoError::PsdImportBudget { .. })));
         let source = craft_psd::Source::new(bytes);
         assert!(matches!(
-            crate::import_source_for_open_with("huge.psd", source, &photocraft_raster::Interrupt::NONE),
+            crate::import_source_for_open_with("huge.psd", source, &patronusphoto_raster::Interrupt::NONE),
             Err(IoError::PsdApprovalRequired { .. } | IoError::PsdImportBudget { .. })
         ));
     });
@@ -115,8 +115,8 @@ fn accepted_off_canvas_pixels_and_depths_are_preserved() {
             assert_eq!(doc.depth, crate::pixels::sample_for_depth(depth));
             let bytes = file.to_bytes().unwrap();
             let opened = crate::import("small.psd", &bytes).unwrap().document;
-            let rect = photocraft_geom::Rect::new(-8, -8, 32, 24);
-            assert_eq!(photocraft_compose::render(&opened, rect), photocraft_compose::render(&doc, rect));
+            let rect = patronusphoto_geom::Rect::new(-8, -8, 32, 24);
+            assert_eq!(patronusphoto_compose::render(&opened, rect), patronusphoto_compose::render(&doc, rect));
         }
     }
 }
@@ -198,7 +198,7 @@ fn an_unknown_color_mode_pays_for_the_layers_it_imports_as_rgb() {
     let opts = crate::ImportOptions { psd_max_pixel_bytes: required - 1, ..Default::default() };
     assert!(matches!(crate::import_with_options("mode5.psd", &bytes, &opts), Err(IoError::PsdImportBudget { .. })));
     let source = craft_psd::Source::new(bytes);
-    let refused = crate::import_source_with_limit("mode5.psd", source, &photocraft_raster::Interrupt::NONE, required - 1);
+    let refused = crate::import_source_with_limit("mode5.psd", source, &patronusphoto_raster::Interrupt::NONE, required - 1);
     assert!(matches!(refused, Err(IoError::PsdImportBudget { .. })), "{:?}", refused.map(|(r, _)| r.warnings));
 }
 
@@ -426,7 +426,7 @@ fn test_memory_scope_propagates_the_estimate_charge_to_a_worker() {
 #[test]
 fn nested_imports_consume_from_shared_allowance_and_do_not_reset_parent() {
     let gb = 1u64 << 30;
-    let ctl = photocraft_raster::Interrupt::NONE;
+    let ctl = patronusphoto_raster::Interrupt::NONE;
     let _guard = crate::psd_gate::acquire_decode_admission(&ctl).unwrap();
     // Simulate top-level attempt authorized total of 5 GB with 2 GB remaining allowance
     crate::psd_gate::set_active_attempt_budget(2 * gb);
@@ -446,7 +446,7 @@ fn nested_imports_consume_from_shared_allowance_and_do_not_reset_parent() {
 #[test]
 fn nested_tiff_layer_import_consumes_composite_and_estimate_without_resetting_parent() {
     let gb = 1u64 << 30;
-    let ctl = photocraft_raster::Interrupt::NONE;
+    let ctl = patronusphoto_raster::Interrupt::NONE;
     let _guard = crate::psd_gate::acquire_decode_admission(&ctl).unwrap();
     crate::psd_gate::set_active_attempt_budget(3 * gb);
 
@@ -519,7 +519,7 @@ fn memory_drop_while_waiting_for_the_gate_refuses_before_decoding() {
     let bytes = file.to_bytes().unwrap();
 
     // Hold the gate so the worker stops after its first admission check.
-    let _guard = crate::psd_gate::acquire_decode_admission(&photocraft_raster::Interrupt::NONE).expect("active decode");
+    let _guard = crate::psd_gate::acquire_decode_admission(&patronusphoto_raster::Interrupt::NONE).expect("active decode");
 
     let available = Arc::new(AtomicU64::new(32 * gb));
     let prechecked = Arc::new(AtomicBool::new(false));

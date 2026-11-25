@@ -3,7 +3,7 @@
 //! Finder does. A click (without dragging) commits that object (`select.object` with `"point"`;
 //! ⇧ adds, ⌥ subtracts, ⇧⌥ intersects); dragging keeps the rectangle mode.
 //!
-//! The lookup is `photocraft_engine::smartselect_cmds::find_object`, run after the pointer has
+//! The lookup is `patronusphoto_engine::smartselect_cmds::find_object`, run after the pointer has
 //! been still for [`DEBOUNCE`] seconds on a worker thread (inline on the web), so the UI never
 //! waits for it. The job also reduces the object to the framework's `HoverMask` and asks for a
 //! repaint when it sends. Results go into the session's `object_finder` cache, which the click
@@ -23,11 +23,11 @@ use std::sync::Arc;
 use craft::behavior::kurbo::{Point, Rect};
 use craft::ui::canvas_controls::{HoverMask, HoverOutline, HoverShape};
 use craft::ui::contract::Show as _;
-use photocraft_algo::selection::Region;
-use photocraft_doc::{DocId, Document, LayerId};
-use photocraft_engine::smartselect_cmds::{empty_sampled_area, find_object, sampled_target};
+use patronusphoto_algo::selection::Region;
+use patronusphoto_doc::{DocId, Document, LayerId};
+use patronusphoto_engine::smartselect_cmds::{empty_sampled_area, find_object, sampled_target};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::tools::in_gesture;
 use crate::state::{ObjectFinderMode, Tool};
 
@@ -44,7 +44,7 @@ struct Job {
     rx: std::sync::mpsc::Receiver<Found>,
 }
 
-/// The hover state of the active document (`PhotocraftApp::object_finder`).
+/// The hover state of the active document (`PatronusPhotoApp::object_finder`).
 pub(crate) struct Finder {
     doc: DocId,
     revision: u64,
@@ -81,7 +81,7 @@ fn empty_layer_hint() -> &'static str {
 }
 
 /// Whether the preview applies now (`pressed`: a pointer button is down).
-fn active(app: &PhotocraftApp, pressed: bool) -> bool {
+fn active(app: &PatronusPhotoApp, pressed: bool) -> bool {
     app.ui.tool == Tool::ObjectSelection
         && app.ui.tool_options.object_finder
         && !pressed
@@ -100,7 +100,7 @@ fn mask_of(r: &Region) -> HoverMask {
 /// at time `now` (seconds). The state it keeps is the finder's own: a second pass in the same
 /// frame finds the finished job already taken and the same object shown, so it changes nothing.
 /// While the rest has not yet lasted [`DEBOUNCE`] it asks `ctx` for one repaint at its end.
-pub(crate) fn update(app: &mut PhotocraftApp, at: Option<[f64; 2]>, pressed: bool, now: f64, ctx: &egui::Context) -> Update {
+pub(crate) fn update(app: &mut PatronusPhotoApp, at: Option<[f64; 2]>, pressed: bool, now: f64, ctx: &egui::Context) -> Update {
     let at = at.filter(|p| p[0].is_finite() && p[1].is_finite());
     let (Some(at), true) = (at, active(app, pressed)) else {
         idle(app);
@@ -118,7 +118,7 @@ pub(crate) fn update(app: &mut PhotocraftApp, at: Option<[f64; 2]>, pressed: boo
         match app.object_finder.as_mut() {
             // Manual Refresh: a selection-only change keeps the analysis, a pixel edit makes it stale.
             Some(f) if manual && f.doc == doc => {
-                if f.target == target && f.all_layers == all_layers && photocraft_engine::layer_multi_cmds::same_pixels(&f.basis, &doc_arc) {
+                if f.target == target && f.all_layers == all_layers && patronusphoto_engine::layer_multi_cmds::same_pixels(&f.basis, &doc_arc) {
                     f.revision = revision;
                 } else {
                     return Update::default();
@@ -131,7 +131,7 @@ pub(crate) fn update(app: &mut PhotocraftApp, at: Option<[f64; 2]>, pressed: boo
         }
     }
     // The click reports an empty sampled layer; the hover says so too instead of showing nothing.
-    let here = photocraft_geom::Rect::from_xywh(px[0], px[1], 1, 1);
+    let here = patronusphoto_geom::Rect::from_xywh(px[0], px[1], 1, 1);
     if doc_arc.bounds().contains(px[0], px[1]) && empty_sampled_area(&doc_arc, layer, all_layers, here).is_some() {
         return Update {
             shown: None,
@@ -150,7 +150,7 @@ pub(crate) fn update(app: &mut PhotocraftApp, at: Option<[f64; 2]>, pressed: boo
         match job.rx.try_recv() {
             Ok(found) => {
                 if let Some((r, mask)) = found {
-                    if photocraft_engine::layer_multi_cmds::same_pixels(&job.doc, &doc_arc) {
+                    if patronusphoto_engine::layer_multi_cmds::same_pixels(&job.doc, &doc_arc) {
                         app.session.object_finder.insert(&doc_arc, target, Arc::clone(&r));
                         f.mask = Some((r, mask));
                     }
@@ -221,7 +221,7 @@ fn spawn(doc: Arc<Document>, layer: Option<LayerId>, all_layers: bool, px: [i32;
 
 /// Drops the preview. Auto Refresh forgets the finder; Manual Refresh keeps the analysed
 /// pixels so the pointer leaving or a tool switch doesn't lose them.
-fn idle(app: &mut PhotocraftApp) {
+fn idle(app: &mut PatronusPhotoApp) {
     if app.ui.tool_options.object_finder_mode == ObjectFinderMode::Manual
         && let Some(f) = app.object_finder.as_mut()
     {
@@ -235,19 +235,19 @@ fn idle(app: &mut PhotocraftApp) {
 }
 
 /// Clears the preview (a tool switch or an edit made elsewhere is caught by [`update`] too).
-pub(crate) fn clear(app: &mut PhotocraftApp) {
+pub(crate) fn clear(app: &mut PatronusPhotoApp) {
     idle(app);
 }
 
 /// The options bar's Refresh button: the next [`update`] analyses the current pixels. Under
 /// Manual Refresh this is the only way a finder starts.
-pub(crate) fn refresh(app: &mut PhotocraftApp) {
+pub(crate) fn refresh(app: &mut PatronusPhotoApp) {
     app.object_finder = start(app);
 }
 
 /// A new finder for the active document's current pixels, sampled layer and Sample All Layers.
 /// Its pointer position is unset, so the first hover starts the debounce.
-fn start(app: &PhotocraftApp) -> Option<Finder> {
+fn start(app: &PatronusPhotoApp) -> Option<Finder> {
     let st = app.session.active()?;
     let all_layers = app.ui.tool_options.sample_all.object_selection;
     Some(Finder {
@@ -267,7 +267,7 @@ fn start(app: &PhotocraftApp) -> Option<Finder> {
 
 /// Updates the preview for this frame and shows the highlight. `at` is the pointer in document
 /// units on the active document's canvas, `None` anywhere else.
-pub(crate) fn show(ui: &mut egui::Ui, app: &mut PhotocraftApp, at: Option<Point>) {
+pub(crate) fn show(ui: &mut egui::Ui, app: &mut PatronusPhotoApp, at: Option<Point>) {
     let ctx = ui.ctx().clone();
     let (pressed, now) = ctx.input(|i| (i.pointer.any_down(), i.time));
     let up = update(app, at.map(|p| [p.x, p.y]), pressed, now, &ctx);
@@ -294,18 +294,18 @@ mod tests {
     use super::*;
 
     /// A 200 × 160 document: a red disc (centre 100, 80, radius 45) on blue.
-    pub(crate) fn disc_app() -> Box<PhotocraftApp> {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    pub(crate) fn disc_app() -> Box<PatronusPhotoApp> {
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.session.execute("file.new", json!({"width": 200, "height": 160})).unwrap();
         app.session
             .edit("paint", |doc, a| {
                 let s = doc.layer_mut(a.unwrap()).unwrap().surface_mut().unwrap();
-                s.fill_rect(photocraft_geom::Rect::new(0, 0, 200, 160), &[0.2, 0.4, 0.8, 1.0]);
+                s.fill_rect(patronusphoto_geom::Rect::new(0, 0, 200, 160), &[0.2, 0.4, 0.8, 1.0]);
                 for y in 0..160 {
                     for x in 0..200 {
                         let (dx, dy) = (x as f32 + 0.5 - 100.0, y as f32 + 0.5 - 80.0);
                         if dx * dx + dy * dy <= 45.0 * 45.0 {
-                            s.fill_rect(photocraft_geom::Rect::new(x, y, x + 1, y + 1), &[0.9, 0.2, 0.1, 1.0]);
+                            s.fill_rect(patronusphoto_geom::Rect::new(x, y, x + 1, y + 1), &[0.9, 0.2, 0.1, 1.0]);
                         }
                     }
                 }
@@ -317,7 +317,7 @@ mod tests {
     }
 
     /// Hovers at `at` until the lookup settles (time advances past the debounce).
-    pub(crate) fn hover(app: &mut PhotocraftApp, at: [f64; 2]) -> Update {
+    pub(crate) fn hover(app: &mut PatronusPhotoApp, at: [f64; 2]) -> Update {
         let ctx = app.ctx().clone();
         let mut t = 100.0;
         loop {

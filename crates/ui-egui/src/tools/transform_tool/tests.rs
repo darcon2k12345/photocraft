@@ -13,13 +13,13 @@ use crate::state::{FreeTransform, SessionWarp};
 
 // ---- Helpers ----
 
-type Harness = egui_kittest::Harness<'static, Box<PhotocraftApp>>;
+type Harness = egui_kittest::Harness<'static, Box<PatronusPhotoApp>>;
 
 /// An app inside a window, run frame by frame as the desktop app is.
-fn harness(app: Box<PhotocraftApp>, size: egui::Vec2) -> Harness {
+fn harness(app: Box<PatronusPhotoApp>, size: egui::Vec2) -> Harness {
     // The harness runs on the app's own context, so what the app set up on it (the runtime, the command catalog) is there.
     egui_kittest::Harness::builder().with_context(app.ctx().clone()).with_size(size).with_max_steps(64).with_step_dt(1.0 / 60.0).build_eframe(move |cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
         app
     })
 }
@@ -30,7 +30,7 @@ fn corners(r: [f64; 4]) -> [[f64; 2]; 4] {
 }
 
 /// The open Free Transform.
-fn open(app: &PhotocraftApp) -> &FreeTransform {
+fn open(app: &PatronusPhotoApp) -> &FreeTransform {
     app.ui.transform.as_ref().expect("a Free Transform is open")
 }
 
@@ -46,50 +46,50 @@ fn rect_of(t: &FreeTransform) -> [f64; 4] {
 }
 
 /// Puts the box on `quad`, keeping its reference point, as one `Set` edit of the session.
-fn set_quad(app: &mut PhotocraftApp, quad: [[f64; 2]; 4]) {
+fn set_quad(app: &mut PatronusPhotoApp, quad: [[f64; 2]; 4]) {
     app.ui.transform.as_mut().unwrap().edit_box(|b| *b = BoxState::new(quad.map(|[x, y]| Point::new(x, y)), b.pivot));
 }
 
 /// Moves the box and its reference point by (`dx`, `dy`).
-fn move_box(app: &mut PhotocraftApp, dx: f64, dy: f64) {
+fn move_box(app: &mut PatronusPhotoApp, dx: f64, dy: f64) {
     app.ui.transform.as_mut().unwrap().edit_box(|b| *b = b.moved(Vec2::new(dx, dy)));
 }
 
 /// Scales the box along its own axes about its reference point.
-fn scale_box(app: &mut PhotocraftApp, kx: f64, ky: f64) {
+fn scale_box(app: &mut PatronusPhotoApp, kx: f64, ky: f64) {
     app.ui.transform.as_mut().unwrap().edit_box(|b| *b = b.scaled_about_pivot(kx, ky));
 }
 
 /// Turns the box by `radians` about its reference point.
-fn turn_box(app: &mut PhotocraftApp, radians: f64) {
+fn turn_box(app: &mut PatronusPhotoApp, radians: f64) {
     app.ui.transform.as_mut().unwrap().edit_box(|b| *b = b.turned_about_pivot(radians));
 }
 
 /// Puts `warp` on the session, as Warp mode holds it (on type when the layer is type).
-fn set_warp(app: &mut PhotocraftApp, warp: Warp) {
+fn set_warp(app: &mut PatronusPhotoApp, warp: Warp) {
     let (on_type, now) = (warps_type(app), app.nudge_bundle.now);
     let _ = app.ui.transform.as_mut().unwrap().session.apply(TransformEdit::Warp(SessionWarp::new(warp, on_type)), now);
 }
 
 /// The warp of the open Warp mode.
-fn session_warp(app: &PhotocraftApp) -> &SessionWarp {
+fn session_warp(app: &PatronusPhotoApp) -> &SessionWarp {
     open(app).session.warp().expect("Warp mode")
 }
 
 /// The Warp mode's mesh.
-fn warp_mesh(app: &PhotocraftApp) -> WarpMesh {
+fn warp_mesh(app: &PatronusPhotoApp) -> WarpMesh {
     session_warp(app).mesh.clone()
 }
 
 /// Ends a run of edits as its own undo step of the session.
-fn settle(app: &mut PhotocraftApp) {
+fn settle(app: &mut PatronusPhotoApp) {
     let now = app.nudge_bundle.now;
     app.ui.transform.as_mut().unwrap().session.settle(now, false);
 }
 
 /// One box gesture, `Begin`, an `Update` per state and `Commit` of the last, applied the way the box
 /// reports a drag (`id` names the gesture).
-fn box_events(app: &mut PhotocraftApp, id: u64, states: &[BoxState]) {
+fn box_events(app: &mut PatronusPhotoApp, id: u64, states: &[BoxState]) {
     let now = 0.0;
     let session = &mut app.ui.transform.as_mut().unwrap().session;
     let (gesture, before) = (GestureId::new(id), *session.state());
@@ -102,7 +102,7 @@ fn box_events(app: &mut PhotocraftApp, id: u64, states: &[BoxState]) {
 }
 
 /// One warp-grid gesture that ends on `to`, handed to the warp driver.
-fn pull_mesh(app: &mut PhotocraftApp, id: u64, to: WarpMesh) {
+fn pull_mesh(app: &mut PatronusPhotoApp, id: u64, to: WarpMesh) {
     let (gesture, before) = (GestureId::new(id), warp_mesh(app));
     let mut events = EditEvents::new();
     events.push(EditEvent::begin(gesture, Mixed::Same(before.clone()), "Warp".into(), None));
@@ -112,12 +112,12 @@ fn pull_mesh(app: &mut PhotocraftApp, id: u64, to: WarpMesh) {
 }
 
 /// The cylinder's values as the warp holds them.
-fn cylinder_of(app: &PhotocraftApp) -> [f64; 7] {
+fn cylinder_of(app: &PatronusPhotoApp) -> [f64; 7] {
     cylinder_values(&session_warp(app).warp).expect("a cylinder warp").to_array()
 }
 
 /// One cylinder gesture that ends on `to`, handed to the cylinder driver.
-fn drag_cylinder(app: &mut PhotocraftApp, id: u64, to: [f64; 7]) {
+fn drag_cylinder(app: &mut PatronusPhotoApp, id: u64, to: [f64; 7]) {
     let (gesture, before, after) = (GestureId::new(id), CylinderValues::from_array(cylinder_of(app)), CylinderValues::from_array(to));
     let mut events = EditEvents::new();
     events.push(EditEvent::begin(gesture, Mixed::Same(before), "Cylinder".into(), None));
@@ -130,7 +130,7 @@ fn drag_cylinder(app: &mut PhotocraftApp, id: u64, to: [f64; 7]) {
 
 #[test]
 fn editing_the_contents_of_a_dropped_file_keeps_the_layer() {
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
 
     app.session.execute("layer.smartObjects.convertToSmartObject", json!({})).unwrap();
     app.sync_views();
@@ -162,7 +162,7 @@ fn editing_the_contents_of_a_dropped_file_keeps_the_layer() {
 #[test]
 fn skip_transform_when_placing_leaves_the_place_without_a_box() {
     for skip in [false, true] {
-        let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+        let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
         app.session.execute("prefs.set", json!({"path": "general.skipTransformWhenPlacing", "value": skip})).unwrap();
         app.session.execute("layer.smartObjects.convertToSmartObject", json!({})).unwrap();
         app.session.execute("layer.duplicate", json!({"inPlace": true})).unwrap();
@@ -176,7 +176,7 @@ fn skip_transform_when_placing_leaves_the_place_without_a_box() {
 }
 
 /// Polls the app's background jobs until they have all landed.
-fn land_jobs(app: &mut PhotocraftApp) {
+fn land_jobs(app: &mut PatronusPhotoApp) {
     let ctx = app.ctx().clone();
     for _ in 0..2000 {
         crate::jobs_ui::tick(app, &ctx);
@@ -191,15 +191,15 @@ fn land_jobs(app: &mut PhotocraftApp) {
 /// A smart object placed the way a dropped file is (the last step made it), in Free Transform
 /// and moved 8 px right, with commits running in the background as in the desktop app:
 /// (app, the placed layer, its frame before the move, history steps before the place).
-fn moved_place() -> (Box<PhotocraftApp>, LayerId, photocraft_geom::Rect, usize) {
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+fn moved_place() -> (Box<PatronusPhotoApp>, LayerId, patronusphoto_geom::Rect, usize) {
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
     app.session.execute("layer.smartObjects.convertToSmartObject", json!({})).unwrap();
     let steps = app.session.active().unwrap().history.past_len();
     app.session.execute("layer.duplicate", json!({"inPlace": true})).unwrap();
     app.sync_views();
     let st = app.session.active().unwrap();
     let placed = st.active_layer.unwrap();
-    let frame = photocraft_engine::transform_cmds::transform_frame(&st.doc, st.doc.layer(placed).unwrap());
+    let frame = patronusphoto_engine::transform_cmds::transform_frame(&st.doc, st.doc.layer(placed).unwrap());
     let app_ctx = app.ctx().clone();
     begin_placed(&mut app, &app_ctx).unwrap();
     move_box(&mut app, 8.0, 0.0);
@@ -207,9 +207,9 @@ fn moved_place() -> (Box<PhotocraftApp>, LayerId, photocraft_geom::Rect, usize) 
     (app, placed, frame, steps)
 }
 
-fn frame_of(app: &PhotocraftApp, layer: LayerId) -> Option<photocraft_geom::Rect> {
+fn frame_of(app: &PatronusPhotoApp, layer: LayerId) -> Option<patronusphoto_geom::Rect> {
     let st = app.session.active()?;
-    Some(photocraft_engine::transform_cmds::transform_frame(&st.doc, st.doc.layer(layer)?))
+    Some(patronusphoto_engine::transform_cmds::transform_frame(&st.doc, st.doc.layer(layer)?))
 }
 
 /// #5665: picking another tool or selecting another layer while a dropped file is in Free
@@ -233,7 +233,7 @@ fn another_tool_or_layer_applies_a_transform_committed_in_the_background() {
         assert_eq!(frame_of(&app, placed), Some(frame.translate(8, 0)), "the dropped file stays, moved (by layer: {by_layer})");
         let st = app.session.active().unwrap();
         assert_eq!(st.history.past_len(), steps + 1, "the place and its move are one step");
-        assert_eq!(st.history.undo_label(), Some(photocraft_engine::file_cmds::PLACE_EMBEDDED));
+        assert_eq!(st.history.undo_label(), Some(patronusphoto_engine::file_cmds::PLACE_EMBEDDED));
     }
 }
 
@@ -288,7 +288,7 @@ fn only_one_click_waits_for_the_commit() {
 /// app: Free Transform on a layer, move it, then click another layer's row in the Layers panel.
 #[test]
 fn clicking_another_layer_row_applies_the_transform() {
-    let app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+    let app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
     let layer = app.session.active().unwrap().active_layer.unwrap();
     let mut h = harness(app, egui::vec2(1400.0, 900.0));
     h.run_steps(4);
@@ -321,13 +321,13 @@ fn clicking_another_layer_row_applies_the_transform() {
 
 #[test]
 fn begin_and_commit_through_the_engine() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 64, "height": 64})).unwrap();
     app.sync_views();
     app.session.execute("layer.new.layer", json!({})).unwrap();
     app.session
         .edit("paint", |doc, a| {
-            doc.layer_mut(a.unwrap()).unwrap().surface_mut().unwrap().fill_rect(photocraft_geom::Rect::new(8, 8, 24, 24), &[1.0, 0.0, 0.0, 1.0]);
+            doc.layer_mut(a.unwrap()).unwrap().surface_mut().unwrap().fill_rect(patronusphoto_geom::Rect::new(8, 8, 24, 24), &[1.0, 0.0, 0.0, 1.0]);
             Ok(())
         })
         .unwrap();
@@ -347,7 +347,7 @@ fn begin_and_commit_through_the_engine() {
 /// tool then ends it.
 #[test]
 fn a_refused_commit_keeps_the_box_open() {
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
     let ctx = app.ctx().clone();
     let (revision, steps) = (app.session.active().unwrap().revision, app.session.active().unwrap().history.past_len());
     begin(&mut app, &ctx).unwrap();
@@ -370,7 +370,7 @@ fn image_processor_document_sources_wait_for_the_transform() {
     for source in ["current", "open"] {
         for through_dialog in [false, true] {
             for apply in [false, true] {
-                let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+                let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
                 let ctx = app.ctx().clone();
                 let output = tempfile::tempdir().unwrap();
                 begin(&mut app, &ctx).unwrap();
@@ -417,7 +417,7 @@ fn image_processor_document_sources_wait_for_the_transform() {
 #[test]
 fn image_processor_folder_source_keeps_working_during_a_transform() {
     for source in [None, Some("folder")] {
-        let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+        let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
         let ctx = app.ctx().clone();
         let input = tempfile::tempdir().unwrap();
         let output = tempfile::tempdir().unwrap();
@@ -439,7 +439,7 @@ fn image_processor_folder_source_keeps_working_during_a_transform() {
 /// All open documents includes a transform in another tab; Current only reads its own tab.
 #[test]
 fn image_processor_checks_the_transform_document_for_each_source() {
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"name": "Other", "width": 16, "height": 16})).unwrap();
     assert!(app.session.set_active(0));
@@ -457,7 +457,7 @@ fn image_processor_checks_the_transform_document_for_each_source() {
 /// #6737: Save for Web exports the committed document, so it is off while a box is pending.
 #[test]
 fn save_for_web_is_off_under_a_pending_transform() {
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
     let ctx = app.ctx().clone();
     assert!(crate::menus::is_enabled(&app, SAVE_FOR_WEB), "enabled with no box");
     crate::menus::invoke(&mut app, &ctx, "edit.freeTransform", json!({})).unwrap();
@@ -476,16 +476,16 @@ fn save_for_web_is_off_under_a_pending_transform() {
 /// copies the old place, after a commit the new one.
 #[test]
 fn copy_css_is_off_under_a_pending_transform() {
-    let id = photocraft_engine::layer_css_cmds::ID;
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+    let id = patronusphoto_engine::layer_css_cmds::ID;
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
     let ctx = app.ctx().clone();
-    let copy_css = |app: &mut PhotocraftApp| {
+    let copy_css = |app: &mut PatronusPhotoApp| {
         let mut result = None;
         let mut out = ctx.run_ui(egui::RawInput::default(), |ui| result = Some(crate::menus::invoke(app, ui.ctx(), id, json!({}))));
         out.textures_delta.clear();
         (result.unwrap(), out.platform_output.commands)
     };
-    let moved = |app: &mut PhotocraftApp| {
+    let moved = |app: &mut PatronusPhotoApp| {
         let app_ctx = app.ctx().clone();
         crate::menus::invoke(app, &app_ctx, "edit.freeTransform", json!({})).unwrap();
         move_box(app, 20.0, 0.0);
@@ -519,8 +519,8 @@ fn copy_css_is_off_under_a_pending_transform() {
 /// pixels only.
 #[test]
 fn free_transform_a_copy() {
-    let bounds = |app: &PhotocraftApp, i: usize| app.session.active().unwrap().doc.layers[i].surface().unwrap().content_bounds();
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+    let bounds = |app: &PatronusPhotoApp, i: usize| app.session.active().unwrap().doc.layers[i].surface().unwrap().content_bounds();
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
     let ctx = app.ctx().clone();
     let (layers, steps) = (app.session.active().unwrap().doc.layers.len(), app.session.active().unwrap().history.past_len());
     crate::menus::invoke(&mut app, &ctx, "edit.freeTransformCopy", json!({})).unwrap();
@@ -537,8 +537,8 @@ fn free_transform_a_copy() {
     commit(&mut app);
     let st = app.session.active().unwrap();
     assert_eq!((st.doc.layers.len(), st.history.past_len()), (layers + 1, steps + 1));
-    assert_eq!(bounds(&app, layers - 1), photocraft_geom::Rect::new(8, 8, 24, 24), "the original stays");
-    assert_eq!(bounds(&app, layers), photocraft_geom::Rect::new(28, 8, 44, 24), "the copy moved");
+    assert_eq!(bounds(&app, layers - 1), patronusphoto_geom::Rect::new(8, 8, 24, 24), "the original stays");
+    assert_eq!(bounds(&app, layers), patronusphoto_geom::Rect::new(28, 8, 44, 24), "the copy moved");
     app.session.undo();
     assert_eq!(app.session.active().unwrap().doc.layers.len(), layers, "one undo removes copy and move");
     // With a selection: Layer via Copy, so only the selected pixels are copied.
@@ -554,12 +554,12 @@ fn free_transform_a_copy() {
 /// back the copy and nothing before it.
 #[test]
 fn untouched_warp_of_a_cylinder_copy_keeps_its_own_step() {
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
     let ctx = app.ctx().clone();
     app.run("layer.smartObjects.convertToSmartObject", json!({})).unwrap();
     app.run("layer.smartObjects.warp", json!({"style": "cylinder", "values": [8, 24, 24, 8, 0.3, 0.3, 0.5], "rect": [8, 8, 24, 24]})).unwrap();
-    let warp = |app: &PhotocraftApp, i: usize| match &app.session.active().unwrap().doc.layers[i].content {
-        photocraft_doc::LayerContent::Smart(sm) => sm.warp.as_ref().map(|w| w.style),
+    let warp = |app: &PatronusPhotoApp, i: usize| match &app.session.active().unwrap().doc.layers[i].content {
+        patronusphoto_doc::LayerContent::Smart(sm) => sm.warp.as_ref().map(|w| w.style),
         _ => None,
     };
     let (layers, steps) = (app.session.active().unwrap().doc.layers.len(), app.session.active().unwrap().history.past_len());
@@ -584,7 +584,7 @@ fn untouched_warp_of_a_cylinder_copy_keeps_its_own_step() {
 fn cancelling_a_copy_after_switching_documents_preserves_the_active_document() {
     for reorder in [false, true] {
         for finish in [cancel, end_if_left, commit] {
-            let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+            let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
             let original = app.session.active().unwrap().doc.clone();
             let steps = app.session.active().unwrap().history.past_len();
             let app_ctx = app.ctx().clone();
@@ -618,7 +618,7 @@ fn cancelling_a_copy_after_switching_documents_preserves_the_active_document() {
 
 #[test]
 fn cancelling_a_copy_after_its_document_closes_does_not_undo_another_document() {
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
     let app_ctx = app.ctx().clone();
     begin_copy(&mut app, &app_ctx).unwrap();
     app.run("file.new", json!({"width": 64, "height": 64})).unwrap();
@@ -635,7 +635,7 @@ fn cancelling_a_copy_after_its_document_closes_does_not_undo_another_document() 
 
 #[test]
 fn cancelling_an_already_undone_copy_preserves_history_and_redo() {
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
     let app_ctx = app.ctx().clone();
     begin_copy(&mut app, &app_ctx).unwrap();
     assert!(app.session.undo());
@@ -651,7 +651,7 @@ fn cancelling_an_already_undone_copy_preserves_history_and_redo() {
 
 #[test]
 fn cancelling_a_copy_does_not_undo_a_later_edit() {
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
     let app_ctx = app.ctx().clone();
     begin_copy(&mut app, &app_ctx).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
@@ -669,7 +669,7 @@ fn cancelling_a_copy_does_not_undo_a_later_edit() {
 /// and to the others show while the box is open, and survive the commit.
 #[test]
 fn edits_during_a_transform_show_in_the_preview() {
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
     app.ui.tool = Tool::Move;
     let bg = app.session.active().unwrap().doc.layers[0].id;
     let mut h = harness(app, egui::vec2(1200.0, 800.0));
@@ -691,7 +691,7 @@ fn edits_during_a_transform_show_in_the_preview() {
     assert!(!pv.doc.layer(bg).unwrap().visible, "the document under the box follows");
     let moving = pv.doc.layer(LayerId(layer)).unwrap();
     assert!(!moving.visible, "the moving layer stays out of the document under the box");
-    assert_eq!(moving.blend, photocraft_color::BlendMode::Multiply);
+    assert_eq!(moving.blend, patronusphoto_color::BlendMode::Multiply);
 
     h.state_mut().run("layer.setProps", json!({"layer": layer, "visible": false})).unwrap();
     h.run_steps(2);
@@ -701,15 +701,15 @@ fn edits_during_a_transform_show_in_the_preview() {
     commit(h.state_mut());
     let st = h.state().session.active().unwrap();
     let l = st.doc.layer(LayerId(layer)).unwrap();
-    assert_eq!((l.opacity, l.fill_opacity, l.blend), (0.5, 0.6, photocraft_color::BlendMode::Multiply));
-    assert_eq!(l.surface().unwrap().content_bounds(), photocraft_geom::Rect::new(28, 8, 44, 24));
+    assert_eq!((l.opacity, l.fill_opacity, l.blend), (0.5, 0.6, patronusphoto_color::BlendMode::Multiply));
+    assert_eq!(l.surface().unwrap().content_bounds(), patronusphoto_geom::Rect::new(28, 8, 44, 24));
 }
 
 /// #1384 with a selection: the pixels it leaves behind stay in the rebuilt preview without
 /// the lifted ones, and take the layer's new properties.
 #[test]
 fn edits_during_a_selection_transform_keep_the_lifted_pixels_out() {
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
     app.ui.tool = Tool::Move;
     app.session.execute("select.rect", json!({"x": 8, "y": 8, "width": 8, "height": 16})).unwrap();
     let mut h = harness(app, egui::vec2(1200.0, 800.0));
@@ -719,7 +719,7 @@ fn edits_during_a_selection_transform_keep_the_lifted_pixels_out() {
     h.run_steps(2);
     let layer = LayerId(open(h.state()).layer);
     // Alpha in the preview's copy of the layer: in the lifted half (x 8..16) and the rest (16..24).
-    let left = |app: &PhotocraftApp| {
+    let left = |app: &PatronusPhotoApp| {
         let s = app.transform_preview.as_ref().unwrap().doc.layer(layer).unwrap().surface().unwrap().clone();
         (s.sample_channel(10, 12, 3), s.sample_channel(20, 12, 3))
     };
@@ -738,13 +738,13 @@ fn edits_during_a_selection_transform_keep_the_lifted_pixels_out() {
 /// and the next transform starts on the newly selected layer.
 #[test]
 fn selecting_another_layer_applies_the_transform_and_the_next_one_follows() {
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
     let ctx = app.ctx().clone();
     let first = app.session.active().unwrap().active_layer.unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     app.session
         .edit("paint", |doc, a| {
-            doc.layer_mut(a.unwrap()).unwrap().surface_mut().unwrap().fill_rect(photocraft_geom::Rect::new(40, 40, 56, 60), &[0.0, 0.0, 1.0, 1.0]);
+            doc.layer_mut(a.unwrap()).unwrap().surface_mut().unwrap().fill_rect(patronusphoto_geom::Rect::new(40, 40, 56, 60), &[0.0, 0.0, 1.0, 1.0]);
             Ok(())
         })
         .unwrap();
@@ -761,8 +761,8 @@ fn selecting_another_layer_applies_the_transform_and_the_next_one_follows() {
     assert_eq!(st.active_layer, Some(second));
     assert_eq!(st.history.past_len(), steps + 1, "applied as one step");
     let bounds = |id: LayerId| st.doc.layer(id).unwrap().surface().unwrap().content_bounds();
-    assert_eq!(bounds(first), photocraft_geom::Rect::new(28, 8, 44, 24), "applied to the layer it was on");
-    assert_eq!(bounds(second), photocraft_geom::Rect::new(40, 40, 56, 60), "the new layer is untouched");
+    assert_eq!(bounds(first), patronusphoto_geom::Rect::new(28, 8, 44, 24), "applied to the layer it was on");
+    assert_eq!(bounds(second), patronusphoto_geom::Rect::new(40, 40, 56, 60), "the new layer is untouched");
     crate::menus::invoke(&mut app, &ctx, "edit.freeTransform", json!({})).unwrap();
     let t = open(&app);
     assert_eq!((t.layer, rect_of(t)), (second.0, [40.0, 40.0, 56.0, 60.0]), "the next box is on the selected layer");
@@ -770,7 +770,7 @@ fn selecting_another_layer_applies_the_transform_and_the_next_one_follows() {
 
 /// The bounds, in document units, of the selection's outline mapped through the open box, as the
 /// ants are drawn over it; `None` while the canvas draws the selection where it is.
-fn ants_bounds(app: &PhotocraftApp) -> Option<Rect> {
+fn ants_bounds(app: &PatronusPhotoApp) -> Option<Rect> {
     let st = app.session.active().unwrap();
     let sel = st.doc.selection.as_ref().unwrap();
     // `PointMap` has no public way to apply it, so the outline goes through the box's own homography, which
@@ -803,7 +803,7 @@ fn rects_match(a: Rect, b: Rect) -> bool {
 #[test]
 fn the_box_is_the_selection_and_the_ants_follow_it() {
     let ctx = gpu_ctx();
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
     app.run("select.rect", json!({"x": 4, "y": 4, "width": 30, "height": 26})).unwrap();
     assert_eq!(ants_bounds(&app), None, "no box open: the canvas draws them where they are");
     begin(&mut app, &ctx).unwrap();
@@ -811,7 +811,7 @@ fn the_box_is_the_selection_and_the_ants_follow_it() {
     assert_eq!(quad_of(open(&app)), rest, "the box is the selection, not the 16 px square in it");
     assert!(rects_match(ants_bounds(&app).unwrap(), box_bounds(&rest)), "untouched, the ants are where they were");
 
-    let on_the_box = |app: &PhotocraftApp, what: &str| {
+    let on_the_box = |app: &PatronusPhotoApp, what: &str| {
         let (ants, boxed) = (ants_bounds(app).unwrap(), box_bounds(&quad_of(open(app))));
         assert!(rects_match(ants, boxed), "{what}: ants {ants:?}, box {boxed:?}");
     };
@@ -830,14 +830,14 @@ fn the_box_is_the_selection_and_the_ants_follow_it() {
     commit(&mut app);
     assert!(app.ui.transform.is_none());
     let st = app.session.active().unwrap();
-    assert_eq!(st.doc.selection.as_ref().unwrap().content_bounds(), photocraft_geom::Rect::new(24, 14, 54, 40));
-    assert_eq!(st.doc.layer(st.active_layer.unwrap()).unwrap().surface().unwrap().content_bounds(), photocraft_geom::Rect::new(28, 18, 44, 34));
+    assert_eq!(st.doc.selection.as_ref().unwrap().content_bounds(), patronusphoto_geom::Rect::new(24, 14, 54, 40));
+    assert_eq!(st.doc.layer(st.active_layer.unwrap()).unwrap().surface().unwrap().content_bounds(), patronusphoto_geom::Rect::new(28, 18, 44, 34));
 }
 
 /// Transform Selection moves the selection outline, not a layer: selecting a layer keeps it open.
 #[test]
 fn selecting_another_layer_keeps_a_transform_selection_open() {
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
     let ctx = app.ctx().clone();
     let first = app.session.active().unwrap().active_layer.unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
@@ -852,7 +852,7 @@ fn selecting_another_layer_keeps_a_transform_selection_open() {
 /// the parallelogram, and the commit lands there.
 #[test]
 fn distort_mode_edge_drag_commits_what_it_shows_in_one_step() {
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
     let ctx = app.ctx().clone();
     begin(&mut app, &ctx).unwrap();
     let steps = app.session.active().unwrap().history.past_len();
@@ -890,7 +890,7 @@ fn right_click_menu_offers_warp_for_a_path() {
     let warp_row = |t: &FreeTransform| {
         t.session.menu(&words).iter().find(|e| matches!(e.value(), Some(TransformChoice::Warp))).map(|e| e.is_enabled()).expect("the menu has a Warp row")
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     app.session.execute("file.new", json!({"width": 64, "height": 64})).unwrap();
     app.sync_views();
@@ -912,8 +912,8 @@ fn right_click_menu_offers_warp_for_a_path() {
 
 // ---- Linked layers ----
 
-fn app_with_square(size: u32, fill: photocraft_geom::Rect) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app_with_square(size: u32, fill: patronusphoto_geom::Rect) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": size, "height": size})).unwrap();
     app.sync_views();
     app.session.execute("layer.new.layer", json!({})).unwrap();
@@ -928,10 +928,10 @@ fn app_with_square(size: u32, fill: photocraft_geom::Rect) -> Box<PhotocraftApp>
 
 /// `app_with_square` (A, red over 8..24) plus B (x 40..56, y 8..24) and C (x 8..24, y 40..56)
 /// over it. A and B are linked; C isn't. Only A is selected, and active: (app, A, B, C).
-fn linked_layers_app() -> (Box<PhotocraftApp>, LayerId, LayerId, LayerId) {
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+fn linked_layers_app() -> (Box<PatronusPhotoApp>, LayerId, LayerId, LayerId) {
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
     let a = app.session.active().unwrap().active_layer.unwrap();
-    let add = |app: &mut PhotocraftApp, fill: photocraft_geom::Rect| {
+    let add = |app: &mut PatronusPhotoApp, fill: patronusphoto_geom::Rect| {
         app.session.execute("layer.new.layer", json!({})).unwrap();
         app.session
             .edit("paint", |doc, l| {
@@ -941,8 +941,8 @@ fn linked_layers_app() -> (Box<PhotocraftApp>, LayerId, LayerId, LayerId) {
             .unwrap();
         app.session.active().unwrap().active_layer.unwrap()
     };
-    let b = add(&mut app, photocraft_geom::Rect::new(40, 8, 56, 24));
-    let c = add(&mut app, photocraft_geom::Rect::new(8, 40, 24, 56));
+    let b = add(&mut app, patronusphoto_geom::Rect::new(40, 8, 56, 24));
+    let c = add(&mut app, patronusphoto_geom::Rect::new(8, 40, 24, 56));
     app.session.execute("layer.select", json!({"layer": a.0})).unwrap();
     app.session.execute("layer.select", json!({"layer": b.0, "mode": "add"})).unwrap();
     assert_eq!(app.session.execute("layer.linkLayers", json!({})).unwrap()["linked"], true);
@@ -993,9 +993,9 @@ fn free_transform_of_a_linked_layer_boxes_its_link_group() {
     assert!(app.ui.transform.is_none(), "{}", app.ui.status);
     let st = app.session.active().unwrap();
     let bounds = |id: LayerId| st.doc.layer(id).unwrap().surface().unwrap().content_bounds();
-    assert_eq!(bounds(a), photocraft_geom::Rect::new(12, 8, 28, 24));
-    assert_eq!(bounds(b), photocraft_geom::Rect::new(44, 8, 60, 24));
-    assert_eq!(bounds(c), photocraft_geom::Rect::new(8, 40, 24, 56), "an unlinked layer stays put");
+    assert_eq!(bounds(a), patronusphoto_geom::Rect::new(12, 8, 28, 24));
+    assert_eq!(bounds(b), patronusphoto_geom::Rect::new(44, 8, 60, 24));
+    assert_eq!(bounds(c), patronusphoto_geom::Rect::new(8, 40, 24, 56), "an unlinked layer stays put");
 }
 
 /// #11217: a layer without linked layers still opens the one-layer box.
@@ -1014,7 +1014,7 @@ fn free_transform_of_an_unlinked_layer_boxes_that_layer_alone() {
 /// the Background into the box, as the selection doesn't either (#6501).
 #[test]
 fn free_transform_of_a_layer_linked_to_the_background_boxes_that_layer_alone() {
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
     let a = app.session.active().unwrap().active_layer.unwrap();
     let bg = app.session.active().unwrap().doc.layers[0].id;
     app.session.execute("layer.select", json!({"layer": bg.0})).unwrap();
@@ -1049,12 +1049,12 @@ fn a_locked_linked_layer_refuses_the_box_over_its_link_group() {
 /// their own and drawn over the moving pixels.
 #[test]
 fn free_transform_keeps_the_layer_under_the_layers_over_it() {
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
     let red = app.session.active().unwrap().active_layer.unwrap();
     app.session.execute("layer.new.layer", json!({})).unwrap();
     app.session
         .edit("paint", |doc, a| {
-            doc.layer_mut(a.unwrap()).unwrap().surface_mut().unwrap().fill_rect(photocraft_geom::Rect::new(16, 16, 40, 40), &[0.0, 0.0, 1.0, 1.0]);
+            doc.layer_mut(a.unwrap()).unwrap().surface_mut().unwrap().fill_rect(patronusphoto_geom::Rect::new(16, 16, 40, 40), &[0.0, 0.0, 1.0, 1.0]);
             Ok(())
         })
         .unwrap();
@@ -1085,14 +1085,14 @@ fn free_transform_keeps_the_layer_under_the_layers_over_it() {
 /// adjusts (a PSD usually has one): the plain layers over the moving one still cover it.
 #[test]
 fn plain_layers_still_cover_the_moving_one_under_a_blend_or_adjustment_layer() {
-    use photocraft_color::BlendMode;
+    use patronusphoto_color::BlendMode;
     for adjustment in [false, true] {
-        let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+        let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
         let red = app.session.active().unwrap().active_layer.unwrap();
         app.session.execute("layer.new.layer", json!({})).unwrap();
         app.session
             .edit("paint", |doc, a| {
-                doc.layer_mut(a.unwrap()).unwrap().surface_mut().unwrap().fill_rect(photocraft_geom::Rect::new(16, 16, 40, 40), &[0.0, 0.0, 1.0, 1.0]);
+                doc.layer_mut(a.unwrap()).unwrap().surface_mut().unwrap().fill_rect(patronusphoto_geom::Rect::new(16, 16, 40, 40), &[0.0, 0.0, 1.0, 1.0]);
                 Ok(())
             })
             .unwrap();
@@ -1131,9 +1131,9 @@ fn plain_layers_still_cover_the_moving_one_under_a_blend_or_adjustment_layer() {
 
 #[test]
 fn plain_layers_from_the_top_cover_the_moving_one() {
-    use photocraft_color::BlendMode;
-    use photocraft_doc::Layer;
-    let px = |name: &str| Layer::raster(name, photocraft_color::PixelFormat::RGBA8);
+    use patronusphoto_color::BlendMode;
+    use patronusphoto_doc::Layer;
+    let px = |name: &str| Layer::raster(name, patronusphoto_color::PixelFormat::RGBA8);
     let covers = |layers: &[Layer], id: LayerId| {
         let mut out = Vec::new();
         covering(layers, id, &mut out, &mut Vec::new());
@@ -1183,8 +1183,8 @@ fn plain_layers_from_the_top_cover_the_moving_one() {
 /// under the box; one with nothing covering under it has nothing to adjust.
 #[test]
 fn adjustments_over_covering_layers_are_applied_to_them() {
-    use photocraft_doc::{Adjustment, Layer};
-    let px = |name: &str| Layer::raster(name, photocraft_color::PixelFormat::RGBA8);
+    use patronusphoto_doc::{Adjustment, Layer};
+    let px = |name: &str| Layer::raster(name, patronusphoto_color::PixelFormat::RGBA8);
     let adjustment = |name: &str| Layer::new(name, LayerContent::Adjustment(Adjustment::Invert));
     let find = |layers: &[Layer], id: LayerId| {
         let (mut out, mut applied) = (Vec::new(), Vec::new());
@@ -1218,36 +1218,36 @@ fn gpu_ctx() -> egui::Context {
 
 #[test]
 fn nested_group_preview_excludes_its_siblings() {
-    use photocraft_color::PixelFormat;
-    use photocraft_doc::Layer;
+    use patronusphoto_color::PixelFormat;
+    use patronusphoto_doc::Layer;
 
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
     let st = app.session.active_mut().unwrap();
     let doc = Arc::make_mut(st.doc_mut());
     let target_pixels = doc.layers.pop().unwrap();
     let mut sibling = Layer::raster("sibling", PixelFormat::RGBA8);
-    sibling.surface_mut().unwrap().fill_rect(photocraft_geom::Rect::new(12, 12, 20, 20), &[0.0, 0.0, 1.0, 1.0]);
+    sibling.surface_mut().unwrap().fill_rect(patronusphoto_geom::Rect::new(12, 12, 20, 20), &[0.0, 0.0, 1.0, 1.0]);
     let target = Layer::group("target", vec![target_pixels]);
     let target_id = target.id;
     doc.layers.push(Layer::group("parent", vec![target, sibling]));
 
-    let (image, _) = preview_image(&st.doc, target_id, None, photocraft_geom::Rect::new(8, 8, 24, 24), 4096, false);
+    let (image, _) = preview_image(&st.doc, target_id, None, patronusphoto_geom::Rect::new(8, 8, 24, 24), 4096, false);
     assert_eq!(image.pixels[8 * image.size[0] + 8], Color32::from_rgb(255, 0, 0), "a sibling in the parent group must not be baked into the moving texture");
 }
 
-fn artboard_preview_app(background: photocraft_doc::ArtboardBackground) -> (Box<PhotocraftApp>, LayerId, LayerId) {
-    use photocraft_doc::{Artboard, Layer};
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+fn artboard_preview_app(background: patronusphoto_doc::ArtboardBackground) -> (Box<PatronusPhotoApp>, LayerId, LayerId) {
+    use patronusphoto_doc::{Artboard, Layer};
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
     let st = app.session.active_mut().unwrap();
     let doc = Arc::make_mut(st.doc_mut());
     let red = doc.layers.pop().unwrap();
     let red_id = red.id;
-    let mut blue = Layer::raster("covering blue", photocraft_color::PixelFormat::RGBA8);
-    blue.surface_mut().unwrap().fill_rect(photocraft_geom::Rect::new(16, 16, 40, 40), &[0.0, 0.0, 1.0, 1.0]);
+    let mut blue = Layer::raster("covering blue", patronusphoto_color::PixelFormat::RGBA8);
+    blue.surface_mut().unwrap().fill_rect(patronusphoto_geom::Rect::new(16, 16, 40, 40), &[0.0, 0.0, 1.0, 1.0]);
     let mut board = Layer::group("board", vec![red, blue]);
     let board_id = board.id;
     if let LayerContent::Group(g) = &mut board.content {
-        let mut ab = Artboard::new(photocraft_geom::Rect::new(0, 0, 64, 64));
+        let mut ab = Artboard::new(patronusphoto_geom::Rect::new(0, 0, 64, 64));
         ab.background = background;
         g.artboard = Some(ab);
     }
@@ -1257,7 +1257,7 @@ fn artboard_preview_app(background: photocraft_doc::ArtboardBackground) -> (Box<
 
 #[test]
 fn artboard_transform_overlay_does_not_cover_moving_pixels_with_the_board_background() {
-    use photocraft_doc::ArtboardBackground;
+    use patronusphoto_doc::ArtboardBackground;
     for background in [ArtboardBackground::White, ArtboardBackground::Black] {
         let (mut app, board_id, red_id) = artboard_preview_app(background);
         let original = app.session.active().unwrap().doc.clone();
@@ -1270,7 +1270,7 @@ fn artboard_transform_overlay_does_not_cover_moving_pixels_with_the_board_backgr
         let at = |x: usize, y: usize| image.pixels[y * image.size[0] + x];
         assert_eq!(at(12, 12), Color32::TRANSPARENT, "the board background belongs under the moving layer");
         assert_eq!(at(20, 20), Color32::BLUE, "covering siblings must still cover the moving layer");
-        let under = photocraft_compose::render(&pv.doc, photocraft_geom::Rect::new(0, 0, 64, 64));
+        let under = patronusphoto_compose::render(&pv.doc, patronusphoto_geom::Rect::new(0, 0, 64, 64));
         assert_eq!(under.px[12 * 64 + 12], background.rgba().unwrap(), "the board background remains on the base canvas");
         assert!(!pv.doc.layer(red_id).unwrap().visible);
         cancel(&mut app);
@@ -1282,14 +1282,14 @@ fn artboard_transform_overlay_does_not_cover_moving_pixels_with_the_board_backgr
 
 #[test]
 fn artboard_solo_preview_keeps_holes_transparent_and_the_board_clip() {
-    use photocraft_doc::ArtboardBackground;
+    use patronusphoto_doc::ArtboardBackground;
     let (app, board_id, red_id) = artboard_preview_app(ArtboardBackground::White);
     let original = &app.session.active().unwrap().doc;
     let mut solo = (**original).clone();
-    solo.layer_mut(red_id).unwrap().surface_mut().unwrap().fill_rect(photocraft_geom::Rect::new(-2, -2, 1, 1), &[1.0, 0.0, 0.0, 1.0]);
+    solo.layer_mut(red_id).unwrap().surface_mut().unwrap().fill_rect(patronusphoto_geom::Rect::new(-2, -2, 1, 1), &[1.0, 0.0, 0.0, 1.0]);
     solo_layer(&mut solo.layers, red_id);
-    let b = photocraft_geom::Rect::new(-2, -2, 66, 66);
-    let rendered = photocraft_compose::render(&solo, b);
+    let b = patronusphoto_geom::Rect::new(-2, -2, 66, 66);
+    let rendered = patronusphoto_compose::render(&solo, b);
     let at = |x: i32, y: i32| rendered.px[(y + 2) as usize * 68 + (x + 2) as usize];
     assert_eq!(at(12, 12), [1.0, 0.0, 0.0, 1.0]);
     assert_eq!(at(30, 30), [0.0; 4], "neither the board's white nor another child enters the moving texture");
@@ -1300,23 +1300,23 @@ fn artboard_solo_preview_keeps_holes_transparent_and_the_board_clip() {
 
 #[test]
 fn artboard_moved_as_a_whole_keeps_its_background() {
-    use photocraft_doc::ArtboardBackground;
+    use patronusphoto_doc::ArtboardBackground;
     let (app, board_id, _) = artboard_preview_app(ArtboardBackground::Black);
     let mut doc = (*app.session.active().unwrap().doc).clone();
     solo_layer(&mut doc.layers, board_id);
-    let rendered = photocraft_compose::render(&doc, photocraft_geom::Rect::new(0, 0, 64, 64));
+    let rendered = patronusphoto_compose::render(&doc, patronusphoto_geom::Rect::new(0, 0, 64, 64));
     assert_eq!(rendered.px[50 * 64 + 50], [0.0, 0.0, 0.0, 1.0]);
     show_only(&mut doc.layers, &[board_id]);
-    let rendered = photocraft_compose::render(&doc, photocraft_geom::Rect::new(0, 0, 64, 64));
+    let rendered = patronusphoto_compose::render(&doc, patronusphoto_geom::Rect::new(0, 0, 64, 64));
     assert_eq!(rendered.px[50 * 64 + 50], [0.0, 0.0, 0.0, 1.0], "a whole covering artboard keeps its own background");
 }
 
 #[test]
 fn nested_group_preview_detaches_every_clipped_ancestor() {
-    use photocraft_color::PixelFormat;
-    use photocraft_doc::Layer;
+    use patronusphoto_color::PixelFormat;
+    use patronusphoto_doc::Layer;
 
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
     let st = app.session.active_mut().unwrap();
     let doc = Arc::make_mut(st.doc_mut());
     let target_pixels = doc.layers.pop().unwrap();
@@ -1325,44 +1325,44 @@ fn nested_group_preview_detaches_every_clipped_ancestor() {
     let mut middle = Layer::group("middle clipped ancestor", vec![target]);
     middle.clipped = true;
     let mut inner_base = Layer::raster("hidden inner clipping base", PixelFormat::RGBA8);
-    inner_base.surface_mut().unwrap().fill_rect(photocraft_geom::Rect::new(0, 0, 64, 64), &[0.0, 0.0, 1.0, 1.0]);
+    inner_base.surface_mut().unwrap().fill_rect(patronusphoto_geom::Rect::new(0, 0, 64, 64), &[0.0, 0.0, 1.0, 1.0]);
     let mut outer = Layer::group("outer clipped ancestor", vec![inner_base, middle]);
     outer.clipped = true;
     doc.layers.push(outer);
 
-    let (image, _) = preview_image(&st.doc, target_id, None, photocraft_geom::Rect::new(8, 8, 24, 24), 4096, false);
+    let (image, _) = preview_image(&st.doc, target_id, None, patronusphoto_geom::Rect::new(8, 8, 24, 24), 4096, false);
     assert_eq!(image.pixels[8 * image.size[0] + 8], Color32::from_rgb(255, 0, 0), "hidden clipping bases must not make a nested target disappear");
 }
 
 #[test]
 fn several_preview_detaches_clipped_ancestors() {
-    use photocraft_color::PixelFormat;
-    use photocraft_doc::Layer;
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+    use patronusphoto_color::PixelFormat;
+    use patronusphoto_doc::Layer;
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
     let st = app.session.active_mut().unwrap();
     let doc = Arc::make_mut(st.doc_mut());
     let first = doc.layers.pop().unwrap();
     let first_id = first.id;
     let mut second = Layer::raster("second", PixelFormat::RGBA8);
-    second.surface_mut().unwrap().fill_rect(photocraft_geom::Rect::new(32, 8, 48, 24), &[0., 1., 0., 1.]);
+    second.surface_mut().unwrap().fill_rect(patronusphoto_geom::Rect::new(32, 8, 48, 24), &[0., 1., 0., 1.]);
     let second_id = second.id;
     let mut group = Layer::group("clipped", vec![first, second]);
     group.clipped = true;
     doc.layers.push(Layer::raster("hidden base", PixelFormat::RGBA8));
     doc.layers.push(group);
     let shown = Several::shown(doc, &[first_id, second_id], &[]);
-    let (image, _) = composite_image(&shown, photocraft_geom::Rect::new(0, 0, 64, 64), 4096);
+    let (image, _) = composite_image(&shown, patronusphoto_geom::Rect::new(0, 0, 64, 64), 4096);
     assert_eq!(image.pixels[16 * image.size[0] + 16], Color32::from_rgb(255, 0, 0));
     assert_eq!(image.pixels[16 * image.size[0] + 40], Color32::from_rgb(0, 255, 0));
 }
 
 #[test]
 fn unknown_preview_target_keeps_the_previous_document_fallback() {
-    let app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+    let app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
     let st = app.session.active().unwrap();
     // The canvas's preview document (`pv.doc` after `show_in_canvas`) cannot be reached from a
     // trial without a canvas; the fallback is `preview_image`'s, which `show_in_canvas` reads.
-    let (image, _) = preview_image(&st.doc, LayerId::fresh(), None, photocraft_geom::Rect::new(8, 8, 24, 24), 4096, false);
+    let (image, _) = preview_image(&st.doc, LayerId::fresh(), None, patronusphoto_geom::Rect::new(8, 8, 24, 24), 4096, false);
     assert_eq!(image.pixels[8 * image.size[0] + 8], Color32::from_rgb(255, 0, 0));
 }
 
@@ -1370,16 +1370,16 @@ fn unknown_preview_target_keeps_the_previous_document_fallback() {
 /// the smallest whole factor above it.
 #[test]
 fn full_resolution_unless_over_the_texture_limit() {
-    let mut s = photocraft_raster::Surface::new(photocraft_color::PixelFormat::RGBA8);
+    let mut s = patronusphoto_raster::Surface::new(patronusphoto_color::PixelFormat::RGBA8);
     // A one-pixel checkerboard: any downsampling would turn it grey.
     for y in 0..300 {
         for x in 0..500 {
             if (x + y) % 2 == 0 {
-                s.fill_rect(photocraft_geom::Rect::new(x, y, x + 1, y + 1), &[1.0, 1.0, 1.0, 1.0]);
+                s.fill_rect(patronusphoto_geom::Rect::new(x, y, x + 1, y + 1), &[1.0, 1.0, 1.0, 1.0]);
             }
         }
     }
-    let r = photocraft_geom::Rect::new(0, 0, 500, 300);
+    let r = patronusphoto_geom::Rect::new(0, 0, 500, 300);
     let full = super::preview::read_surface(&s, r, 8192);
     assert_eq!(full.image.size, [500, 300]);
     assert_eq!(full.base_uv, [1.0, 1.0]);
@@ -1390,20 +1390,20 @@ fn full_resolution_unless_over_the_texture_limit() {
     assert_eq!(small.image.size, [250, 150]);
     assert!((100..=155).contains(&small.image.pixels[0].a()), "{:?}", small.image.pixels[0]);
     assert_eq!(small.base_uv, [1.0, 1.0]);
-    let odd = super::preview::read_surface(&s, photocraft_geom::Rect::new(0, 0, 301, 3), 256);
+    let odd = super::preview::read_surface(&s, patronusphoto_geom::Rect::new(0, 0, 301, 3), 256);
     assert_eq!(odd.image.size, [151, 2]);
     assert!(odd.base_uv[0] < 1.0 && odd.base_uv[1] < 1.0);
     // Empty rect: a placeholder, no panic.
-    assert_eq!(super::preview::read_surface(&s, photocraft_geom::Rect::new(5, 5, 5, 9), 256).image.size, [1, 1]);
+    assert_eq!(super::preview::read_surface(&s, patronusphoto_geom::Rect::new(5, 5, 5, 9), 256).image.size, [1, 1]);
 }
 
 #[test]
 fn transform_selection_moves_only_the_outline() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 64, "height": 64})).unwrap();
     app.sync_views();
     app.session.execute("select.rect", json!({"x": 8, "y": 8, "width": 16, "height": 16})).unwrap();
-    let px0 = app.session.active().unwrap().doc.layers[0].surface().unwrap().read_region(photocraft_geom::Rect::new(0, 0, 64, 64));
+    let px0 = app.session.active().unwrap().doc.layers[0].surface().unwrap().read_region(patronusphoto_geom::Rect::new(0, 0, 64, 64));
     let ctx = app.ctx().clone();
     crate::menus::invoke(&mut app, &ctx, "select.transformSelection", json!({})).unwrap();
     let t = open(&app);
@@ -1414,14 +1414,14 @@ fn transform_selection_moves_only_the_outline() {
     let st = app.session.active().unwrap();
     let b = st.doc.selection.as_ref().unwrap().content_bounds();
     assert!(b.width().abs_diff(32) <= 2 && b.x0.abs_diff(0) <= 1, "{b:?}");
-    assert_eq!(st.doc.layers[0].surface().unwrap().read_region(photocraft_geom::Rect::new(0, 0, 64, 64)), px0);
+    assert_eq!(st.doc.layers[0].surface().unwrap().read_region(patronusphoto_geom::Rect::new(0, 0, 64, 64)), px0);
 }
 
 // ---- Warp ----
 
 /// A 64 px document with a red square over 8..32, in Warp mode on its default grid.
-fn warping_square() -> Box<PhotocraftApp> {
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 32, 32));
+fn warping_square() -> Box<PatronusPhotoApp> {
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 32, 32));
     let app_ctx = app.ctx().clone();
     begin_warp(&mut app, &app_ctx).unwrap();
     app
@@ -1464,7 +1464,7 @@ fn warp_mode_drags_anchor_with_handles_splits_and_commits() {
 fn a_thin_layer_scaled_then_warped_commits_the_curve() {
     // #5793: a 3 px column stretched wide, switched to Warp and pulled down in the middle.
     // The commit came out straight: the warp's grid was one cell across the 3 source pixels.
-    let mut app = app_with_square(128, photocraft_geom::Rect::new(40, 20, 43, 60));
+    let mut app = app_with_square(128, patronusphoto_geom::Rect::new(40, 20, 43, 60));
     let ctx = app.ctx().clone();
     begin(&mut app, &ctx).unwrap();
     scale_box(&mut app, 30.0, 1.0);
@@ -1499,7 +1499,7 @@ fn a_thin_layer_scaled_then_warped_commits_the_curve() {
 #[test]
 fn warp_surface_drag_commits_as_previewed() {
     const N: i32 = 96;
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": N, "height": N})).unwrap();
     app.sync_views();
     app.session.execute("layer.new.layer", json!({})).unwrap();
@@ -1559,7 +1559,7 @@ fn warp_surface_drag_commits_as_previewed() {
 /// the split as a `Set` of the cut mesh.
 #[test]
 fn an_armed_split_places_one_line_and_disarms() {
-    let mut app = app_with_square(512, photocraft_geom::Rect::new(56, 56, 456, 356));
+    let mut app = app_with_square(512, patronusphoto_geom::Rect::new(56, 56, 456, 356));
     let app_ctx = app.ctx().clone();
     begin_warp(&mut app, &app_ctx).unwrap();
     app.transform_preview.as_mut().unwrap().split = Some(WarpSplit::Vertical);
@@ -1593,13 +1593,13 @@ fn a_press_on_a_preset_warp_converts_it_only_when_it_grabs_the_grid() {
 // ---- Layer masks (#205) ----
 
 /// `app_with_square` (red over 8..24) plus a reveal-all mask hiding x < 16.
-fn masked_app(linked: bool) -> Box<PhotocraftApp> {
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+fn masked_app(linked: bool) -> Box<PatronusPhotoApp> {
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
     app.session.execute("layer.layerMask.revealAll", json!({})).unwrap();
     app.session
         .edit("mask", |doc, a| {
             let m = doc.layer_mut(a.unwrap()).unwrap().mask.as_mut().unwrap();
-            m.surface.fill_rect(photocraft_geom::Rect::new(0, 0, 16, 64), &[0.0]);
+            m.surface.fill_rect(patronusphoto_geom::Rect::new(0, 0, 16, 64), &[0.0]);
             m.linked = linked;
             Ok(())
         })
@@ -1612,7 +1612,7 @@ fn texel_alpha(img: &egui::ColorImage, x: usize, y: usize) -> u8 {
 }
 
 /// The moving pixels, converted for the monitor the way the canvas display converts them.
-fn shown_texels(app: &PhotocraftApp) -> egui::ColorImage {
+fn shown_texels(app: &PatronusPhotoApp) -> egui::ColorImage {
     let raw = app.transform_preview.as_ref().unwrap().textures.level_image(0).expect("the moving pixels").0;
     match super::draw::preview_display(app, app.ctx()) {
         Some(display) => (display.convert)(&raw),
@@ -1622,7 +1622,7 @@ fn shown_texels(app: &PhotocraftApp) -> egui::ColorImage {
 
 #[test]
 fn transform_preview_preserves_displayed_profile_colors() {
-    let bounds = photocraft_geom::Rect::new(0, 0, 8, 8);
+    let bounds = patronusphoto_geom::Rect::new(0, 0, 8, 8);
     for (wide_gamut, monitor, warp) in [(false, "srgb", false), (true, "srgb", false), (false, "display-p3", false), (true, "srgb", true)] {
         let mut app = app_with_square(8, bounds);
         app.session
@@ -1638,7 +1638,7 @@ fn transform_preview_preserves_displayed_profile_colors() {
         let st = app.session.active().unwrap();
         let display = app.session.color.canvas_display(&st.doc).unwrap();
         assert_eq!(!display.is_identity(), wide_gamut || monitor != "srgb");
-        let composite = photocraft_compose::render(&st.doc, bounds);
+        let composite = patronusphoto_compose::render(&st.doc, bounds);
         let expected = crate::canvas::display_image(Some(&display), &composite);
         let ctx = gpu_ctx();
         if warp {
@@ -1657,7 +1657,7 @@ fn preview_applies_the_linked_mask() {
         let app = masked_app(linked);
         let st = app.session.active().unwrap();
         let id = st.active_layer.unwrap();
-        let b = photocraft_geom::Rect::new(8, 8, 24, 24);
+        let b = patronusphoto_geom::Rect::new(8, 8, 24, 24);
         let (img, _) = preview_image(&st.doc, id, None, b, 4096, false);
         // Texel x = doc x − 8: x 10 is hidden by the mask, x 20 shows.
         assert_eq!(texel_alpha(&img, 12, 4), 255);
@@ -1671,8 +1671,8 @@ fn preview_applies_the_linked_mask() {
     let st = app.session.active().unwrap();
     let sel = st.doc.selection.clone().unwrap();
     let id = st.active_layer.unwrap();
-    let (lifted, _) = photocraft_engine::transform_cmds::split_selected(st.doc.layer(id).unwrap().surface().unwrap(), &sel).unwrap();
-    let b = photocraft_geom::Rect::new(8, 8, 20, 24);
+    let (lifted, _) = patronusphoto_engine::transform_cmds::split_selected(st.doc.layer(id).unwrap().surface().unwrap(), &sel).unwrap();
+    let b = patronusphoto_geom::Rect::new(8, 8, 20, 24);
     let (img, _) = preview_image(&st.doc, id, Some(&lifted), b, 4096, false);
     assert_eq!(texel_alpha(&img, 2, 4), 0, "masked");
     assert_eq!(texel_alpha(&img, 10, 4), 255, "revealed");
@@ -1682,7 +1682,7 @@ fn preview_applies_the_linked_mask() {
 /// (red) pixels under a monitor profile.
 #[test]
 fn transform_selection_tint_is_not_document_color() {
-    let mut app = app_with_square(8, photocraft_geom::Rect::new(0, 0, 8, 8));
+    let mut app = app_with_square(8, patronusphoto_geom::Rect::new(0, 0, 8, 8));
     app.session.color.settings.monitor_profile = "display-p3".into();
     app.session.execute("select.rect", json!({"x": 0, "y": 0, "width": 8, "height": 8})).unwrap();
     let ctx = gpu_ctx();
@@ -1696,7 +1696,7 @@ fn transform_selection_tint_is_not_document_color() {
 
 #[test]
 fn transform_covering_layer_uses_the_same_monitor_profile() {
-    let bounds = photocraft_geom::Rect::new(0, 0, 8, 8);
+    let bounds = patronusphoto_geom::Rect::new(0, 0, 8, 8);
     let mut app = app_with_square(8, bounds);
     let lower = app.session.active().unwrap().active_layer.unwrap();
     app.session.execute("layer.new.layer", json!({})).unwrap();
@@ -1716,7 +1716,7 @@ fn transform_covering_layer_uses_the_same_monitor_profile() {
         for layer in &mut solo.layers {
             layer.visible = layer.id == id;
         }
-        crate::canvas::display_image(Some(&display), &photocraft_compose::render(&solo, bounds)).pixels[0]
+        crate::canvas::display_image(Some(&display), &patronusphoto_compose::render(&solo, bounds)).pixels[0]
     });
     app.session.execute("layer.select", json!({"layer": lower.0})).unwrap();
     let ctx = gpu_ctx();
@@ -1745,13 +1745,13 @@ fn preview_feathers_the_linked_mask() {
         .unwrap();
     let st = app.session.active().unwrap();
     let id = st.active_layer.unwrap();
-    let b = photocraft_geom::Rect::new(8, 8, 24, 24);
+    let b = patronusphoto_geom::Rect::new(8, 8, 24, 24);
     let (img, _) = preview_image(&st.doc, id, None, b, 4096, false);
     // Texel x 7 = doc x 15, just inside the hidden half; texel x 8 = doc x 16, just revealed.
     assert!(texel_alpha(&img, 7, 4) > 0, "the feather reaches into the hidden side");
     assert!(texel_alpha(&img, 8, 4) < 255, "the feather reaches into the revealed side");
     // The same values the compositor masks the committed layer with.
-    let m = photocraft_compose::masks::combined_mask(st.doc.layer(id).unwrap(), b).unwrap();
+    let m = patronusphoto_compose::masks::combined_mask(st.doc.layer(id).unwrap(), b).unwrap();
     for x in [6usize, 7, 8, 9, 15] {
         let want = (m.sample_channel(8 + x as i32, 12, 0) * 255.0).round() as i32;
         assert!((i32::from(texel_alpha(&img, x, 4)) - want).abs() <= 1, "texel {x}");
@@ -1762,11 +1762,11 @@ fn preview_feathers_the_linked_mask() {
 /// was open (its flattened render hid the clipping base too).
 #[test]
 fn preview_of_a_clipped_smart_object_is_not_empty() {
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
     app.session.execute("layer.new.layer", json!({})).unwrap();
     app.session
         .edit("paint", |doc, a| {
-            doc.layer_mut(a.unwrap()).unwrap().surface_mut().unwrap().fill_rect(photocraft_geom::Rect::new(0, 0, 64, 64), &[0.0, 0.0, 1.0, 1.0]);
+            doc.layer_mut(a.unwrap()).unwrap().surface_mut().unwrap().fill_rect(patronusphoto_geom::Rect::new(0, 0, 64, 64), &[0.0, 0.0, 1.0, 1.0]);
             Ok(())
         })
         .unwrap();
@@ -1775,7 +1775,7 @@ fn preview_of_a_clipped_smart_object_is_not_empty() {
     let st = app.session.active().unwrap();
     let id = st.active_layer.unwrap();
     assert!(st.doc.layer(id).unwrap().clipped);
-    let (img, _) = preview_image(&st.doc, id, None, photocraft_geom::Rect::new(0, 0, 64, 64), 4096, false);
+    let (img, _) = preview_image(&st.doc, id, None, patronusphoto_geom::Rect::new(0, 0, 64, 64), 4096, false);
     assert_eq!(texel_alpha(&img, 32, 32), 255, "the moving object shows");
 }
 
@@ -1799,7 +1799,7 @@ fn targeted_unlinked_mask_transforms_alone_through_the_box() {
     let l = st.doc.layer(st.active_layer.unwrap()).unwrap();
     let m = &l.mask.as_ref().unwrap().surface;
     assert!(m.sample_channel(4, 30, 0) > 0.99 && m.sample_channel(30, 30, 0) < 0.01, "mask moved 20 px right");
-    assert_eq!(l.surface().unwrap().content_bounds(), photocraft_geom::Rect::new(8, 8, 24, 24), "pixels untouched");
+    assert_eq!(l.surface().unwrap().content_bounds(), patronusphoto_geom::Rect::new(8, 8, 24, 24), "pixels untouched");
     // Warp mode doesn't apply to a lone mask.
     app.ui.mask_target = true;
     begin(&mut app, &ctx).unwrap();
@@ -1875,7 +1875,7 @@ fn linked_mask_target_transforms_the_layer() {
 /// undoable step; it works on the Background too.
 #[test]
 fn free_transform_moves_the_selected_path_not_pixels() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     app.session.execute("file.new", json!({"width": 64, "height": 64})).unwrap();
     app.sync_views();
@@ -1929,12 +1929,12 @@ fn free_transform_moves_the_selected_path_not_pixels() {
 /// the layer stays type.
 #[test]
 fn warp_on_type_takes_a_style_and_keeps_the_type_editable() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 200, "height": 100})).unwrap();
     app.sync_views();
     app.run("type.create", json!({"x": 10, "y": 60, "text": "Hello"})).unwrap();
     let ctx = app.ctx().clone();
-    let past = |app: &PhotocraftApp| app.session.active().unwrap().history.past_len();
+    let past = |app: &PatronusPhotoApp| app.session.active().unwrap().history.past_len();
     let before = past(&app);
     crate::menus::invoke(&mut app, &ctx, "edit.transform.warp", json!({})).unwrap();
     assert!(!app.dialog_open(), "no prompt");
@@ -1976,7 +1976,7 @@ fn cylinder_start(bounds: [f64; 4]) -> Warp {
 /// dragged values, and Warp mode shows it again as a cylinder, whose untouched commit is no step.
 #[test]
 fn warp_mode_drags_a_cylinders_handles_and_commits_it_as_a_cylinder() {
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 32, 32));
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 32, 32));
     let ctx = app.ctx().clone();
     app.run("layer.smartObjects.convertToSmartObject", json!({})).unwrap();
     begin_warp(&mut app, &ctx).unwrap();
@@ -2024,7 +2024,7 @@ fn warp_mode_drags_a_cylinders_handles_and_commits_it_as_a_cylinder() {
     assert!(app.ui.transform.is_none(), "{}", app.ui.status);
     let st = app.session.active().unwrap();
     assert_eq!(st.history.past_len(), steps + 1, "one step");
-    let photocraft_doc::LayerContent::Smart(sm) = &st.doc.layer(st.active_layer.unwrap()).unwrap().content else { panic!("smart") };
+    let patronusphoto_doc::LayerContent::Smart(sm) = &st.doc.layer(st.active_layer.unwrap()).unwrap().content else { panic!("smart") };
     assert_eq!(sm.warp.as_ref().map(|w| w.style), Some(WarpStyle::Cylinder), "the smart object keeps a cylinder");
     // Warp mode shows the same cylinder again, with its values, and Enter changes nothing.
     begin_warp(&mut app, &ctx).unwrap();
@@ -2044,7 +2044,7 @@ fn warp_mode_drags_a_cylinders_handles_and_commits_it_as_a_cylinder() {
 /// arc's bulge; warping them again put the picture well inside the lines.
 #[test]
 fn warp_mode_previews_a_stored_smart_warp_from_the_unwarped_source() {
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 32, 32));
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 32, 32));
     let ctx = app.ctx().clone();
     app.run("layer.smartObjects.convertToSmartObject", json!({})).unwrap();
     app.run("layer.smartObjects.warp", json!({"style": "cylinder", "values": [8, 32, 32, 8, 0.5, 0.5, 0.85], "rect": [8, 8, 32, 32]})).unwrap();
@@ -2068,13 +2068,13 @@ fn warp_mode_previews_a_stored_smart_warp_from_the_unwarped_source() {
 /// again (the texels the box opened with), and re-entering shows the source without it (#9798).
 #[test]
 fn leaving_warp_mode_restores_the_stored_warps_render() {
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 32, 32));
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 32, 32));
     let ctx = app.ctx().clone();
     app.run("layer.smartObjects.convertToSmartObject", json!({})).unwrap();
     app.run("layer.smartObjects.warp", json!({"style": "cylinder", "values": [8, 32, 32, 8, 0.5, 0.5, 0.85], "rect": [8, 8, 32, 32]})).unwrap();
     begin(&mut app, &ctx).unwrap();
-    let texels = |app: &PhotocraftApp| app.transform_preview.as_ref().unwrap().textures.size();
-    let rect = |app: &PhotocraftApp| rect_of(open(app));
+    let texels = |app: &PatronusPhotoApp| app.transform_preview.as_ref().unwrap().textures.size();
+    let rect = |app: &PatronusPhotoApp| rect_of(open(app));
     let (warped, box0) = (texels(&app), rect(&app));
     assert!(warped[1] > 24 && box0[3] > 32.0, "the render with the warp hangs below the box: {warped:?} {box0:?}");
     enter_warp(&mut app, &ctx);
@@ -2100,7 +2100,7 @@ fn leaving_warp_mode_restores_the_stored_warps_render() {
 /// silhouettes and the ones on the back are hidden.
 #[test]
 fn a_cylinder_commits_the_wrapped_pixels() {
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 32, 32));
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 32, 32));
     let app_ctx = app.ctx().clone();
     begin_warp(&mut app, &app_ctx).unwrap();
     let b = rect_of(open(&app));
@@ -2127,12 +2127,12 @@ fn a_cylinder_commits_the_wrapped_pixels() {
 /// pixels at once, and the layers stay hidden under the box.
 #[test]
 fn a_multi_layer_box_follows_opacity_and_visibility_edits() {
-    let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+    let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
     let red = app.session.active().unwrap().active_layer.unwrap();
     app.session.execute("layer.new.layer", json!({})).unwrap();
     app.session
         .edit("paint", |doc, a| {
-            doc.layer_mut(a.unwrap()).unwrap().surface_mut().unwrap().fill_rect(photocraft_geom::Rect::new(40, 40, 56, 56), &[0.0, 0.0, 1.0, 1.0]);
+            doc.layer_mut(a.unwrap()).unwrap().surface_mut().unwrap().fill_rect(patronusphoto_geom::Rect::new(40, 40, 56, 56), &[0.0, 0.0, 1.0, 1.0]);
             Ok(())
         })
         .unwrap();
@@ -2140,7 +2140,7 @@ fn a_multi_layer_box_follows_opacity_and_visibility_edits() {
     app.session.execute("layer.select", json!({"layer": red.0, "mode": "add"})).unwrap();
     app.sync_views();
     begin(&mut app, &egui::Context::default()).unwrap();
-    let alpha = |app: &PhotocraftApp, x: usize, y: usize| {
+    let alpha = |app: &PatronusPhotoApp, x: usize, y: usize| {
         let img = app.transform_preview.as_ref().unwrap().textures.level_image(0).expect("the moving pixels").0;
         texel_alpha(&img, x, y)
     };
@@ -2188,7 +2188,7 @@ fn a_waiting_new_layer_click_keeps_the_layer_it_was_made_on() {
 fn ending_the_transform_brings_back_the_tools_options_bar() {
     use egui_kittest::kittest::Queryable as _;
     for key in [egui::Key::Escape, egui::Key::Enter] {
-        let mut app = app_with_square(64, photocraft_geom::Rect::new(8, 8, 24, 24));
+        let mut app = app_with_square(64, patronusphoto_geom::Rect::new(8, 8, 24, 24));
         app.ui.tool = Tool::Gradient;
         let mut h = harness(app, egui::vec2(1400.0, 900.0));
         h.run_steps(4);

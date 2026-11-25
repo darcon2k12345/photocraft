@@ -16,8 +16,8 @@ fn session(w: u32, h: u32, ppi: f64) -> Session {
 /// that lost it.
 fn file_at(name: &str, w: u32, h: u32, ppi: f64) -> Vec<u8> {
     let s = session(w, h, ppi);
-    let bytes = photocraft_io::export(&s.active().unwrap().doc, name, &photocraft_io::ExportOptions::default()).unwrap().bytes;
-    let back = photocraft_io::import(name, &bytes).unwrap().document;
+    let bytes = patronusphoto_io::export(&s.active().unwrap().doc, name, &patronusphoto_io::ExportOptions::default()).unwrap().bytes;
+    let back = patronusphoto_io::import(name, &bytes).unwrap().document;
     assert_eq!((back.size.width, back.size.height, f64::from(back.resolution_dpi)), (w, h, ppi), "{name} keeps its size and resolution");
     bytes
 }
@@ -114,8 +114,8 @@ fn a_file_at_or_below_the_document_resolution_places_as_before() {
         assert_eq!(bounds, [150.0, 120.0, 250.0, 180.0], "{file_ppi} ppi into {doc_ppi} ppi");
     }
     // A PNG without `pHYs`.
-    let img = photocraft_codecs::Image::from_u8(100, 60, photocraft_codecs::ChannelLayout::Rgb, vec![128; 100 * 60 * 3]).unwrap();
-    let bare = photocraft_codecs::encode(&img, photocraft_codecs::Format::Png, &Default::default()).unwrap();
+    let img = patronusphoto_codecs::Image::from_u8(100, 60, patronusphoto_codecs::ChannelLayout::Rgb, vec![128; 100 * 60 * 3]).unwrap();
+    let bare = patronusphoto_codecs::encode(&img, patronusphoto_codecs::Format::Png, &Default::default()).unwrap();
     for doc_ppi in [72.0, 300.0] {
         let mut s = session(400, 300, doc_ppi);
         let (scale, bounds) = scale_and_bounds(&place(&mut s, "bare.png", bare.clone()));

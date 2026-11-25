@@ -11,7 +11,7 @@ use egui_kittest::Harness;
 use serde_json::json;
 
 use super::sample_target;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::guide_cursor_tests::{harness, hover, screen};
 use crate::state::Tool;
 
@@ -19,7 +19,7 @@ use crate::state::Tool;
 const AT: [f32; 2] = [100.0, 150.0];
 
 /// The cursor the tool host was asked for at `AT` with `m` held.
-fn cursor(h: &mut Harness<'static, Box<PhotocraftApp>>, m: Modifiers) -> Option<Cursor> {
+fn cursor(h: &mut Harness<'static, Box<PatronusPhotoApp>>, m: Modifiers) -> Option<Cursor> {
     hover(h, AT[0], AT[1], m);
     h.state().canvas_tools.last_response.as_ref().and_then(|r| r.cursor.clone())
 }
@@ -40,11 +40,11 @@ fn tip(c: &Option<Cursor>) -> Option<PaintedCursor> {
     }
 }
 
-fn tip_size(h: &mut Harness<'static, Box<PhotocraftApp>>, size: f32) {
+fn tip_size(h: &mut Harness<'static, Box<PatronusPhotoApp>>, size: f32) {
     h.state_mut().session.tools.brush.size = size;
 }
 
-fn painting(h: &mut Harness<'static, Box<PhotocraftApp>>, value: &str) {
+fn painting(h: &mut Harness<'static, Box<PatronusPhotoApp>>, value: &str) {
     h.state_mut().run("prefs.set", json!({"path": "cursors.painting", "value": value})).unwrap();
 }
 

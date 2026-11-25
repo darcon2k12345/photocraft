@@ -1,8 +1,8 @@
 //! #14498: Apply Data Set adds one history state named exactly "Apply Data Set", whatever the set is called.
 
 use super::*;
-use photocraft_doc::{Layer, TextLayer};
-use photocraft_geom::Rect;
+use patronusphoto_doc::{Layer, TextLayer};
+use patronusphoto_geom::Rect;
 
 const NAME: &str = "Apply Data Set";
 
@@ -14,9 +14,9 @@ fn session() -> (Session, LayerId, LayerId, LayerId) {
         .edit("setup", |doc, _| {
             let fmt = doc.pixel_format();
             let mut photo = Layer::raster("photo", fmt);
-            photo.surface_mut().unwrap().fill_rect(Rect::new(0, 0, 64, 48), &photocraft_raster::from_rgba(&fmt, [0.5, 0.5, 0.5, 1.0]));
+            photo.surface_mut().unwrap().fill_rect(Rect::new(0, 0, 64, 48), &patronusphoto_raster::from_rgba(&fmt, [0.5, 0.5, 0.5, 1.0]));
             let mut badge = Layer::raster("badge", fmt);
-            badge.surface_mut().unwrap().fill_rect(Rect::new(0, 0, 10, 10), &photocraft_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 1.0]));
+            badge.surface_mut().unwrap().fill_rect(Rect::new(0, 0, 10, 10), &patronusphoto_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 1.0]));
             let title = Layer::new("title", LayerContent::Text(TextLayer { text: "Old".into(), ..Default::default() }));
             let (p, b, t) = (photo.id, badge.id, title.id);
             doc.layers.push(photo);
@@ -76,7 +76,7 @@ fn one_undo_reverts_visibility_text_and_pixels_together() {
     {
         let mut src = Session::new();
         src.execute("file.new", json!({"width": 8, "height": 8, "background": "#0000ff"})).unwrap();
-        let bytes = photocraft_io::export(&src.active().unwrap().doc, "png", &photocraft_io::ExportOptions::default()).unwrap().bytes;
+        let bytes = patronusphoto_io::export(&src.active().unwrap().doc, "png", &patronusphoto_io::ExportOptions::default()).unwrap().bytes;
         std::fs::write(&png, bytes).unwrap();
     }
     s.execute(

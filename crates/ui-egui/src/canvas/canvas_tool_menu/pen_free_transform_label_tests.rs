@@ -7,14 +7,14 @@ use egui_kittest::kittest::{NodeT, Queryable};
 
 use super::tests::{app, choose_open, confirm_hosted, harness, pen_clicks, right_click};
 use super::{PEN_MENU, rows};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 const LABELS: [&str; 3] = ["Free Transform", "Free Transform Points", "Free Transform Path"];
 
 /// Right-click the middle of the canvas with `tool`: the one transform row label the path menu
 /// shows, and whether that row is enabled. `ui.inspect` lists the row the same way.
-fn transform_row(mut app: Box<PhotocraftApp>, tool: Tool) -> (&'static str, bool) {
+fn transform_row(mut app: Box<PatronusPhotoApp>, tool: Tool) -> (&'static str, bool) {
     app.ui.tool = tool;
     let mut h = harness(app);
     let center = h.state().last_canvas_rect.center();

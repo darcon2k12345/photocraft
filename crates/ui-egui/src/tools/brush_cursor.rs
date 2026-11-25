@@ -1,6 +1,6 @@
 //! The painting cursor of the brush tools, over the framework's `BrushCursor`.
 //!
-//! The app keeps one [`BrushTip`] for the brush (`PhotocraftApp::brush_tip`), rebuilt by [`sync_tip`] only when
+//! The app keeps one [`BrushTip`] for the brush (`PatronusPhotoApp::brush_tip`), rebuilt by [`sync_tip`] only when
 //! a field the outline depends on changes, so the framework reuses its cursor image while the pointer moves.
 //! The Pencil and the Eraser in Pencil or Block mode have no held tip: their pixel cell follows the pointer, so
 //! [`cursor`] builds it per call.
@@ -9,11 +9,11 @@ use craft::behavior::kurbo::Rect;
 use craft::behavior::{Cursor, CursorIcon, PointerSample};
 use craft::ui::canvas::ToolContext;
 use craft::ui::canvas_controls::brush::{BrushCursor, BrushCursorOptions, BrushTip, BrushTipOutline, PaintingCursor, TipPose, TipRings};
-use photocraft_engine::prefs::PaintingCursor as PaintingPref;
-use photocraft_paint::brush::{BrushSettings, Control, TipShape};
-use photocraft_paint::dynamics::{StepInput, apply_pose, control_angle};
+use patronusphoto_engine::prefs::PaintingCursor as PaintingPref;
+use patronusphoto_paint::brush::{BrushSettings, Control, TipShape};
+use patronusphoto_paint::dynamics::{StepInput, apply_pose, control_angle};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// The brush fields a tip's outline depends on. The size is part of it only for a plain round tip, whose radii
@@ -51,7 +51,7 @@ fn is_plain(b: &BrushSettings) -> bool {
 
 /// The size and kind of the aliased cursor tip the `tool` has: the Pencil's, the Eraser's in Pencil mode, and the
 /// Eraser's square Block (`true`), which takes the block size.
-fn aliased(app: &PhotocraftApp, tool: Tool) -> Option<(f32, bool)> {
+fn aliased(app: &PatronusPhotoApp, tool: Tool) -> Option<(f32, bool)> {
     if crate::eraser_ui::block_mode(app, tool) {
         return Some((crate::eraser_ui::block_size(app), true));
     }
@@ -60,7 +60,7 @@ fn aliased(app: &PhotocraftApp, tool: Tool) -> Option<(f32, bool)> {
 
 /// Builds the held tip for the active brush when its outline changed; a size change alone only updates the
 /// diameter. Runs once per pass before the tool host, so [`cursor`] only reads.
-pub(crate) fn sync_tip(app: &mut PhotocraftApp) {
+pub(crate) fn sync_tip(app: &mut PatronusPhotoApp) {
     if aliased(app, app.ui.tool).is_some() {
         return;
     }
@@ -81,11 +81,11 @@ pub(crate) fn sync_tip(app: &mut PhotocraftApp) {
 fn build(brush: &BrushSettings) -> BrushTip {
     let size = f64::from(brush.size);
     if !is_plain(brush)
-        && let (Some(normal), Some(full)) = (photocraft_paint::outline::tip_outline(brush, false), photocraft_paint::outline::tip_outline(brush, true))
+        && let (Some(normal), Some(full)) = (patronusphoto_paint::outline::tip_outline(brush, false), patronusphoto_paint::outline::tip_outline(brush, true))
     {
         return BrushTip::new(size, BrushTipOutline::traced(TipRings::new(normal), TipRings::new(full)));
     }
-    let normal = photocraft_paint::half_coverage_radius(brush.size / 2.0, brush.hardness).max(1.0);
+    let normal = patronusphoto_paint::half_coverage_radius(brush.size / 2.0, brush.hardness).max(1.0);
     BrushTip::round(size, f64::from(normal))
 }
 
@@ -98,7 +98,7 @@ pub(crate) fn pose(brush: &BrushSettings, pen: Option<PointerSample>) -> TipPose
     let pen = pen.sanitized();
     let point = apply_pose(
         brush,
-        photocraft_paint::StrokePoint {
+        patronusphoto_paint::StrokePoint {
             pressure: pen.pressure.clamp(0.0, 1.0),
             tilt_x: pen.tilt[0].to_degrees(),
             tilt_y: pen.tilt[1].to_degrees(),
@@ -129,7 +129,7 @@ fn painting_cursor(pref: PaintingPref) -> PaintingCursor {
 
 /// The cursor of the active painting tool over the canvas. Reads the tip [`sync_tip`] built; with no view or no
 /// tip it is the system arrow.
-pub(crate) fn cursor(app: &PhotocraftApp, cx: &ToolContext<'_>) -> Cursor {
+pub(crate) fn cursor(app: &PatronusPhotoApp, cx: &ToolContext<'_>) -> Cursor {
     let arrow = Cursor::System(CursorIcon::Default);
     let Some(space) = cx.space() else { return arrow };
     let tool = app.ui.tool;
@@ -150,7 +150,7 @@ pub(crate) fn cursor(app: &PhotocraftApp, cx: &ToolContext<'_>) -> Cursor {
         // The whole-pixel cell the dab fills at the pointer; without a pointer there is nothing to outline.
         let Some(pointer) = cx.pointer.as_ref() else { return arrow };
         let at = space.view.to_doc(pointer.pos);
-        let [x0, y0, x1, y1] = photocraft_engine::paint::grid_square(at.x, at.y, size);
+        let [x0, y0, x1, y1] = patronusphoto_engine::paint::grid_square(at.x, at.y, size);
 
         let round = !block && crate::canvas::cursor_policy::pencil_tip_is_round(size);
         let tip = BrushTip::new(f64::from(size), BrushTipOutline::pixels(Rect::new(x0, y0, x1, y1), round));

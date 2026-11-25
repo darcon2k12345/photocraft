@@ -1,6 +1,6 @@
 id: args-os
 valid:
-  - let code = photocraft_cli::run(std::env::args_os().skip(1), &mut out, &mut err);
+  - let code = patronusphoto_cli::run(std::env::args_os().skip(1), &mut out, &mut err);
   - "let args: Vec<OsString> = env::args_os().collect();"
   - |
     use std::env::args_os;

@@ -6,26 +6,26 @@ use std::sync::Arc;
 
 use craft::host::{Picked, ScriptedFiles};
 
-use crate::{PhotocraftApp, Services};
-use photocraft_color::{ColorMode, SampleType};
-use photocraft_doc::Document;
-use photocraft_geom::Size;
+use crate::{PatronusPhotoApp, Services};
+use patronusphoto_color::{ColorMode, SampleType};
+use patronusphoto_doc::Document;
+use patronusphoto_geom::Size;
 
 /// An app whose file dialog stays open until the test answers it.
-fn app_with() -> (Box<PhotocraftApp>, Arc<ScriptedFiles>) {
+fn app_with() -> (Box<PatronusPhotoApp>, Arc<ScriptedFiles>) {
     let files = Arc::new(ScriptedFiles::held());
     let services = Services {
-        import: Some(Box::new(|name: &str, _bytes: &[u8], _opts: &photocraft_io::ImportOptions| {
+        import: Some(Box::new(|name: &str, _bytes: &[u8], _opts: &patronusphoto_io::ImportOptions| {
             Ok((Document::new(name, Size::new(4, 4), ColorMode::Rgb, SampleType::U8), Vec::new()))
         })),
         files: Some(files.clone()),
         ..Default::default()
     };
-    (PhotocraftApp::new(photocraft_engine::Session::new(), services), files)
+    (PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services), files)
 }
 
 fn files(tag: &str, names: &[&str]) -> (std::path::PathBuf, Vec<String>) {
-    let dir = std::env::temp_dir().join(format!("photocraft-dialog-order-{tag}-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("patronusphoto-dialog-order-{tag}-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let paths = names
         .iter()
@@ -38,16 +38,16 @@ fn files(tag: &str, names: &[&str]) -> (std::path::PathBuf, Vec<String>) {
     (dir, paths)
 }
 
-fn doc_names(app: &PhotocraftApp) -> Vec<String> {
+fn doc_names(app: &PatronusPhotoApp) -> Vec<String> {
     app.session.documents().iter().map(|d| d.doc.name.clone()).collect()
 }
 
-fn active_name(app: &PhotocraftApp) -> Option<String> {
+fn active_name(app: &PatronusPhotoApp) -> Option<String> {
     app.session.active().map(|s| s.doc.name.clone())
 }
 
 /// File › Open, answered with `paths` in the order given.
-fn pick(app: &mut PhotocraftApp, files: &ScriptedFiles, paths: &[String]) {
+fn pick(app: &mut PatronusPhotoApp, files: &ScriptedFiles, paths: &[String]) {
     app.open_dialog_file().unwrap();
     files.answer(Picked::Paths(paths.iter().map(PathBuf::from).collect())).expect("a dialog is open");
     app.poll_file_dialog();

@@ -10,7 +10,7 @@ use craft::ui::canvas_controls::TaskBar;
 use craft::ui::contract::{Bind, Props as _, Show as _};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::{FreeTransform, Tool};
 
 enum Action {
@@ -30,7 +30,7 @@ fn shown_id() -> egui::Id {
     egui::Id::unique("free-transform-task-bar-rect")
 }
 
-fn open_box(app: &PhotocraftApp) -> Option<&FreeTransform> {
+fn open_box(app: &PatronusPhotoApp) -> Option<&FreeTransform> {
     let active = app.session.active()?;
     let preview = app.transform_preview.as_ref()?;
     if !app.ui.panels.context_task_bar
@@ -50,11 +50,11 @@ fn open_box(app: &PhotocraftApp) -> Option<&FreeTransform> {
     })
 }
 
-pub fn eligible(app: &PhotocraftApp) -> bool {
+pub fn eligible(app: &PatronusPhotoApp) -> bool {
     open_box(app).is_some()
 }
 
-pub(crate) fn shown_rect(app: &PhotocraftApp, ctx: &egui::Context) -> Option<[f32; 4]> {
+pub(crate) fn shown_rect(app: &PatronusPhotoApp, ctx: &egui::Context) -> Option<[f32; 4]> {
     let session = open_box(app)?.id;
     let shown = ctx.data(|data| data.get_temp::<ShownRect>(shown_id()))?;
     let pass = ctx.cumulative_pass_nr_for(egui::ViewportId::ROOT);
@@ -62,7 +62,7 @@ pub(crate) fn shown_rect(app: &PhotocraftApp, ctx: &egui::Context) -> Option<[f3
 }
 
 /// Called on the document's primary canvas, where the framework shows its transform.
-pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui, area: egui::Rect) {
+pub fn show(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, area: egui::Rect) {
     let Some(transform) = open_box(app) else { return };
     let (session, corners) = (transform.id, transform.session.quad());
     let ctx = ui.ctx().clone();

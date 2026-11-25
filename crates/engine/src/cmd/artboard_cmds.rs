@@ -2,17 +2,17 @@
 //! properties (board rect, background, preset), View › Clear Selected Artboard Guides, and
 //! File › Export › Artboards to Files / to PDF.
 //!
-//! An artboard is a top-level group with [`photocraft_doc::Artboard`] set; the compositor clips
+//! An artboard is a top-level group with [`patronusphoto_doc::Artboard`] set; the compositor clips
 //! its children to the board and paints its background. Moving the group (Move tool,
 //! `layer.translate`) moves the board with its contents. The canvas grows to fit every board,
 //! in every direction, like Photoshop's auto-expanding artboard canvas ([`fit_canvas`]).
 
 use std::collections::HashSet;
 
-use photocraft_color::{Color, ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{Artboard, ArtboardBackground, Document, Layer, LayerContent, LayerId, Size};
-use photocraft_geom::{Affine, Rect};
-use photocraft_raster::Surface;
+use patronusphoto_color::{Color, ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::{Artboard, ArtboardBackground, Document, Layer, LayerContent, LayerId, Size};
+use patronusphoto_geom::{Affine, Rect};
+use patronusphoto_raster::Surface;
 use serde_json::{Value, json};
 
 use crate::commands::{CommandSpec, color_param, int, int_i32};
@@ -244,7 +244,7 @@ pub(crate) fn follow_shift(s: &mut Session, (dx, dy): (i32, i32)) {
     for p in &mut st.color_samplers {
         *p = [p[0] + f64::from(dx), p[1] + f64::from(dy)];
     }
-    let a = photocraft_geom::Affine::translate(f64::from(dx), f64::from(dy));
+    let a = patronusphoto_geom::Affine::translate(f64::from(dx), f64::from(dy));
     st.symmetry = st.symmetry.take().and_then(|sym| sym.transform(&a));
 }
 
@@ -374,7 +374,7 @@ fn artboard_from_group(s: &mut Session, p: &Value) -> Result<Value> {
         let rect = if l.visible { shown_children_bounds(l) } else { crate::layer_multi_cmds::layer_bounds(l) }.unwrap_or(canvas);
         set_artboard(l, Artboard { rect, background, preset });
         // As in the reference application, the new artboard is Normal at 100 % whatever the group had.
-        l.blend = photocraft_color::BlendMode::Normal;
+        l.blend = patronusphoto_color::BlendMode::Normal;
         l.opacity = 1.0;
         let shift = fit_canvas(doc);
         *active = Some(id);
@@ -711,13 +711,13 @@ fn overlapping_boards(doc: &Document, id: LayerId, rect: Rect) -> Vec<Layer> {
         if let (Some(bg), Some(children)) = (bg, group.children_mut()) {
             let fmt = doc.pixel_format();
             let mut surf = Surface::new(fmt);
-            surf.fill_rect(overlap, &photocraft_raster::from_rgba(&fmt, bg));
+            surf.fill_rect(overlap, &patronusphoto_raster::from_rgba(&fmt, bg));
             children.insert(0, Layer::new(format!("Background for {}", l.name), LayerContent::Raster(surf)));
         }
         // With the background in place: its pixels widen what the group's layers can reach.
-        let reach = photocraft_compose::change_bounds(&group, doc.bounds());
+        let reach = patronusphoto_compose::change_bounds(&group, doc.bounds());
         if reach.is_none_or(|r| !ab.rect.contains_rect(&r)) {
-            let mut mask = photocraft_doc::LayerMask::reveal_all();
+            let mut mask = patronusphoto_doc::LayerMask::reveal_all();
             mask.surface = Surface::with_default(PixelFormat::GRAY8, &[0.0]);
             mask.surface.fill_rect(ab.rect, &[1.0]);
             group.mask = Some(mask);
@@ -733,16 +733,16 @@ fn overlapping_boards(doc: &Document, id: LayerId, rect: Rect) -> Vec<Layer> {
 /// with the background), and no effects, masks, opacity, Blend If or other blending options of
 /// its own, nor a mask the board clip would replace.
 fn stacks_like_its_layers(board: &Layer) -> bool {
-    board.blend == photocraft_color::BlendMode::PassThrough
+    board.blend == patronusphoto_color::BlendMode::PassThrough
         && board.opacity >= 1.0
         && board.fill_opacity >= 1.0
         && board.mask.is_none()
         && board.vector_mask.is_none()
         && board.frame.is_none()
         && board.excluded_channels == 0
-        && board.blend_if == photocraft_doc::BlendIf::default()
-        && board.advanced == photocraft_doc::AdvancedBlending::default()
-        && !photocraft_compose::effects::has_effects(board)
+        && board.blend_if == patronusphoto_doc::BlendIf::default()
+        && board.advanced == patronusphoto_doc::AdvancedBlending::default()
+        && !patronusphoto_compose::effects::has_effects(board)
 }
 
 /// Cuts the pixel layers in `layers` (and in groups inside them, `depth` levels down so far) to
@@ -753,7 +753,7 @@ fn stacks_like_its_layers(board: &Layer) -> bool {
 fn cut_pixels(layers: &mut [Layer], keep: Rect, depth: usize) {
     const MAX_DEPTH: usize = 64;
     for l in layers {
-        if photocraft_compose::effects::has_effects(l) {
+        if patronusphoto_compose::effects::has_effects(l) {
             continue;
         }
         match &mut l.content {
@@ -945,11 +945,11 @@ fn artboards_to_pdf(s: &mut Session, p: &Value) -> Result<Value> {
     // Pages go bottom artboard of the Layers panel first, as in the reference application (#13643);
     // `chosen_documents` lists them top first, the order Artboards to Files keeps.
     for one in chosen_documents(&doc, p, false)?.into_iter().rev() {
-        let buf = photocraft_compose::flatten(&one).over_background([1.0, 1.0, 1.0]);
+        let buf = patronusphoto_compose::flatten(&one).over_background([1.0, 1.0, 1.0]);
         let fmt = PixelFormat::new(ColorMode::Rgb, SampleType::U8, true);
         let mut flat = Document::new(&one.name, one.size, ColorMode::Rgb, SampleType::U8);
         let mut surf = Surface::new(fmt);
-        let vals: Vec<f32> = buf.px.iter().flat_map(|px| photocraft_raster::from_rgba(&fmt, *px)).collect();
+        let vals: Vec<f32> = buf.px.iter().flat_map(|px| patronusphoto_raster::from_rgba(&fmt, *px)).collect();
         surf.write_region(one.bounds(), &vals);
         flat.layers.push(Layer::new("Background", LayerContent::Raster(surf)));
         let (jpeg, _) = encode(&flat, "page.jpg", quality)?;

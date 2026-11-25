@@ -2,8 +2,8 @@ use super::*;
 use craft::layers::ui::panel::MenuTarget;
 use craft::ui::contract::Entry;
 use craft::ui::list::ThumbSize;
-use photocraft_doc::LayerId;
-use photocraft_engine::Session;
+use patronusphoto_doc::LayerId;
+use patronusphoto_engine::Session;
 use serde_json::json;
 
 /// The active layer after `s`.
@@ -156,7 +156,7 @@ fn row_menu_entries_follow_the_target() {
     let mut s = Session::new();
     s.execute("file.new", json!({"width": 8, "height": 8})).unwrap();
     s.execute("layer.new.layer", json!({})).unwrap();
-    let app = crate::PhotocraftApp::new(s, Default::default());
+    let app = crate::PatronusPhotoApp::new(s, Default::default());
     let st = app.session.active().unwrap();
     let tree = crate::panels::layers_tree::PhotoLayers::new(&app, st, &Default::default(), false, None);
     let target = MenuTarget::<LayerId>::new(None);
@@ -213,7 +213,7 @@ fn add_mask_uses_the_selection() {
     assert_eq!(add_mask_command(false, true), "layer.layerMask.hideAll");
     assert_eq!(add_mask_command(true, true), "layer.layerMask.hideSelection");
     // With a selection the new mask is the selection: inside revealed, outside hidden.
-    let mut s = photocraft_engine::Session::new();
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 10, "height": 10})).unwrap();
     s.execute("layer.new.layer", json!({})).unwrap();
     s.execute("select.rect", json!({"x": 0, "y": 0, "width": 4, "height": 10})).unwrap();
@@ -229,10 +229,10 @@ fn add_mask_uses_the_selection() {
 #[test]
 fn mask_button_never_replaces_a_mask() {
     for alt in [false, true] {
-        let mut s = photocraft_engine::Session::new();
+        let mut s = patronusphoto_engine::Session::new();
         s.execute("file.new", json!({"width": 10, "height": 10})).unwrap();
         s.execute("layer.new.layer", json!({})).unwrap();
-        let layer = |s: &photocraft_engine::Session| {
+        let layer = |s: &patronusphoto_engine::Session| {
             let st = s.active().unwrap();
             st.doc.layer(st.active_layer.unwrap()).unwrap().clone()
         };
@@ -241,9 +241,9 @@ fn mask_button_never_replaces_a_mask() {
         s.execute(first, json!({})).unwrap();
         // Paint a stroke into the mask.
         s.edit("paint mask", |doc, active| {
-            let id = (*active).ok_or(photocraft_engine::EngineError::NoDocument)?;
-            let m = doc.layer_mut(id).and_then(|l| l.mask.as_mut()).ok_or(photocraft_engine::EngineError::NoDocument)?;
-            m.surface.fill_rect(photocraft_geom::Rect::new(2, 2, 5, 5), &[0.5]);
+            let id = (*active).ok_or(patronusphoto_engine::EngineError::NoDocument)?;
+            let m = doc.layer_mut(id).and_then(|l| l.mask.as_mut()).ok_or(patronusphoto_engine::EngineError::NoDocument)?;
+            m.surface.fill_rect(patronusphoto_geom::Rect::new(2, 2, 5, 5), &[0.5]);
             Ok(())
         })
         .unwrap();
@@ -264,7 +264,7 @@ fn mask_button_never_replaces_a_mask() {
     // No layer: nothing to do.
     assert_eq!(mask_button_command(None, false, false), None);
     // A shape layer's path is already its vector mask: after the layer mask, nothing more.
-    let mut s = photocraft_engine::Session::new();
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 10, "height": 10})).unwrap();
     s.execute("shape.create", json!({"kind": "rect", "rect": [0, 0, 5, 5]})).unwrap();
     s.execute("layer.layerMask.revealAll", json!({})).unwrap();
@@ -275,10 +275,10 @@ fn mask_button_never_replaces_a_mask() {
 
 #[test]
 fn every_entry_is_a_known_command() {
-    let mut s = photocraft_engine::Session::new();
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 10, "height": 10})).unwrap();
     let l = s.active().unwrap().doc.layers[0].clone();
     for (_, id) in entries(&l, false, true).into_iter().chain(entries(&l, false, false)).chain(entries(&l, true, false)).chain(effects_entries()).flatten() {
-        assert!(crate::menu_catalog::CATALOG.iter().any(|m| m.3 == id) || photocraft_engine::commands::find(id).is_some(), "{id}");
+        assert!(crate::menu_catalog::CATALOG.iter().any(|m| m.3 == id) || patronusphoto_engine::commands::find(id).is_some(), "{id}");
     }
 }

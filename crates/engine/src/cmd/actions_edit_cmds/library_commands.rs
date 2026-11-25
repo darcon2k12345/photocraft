@@ -22,7 +22,7 @@ type Shortcuts = BTreeMap<String, String>;
 type Alternates = BTreeMap<String, Vec<String>>;
 
 /// The set Reset Actions… restores.
-pub const BASICS_SET: &str = "PhotoCraft Basics";
+pub const BASICS_SET: &str = "Patronus Photo Basics";
 
 /// What the undo of the last Clear All, Reset or Replace restores beside the list.
 #[derive(Clone, Debug, PartialEq)]
@@ -30,7 +30,7 @@ pub struct LibraryUndo {
     /// The command, as the list recorded it; the undo applies only while the list still offers it.
     edit: LibraryEdit,
     /// Each open document's last history row and whether its history was cleared.
-    document_history: Vec<(photocraft_doc::DocId, u64, bool)>,
+    document_history: Vec<(patronusphoto_doc::DocId, u64, bool)>,
     shortcuts: Shortcuts,
     alternates: Alternates,
     after_shortcuts: Shortcuts,
@@ -150,7 +150,7 @@ pub(super) fn reset(s: &mut Session, p: &Value) -> Result<Value> {
         Some("replace") => false,
         _ => return Err(bad(CMD, "`mode` must be append or replace")),
     };
-    // Appended beside a set of that name, the defaults get a set of their own (`PhotoCraft Basics 2`).
+    // Appended beside a set of that name, the defaults get a set of their own (`Patronus Photo Basics 2`).
     let set = if append { crate::preset_import_cmds::UniqueNames::new_exact(s.actions.list.sets()).unique(BASICS_SET) } else { BASICS_SET.to_owned() };
     let defaults = basics(&set);
     let merged = publish_library(s, CMD, (!append).then(Shortcuts::new), |list| list.reset(defaults, append, |_, _| {}))?;

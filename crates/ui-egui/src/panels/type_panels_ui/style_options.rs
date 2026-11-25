@@ -7,11 +7,11 @@ use craft::text::ui::character::{
     StyleOptionValues, StyleOptionsChange, TextAlign, TextStyleOptions,
 };
 use craft::theme::Rgba;
-use photocraft_doc::text::{CharStyle, ParagraphStyle};
+use patronusphoto_doc::text::{CharStyle, ParagraphStyle};
 use serde_json::{Value, json};
 
 use super::{color_picker, run};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The rows of a character style.
 pub(crate) const ROWS_CHAR: [StyleAttribute; 10] = [
@@ -101,8 +101,8 @@ fn align_name(align: TextAlign) -> &'static str {
     }
 }
 
-fn align_of(align: photocraft_doc::text::TextAlign) -> TextAlign {
-    use photocraft_doc::text::TextAlign as A;
+fn align_of(align: patronusphoto_doc::text::TextAlign) -> TextAlign {
+    use patronusphoto_doc::text::TextAlign as A;
     match align {
         A::Left => TextAlign::Left,
         A::Center => TextAlign::Center,
@@ -116,8 +116,8 @@ fn align_of(align: photocraft_doc::text::TextAlign) -> TextAlign {
 
 /// The values the Character controls show for `style`.
 pub(crate) fn character_values(style: &CharStyle) -> CharacterValues {
-    use photocraft_doc::text as d;
-    let family = if style.font_family.is_empty() { photocraft_text::fonts::DEFAULT_FAMILY.to_string() } else { style.font_family.clone() };
+    use patronusphoto_doc::text as d;
+    let family = if style.font_family.is_empty() { patronusphoto_text::fonts::DEFAULT_FAMILY.to_string() } else { style.font_family.clone() };
     let mut opentype = Vec::new();
     if style.ligatures {
         opentype.push("liga");
@@ -162,7 +162,7 @@ pub(crate) fn character_values(style: &CharStyle) -> CharacterValues {
 
 /// The values the Paragraph controls show for `style`.
 pub(crate) fn paragraph_values(style: &ParagraphStyle) -> ParagraphValues {
-    use photocraft_doc::text::TextDirection as D;
+    use patronusphoto_doc::text::TextDirection as D;
     let mut values = ParagraphValues::default();
     values.align = Some(align_of(style.align));
     values.direction = Some(match style.direction {
@@ -221,7 +221,7 @@ fn resolved(style: &Value, paragraph: bool, attribute: StyleAttribute) -> &Value
 }
 
 /// Runs one committed change of the editor as the style's engine command.
-fn apply(app: &mut PhotocraftApp, paragraph: bool, style: &Value, change: &StyleOptionsChange) {
+fn apply(app: &mut PatronusPhotoApp, paragraph: bool, style: &Value, change: &StyleOptionsChange) {
     let prefix = if paragraph { "type.paragraphStyle" } else { "type.characterStyle" };
     let id = style["id"].as_u64().unwrap_or(0);
     match change {
@@ -257,7 +257,7 @@ fn apply(app: &mut PhotocraftApp, paragraph: bool, style: &Value, change: &Style
 
 /// Style Options below a style list: the name plus the attributes, a check marking an attribute as part of the
 /// style (unchecked = inherited). `style` is the style's entry of `{prefix}.list`.
-pub(super) fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui, paragraph: bool, style: &Value) {
+pub(super) fn show(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, paragraph: bool, style: &Value) {
     let id = style["id"].as_u64().unwrap_or(0);
     let (char_attrs, para_attrs) = if paragraph { (&style["characterAttrs"], &style["paragraphAttrs"]) } else { (&style["attrs"], &Value::Null) };
     let char_style: CharStyle = serde_json::from_value(resolved(style, paragraph, StyleAttribute::Size).clone()).unwrap_or_default();

@@ -1,11 +1,11 @@
 # Automation architecture
 
-PhotoCraft exposes the same engine through several transports:
+Patronus Photo exposes the same engine through several transports:
 
 ```text
-photocraft-cli commands/run/batch
+patronusphoto-cli commands/run/batch
              |
-MCP stdio ---+--> photocraft-automation::Headless --> engine Session
+MCP stdio ---+--> patronusphoto-automation::Headless --> engine Session
 
 MCP bridge --> BridgeClient --> 127.0.0.1 control server --> UI ControlRequest
 

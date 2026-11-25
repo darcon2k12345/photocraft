@@ -12,7 +12,7 @@ use craft::ui::primitives::IconSpec;
 use craft::ui::text::RangeAlert;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::tools::option_cells::{hint, number};
 
 /// What the History Brush paints from.
@@ -27,8 +27,8 @@ pub(crate) enum SourceCaption {
 }
 
 /// The History Brush's source as the bar names it.
-pub(crate) fn source_caption(app: &PhotocraftApp) -> SourceCaption {
-    use photocraft_engine::history_source_cmds::{HistorySource, source};
+pub(crate) fn source_caption(app: &PatronusPhotoApp) -> SourceCaption {
+    use patronusphoto_engine::history_source_cmds::{HistorySource, source};
     let Some(st) = app.session.active() else { return SourceCaption::Deleted };
     let named = || match source(st)? {
         HistorySource::Snapshot(id) => st.snapshots().iter().find(|s| s.id == id).map(|s| SourceCaption::Named(s.name.clone())),
@@ -43,7 +43,7 @@ pub(crate) fn source_caption(app: &PhotocraftApp) -> SourceCaption {
 }
 
 /// History Brush: the caption of its source.
-pub(super) fn history_brush(ui: &mut egui::Ui, app: &mut PhotocraftApp) -> Option<RangeAlert> {
+pub(super) fn history_brush(ui: &mut egui::Ui, app: &mut PatronusPhotoApp) -> Option<RangeAlert> {
     let text = match source_caption(app) {
         SourceCaption::Opening => tl!("Paints from the document's opening state").to_string(),
         SourceCaption::Named(name) => crate::i18n::fmt(tl!("Source: {name}"), &[("name", &name)]),
@@ -54,7 +54,7 @@ pub(super) fn history_brush(ui: &mut egui::Ui, app: &mut PhotocraftApp) -> Optio
 }
 
 /// Art History Brush: Style, Area, Tolerance. Its alerts carry the reference's words, so it opens them itself.
-pub(super) fn art_history(ui: &mut egui::Ui, app: &mut PhotocraftApp) -> Option<RangeAlert> {
+pub(super) fn art_history(ui: &mut egui::Ui, app: &mut PatronusPhotoApp) -> Option<RangeAlert> {
     let styles: Vec<Entry<String>> = [
         ("tightShort", tl!("Tight Short")),
         ("tightMedium", tl!("Tight Medium")),
@@ -95,7 +95,7 @@ pub(super) fn art_history(ui: &mut egui::Ui, app: &mut PhotocraftApp) -> Option<
 
 /// The Art History Brush's Angle and Pressure for Size, after Tolerance (#12629). They edit the
 /// tool's own brush, as the Background Eraser's do.
-fn art_history_angle_pressure(ui: &mut egui::Ui, app: &mut PhotocraftApp) -> Option<RangeAlert> {
+fn art_history_angle_pressure(ui: &mut egui::Ui, app: &mut PatronusPhotoApp) -> Option<RangeAlert> {
     let before = app.session.tools.brush.clone();
     let mut brush = before.clone();
     let mut angle = brush.angle;
@@ -128,9 +128,9 @@ pub(crate) const ART_HISTORY_AREA_ALERT: &str = "An integer between 0 pixel and 
 pub(crate) const ART_HISTORY_TOLERANCE_ALERT: &str = "An integer between 0 and 100 is required. Closest value inserted.";
 
 /// Pattern Stamp: Aligned, Impressionist, Pattern, Scale, Angle.
-pub(super) fn pattern_stamp(ui: &mut egui::Ui, app: &mut PhotocraftApp) -> Option<RangeAlert> {
+pub(super) fn pattern_stamp(ui: &mut egui::Ui, app: &mut PatronusPhotoApp) -> Option<RangeAlert> {
     let patterns: Vec<Entry<String>> = app.session.patterns.items.iter().map(|p| Entry::new(p.id.clone(), p.display_name().to_string())).collect();
-    let held = photocraft_engine::presets::patterns::current(&app.session).or(app.session.patterns.items.first()).map(|p| p.id.clone());
+    let held = patronusphoto_engine::presets::patterns::current(&app.session).or(app.session.patterns.items.first()).map(|p| p.id.clone());
     let mut picked = held.clone().unwrap_or_default();
     let o = &mut app.ui.tool_options;
     Checkbox::new(Bind::bound(&mut o.pattern_stamp_aligned)).label(tl!("Aligned")).show(ui);
@@ -152,7 +152,7 @@ pub(super) fn pattern_stamp(ui: &mut egui::Ui, app: &mut PhotocraftApp) -> Optio
 }
 
 /// Red Eye: Pupil Size and Darken Amount.
-pub(super) fn red_eye(ui: &mut egui::Ui, app: &mut PhotocraftApp) -> Option<RangeAlert> {
+pub(super) fn red_eye(ui: &mut egui::Ui, app: &mut PatronusPhotoApp) -> Option<RangeAlert> {
     let o = &mut app.ui.tool_options;
     let pupil = number(tl!("Pupil Size"), &mut o.red_eye_pupil_size, 1.0..=100.0).show(ui).out_of_range;
     let darken = number(tl!("Darken Amount"), &mut o.red_eye_darken, 0.0..=100.0).show(ui).out_of_range;

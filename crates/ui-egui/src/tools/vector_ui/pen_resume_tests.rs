@@ -4,45 +4,45 @@
 use super::*;
 use crate::canvas::testing;
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 200, "height": 200})).unwrap();
     app.sync_views();
     app
 }
 
 /// Edit › Undo or Redo as the menu, the shortcut and the control channel run it.
-fn menu(app: &mut PhotocraftApp, id: &str) {
+fn menu(app: &mut PatronusPhotoApp, id: &str) {
     let app_ctx = app.ctx().clone();
     crate::menus::invoke(app, &app_ctx, id, json!({})).unwrap();
 }
 
 /// A click of the current tool at the document point `(x, y)`.
-fn click(app: &mut PhotocraftApp, x: f64, y: f64) {
+fn click(app: &mut PatronusPhotoApp, x: f64, y: f64) {
     testing::click(app, [x, y], egui::Modifiers::NONE);
 }
 
 /// A key press through the canvas pass, as the app handles it.
-fn press(app: &mut PhotocraftApp, key: egui::Key, modifiers: egui::Modifiers) {
+fn press(app: &mut PatronusPhotoApp, key: egui::Key, modifiers: egui::Modifiers) {
     testing::key(app, key, modifiers);
 }
 
 /// Three anchors clicked with the current tool.
-fn three_anchors(app: &mut PhotocraftApp) {
+fn three_anchors(app: &mut PatronusPhotoApp) {
     for (x, y) in [(20.0, 20.0), (120.0, 20.0), (120.0, 120.0)] {
         click(app, x, y);
     }
 }
 
 /// Switches to `tool` and runs the pass that ends the Pen's path.
-fn switch_tool(app: &mut PhotocraftApp, tool: Tool) {
+fn switch_tool(app: &mut PatronusPhotoApp, tool: Tool) {
     crate::tool_memory::select(app, tool);
     testing::frame(app);
 }
 
 /// A triangle drawn with the Pen and closed by clicking its first anchor; the knots it had
 /// before the close.
-fn close_triangle(app: &mut PhotocraftApp) -> Vec<[[f64; 2]; 3]> {
+fn close_triangle(app: &mut PatronusPhotoApp) -> Vec<[[f64; 2]; 3]> {
     app.ui.tool = Tool::Pen;
     three_anchors(app);
     let knots = app.ui.pen.as_ref().unwrap().triples();
@@ -52,7 +52,7 @@ fn close_triangle(app: &mut PhotocraftApp) -> Vec<[[f64; 2]; 3]> {
 }
 
 /// [`close_triangle`] in Path mode: the closed triangle is the work path.
-fn closed_triangle(app: &mut PhotocraftApp) -> Vec<[[f64; 2]; 3]> {
+fn closed_triangle(app: &mut PatronusPhotoApp) -> Vec<[[f64; 2]; 3]> {
     let knots = close_triangle(app);
     assert!(app.session.active().unwrap().doc.work_path.as_ref().unwrap().subpaths[0].closed);
     knots
@@ -201,7 +201,7 @@ fn undo_gives_every_finished_path_back_to_the_pen_not_just_the_last() {
         }
         assert!(app.ui.pen.is_none());
     }
-    let subpaths = |app: &PhotocraftApp| app.session.active().unwrap().doc.work_path.as_ref().map_or(0, |p| p.subpaths.len());
+    let subpaths = |app: &PatronusPhotoApp| app.session.active().unwrap().doc.work_path.as_ref().map_or(0, |p| p.subpaths.len());
     assert_eq!(subpaths(&app), 3, "the paths build up in the work path");
 
     // Undo walks back through each path: given back to the Pen, then one anchor at a time.
@@ -227,7 +227,7 @@ fn undo_steps_back_from_make_selection_to_the_path_being_drawn() {
     // The canvas menu's Make Selection ends the path, then makes the selection from it.
     pen_commit(&mut app, false);
     app.run("path.toSelection", json!({"name": "work"})).unwrap();
-    let doc = |app: &PhotocraftApp| app.session.active().unwrap().doc.clone();
+    let doc = |app: &PatronusPhotoApp| app.session.active().unwrap().doc.clone();
     assert!(doc(&app).selection.is_some());
 
     menu(&mut app, "edit.undo");
@@ -374,7 +374,7 @@ fn pen_undo_after_closing_a_shape_reopens_the_path() {
     assert_eq!(app.ui.pen.as_ref().unwrap().triples(), knots);
 }
 
-fn work_path(app: &PhotocraftApp) -> Option<Path> {
+fn work_path(app: &PatronusPhotoApp) -> Option<Path> {
     app.session.active().unwrap().doc.work_path.clone()
 }
 
@@ -382,7 +382,7 @@ type Knots = Vec<[[f64; 2]; 3]>;
 
 /// An open path of two anchors ended with Esc (which keeps it selected, #12892), then carried on from its last anchor (#6593) by one
 /// more anchor and ended again. The open path and the carried-on draft's knots.
-fn carry_on_a_path(app: &mut PhotocraftApp) -> (Option<Path>, Knots, Knots) {
+fn carry_on_a_path(app: &mut PatronusPhotoApp) -> (Option<Path>, Knots, Knots) {
     app.ui.tool = Tool::Pen;
     for (x, y) in [(20.0, 20.0), (120.0, 20.0)] {
         click(app, x, y);
@@ -456,7 +456,7 @@ fn a_path_given_back_by_undo_is_owned_by_the_current_document_state() {
     let mut app = app();
     let knots = closed_triangle(&mut app);
     menu(&mut app, "edit.undo");
-    let owner_valid = |app: &PhotocraftApp| app.ui.pen.as_ref().and_then(|p| p.owner.as_ref()).is_some_and(|o| o.valid(app));
+    let owner_valid = |app: &PatronusPhotoApp| app.ui.pen.as_ref().and_then(|p| p.owner.as_ref()).is_some_and(|o| o.valid(app));
     assert!(owner_valid(&app));
     assert!(!cancel_stale_pen(&mut app));
     testing::frame(&mut app);
@@ -468,7 +468,7 @@ fn a_path_given_back_by_undo_is_owned_by_the_current_document_state() {
 }
 
 /// Three anchors drawn with the Pen and ended with ↩; their knots.
-fn enter_path(app: &mut PhotocraftApp) -> Knots {
+fn enter_path(app: &mut PatronusPhotoApp) -> Knots {
     app.ui.tool = Tool::Pen;
     three_anchors(app);
     let knots = app.ui.pen.as_ref().unwrap().triples();
@@ -570,7 +570,7 @@ fn undo_gives_back_a_refused_draft_esc_kept_as_the_work_path() {
 }
 
 /// Keep a real refused commit, with an older document edit and a library Undo to route to.
-fn failed_library_draft(tool: Tool, shape: bool) -> Box<PhotocraftApp> {
+fn failed_library_draft(tool: Tool, shape: bool) -> Box<PatronusPhotoApp> {
     let mut app = app();
     app.run("layer.new.layer", json!({})).unwrap();
     app.run("actions.newSet", json!({"name": "Keep"})).unwrap();
@@ -580,13 +580,14 @@ fn failed_library_draft(tool: Tool, shape: bool) -> Box<PhotocraftApp> {
     // A refused shape is refused from the first anchor on: the Pen makes its layer then (#12909).
     if shape {
         app.session.authorize =
-            Some(|id, _| if id == "shape.create" { Err(photocraft_engine::EngineError::Other("refused shape fixture".into())) } else { Ok(()) });
+            Some(|id, _| if id == "shape.create" { Err(patronusphoto_engine::EngineError::Other("refused shape fixture".into())) } else { Ok(()) });
     }
     for (x, y) in [(20.0, 20.0), (80.0, 60.0)] {
         click(&mut app, x, y);
     }
     if !shape {
-        app.session.authorize = Some(|id, _| if id == "path.set" { Err(photocraft_engine::EngineError::Other("refused path fixture".into())) } else { Ok(()) });
+        app.session.authorize =
+            Some(|id, _| if id == "path.set" { Err(patronusphoto_engine::EngineError::Other("refused path fixture".into())) } else { Ok(()) });
     }
     assert!(!pen_commit(&mut app, false), "the fixture must actually refuse the commit");
     let draft = app.ui.pen.as_ref().unwrap();
@@ -677,7 +678,7 @@ fn failed_shape_drafts_keep_the_work_path_fallback_on_tool_switch() {
 }
 
 /// A valid Freeform release which the document refuses, not an in-progress lasso gesture.
-fn refused_freeform_library_draft() -> Box<PhotocraftApp> {
+fn refused_freeform_library_draft() -> Box<PatronusPhotoApp> {
     let mut app = app();
     app.run("layer.new.layer", json!({})).unwrap();
     app.run("actions.newSet", json!({"name": "Keep"})).unwrap();
@@ -685,7 +686,8 @@ fn refused_freeform_library_draft() -> Box<PhotocraftApp> {
     app.ui.tool = Tool::FreeformPen;
     app.ui.tool_options.vector_mode = craft::draw::ui::shape::VectorMode::Path;
     let owner = capture_pen_owner(&app).unwrap();
-    app.session.authorize = Some(|id, _| if id == "path.set" { Err(photocraft_engine::EngineError::Other("refused Freeform fixture".into())) } else { Ok(()) });
+    app.session.authorize =
+        Some(|id, _| if id == "path.set" { Err(patronusphoto_engine::EngineError::Other("refused Freeform fixture".into())) } else { Ok(()) });
     freeform_finish_owned(&mut app, &[[20.0, 20.0, 1.0], [80.0, 20.0, 1.0], [80.0, 80.0, 1.0]], &[1, 2], owner);
     let draft = app.ui.pen.as_ref().expect("the refused fitted release must be retained");
     assert!(draft.commit_failed && draft.freeform_origin && draft.owner.as_ref().is_some_and(|owner| owner.valid(&app)));
@@ -753,7 +755,8 @@ fn a_kept_pen_draft_takes_delete_only_under_its_own_tool() {
         app.ui.tool = tool;
         app.ui.tool_options.vector_mode = craft::draw::ui::shape::VectorMode::Path;
         three_anchors(&mut app);
-        app.session.authorize = Some(|id, _| if id == "path.set" { Err(photocraft_engine::EngineError::Other("refused path fixture".into())) } else { Ok(()) });
+        app.session.authorize =
+            Some(|id, _| if id == "path.set" { Err(patronusphoto_engine::EngineError::Other("refused path fixture".into())) } else { Ok(()) });
         assert!(!pen_commit(&mut app, false), "the fixture must actually refuse the commit");
         app.session.authorize = None;
         assert_eq!(app.ui.pen.as_ref().unwrap().draft.knots.len(), 3);

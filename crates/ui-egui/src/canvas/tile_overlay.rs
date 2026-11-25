@@ -26,12 +26,12 @@ use craft::ui::primitives::{HAlign, PaintShape, StrokeWidth, TextRun};
 use craft::ui::runtime::env::Label;
 use craft::ui::style::{ComponentStyle, DataColor, StyleColor, StyleCx, TypeRole};
 use egui::{Color32, Rect, Response, Vec2};
-use photocraft_geom::{Rect as DRect, TILE_SIZE, TileCoord};
-use photocraft_raster::{Surface, Tile};
+use patronusphoto_geom::{Rect as DRect, TILE_SIZE, TileCoord};
+use patronusphoto_raster::{Surface, Tile};
 #[cfg(not(target_arch = "wasm32"))]
 use rayon::prelude::*;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// Outline and fill of a tile whose pixels appear nowhere else in the layer.
 const UNIQUE: Color32 = Color32::from_rgb(0x2d, 0x8c, 0xeb);
@@ -266,7 +266,7 @@ impl Component for TileGrid<'_> {
 
 /// Shows the active layer's tiles of document `idx` over the canvas body `ui` fills; nothing when the document or
 /// its active layer has no pixels.
-pub(crate) fn show(ui: &mut egui::Ui, app: &PhotocraftApp, idx: usize) {
+pub(crate) fn show(ui: &mut egui::Ui, app: &PatronusPhotoApp, idx: usize) {
     let Some(st) = app.session.documents().get(idx) else { return };
     let Some(surface) = st.active_layer.and_then(|id| st.doc.layer(id)).and_then(|l| l.surface()) else { return };
     let revision = st.revision;
@@ -288,7 +288,7 @@ pub(crate) fn show(ui: &mut egui::Ui, app: &PhotocraftApp, idx: usize) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use photocraft_color::PixelFormat;
+    use patronusphoto_color::PixelFormat;
 
     /// The document rect of tile cell (tx, ty).
     fn cell(tx: i32, ty: i32) -> DRect {

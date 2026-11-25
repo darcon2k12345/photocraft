@@ -1,4 +1,4 @@
-//! The Layers panel's blend and opacity rows (craft-layers' `BlendRows`) as PhotoCraft applies
+//! The Layers panel's blend and opacity rows (craft-layers' `BlendRows`) as Patronus Photo applies
 //! them: what the rows report becomes a canvas preview, one history step or nothing (#970,
 //! #1481, #9065). How the rows look and read their input is craft-layers'.
 
@@ -11,11 +11,11 @@ use egui::Modifiers;
 use egui::accesskit::Role;
 use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
-use photocraft_color::BlendMode;
-use photocraft_doc::{Layer, LayerId};
+use patronusphoto_color::BlendMode;
+use patronusphoto_doc::{Layer, LayerId};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 fn blend(e: EditEvent<String>) -> LayersEvent<LayerId> {
@@ -44,7 +44,7 @@ struct After {
     preview: Option<BlendMode>,
 }
 
-/// What the rows report, pass by pass, and what PhotoCraft makes of it.
+/// What the rows report, pass by pass, and what Patronus Photo makes of it.
 #[test]
 fn blend_rows_edits_become_previews_and_history_steps() {
     let g = GestureId::new(1);
@@ -87,11 +87,11 @@ fn blend_rows_edits_become_previews_and_history_steps() {
         ),
     ];
     for (case, events, want) in cases {
-        let mut s = photocraft_engine::Session::new();
+        let mut s = patronusphoto_engine::Session::new();
         s.execute("file.new", json!({"width": 32, "height": 24})).unwrap();
         let top = LayerId(s.execute("layer.new.layer", json!({"name": "top"})).unwrap()["layer"].as_u64().unwrap());
         s.execute("edit.fill", json!({"color": "#cc3366"})).unwrap();
-        let mut app = PhotocraftApp::new(s, crate::Services::default());
+        let mut app = PatronusPhotoApp::new(s, crate::Services::default());
         let ctx = app.ctx().clone();
         let steps = app.session.active().unwrap().history.past_len();
         for event in events {
@@ -105,10 +105,10 @@ fn blend_rows_edits_become_previews_and_history_steps() {
 }
 
 /// A document of `width` × `height` with one more layer, the Move tool active, in the real window.
-fn harness(width: u32, height: u32) -> Harness<'static, Box<PhotocraftApp>> {
+fn harness(width: u32, height: u32) -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut h = Harness::builder().with_size(egui::vec2(1440.0, 900.0)).with_step_dt(1.0 / 60.0).with_max_steps(64).build_eframe(move |cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), crate::Services::default());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": width, "height": height})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();
         app.ui.tool = Tool::Move;
@@ -118,17 +118,17 @@ fn harness(width: u32, height: u32) -> Harness<'static, Box<PhotocraftApp>> {
     h
 }
 
-fn active_blend(h: &Harness<'_, Box<PhotocraftApp>>) -> BlendMode {
+fn active_blend(h: &Harness<'_, Box<PatronusPhotoApp>>) -> BlendMode {
     let st = h.state().session.active().unwrap();
     st.doc.layer(st.active_layer.unwrap()).unwrap().blend
 }
 
-fn list_open(h: &Harness<'_, Box<PhotocraftApp>>) -> bool {
+fn list_open(h: &Harness<'_, Box<PatronusPhotoApp>>) -> bool {
     h.query_all_by_label("Multiply").next().is_some()
 }
 
 /// Opens the Layers panel's Blend Mode list with a click.
-fn open_list(h: &mut Harness<'_, Box<PhotocraftApp>>) {
+fn open_list(h: &mut Harness<'_, Box<PatronusPhotoApp>>) {
     let select = h
         .query_all_by_role(Role::ComboBox)
         .filter(|n| n.accesskit_node().label().as_deref() == Some("Blend Mode"))

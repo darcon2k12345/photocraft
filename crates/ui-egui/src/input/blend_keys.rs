@@ -14,12 +14,12 @@
 
 use craft::ui::patterns::blend_keys::{BlendKeyEntry, BlendKeyPick, BlendKeys, BlendShortcut, BlendStep};
 use craft::ui::runtime::commands::{CommandSet as _, Fired};
-use photocraft_color::BlendMode;
+use patronusphoto_color::BlendMode;
 use serde_json::json;
 
 use crate::brush_mode_menu::Item;
 use crate::state::Tool;
-use crate::{PhotocraftApp, brush_mode_menu};
+use crate::{PatronusPhotoApp, brush_mode_menu};
 
 /// Photoshop's Healing Brush modes, less Replace (not implemented yet).
 pub const HEALING_MODES: [BlendMode; 7] =
@@ -81,7 +81,7 @@ fn target(tool: Tool) -> Target {
 
 #[cfg(test)]
 /// The active tool's mode, `None` being Clear. A brush-based tool's lives in its own brush.
-pub fn tool_mode(app: &mut PhotocraftApp) -> Option<BlendMode> {
+pub fn tool_mode(app: &mut PatronusPhotoApp) -> Option<BlendMode> {
     let o = &app.ui.tool_options;
     match app.ui.tool {
         Tool::Brush if o.brush_clear => None,
@@ -97,7 +97,7 @@ pub fn tool_mode(app: &mut PhotocraftApp) -> Option<BlendMode> {
 }
 
 /// Sets the active tool's mode; `None` is Clear.
-fn set_tool_mode(app: &mut PhotocraftApp, mode: Option<BlendMode>) {
+fn set_tool_mode(app: &mut PatronusPhotoApp, mode: Option<BlendMode>) {
     match app.ui.tool {
         Tool::Gradient => {
             if let Some(m) = mode {
@@ -134,7 +134,7 @@ fn set_tool_mode(app: &mut PhotocraftApp, mode: Option<BlendMode>) {
 }
 
 /// Selects Behind on the Brush, Pencil or Pattern Stamp, through the menu's own engine call.
-fn set_behind(app: &mut PhotocraftApp) {
+fn set_behind(app: &mut PatronusPhotoApp) {
     let tool = app.ui.tool;
     if app.session.active().is_none() {
         return;
@@ -150,7 +150,7 @@ fn set_behind(app: &mut PhotocraftApp) {
     }
 }
 
-pub(crate) fn set_gradient_mode(app: &mut PhotocraftApp, mode: BlendMode) {
+pub(crate) fn set_gradient_mode(app: &mut PatronusPhotoApp, mode: BlendMode) {
     let before = app.ui.tool_options.clone();
     app.ui.tool_options.gradient_blend_mode = mode;
     // Live mode: a selected gradient fill layer follows, as with the dropdown.
@@ -159,7 +159,7 @@ pub(crate) fn set_gradient_mode(app: &mut PhotocraftApp, mode: BlendMode) {
 
 /// Sets `mode` on every selected layer that can take it, in one undo step: the locked Background
 /// has no blend mode, and only groups pass through.
-fn set_layers_mode(app: &mut PhotocraftApp, mode: BlendMode) {
+fn set_layers_mode(app: &mut PatronusPhotoApp, mode: BlendMode) {
     let Some(st) = app.session.active() else { return };
     let ids: Vec<u64> = st
         .selected_layers()
@@ -176,7 +176,7 @@ fn set_layers_mode(app: &mut PhotocraftApp, mode: BlendMode) {
 
 /// The entries of the active tool's own Mode menu, in the menu's order; Behind and Clear only where the menu offers
 /// them and the active layer takes them.
-fn tool_entries(app: &PhotocraftApp) -> Vec<BlendKeyEntry<Item>> {
+fn tool_entries(app: &PatronusPhotoApp) -> Vec<BlendKeyEntry<Item>> {
     brush_mode_menu::items(app.ui.tool)
         .into_iter()
         .filter(|item| matches!(item, Item::Blend(_) | Item::Behind | Item::Clear) && brush_mode_menu::enabled(app, *item))
@@ -195,7 +195,7 @@ fn layer_entries(is_group: bool) -> Vec<BlendKeyEntry<BlendMode>> {
 
 /// Applies a fired `BlendStep` or `BlendShortcut` command to the active tool's target. Returns whether the command is
 /// one of these: it is taken even when it picks nothing, so its letter never reaches the single-letter tool keys.
-pub(crate) fn fired(app: &mut PhotocraftApp, f: &Fired) -> bool {
+pub(crate) fn fired(app: &mut PatronusPhotoApp, f: &Fired) -> bool {
     let step = BlendStep::from_ref(&f.command).is_some();
     if !step && BlendShortcut::from_ref(&f.command).is_none() {
         return false;

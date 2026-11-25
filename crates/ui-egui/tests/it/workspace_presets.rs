@@ -1,8 +1,8 @@
 //! #1120: workspace selection/reset must apply useful layouts, including saved layouts.
 
-use photocraft_engine::Session;
-use photocraft_ui_egui::dock;
-use photocraft_ui_egui::{PhotocraftApp, menus};
+use patronusphoto_engine::Session;
+use patronusphoto_ui_egui::dock;
+use patronusphoto_ui_egui::{PatronusPhotoApp, menus};
 use serde_json::{Value, json};
 
 /// The panels the presets differ in, in the order [`shown`] reports them.
@@ -17,29 +17,29 @@ const PRESETS: [(&str, &str, &[&str], bool); 6] = [
     ("motion", "Motion", &["properties", "layers"], true),
 ];
 
-fn app() -> Box<PhotocraftApp> {
-    PhotocraftApp::new(Session::new(), Default::default())
+fn app() -> Box<PatronusPhotoApp> {
+    PatronusPhotoApp::new(Session::new(), Default::default())
 }
 
-fn invoke(app: &mut PhotocraftApp, id: &str, params: Value) {
+fn invoke(app: &mut PatronusPhotoApp, id: &str, params: Value) {
     let ctx = app.ctx().clone();
     menus::invoke(app, &ctx, id, params).unwrap();
 }
 
-fn select(app: &mut PhotocraftApp, suffix: &str) {
+fn select(app: &mut PatronusPhotoApp, suffix: &str) {
     invoke(app, &format!("window.workspace.{suffix}"), json!({}));
 }
 
 /// Whether the workspace holds `panel`, in a column of icons or not.
-fn is_open(app: &PhotocraftApp, panel: &str) -> bool {
+fn is_open(app: &PatronusPhotoApp, panel: &str) -> bool {
     app.ui.docking.layout().contains(&panel.to_owned())
 }
 
-fn shown(app: &PhotocraftApp) -> Vec<&'static str> {
+fn shown(app: &PatronusPhotoApp) -> Vec<&'static str> {
     PANELS.into_iter().filter(|panel| is_open(app, panel)).collect()
 }
 
-fn layout(app: &PhotocraftApp) -> Value {
+fn layout(app: &PatronusPhotoApp) -> Value {
     json!({"current": app.workspaces.set.current, "shown": shown(app), "timeline": is_open(app, "timeline"), "dock": app.ui.docking})
 }
 
@@ -104,7 +104,7 @@ fn preset_layouts_round_trip_through_remembered_preferences() {
         dock::persist(&mut app);
         let mut session = Session::new();
         session.load_prefs_json(&app.session.prefs_to_json()).unwrap();
-        let mut restored = PhotocraftApp::new(session, Default::default());
+        let mut restored = PatronusPhotoApp::new(session, Default::default());
         dock::restore(&mut restored);
         assert_eq!(layout(&restored), expected, "restore {suffix}");
     }
@@ -120,7 +120,7 @@ fn open_timeline_is_saved_without_saving_playback() {
     let prefs = app.session.prefs_to_json();
     let mut session = Session::new();
     session.load_prefs_json(&prefs).unwrap();
-    let mut restored = PhotocraftApp::new(session, Default::default());
+    let mut restored = PatronusPhotoApp::new(session, Default::default());
     dock::restore(&mut restored);
     assert!(is_open(&restored, "timeline"));
     assert!(!restored.ui.timeline.playing());
@@ -140,7 +140,7 @@ fn custom_workspaces_restore_timeline_visibility_and_dock_after_presets() {
         invoke(&mut app, "workspace.new", json!({"name": name}));
         let mut session = Session::new();
         session.load_prefs_json(&app.session.prefs_to_json()).unwrap();
-        let mut restored = PhotocraftApp::new(session, Default::default());
+        let mut restored = PatronusPhotoApp::new(session, Default::default());
         select(&mut restored, if suffix == "motion" { "essentials" } else { "motion" });
         invoke(&mut restored, "window.workspace.select", json!({"name": name}));
         assert_eq!(shown(&restored), shown(&app), "custom select {name}");

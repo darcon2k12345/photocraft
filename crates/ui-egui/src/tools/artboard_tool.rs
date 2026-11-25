@@ -22,11 +22,11 @@ use craft::ui::canvas::ToolHostResponse;
 use craft::ui::contract::Show as _;
 
 use craft::ui::runtime::commands::CommandState;
-use photocraft_doc::{ArtboardBackground, Layer, LayerId};
+use patronusphoto_doc::{ArtboardBackground, Layer, LayerId};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::document_display::CanvasHost;
 use crate::canvas::tools::{FamilyTool, ToolScope};
 use crate::state::Tool;
@@ -71,7 +71,7 @@ impl Default for ArtboardToolUi {
     }
 }
 
-fn edges(r: photocraft_geom::Rect) -> [i64; 4] {
+fn edges(r: patronusphoto_geom::Rect) -> [i64; 4] {
     [i64::from(r.x0), i64::from(r.y0), i64::from(r.x1), i64::from(r.y1)]
 }
 
@@ -86,13 +86,13 @@ fn pixel_edges(r: DocRect) -> [i64; 4] {
 }
 
 /// The selected board: the active layer's artboard, with its edges.
-fn active_board(app: &PhotocraftApp) -> Option<(LayerId, [i64; 4])> {
+fn active_board(app: &PatronusPhotoApp) -> Option<(LayerId, [i64; 4])> {
     let st = app.session.active()?;
     let id = st.doc.artboard_of(st.active_layer?)?;
     Some((id, edges(st.doc.layer(id).and_then(Layer::artboard)?.rect)))
 }
 
-fn report(app: &mut PhotocraftApp, r: Result<Value, String>) {
+fn report(app: &mut PatronusPhotoApp, r: Result<Value, String>) {
     if let Err(e) = r {
         app.ui.status = e;
         app.ui.status_error = true;
@@ -124,7 +124,7 @@ fn shown_of(b: ArtboardBackground) -> Shown {
 }
 
 /// The boards, rebuilt from the document each pass.
-pub(crate) fn items(app: &PhotocraftApp) -> Boards {
+pub(crate) fn items(app: &PatronusPhotoApp) -> Boards {
     let mut out = Boards::default();
     let Some(st) = app.session.active() else { return out };
     let active = active_board(app).map(|b| b.0);
@@ -145,7 +145,7 @@ pub(crate) fn items(app: &PhotocraftApp) -> Boards {
 }
 
 /// The size a click places while Add New Artboard's mode is on.
-fn placing_size(app: &PhotocraftApp) -> Option<Size> {
+fn placing_size(app: &PatronusPhotoApp) -> Option<Size> {
     app.ui.artboard_tool.adding.then(|| {
         let [w, h] = bar::bar_size(app);
         Size::new(w as f64, h as f64)
@@ -165,14 +165,14 @@ pub(crate) fn tool<'a>(scope: &'a ToolScope<'a>, state: &'a mut ArtboardTool, _h
 }
 
 /// Takes the tool's events after the host ran.
-pub(crate) fn drain(app: &mut PhotocraftApp, state: &mut ArtboardTool, _response: &ToolHostResponse) {
+pub(crate) fn drain(app: &mut PatronusPhotoApp, state: &mut ArtboardTool, _response: &ToolHostResponse) {
     let events = state.take_events();
     apply(app, events);
 }
 
 /// The overlay over the boards and the "+" buttons over the selected one, shown in the Canvas body before the tool
 /// runs. Its events are applied here; a "+" answer goes to the tool, which reports it with the tool's own events.
-pub(crate) fn show_overlay(app: &mut PhotocraftApp, ui: &mut egui::Ui, rect: egui::Rect) {
+pub(crate) fn show_overlay(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, rect: egui::Rect) {
     if app.ui.tool != Tool::Artboard || app.session.active().is_none() {
         return;
     }
@@ -211,7 +211,7 @@ fn finished<T: Copy>(event: &EditEvent<T>) -> Option<T> {
 }
 
 /// Turns the framework's events into engine commands, one undo step each.
-pub(crate) fn apply(app: &mut PhotocraftApp, events: Vec<ArtboardEvent>) {
+pub(crate) fn apply(app: &mut PatronusPhotoApp, events: Vec<ArtboardEvent>) {
     for event in events {
         let boards = items(app);
         let id_of = |i: usize| boards.ids.get(i).copied();
@@ -281,20 +281,20 @@ pub(crate) fn apply(app: &mut PhotocraftApp, events: Vec<ArtboardEvent>) {
 }
 
 /// The states of the Artboard tool's commands: Add New Artboard is checked while the placing mode is on.
-pub(crate) fn command_states(app: &PhotocraftApp) -> Vec<(CommandRef, CommandState)> {
+pub(crate) fn command_states(app: &PatronusPhotoApp) -> Vec<(CommandRef, CommandState)> {
     // PLAN: assumed `From<ArtboardCommand> for CommandRef` (the command derive).
     let state = CommandState::new().enabled(app.session.active().is_some()).checked(app.ui.artboard_tool.adding);
     vec![(ArtboardCommand::AddNew.into(), state)]
 }
 
 /// What [`command_states`] reads: whether a document is open, and the placing mode.
-pub(crate) fn command_states_key(app: &PhotocraftApp) -> crate::app::framework::StatesKey {
+pub(crate) fn command_states_key(app: &PatronusPhotoApp) -> crate::app::framework::StatesKey {
     [u64::from(app.session.active().is_some()), u64::from(app.ui.artboard_tool.adding), 0, 0]
 }
 
 /// Runs a fired Artboard command: Add New Artboard flips the placing mode and adds no board. `ctx` is the shape every
 /// command source takes.
-pub(crate) fn run_fired(app: &mut PhotocraftApp, _ctx: &egui::Context, command: &CommandRef) -> bool {
+pub(crate) fn run_fired(app: &mut PatronusPhotoApp, _ctx: &egui::Context, command: &CommandRef) -> bool {
     let add_new: CommandRef = ArtboardCommand::AddNew.into();
     if *command != add_new {
         return false;
@@ -305,7 +305,7 @@ pub(crate) fn run_fired(app: &mut PhotocraftApp, _ctx: &egui::Context, command: 
 
 /// The Artboard tool's options bar: the bar's members, then the gear menu. Add New Artboard and the Align menu are
 /// members of the framework bar.
-pub fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui, tool: Tool) -> bool {
+pub fn options_bar(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, tool: Tool) -> bool {
     if tool != Tool::Artboard {
         return false;
     }
@@ -319,8 +319,8 @@ mod tests {
     use super::*;
     use crate::canvas::{ToolEvent, tool_event};
 
-    fn app() -> Box<PhotocraftApp> {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    fn app() -> Box<PatronusPhotoApp> {
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
         app.sync_views();
         app.ui.extras.snap = false;
@@ -329,7 +329,7 @@ mod tests {
         app
     }
 
-    fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2]) {
+    fn drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2]) {
         let m = egui::Modifiers::NONE;
         tool_event(app, ToolEvent::Down { x: from[0], y: from[1], pressure: 1.0 }, m);
         tool_event(app, ToolEvent::Move { x: (from[0] + to[0]) / 2.0, y: (from[1] + to[1]) / 2.0, pressure: 1.0 }, m);
@@ -337,11 +337,11 @@ mod tests {
         tool_event(app, ToolEvent::Up { x: to[0], y: to[1] }, m);
     }
 
-    fn boards(app: &PhotocraftApp) -> Vec<photocraft_geom::Rect> {
+    fn boards(app: &PatronusPhotoApp) -> Vec<patronusphoto_geom::Rect> {
         app.session.active().unwrap().doc.artboards().iter().map(|b| b.2.rect).collect()
     }
 
-    fn steps(app: &PhotocraftApp) -> usize {
+    fn steps(app: &PatronusPhotoApp) -> usize {
         app.session.active().unwrap().history.past_len()
     }
 
@@ -352,19 +352,19 @@ mod tests {
         let mut app = app();
         let s0 = steps(&app);
         drag(&mut app, [20.0, 30.0], [120.0, 110.0]);
-        assert_eq!(boards(&app), vec![photocraft_geom::Rect::new(20, 30, 120, 110)]);
+        assert_eq!(boards(&app), vec![patronusphoto_geom::Rect::new(20, 30, 120, 110)]);
         assert_eq!(steps(&app), s0 + 1);
         let st = app.session.active().unwrap();
         assert_eq!(st.active_layer, Some(st.doc.artboards()[0].0));
         // The right edge's handle.
         drag(&mut app, [120.0, 70.0], [160.0, 75.0]);
-        assert_eq!(boards(&app), vec![photocraft_geom::Rect::new(20, 30, 160, 110)]);
+        assert_eq!(boards(&app), vec![patronusphoto_geom::Rect::new(20, 30, 160, 110)]);
         assert_eq!(steps(&app), s0 + 2);
         app.run("edit.undo", json!({})).unwrap();
-        assert_eq!(boards(&app), vec![photocraft_geom::Rect::new(20, 30, 120, 110)]);
+        assert_eq!(boards(&app), vec![patronusphoto_geom::Rect::new(20, 30, 120, 110)]);
         // From inside: the board moves.
         drag(&mut app, [60.0, 60.0], [70.0, 50.0]);
-        assert_eq!(boards(&app), vec![photocraft_geom::Rect::new(30, 20, 130, 100)]);
+        assert_eq!(boards(&app), vec![patronusphoto_geom::Rect::new(30, 20, 130, 100)]);
         // A click on empty canvas draws nothing.
         drag(&mut app, [300.0, 250.0], [300.0, 250.0]);
         assert_eq!(boards(&app).len(), 1);
@@ -381,7 +381,7 @@ mod tests {
         let events = app.canvas_tools.artboard.take_events();
         let s0 = steps(&app);
         apply(&mut app, events);
-        assert_eq!(boards(&app), vec![photocraft_geom::Rect::new(20, 30, 120, 80), photocraft_geom::Rect::new(220, 30, 320, 80)]);
+        assert_eq!(boards(&app), vec![patronusphoto_geom::Rect::new(20, 30, 120, 80), patronusphoto_geom::Rect::new(220, 30, 320, 80)]);
         assert_eq!(steps(&app), s0 + 1);
         app.run("edit.undo", json!({})).unwrap();
         assert_eq!(boards(&app).len(), 1);

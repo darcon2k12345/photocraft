@@ -1,13 +1,13 @@
-//! Headless backend: a `photocraft_engine::Session` plus file I/O. Synchronous
+//! Headless backend: a `patronusphoto_engine::Session` plus file I/O. Synchronous
 //! and UI-free; the MCP server and the CLI both drive it.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use photocraft_engine::jobs::{JobEvent, JobId, JobOutcome, Started};
-use photocraft_engine::{Session, command_specs, file_cmds};
-use photocraft_format::PcraftWriter;
-use photocraft_io::ExportOptions;
+use patronusphoto_engine::jobs::{JobEvent, JobId, JobOutcome, Started};
+use patronusphoto_engine::{Session, command_specs, file_cmds};
+use patronusphoto_format::PcraftWriter;
+use patronusphoto_io::ExportOptions;
 use serde_json::{Value, json};
 
 use crate::workspace::{ExportSequence, authorize_engine_command, authorize_engine_step};
@@ -45,10 +45,10 @@ pub struct Headless {
     /// Jobs a caller waits on ([`Headless::command_begin`]), with their outcome once they end.
     /// Kept here because `jobs.list` holds only the last few jobs that ended.
     waited: HashMap<JobId, Option<JobEvent>>,
-    renderer: Option<Box<dyn photocraft_io::BandRenderer>>,
+    renderer: Option<Box<dyn patronusphoto_io::BandRenderer>>,
     /// Export warnings kept when a write fails, and preview fallback warnings: the next
     /// [`Headless::drain_diagnostics`] still reports them, whatever the renderer does with
-    /// [`photocraft_io::BandRenderer::push_diagnostic`].
+    /// [`patronusphoto_io::BandRenderer::push_diagnostic`].
     pending_diagnostics: Vec<String>,
 }
 
@@ -108,25 +108,25 @@ impl Headless {
         }
     }
 
-    /// Configure a custom [`photocraft_io::BandRenderer`] for flat exports and previews.
-    pub fn with_renderer(mut self, renderer: Box<dyn photocraft_io::BandRenderer>) -> Self {
+    /// Configure a custom [`patronusphoto_io::BandRenderer`] for flat exports and previews.
+    pub fn with_renderer(mut self, renderer: Box<dyn patronusphoto_io::BandRenderer>) -> Self {
         self.renderer = Some(renderer);
         self
     }
 
-    /// Set or clear the active [`photocraft_io::BandRenderer`].
-    pub fn set_renderer(&mut self, renderer: Option<Box<dyn photocraft_io::BandRenderer>>) {
+    /// Set or clear the active [`patronusphoto_io::BandRenderer`].
+    pub fn set_renderer(&mut self, renderer: Option<Box<dyn patronusphoto_io::BandRenderer>>) {
         self.renderer = renderer;
     }
 
     /// Take the active renderer out of this session.
-    pub fn take_renderer(&mut self) -> Option<Box<dyn photocraft_io::BandRenderer>> {
+    pub fn take_renderer(&mut self) -> Option<Box<dyn patronusphoto_io::BandRenderer>> {
         self.renderer.take()
     }
 
     /// Mutable reference to the active renderer if any.
-    pub fn renderer_mut(&mut self) -> Option<&mut dyn photocraft_io::BandRenderer> {
-        self.renderer.as_mut().map(|b| &mut **b as &mut dyn photocraft_io::BandRenderer)
+    pub fn renderer_mut(&mut self) -> Option<&mut dyn patronusphoto_io::BandRenderer> {
+        self.renderer.as_mut().map(|b| &mut **b as &mut dyn patronusphoto_io::BandRenderer)
     }
 
     /// Drain diagnostics from the active renderer if any, and the export warnings a failed
@@ -194,12 +194,12 @@ impl Headless {
 
     /// Open a file with optional high-memory approval and make it the active document.
     pub fn open_with_approval(&mut self, path: &Path, approve_high_memory: bool) -> Result<Value, AutomationError> {
-        let opts = photocraft_io::ImportOptions { psd_high_memory_approved: approve_high_memory, ..Default::default() };
+        let opts = patronusphoto_io::ImportOptions { psd_high_memory_approved: approve_high_memory, ..Default::default() };
         self.open_with_options(path, &opts)
     }
 
     /// Open a file with custom import options and make it the active document.
-    pub fn open_with_options(&mut self, path: &Path, opts: &photocraft_io::ImportOptions) -> Result<Value, AutomationError> {
+    pub fn open_with_options(&mut self, path: &Path, opts: &patronusphoto_io::ImportOptions) -> Result<Value, AutomationError> {
         let requested = path.to_str().ok_or_else(|| AutomationError::BadRequest("automation paths must be valid UTF-8".into()))?;
         let (mut o, save_path) = match &self.filesystem {
             Filesystem::Denied => return Err(AutomationError::BadRequest("automation filesystem access is not granted: read authority is absent".into())),
@@ -225,7 +225,7 @@ impl Headless {
         }
         let d = &self.session.documents()[index];
         let mut warnings = o.warnings;
-        warnings.extend(photocraft_engine::type_extra_cmds::missing_font_warnings(&d.doc));
+        warnings.extend(patronusphoto_engine::type_extra_cmds::missing_font_warnings(&d.doc));
         Ok(json!({
             "index": index,
             "name": d.doc.name,
@@ -281,7 +281,7 @@ impl Headless {
             };
             let name = Path::new(path).file_name().and_then(|name| name.to_str()).unwrap_or(path);
             this.sync_jobs();
-            Ok(photocraft_engine::smart_cmds::replace_contents_from_bytes(&mut this.session, &Value::Object(opts), name, bytes)?)
+            Ok(patronusphoto_engine::smart_cmds::replace_contents_from_bytes(&mut this.session, &Value::Object(opts), name, bytes)?)
         })
     }
 
@@ -305,7 +305,7 @@ impl Headless {
             };
             let mut outputs = workspace.export_sequence(dir)?;
             let report = file_cmds::export_layers_report_with(&this.session, params, |name, bytes| {
-                outputs.write(name, bytes).map_err(|e| photocraft_engine::EngineError::Other(e.to_string()))
+                outputs.write(name, bytes).map_err(|e| patronusphoto_engine::EngineError::Other(e.to_string()))
             });
             let (written, skipped) = match report {
                 Ok(report) => (Ok(report.files), report.skipped),
@@ -334,8 +334,8 @@ impl Headless {
                 _ => return Err(AutomationError::BadRequest("automation filesystem access is not granted: write authority is absent".into())),
             };
             let mut outputs = workspace.export_sequence(dir)?;
-            let written = photocraft_engine::export_data_sets_with(&this.session, params, |name, bytes| {
-                outputs.write(name, bytes).map_err(|e| photocraft_engine::EngineError::Other(e.to_string()))
+            let written = patronusphoto_engine::export_data_sets_with(&this.session, params, |name, bytes| {
+                outputs.write(name, bytes).map_err(|e| patronusphoto_engine::EngineError::Other(e.to_string()))
             });
             exported(dir, written, &mut outputs)
         })
@@ -360,7 +360,7 @@ impl Headless {
                 _ => return Err(AutomationError::BadRequest("automation filesystem access is not granted: read authority is absent".into())),
             };
             this.sync_jobs();
-            Ok(photocraft_engine::import_data_sets_text(&mut this.session, &text, params)?)
+            Ok(patronusphoto_engine::import_data_sets_text(&mut this.session, &text, params)?)
         })
     }
 
@@ -405,7 +405,7 @@ impl Headless {
                     format,
                     opts,
                     Some(writer),
-                    self.renderer.as_mut().map(|b| &mut **b as &mut dyn photocraft_io::BandRenderer),
+                    self.renderer.as_mut().map(|b| &mut **b as &mut dyn patronusphoto_io::BandRenderer),
                     &mut self.pending_diagnostics,
                 )?
             }
@@ -418,7 +418,7 @@ impl Headless {
                     target_text,
                     format,
                     &opts,
-                    self.renderer.as_mut().map(|b| &mut **b as &mut dyn photocraft_io::BandRenderer),
+                    self.renderer.as_mut().map(|b| &mut **b as &mut dyn patronusphoto_io::BandRenderer),
                 )?;
                 if let Err(error) = workspace.write(target_text, &bytes) {
                     // Keep the export diagnostics for the caller, as the local save path does:
@@ -430,7 +430,7 @@ impl Headless {
                 warnings
             }
         };
-        warnings.extend(photocraft_engine::type_extra_cmds::missing_font_warnings(&doc));
+        warnings.extend(patronusphoto_engine::type_extra_cmds::missing_font_warnings(&doc));
         // A layered document save (PSD, PSB, OpenRaster or .pcraft) that holds the whole document is a
         // full write, not a flattened copy: record the current revision as saved so the session
         // stops reporting `dirty`, and make the file the document's path. A flat export (PNG,
@@ -445,7 +445,7 @@ impl Headless {
                     st.saved_to(target.to_string_lossy().into_owned());
                 }
                 // History Options › Automatically Create New Snapshot When Saving (#2966).
-                photocraft_engine::history_options_cmds::snapshot_on_save(&mut this.session);
+                patronusphoto_engine::history_options_cmds::snapshot_on_save(&mut this.session);
                 Ok(())
             })?;
         }
@@ -457,14 +457,14 @@ impl Headless {
         let requested = path.to_str().ok_or_else(|| AutomationError::BadRequest("automation paths must be valid UTF-8".into()))?;
         match &self.filesystem {
             Filesystem::Denied => Err(AutomationError::BadRequest("automation filesystem access is not granted: write authority is absent".into())),
-            Filesystem::TrustedLocal => photocraft_format::atomic_write(path, bytes).map_err(|error| AutomationError::Io(error.to_string())),
+            Filesystem::TrustedLocal => patronusphoto_format::atomic_write(path, bytes).map_err(|error| AutomationError::Io(error.to_string())),
             Filesystem::Workspace(workspace) => workspace.write(requested, bytes),
         }
     }
 
     pub fn inspect(&self, index: Option<usize>) -> Result<Value, AutomationError> {
         let i = self.doc_index(index)?;
-        Ok(photocraft_engine::inspect::document(&self.session.documents()[i]))
+        Ok(patronusphoto_engine::inspect::document(&self.session.documents()[i]))
     }
 
     pub fn render_png(&mut self, index: Option<usize>, max_side: u32) -> Result<Vec<u8>, AutomationError> {
@@ -473,7 +473,8 @@ impl Headless {
         if !matches!(&self.filesystem, Filesystem::TrustedLocal) {
             crate::budgets::check_preview(doc.size.width, doc.size.height, max_side)?;
         }
-        let (png, warnings) = files::render_png_with_warnings(doc, max_side, self.renderer.as_mut().map(|b| &mut **b as &mut dyn photocraft_io::BandRenderer))?;
+        let (png, warnings) =
+            files::render_png_with_warnings(doc, max_side, self.renderer.as_mut().map(|b| &mut **b as &mut dyn patronusphoto_io::BandRenderer))?;
         // Kept here so `drain_diagnostics` returns them whatever the renderer does with
         // `push_diagnostic`.
         self.pending_diagnostics.extend(warnings);
@@ -484,7 +485,7 @@ impl Headless {
     }
 
     pub fn session_list(&self) -> Value {
-        photocraft_engine::inspect::session(&self.session)
+        patronusphoto_engine::inspect::session(&self.session)
     }
 
     pub fn select(&mut self, index: usize) -> Result<Value, AutomationError> {
@@ -503,12 +504,12 @@ impl Headless {
             }
         }
         // The closed document's buffers went to the scratch pool: hand them back to the OS.
-        photocraft_raster::scratch::release();
+        patronusphoto_raster::scratch::release();
         Ok(self.session_list())
     }
 
     pub fn command_list(&self) -> Value {
-        Value::Array(command_specs().iter().map(|c| photocraft_engine::commands::list_entry(&self.session, c, self.session.disabled_reason(c.id))).collect())
+        Value::Array(command_specs().iter().map(|c| patronusphoto_engine::commands::list_entry(&self.session, c, self.session.disabled_reason(c.id))).collect())
     }
 
     pub fn command_run(&mut self, id: &str, params: Value) -> Result<Value, AutomationError> {
@@ -569,7 +570,7 @@ impl Headless {
             Some(event) => match event.outcome {
                 JobOutcome::Done(value) => Ok(value),
                 JobOutcome::Failed(error) => Err(event.error.map(AutomationError::from).unwrap_or(AutomationError::Other(error))),
-                JobOutcome::Cancelled => Err(photocraft_engine::EngineError::Cancelled.into()),
+                JobOutcome::Cancelled => Err(patronusphoto_engine::EngineError::Cancelled.into()),
             },
             // Ended without this session seeing it end (not expected): `wait_job` reads the
             // recent-jobs list and does not block for a job that is no longer running.
@@ -584,7 +585,7 @@ impl Headless {
     pub fn job_abandon(&mut self, job: JobId) -> Result<Value, AutomationError> {
         if self.session.cancel_job(job) {
             self.waited.remove(&job);
-            return Err(photocraft_engine::EngineError::Cancelled.into());
+            return Err(patronusphoto_engine::EngineError::Cancelled.into());
         }
         match self.job_poll(job) {
             JobPoll::Ended(result) => result,
@@ -610,12 +611,12 @@ impl Headless {
         Ok(Admitted::Run(params))
     }
 
-    fn document_ids(&self) -> Vec<photocraft_doc::DocId> {
+    fn document_ids(&self) -> Vec<patronusphoto_doc::DocId> {
         self.session.documents().iter().map(|st| st.doc.id).collect()
     }
 
     /// Release the writer and GPU caches of every document a command removed.
-    fn forget_removed_documents(&mut self, before: &[photocraft_doc::DocId]) {
+    fn forget_removed_documents(&mut self, before: &[patronusphoto_doc::DocId]) {
         let after: std::collections::HashSet<_> = self.document_ids().into_iter().collect();
         let removed: Vec<_> = before.iter().copied().filter(|id| !after.contains(id)).collect();
         for id in removed {
@@ -637,10 +638,10 @@ impl Headless {
         };
         let dir = params.get("dir").and_then(Value::as_str).ok_or_else(|| AutomationError::BadRequest("renderVideo needs `dir`".into()))?;
         let mut outputs = workspace.export_sequence(dir)?;
-        let result = photocraft_engine::render_video_with(
+        let result = patronusphoto_engine::render_video_with(
             &self.session,
             &params,
-            |name, bytes| outputs.write(name, bytes).map_err(|e| photocraft_engine::EngineError::Other(e.to_string())),
+            |name, bytes| outputs.write(name, bytes).map_err(|e| patronusphoto_engine::EngineError::Other(e.to_string())),
             progress,
         );
         match result {
@@ -658,7 +659,7 @@ impl Headless {
 
 /// Common tail of the two capability-scoped exports: the sequence keeps what it wrote, or drops
 /// every file it created, so a half-finished export never looks like a finished one.
-fn exported(dir: &str, written: photocraft_engine::Result<Vec<String>>, outputs: &mut ExportSequence) -> Result<Value, AutomationError> {
+fn exported(dir: &str, written: patronusphoto_engine::Result<Vec<String>>, outputs: &mut ExportSequence) -> Result<Value, AutomationError> {
     match written {
         Ok(names) => {
             outputs.commit();
@@ -681,7 +682,7 @@ mod waited_error_tests {
     fn waited_job_keeps_typed_failure() {
         let mut headless = Headless::trusted_local();
         let id = JobId(123);
-        let error = photocraft_engine::EngineError::PsdHardBudget { name: "large.psd".into(), required: 9000, limit: 4000, free_memory: None };
+        let error = patronusphoto_engine::EngineError::PsdHardBudget { name: "large.psd".into(), required: 9000, limit: 4000, free_memory: None };
         headless.waited.insert(
             id,
             Some(JobEvent {
@@ -695,7 +696,7 @@ mod waited_error_tests {
         );
         assert!(matches!(
             headless.job_poll(id),
-            JobPoll::Ended(Err(AutomationError::Engine(photocraft_engine::EngineError::PsdHardBudget { required: 9000, limit: 4000, .. })))
+            JobPoll::Ended(Err(AutomationError::Engine(patronusphoto_engine::EngineError::PsdHardBudget { required: 9000, limit: 4000, .. })))
         ));
     }
 }

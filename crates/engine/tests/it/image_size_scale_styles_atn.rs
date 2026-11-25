@@ -4,9 +4,9 @@ use craft_psd::{
     atn::{self, AtnAction, AtnEvent, AtnFile, AtnItem},
     descriptor::{Descriptor, Id, UnicodeString, Value as D},
 };
-use photocraft_color::{BlendMode, Color};
-use photocraft_doc::{Effect, Effects, FxCommon, FxPaint, LayerId, StrokeFx, StrokePosition};
-use photocraft_engine::{
+use patronusphoto_color::{BlendMode, Color};
+use patronusphoto_doc::{Effect, Effects, FxCommon, FxPaint, LayerId, StrokeFx, StrokePosition};
+use patronusphoto_engine::{
     Session,
     actions_cmds::{Action, ActionList, ActionStep, ActionsFile},
     atn_cmds,
@@ -34,13 +34,13 @@ fn half_size() -> Descriptor {
 }
 
 fn load(s: &mut Session, bytes: &[u8]) -> Value {
-    s.execute("actions.load", json!({"data": photocraft_engine::paint::tile::b64_encode(bytes)})).unwrap()
+    s.execute("actions.load", json!({"data": patronusphoto_engine::paint::tile::b64_encode(bytes)})).unwrap()
 }
 
 fn save(s: &mut Session) -> Vec<u8> {
     let saved = s.execute("actions.save", json!({"set": "Styles"})).unwrap();
     assert_eq!(saved["skipped"], json!([]));
-    photocraft_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap()
+    patronusphoto_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap()
 }
 
 fn fixture() -> (Session, LayerId) {

@@ -3,11 +3,11 @@
 use craft::ui::contract::{Bind, Entry, Show as _};
 use craft::ui::patterns::blend_keys::{BlendKeyEntry, blend_entries};
 use craft::ui::pickers::Select;
-use photocraft_doc::BlendMode;
+use patronusphoto_doc::BlendMode;
 
 use super::paint::PaintMode;
 use super::{check, labelled, number_field};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// The text of a Mode entry.
@@ -61,7 +61,7 @@ pub(crate) fn mode_select<'a>(mode: Bind<'a, PaintMode>, entries: &'a [Entry<Pai
 }
 
 /// The Paint Bucket's members: Fill source, Mode, Opacity, Tolerance, Anti-alias, Contiguous and All Layers.
-pub(super) fn members(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub(super) fn members(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     if app.ui.tool != Tool::PaintBucket {
         return;
     }

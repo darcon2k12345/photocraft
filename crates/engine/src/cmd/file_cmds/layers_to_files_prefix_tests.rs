@@ -22,7 +22,7 @@ fn empty_prefix_writes_underscore_names_at_each_depth() {
         for (file, expected) in files.iter().zip(["_0000_Type.png", "_0001_Background.png"]) {
             let path = std::path::Path::new(file.as_str().unwrap());
             assert_eq!(path.file_name().unwrap(), expected, "depth {depth}");
-            assert_eq!(photocraft_io::import(expected, &std::fs::read(path).unwrap()).unwrap().document.size, s.active().unwrap().doc.size);
+            assert_eq!(patronusphoto_io::import(expected, &std::fs::read(path).unwrap()).unwrap().document.size, s.active().unwrap().doc.size);
         }
         assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 2);
     }
@@ -35,7 +35,7 @@ fn automation_shared_export_path_preserves_the_empty_prefix() {
     let mut written = Vec::new();
     let report = export_layers_report_with(&s, &params, |name, bytes| {
         written.push(name.to_string());
-        assert_eq!(photocraft_io::import(name, bytes).unwrap().document.size, s.active().unwrap().doc.size);
+        assert_eq!(patronusphoto_io::import(name, bytes).unwrap().document.size, s.active().unwrap().doc.size);
         Ok(())
     })
     .unwrap();

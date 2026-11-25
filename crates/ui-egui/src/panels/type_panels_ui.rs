@@ -9,7 +9,7 @@ use craft::behavior::Selection;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 pub(crate) mod color_picker;
 pub(crate) mod glyphs;
@@ -32,7 +32,7 @@ pub struct TypePanelsUi {
     pub style_selection: [Selection<u64>; 2],
     /// The Glyphs panel's own family and style; `None` follows the type selection.
     pub glyph_face: Option<(String, String)>,
-    /// The Glyphs panel's category, zoom and recent glyphs. Saved with the UI state because PhotoCraft's runtime
+    /// The Glyphs panel's category, zoom and recent glyphs. Saved with the UI state because Patronus Photo's runtime
     /// has no craft-host `Host` to hold a setting.
     pub glyph_settings: craft::font_manager::glyphs::GlyphsPanelSettings,
     /// The text style colour picker's target while it is open.
@@ -45,10 +45,10 @@ pub struct TypePanelsUi {
 /// Edit › Check Spelling… (opens the dialog when run without an `action`), and Character/Paragraph Styles with an
 /// `options` param (opens the panel on that style's Style Options). Every other panel id is a panel id of
 /// `panel_docking::command`.
-pub fn menu(app: &mut PhotocraftApp, id: &str, params: &Value) -> Option<Result<Value, String>> {
+pub fn menu(app: &mut PatronusPhotoApp, id: &str, params: &Value) -> Option<Result<Value, String>> {
     if id == "edit.checkSpelling" && params.get("action").is_none() && params.get("ui").is_none_or(|u| u.as_bool() != Some(false)) {
         // A document without any type layer opens no dialog and shows nothing, as in the reference (#14172).
-        if app.session.active().is_some_and(|st| !photocraft_engine::type_extra_cmds::has_type_layers(&st.doc)) {
+        if app.session.active().is_some_and(|st| !patronusphoto_engine::type_extra_cmds::has_type_layers(&st.doc)) {
             return Some(app.session.execute("edit.checkSpelling", json!({"action": "list"})).map_err(|e| e.to_string()));
         }
         return Some(open_spelling(app, params.get("allLayers").and_then(Value::as_bool).unwrap_or(true)));
@@ -64,7 +64,7 @@ pub fn menu(app: &mut PhotocraftApp, id: &str, params: &Value) -> Option<Result<
     Some(crate::panel_docking::show_panel(app, panel, Some(true)).map(|visible| json!({ "visible": visible })))
 }
 
-fn run(app: &mut PhotocraftApp, id: &str, p: Value) -> Option<Value> {
+fn run(app: &mut PatronusPhotoApp, id: &str, p: Value) -> Option<Value> {
     match app.run(id, p) {
         Ok(v) => Some(v),
         Err(e) => {
@@ -77,7 +77,7 @@ fn run(app: &mut PhotocraftApp, id: &str, p: Value) -> Option<Value> {
 
 /// The type the panels act on: the layer being edited (with its selection), else the selected
 /// layers. Returns params with `layer` + `range`, or `{}` (selected layers).
-fn target(app: &PhotocraftApp) -> Value {
+fn target(app: &PatronusPhotoApp) -> Value {
     if let Some(ed) = &app.ui.text_edit {
         let (a, b) = (ed.caret.min(ed.anchor), ed.caret.max(ed.anchor));
         return json!({ "layer": ed.layer, "range": [a, b], "coalesce": ed.session });

@@ -14,9 +14,9 @@ use craft::ui::form::Field;
 use craft::ui::runtime::commands::{CommandRef, CommandState};
 use craft::ui::runtime::env::{Env, Label, UnitKind};
 use craft::ui::text::NumberField;
-use photocraft_engine::prefs::Unit;
+use patronusphoto_engine::prefs::Unit;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// The ruler units Fixed Size can show, with the framework's kind of each.
@@ -53,7 +53,7 @@ fn selection_mode_of(operation: SelectionOperation) -> u8 {
 /// The New, Add, Subtract and Intersect segments over `app.ui.selection_mode`: the one binding of the
 /// mode for every tool that shows the operations. `enabled` is false while Content-Aware Move's
 /// transform box is up.
-pub(crate) fn operation_segments(app: &mut PhotocraftApp, ui: &mut egui::Ui, enabled: bool) {
+pub(crate) fn operation_segments(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, enabled: bool) {
     let words = Env::of(ui).words::<SelectionOpWords>();
     let entries = selection_operations(&words);
     let current = operation_of(app.ui.selection_mode);
@@ -96,14 +96,14 @@ fn check(ui: &mut egui::Ui, caption: Label, value: bool, enabled: bool) -> Optio
 }
 
 /// The Feather field, shared by the marquees and the lassos.
-fn feather(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+fn feather(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     if let Some(next) = number(ui, "feather", label("Feather"), f64::from(app.ui.tool_options.feather), 0.0..=1000.0, Some(UnitKind::Pixels), None) {
         app.ui.tool_options.feather = next as f32;
     }
 }
 
 /// The Anti-alias checkbox over the shared tool option.
-fn anti_alias(app: &mut PhotocraftApp, ui: &mut egui::Ui, enabled: bool) {
+fn anti_alias(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, enabled: bool) {
     if let Some(next) = check(ui, label("Anti-alias"), app.ui.tool_options.anti_alias, enabled) {
         app.ui.tool_options.anti_alias = next;
     }
@@ -113,7 +113,7 @@ fn anti_alias(app: &mut PhotocraftApp, ui: &mut egui::Ui, enabled: bool) {
 const SELECT_AND_MASK: &str = "select.selectAndMask";
 
 /// The Select and Mask… button's state for the frame input: the command's, as the Select menu reads it.
-pub(crate) fn command_states(app: &PhotocraftApp) -> Vec<(CommandRef, CommandState)> {
+pub(crate) fn command_states(app: &PatronusPhotoApp) -> Vec<(CommandRef, CommandState)> {
     vec![(CommandRef::new(SELECT_AND_MASK), CommandState::new().enabled(crate::menus::is_enabled(app, SELECT_AND_MASK)))]
 }
 
@@ -123,7 +123,7 @@ fn select_and_mask(ui: &mut egui::Ui) {
 }
 
 /// The marquee's Style, Width, swap and Height cells over the stored tool options.
-fn constraint_of(app: &PhotocraftApp) -> Constraint {
+fn constraint_of(app: &PatronusPhotoApp) -> Constraint {
     let o = &app.ui.tool_options;
     let (w, h) = (f64::from(o.marquee_width), f64::from(o.marquee_height));
     match o.marquee_style.as_str() {
@@ -134,7 +134,7 @@ fn constraint_of(app: &PhotocraftApp) -> Constraint {
 }
 
 /// The Fixed Size cells: they keep exact pixels and show them in the stored unit.
-fn constraint_fields(app: &mut PhotocraftApp, ui: &mut egui::Ui, enabled: bool) {
+fn constraint_fields(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, enabled: bool) {
     let mut constraint = constraint_of(app);
     let unit = Unit::parse(&app.ui.tool_options.marquee_unit).unwrap_or_default();
     let kind = FIXED_SIZE_UNITS.iter().find(|(u, _)| *u == unit).map_or(UnitKind::Pixels, |(_, k)| *k);
@@ -175,7 +175,7 @@ fn unit_text(unit: Unit) -> &'static str {
 }
 
 /// The marquees: operations, Feather, Anti-alias, the constraint cells and Select and Mask.
-fn marquee(app: &mut PhotocraftApp, ui: &mut egui::Ui, tool: Tool) {
+fn marquee(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, tool: Tool) {
     operation_segments(app, ui, true);
     divider(ui);
     feather(app, ui);
@@ -195,7 +195,7 @@ fn hint(ui: &mut egui::Ui, text: String) {
 
 /// The lassos: operations, Feather, Anti-alias, the Magnetic Lasso's settings, Select and Mask and
 /// the hint for what is being drawn.
-fn lasso(app: &mut PhotocraftApp, ui: &mut egui::Ui, tool: Tool) {
+fn lasso(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, tool: Tool) {
     operation_segments(app, ui, true);
     divider(ui);
     feather(app, ui);
@@ -224,7 +224,7 @@ fn lasso(app: &mut PhotocraftApp, ui: &mut egui::Ui, tool: Tool) {
 }
 
 /// The Magnetic Lasso's Width, Contrast, Frequency and pen-pressure toggle.
-fn magnetic_settings(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+fn magnetic_settings(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let o = &app.ui.tool_options;
     let (width, contrast, frequency, pressure) =
         (f64::from(o.magnetic.width), f64::from(o.magnetic.contrast), f64::from(o.magnetic.frequency), o.magnetic.pressure_width);
@@ -271,7 +271,7 @@ fn magnetic_settings(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 
 /// The Magic Wand: operations, Tolerance, Anti-alias, Contiguous, Sample All Layers, Select Subject
 /// and Select and Mask.
-fn wand(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+fn wand(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     operation_segments(app, ui, true);
     divider(ui);
     if let Some(next) = number(ui, "tolerance", label("Tolerance"), f64::from(app.ui.tool_options.tolerance), 0.0..=255.0, None, None) {
@@ -294,7 +294,7 @@ fn wand(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 }
 
 /// Shows the members of `tool`'s bar; false for a tool without selection members.
-pub(super) fn members(app: &mut PhotocraftApp, ui: &mut egui::Ui, tool: Tool) -> bool {
+pub(super) fn members(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, tool: Tool) -> bool {
     match tool {
         Tool::RectMarquee | Tool::EllipseMarquee | Tool::SingleRowMarquee | Tool::SingleColumnMarquee => marquee(app, ui, tool),
         Tool::Lasso | Tool::PolygonLasso | Tool::MagneticLasso => lasso(app, ui, tool),

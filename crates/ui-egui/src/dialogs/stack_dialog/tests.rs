@@ -11,10 +11,10 @@ use super::*;
 
 /// `n` small PNGs named `names` in a fresh folder for `tag`: (folder, paths).
 fn pngs(tag: &str, names: &[&str]) -> (String, Vec<String>) {
-    let dir = std::env::temp_dir().join(format!("photocraft-load-stack-{tag}-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("patronusphoto-load-stack-{tag}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    let mut s = photocraft_engine::Session::new();
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 8, "height": 6, "background": "#406080"})).unwrap();
     let paths = names
         .iter()
@@ -27,20 +27,20 @@ fn pngs(tag: &str, names: &[&str]) -> (String, Vec<String>) {
     (dir.to_string_lossy().into_owned(), paths)
 }
 
-fn harness(answers: Vec<Picked>) -> Harness<'static, Box<PhotocraftApp>> {
+fn harness(answers: Vec<Picked>) -> Harness<'static, Box<PatronusPhotoApp>> {
     let files: Arc<dyn craft::host::Files> = Arc::new(ScriptedFiles::answering(answers));
     Harness::builder().with_size(vec2(1440.0, 900.0)).with_max_steps(64).build_eframe(move |cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
 
-        PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), crate::Services { files: Some(files), ..Default::default() })
+        PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), crate::Services { files: Some(files), ..Default::default() })
     })
 }
 
-fn fields<'a>(h: &'a Harness<'_, Box<PhotocraftApp>>, id: craft::ui::dialog::DialogId) -> &'a DialogFields {
+fn fields<'a>(h: &'a Harness<'_, Box<PatronusPhotoApp>>, id: craft::ui::dialog::DialogId) -> &'a DialogFields {
     h.state().framework.dialogs.get_by_id::<HostedParamDialog>(id).expect("the dialog is open").fields()
 }
 
-fn set(h: &mut Harness<'_, Box<PhotocraftApp>>, id: craft::ui::dialog::DialogId, field: &str, value: serde_json::Value) {
+fn set(h: &mut Harness<'_, Box<PatronusPhotoApp>>, id: craft::ui::dialog::DialogId, field: &str, value: serde_json::Value) {
     let ctx = h.ctx.clone();
     h.state_mut().framework.dialogs.set_json_field(&ctx, id, field, value).unwrap_or_else(|e| panic!("{field}: {e}"));
 }
@@ -48,7 +48,7 @@ fn set(h: &mut Harness<'_, Box<PhotocraftApp>>, id: craft::ui::dialog::DialogId,
 #[test]
 fn statistics_browse_and_mode_selection_compute_the_chosen_statistic() {
     let (_, paths) = pngs("statistics-mean", &["first.png", "second.png"]);
-    let mut source = photocraft_engine::Session::new();
+    let mut source = patronusphoto_engine::Session::new();
     source.execute("file.new", json!({"width": 8, "height": 6, "background": "#80a0c0"})).unwrap();
     source.execute("file.saveACopy", json!({"path": paths[1]})).unwrap();
     let mut h = harness(vec![Picked::Paths(paths.iter().map(PathBuf::from).collect())]);
@@ -63,7 +63,7 @@ fn statistics_browse_and_mode_selection_compute_the_chosen_statistic() {
         .filter_map(|v| if let FieldValue::Text(p) = v { Path::new(p).file_name().map(|n| n.to_string_lossy().into_owned()) } else { None })
         .collect();
     assert_eq!(listed, ["first.png", "second.png"]);
-    set(&mut h, id, "mode", json!(photocraft_doc::StackMode::Mean.id()));
+    set(&mut h, id, "mode", json!(patronusphoto_doc::StackMode::Mean.id()));
     h.run_steps(2);
     h.get_by_label("OK").click();
     h.run_steps(4);
@@ -71,9 +71,9 @@ fn statistics_browse_and_mode_selection_compute_the_chosen_statistic() {
     assert_eq!(h.state().session.documents().len(), 1);
     let doc = &h.state().session.active().unwrap().doc;
     assert_eq!(doc.layers.len(), 1);
-    let photocraft_doc::LayerContent::Smart(smart) = &doc.layers[0].content else { panic!("expected a stack smart object") };
-    assert_eq!(smart.stack_mode, Some(photocraft_doc::StackMode::Mean));
-    let pixel = photocraft_compose::flatten(doc).px[0];
+    let patronusphoto_doc::LayerContent::Smart(smart) = &doc.layers[0].content else { panic!("expected a stack smart object") };
+    assert_eq!(smart.stack_mode, Some(patronusphoto_doc::StackMode::Mean));
+    let pixel = patronusphoto_compose::flatten(doc).px[0];
     for (actual, expected) in pixel.iter().zip([96.0, 128.0, 160.0, 255.0]) {
         assert!((actual * 255.0 - expected).abs() < 1.5, "{pixel:?}");
     }
@@ -83,14 +83,14 @@ fn statistics_browse_and_mode_selection_compute_the_chosen_statistic() {
 fn statistics_folder_and_alignment_reach_the_engine() {
     let (dir, paths) = pngs("statistics-folder", &["one.png", "two.png"]);
     // Auto-Align needs identifiable detail, not a uniform tiny colour swatch.
-    let mut source = photocraft_engine::Session::new();
+    let mut source = patronusphoto_engine::Session::new();
     source.execute("file.new", json!({"width": 96, "height": 72, "background": "#606060"})).unwrap();
     source
         .edit("texture", |doc, active| {
             let surface = doc.layer_mut(active.unwrap()).unwrap().surface_mut().unwrap();
             for k in 0..40 {
                 let (x, y, v) = ((k * 37) % 88, (k * 23) % 66, (k % 7) as f32 / 6.0);
-                surface.fill_rect(photocraft_geom::Rect::new(x, y, x + 3 + k % 5, y + 2 + k % 4), &[v, 1.0 - v, 0.5, 1.0]);
+                surface.fill_rect(patronusphoto_geom::Rect::new(x, y, x + 3 + k % 5, y + 2 + k % 4), &[v, 1.0 - v, 0.5, 1.0]);
             }
             Ok(())
         })
@@ -109,8 +109,8 @@ fn statistics_folder_and_alignment_reach_the_engine() {
     let ctx = h.ctx.clone();
     crate::dialogs::confirm(h.state_mut(), &ctx, id).unwrap();
     let doc = &h.state().session.active().unwrap().doc;
-    let photocraft_doc::LayerContent::Smart(smart) = &doc.layers[0].content else { panic!("expected a stack smart object") };
-    assert_eq!(smart.stack_mode, Some(photocraft_doc::StackMode::Median));
+    let patronusphoto_doc::LayerContent::Smart(smart) = &doc.layers[0].content else { panic!("expected a stack smart object") };
+    assert_eq!(smart.stack_mode, Some(patronusphoto_doc::StackMode::Median));
 }
 
 /// Use: Folder loads the images of the folder Browse… chose, listed in the dialog; with Create
@@ -134,5 +134,5 @@ fn a_folder_loads_its_images() {
     crate::dialogs::confirm(h.state_mut(), &ctx, id).unwrap();
     let d = &h.state().session.active().unwrap().doc;
     assert_eq!(d.layers.len(), 1);
-    assert!(matches!(d.layers[0].content, photocraft_doc::LayerContent::Smart(_)));
+    assert!(matches!(d.layers[0].content, patronusphoto_doc::LayerContent::Smart(_)));
 }

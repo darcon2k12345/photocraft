@@ -1,7 +1,7 @@
 //! File > Save a Copy: the suggested name (#14169).
 
 use super::dialogs::suggested_copy_name;
-use photocraft_engine::prefs::FileHandling;
+use patronusphoto_engine::prefs::FileHandling;
 
 fn suffix(do_not_append_copy: bool) -> &'static str {
     let handling = FileHandling { do_not_append_copy, ..FileHandling::default() };

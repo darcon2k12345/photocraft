@@ -3,7 +3,7 @@
 
 use craft::ui::patterns::form_dialogs::{DialogFields, Param, ParamKind};
 use craft::ui::runtime::env::Label;
-use photocraft_color::BlendMode;
+use patronusphoto_color::BlendMode;
 use serde_json::{Map, Value, json};
 
 /// A blend-mode row `key` over the Layers panel's mode list (`group` adds Pass Through), opening on `current`.
@@ -17,7 +17,7 @@ pub(crate) fn blend_param(key: &str, label: impl Into<Label>, group: bool, curre
 
 /// The mode a blend row `key` holds; Normal when the field is missing or unreadable.
 pub(crate) fn blend_mode(fields: &DialogFields, key: &str) -> BlendMode {
-    fields.text(key).and_then(photocraft_engine::commands::parse_blend).unwrap_or(BlendMode::Normal)
+    fields.text(key).and_then(patronusphoto_engine::commands::parse_blend).unwrap_or(BlendMode::Normal)
 }
 
 /// The Blending section, Mode, Opacity (percent) and Preserve Transparency: the rows Fill and Stroke share.

@@ -290,7 +290,7 @@ pub(super) fn load_files_into_stack(s: &mut Session, p: &Value) -> Result<Value>
     let doc_name = untitled_name("Untitled", |n| s.documents().iter().any(|d| d.doc.name == n) || s.held_open_named(n));
     // The smart object (Create Smart Object) keeps the first file's name.
     let smart_name = stem(&paths[0]);
-    let mut stack = Document::new(doc_name, photocraft_doc::Size::new(w, h), first.mode, first.depth);
+    let mut stack = Document::new(doc_name, patronusphoto_doc::Size::new(w, h), first.mode, first.depth);
     stack.resolution_dpi = first.resolution_dpi;
     stack.icc_profile = first.icc_profile.clone();
     let fmt = stack.pixel_format();
@@ -345,7 +345,7 @@ fn bake(doc: &Document, l: &Layer, keep_effects: bool, apply_mask: bool) -> Surf
     let canvas = doc.bounds();
     let mut tmp = l.clone();
     tmp.opacity = 1.0;
-    tmp.blend = photocraft_color::BlendMode::Normal;
+    tmp.blend = patronusphoto_color::BlendMode::Normal;
     tmp.visible = true;
     tmp.clipped = false;
     if !keep_effects {
@@ -359,7 +359,7 @@ fn bake(doc: &Document, l: &Layer, keep_effects: bool, apply_mask: bool) -> Surf
     // Render over the union of the canvas and the content so off-canvas pixels survive.
     let area = l.surface().map_or(canvas, |s| s.content_bounds().union(&canvas));
     let area = if keep_effects { area.inflate(256) } else { area };
-    buffer_surface(&photocraft_compose::render_layer_in(doc, &tmp, area), doc.pixel_format())
+    buffer_surface(&patronusphoto_compose::render_layer_in(doc, &tmp, area), doc.pixel_format())
 }
 
 fn walk_ids(doc: &Document) -> Vec<LayerId> {

@@ -9,7 +9,7 @@
 //! pixels by 8-bit value.
 
 use super::*;
-use photocraft_raster::Surface;
+use patronusphoto_raster::Surface;
 use std::collections::BTreeMap;
 
 const W: i32 = 800;
@@ -47,20 +47,20 @@ fn quick_click(s: &mut Session, enhance: bool) -> Value {
 
 /// The selection as `[left, top, right, bottom]`.
 fn bounds(s: &Session) -> [i32; 4] {
-    let sel = s.active().unwrap().doc.selection.clone().unwrap_or_else(|| Surface::new(photocraft_color::PixelFormat::GRAY8));
+    let sel = s.active().unwrap().doc.selection.clone().unwrap_or_else(|| Surface::new(patronusphoto_color::PixelFormat::GRAY8));
     let b = sel.content_bounds();
     [b.x0, b.y0, b.x1, b.y1]
 }
 
 /// The selection's 8-bit coverage at one document pixel.
 fn value(s: &Session, x: i32, y: i32) -> u8 {
-    let sel = s.active().unwrap().doc.selection.clone().unwrap_or_else(|| Surface::new(photocraft_color::PixelFormat::GRAY8));
+    let sel = s.active().unwrap().doc.selection.clone().unwrap_or_else(|| Surface::new(patronusphoto_color::PixelFormat::GRAY8));
     (f64::from(sel.sample_channel(x, y, 0)) * 255.0).round() as u8
 }
 
 /// `(fully selected, partly selected, value: count of the partly selected pixels)`.
 fn tally(s: &Session) -> (usize, usize, BTreeMap<u8, usize>) {
-    let sel = s.active().unwrap().doc.selection.clone().unwrap_or_else(|| Surface::new(photocraft_color::PixelFormat::GRAY8));
+    let sel = s.active().unwrap().doc.selection.clone().unwrap_or_else(|| Surface::new(patronusphoto_color::PixelFormat::GRAY8));
     let b = sel.content_bounds();
     let (mut full, mut hist) = (0usize, BTreeMap::new());
     for y in b.y0..b.y1 {

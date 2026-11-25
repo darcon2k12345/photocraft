@@ -1,6 +1,6 @@
-use super::{PhotocraftApp, theme};
+use super::{PatronusPhotoApp, theme};
 
-impl PhotocraftApp {
+impl PatronusPhotoApp {
     /// Shows `theme` and saves it as the theme of its mode, which becomes the appearance mode.
     pub fn set_theme(&mut self, ctx: &egui::Context, theme: theme::AppTheme) {
         if let Err(e) = self.save_theme(&theme) {
@@ -65,7 +65,7 @@ impl PhotocraftApp {
     }
 }
 
-impl PhotocraftApp {
+impl PatronusPhotoApp {
     /// Install the app's icons, fonts, image loaders and the theme. Call from the app creator
     /// (and again for a replacement Context) before the first `run_ui` so the very first frame
     /// renders; otherwise `logic` does it and the first frame is skipped.
@@ -85,7 +85,7 @@ impl PhotocraftApp {
         theme::install_runtime(ctx, frame);
         egui_extras::install_image_loaders(ctx);
         theme::apply(ctx, &theme);
-        // egui's own ⌘+ / ⌘- / ⌘0 scale the whole interface; PhotoCraft zooms the canvas instead
+        // egui's own ⌘+ / ⌘- / ⌘0 scale the whole interface; Patronus Photo zooms the canvas instead
         // (shortcuts.rs), like Photoshop.
         ctx.options_mut(|o| o.zoom_with_keyboard = false);
     }

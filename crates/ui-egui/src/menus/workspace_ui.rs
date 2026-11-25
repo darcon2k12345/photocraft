@@ -14,11 +14,11 @@ use craft::ui::patterns::dock::{HostedDeleteWorkspace, HostedNewWorkspace, NewWo
 use craft::ui::patterns::form_dialogs::{DialogFields, FieldValue, Param, ParamDialog, ParamKind, ParamLayout, ParamResult};
 use craft::ui::runtime::commands::CommandState;
 use craft::ui::value_drag::SliderScale;
-use photocraft_engine::prefs::Preferences;
+use patronusphoto_engine::prefs::Preferences;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::panels::panel_docking;
 
 /// A View › Pixel Aspect Ratio › Custom entry.
@@ -71,7 +71,7 @@ pub fn handles(id: &str) -> bool {
 }
 
 /// The check mark of a menu id of this module.
-pub fn checked(app: &PhotocraftApp, id: &str) -> Option<bool> {
+pub fn checked(app: &PatronusPhotoApp, id: &str) -> Option<bool> {
     match id {
         "window.panel.modifierKeys" => Some(panel_docking::is_shown(app, "modifierKeys")),
         CUSTOM_PAR => Some(app.ui.view.pixel_aspect.starts_with("custom:")),
@@ -80,7 +80,7 @@ pub fn checked(app: &PhotocraftApp, id: &str) -> Option<bool> {
 }
 
 /// Whether a menu id of this module is enabled; `None` when it is not ours.
-pub fn is_enabled(app: &PhotocraftApp, id: &str) -> Option<bool> {
+pub fn is_enabled(app: &PatronusPhotoApp, id: &str) -> Option<bool> {
     Some(match id {
         PREVIEW32 => app.session.is_enabled(id),
         i if handles(i) => true,
@@ -99,7 +99,7 @@ fn refused(error: WorkspaceError) -> String {
 /// Builds `app.workspaces` from the preferences: the built-ins from code, the saved part from
 /// `workspace_set`. Saves of the earlier format (`workspaces`, `workspace_locked`, the current name in
 /// `panel_layout`) move into the set once and are cleared.
-pub fn load(app: &mut PhotocraftApp) {
+pub fn load(app: &mut PatronusPhotoApp) {
     let prefs = app.session.prefs().clone();
     let mut set = WorkspaceSet::new(
         BUILTIN.iter().map(|&(id, english)| NamedWorkspace::new(id, tl!(english).to_string(), crate::panels::registry::preset(english))).collect(),
@@ -126,7 +126,7 @@ pub fn load(app: &mut PhotocraftApp) {
 }
 
 /// The one-time move of the earlier format into `set`; true when something moved.
-fn migrate(app: &mut PhotocraftApp, prefs: &Preferences, set: &mut WorkspaceSet<String>) -> bool {
+fn migrate(app: &mut PatronusPhotoApp, prefs: &Preferences, set: &mut WorkspaceSet<String>) -> bool {
     let current = prefs.panel_layout.get("workspace").and_then(Value::as_str).map(str::to_owned);
     if prefs.workspaces.is_empty() && !prefs.workspace_locked && current.is_none() {
         return false;
@@ -158,7 +158,7 @@ fn migrate(app: &mut PhotocraftApp, prefs: &Preferences, set: &mut WorkspaceSet<
 
 /// Writes the set to the preferences. The one writer of `Preferences::workspace_set`: every change of the set ends
 /// here.
-fn store(app: &mut PhotocraftApp) {
+fn store(app: &mut PatronusPhotoApp) {
     let value = serde_json::to_value(&app.workspaces.set).unwrap_or_default();
     app.session.prefs.edit(|p| {
         p.workspace_set = value;
@@ -181,7 +181,7 @@ fn captured(prefs: &Preferences, keeps: WorkspaceKeeps) -> Map<String, Value> {
 }
 
 /// Restores the captured shortcuts, menus and toolbar of workspace `id`, as far as its keeps name them.
-fn restore_extras(app: &mut PhotocraftApp, id: &str) {
+fn restore_extras(app: &mut PatronusPhotoApp, id: &str) {
     let Some(keeps) = app.workspaces.set.find(id).map(|w| w.keeps) else { return };
     let Some(extras) = app.session.prefs().workspace_extras.get(id).cloned() else { return };
     let take = |key: &str, on: bool| on.then(|| extras.get(key).cloned()).flatten();
@@ -201,7 +201,7 @@ fn restore_extras(app: &mut PhotocraftApp, id: &str) {
 
 /// Makes workspace `id` current: its layout replaces the live one, its captured extras are restored, the dock's
 /// layout is remembered. The host's chrome flags (menu bar, rail) stay as the host has them.
-pub fn select(app: &mut PhotocraftApp, id: &str) -> Result<(), String> {
+pub fn select(app: &mut PatronusPhotoApp, id: &str) -> Result<(), String> {
     app.workspaces.set.select(id, std::sync::Arc::make_mut(&mut app.ui.docking)).map_err(refused)?;
     restore_extras(app, id);
     crate::dock::persist(app);
@@ -210,11 +210,11 @@ pub fn select(app: &mut PhotocraftApp, id: &str) -> Result<(), String> {
 }
 
 /// Saves the live layout under `name` and makes it current; no extras are captured. Returns its id.
-pub fn save(app: &mut PhotocraftApp, name: &str) -> Result<String, String> {
+pub fn save(app: &mut PatronusPhotoApp, name: &str) -> Result<String, String> {
     save_keeping(app, name, WorkspaceKeeps::new(false, false, false))
 }
 
-fn save_keeping(app: &mut PhotocraftApp, name: &str, keeps: WorkspaceKeeps) -> Result<String, String> {
+fn save_keeping(app: &mut PatronusPhotoApp, name: &str, keeps: WorkspaceKeeps) -> Result<String, String> {
     let live = craft::behavior::dock::Workspace::clone(&app.ui.docking);
     let id = app.workspaces.set.save(name, live, WorkspaceChrome::default(), keeps).map_err(refused)?;
     let extras = captured(app.session.prefs(), keeps);
@@ -230,7 +230,7 @@ fn save_keeping(app: &mut PhotocraftApp, name: &str, keeps: WorkspaceKeeps) -> R
 }
 
 /// Deletes the saved workspace named `name` (any case).
-pub fn delete(app: &mut PhotocraftApp, name: &str) -> Result<(), String> {
+pub fn delete(app: &mut PatronusPhotoApp, name: &str) -> Result<(), String> {
     let wanted = name.trim().to_lowercase();
     let id = app
         .workspaces
@@ -243,7 +243,7 @@ pub fn delete(app: &mut PhotocraftApp, name: &str) -> Result<(), String> {
     delete_id(app, &id)
 }
 
-fn delete_id(app: &mut PhotocraftApp, id: &str) -> Result<(), String> {
+fn delete_id(app: &mut PatronusPhotoApp, id: &str) -> Result<(), String> {
     app.workspaces.set.delete(id).map_err(refused)?;
     app.session.prefs.edit(|p| {
         p.workspace_extras.remove(id);
@@ -253,7 +253,7 @@ fn delete_id(app: &mut PhotocraftApp, id: &str) -> Result<(), String> {
 }
 
 /// Runs a workspace command. New and Delete without a name open their hosted dialog and return its id.
-pub fn run(app: &mut PhotocraftApp, _ctx: &egui::Context, command: WorkspaceCommands) -> Result<Value, String> {
+pub fn run(app: &mut PatronusPhotoApp, _ctx: &egui::Context, command: WorkspaceCommands) -> Result<Value, String> {
     let ask = run_workspace(&mut app.workspaces.set, std::sync::Arc::make_mut(&mut app.ui.docking), command);
     match ask {
         Some(WorkspaceAsk::Name) => {
@@ -276,7 +276,7 @@ pub fn run(app: &mut PhotocraftApp, _ctx: &egui::Context, command: WorkspaceComm
 
 /// Runs the workspace command `command` and says what it did; `None` when it is not a workspace command. New and
 /// Delete with a `name` param act on it at once (the control protocol's form); without one they ask.
-pub(crate) fn run_command(app: &mut PhotocraftApp, ctx: &egui::Context, command: &CommandRef) -> Option<Result<Value, String>> {
+pub(crate) fn run_command(app: &mut PatronusPhotoApp, ctx: &egui::Context, command: &CommandRef) -> Option<Result<Value, String>> {
     let parsed = WorkspaceCommands::from_ref(command)?;
     let name = command.params.get("name").and_then(Value::as_str).map(str::to_owned);
     let flag = |key: &str| command.params.get(key).and_then(Value::as_bool).unwrap_or(false);
@@ -291,7 +291,7 @@ pub(crate) fn run_command(app: &mut PhotocraftApp, ctx: &egui::Context, command:
 }
 
 /// The `run` of the workspace command source: a fired `WorkspaceCommands` row or key. A refusal shows in the status.
-pub(crate) fn run_fired(app: &mut PhotocraftApp, ctx: &egui::Context, command: &CommandRef) -> bool {
+pub(crate) fn run_fired(app: &mut PatronusPhotoApp, ctx: &egui::Context, command: &CommandRef) -> bool {
     let Some(result) = run_command(app, ctx, command) else { return false };
     if let Err(message) = result {
         app.ui.status = message;
@@ -301,7 +301,7 @@ pub(crate) fn run_fired(app: &mut PhotocraftApp, ctx: &egui::Context, command: &
 }
 
 /// A `TAKERS` row: the answers of the hosted New and Delete Workspace dialogs.
-pub fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
+pub fn take(app: &mut PatronusPhotoApp, _ctx: &egui::Context) {
     while let Some(result) = app.framework.dialogs.take::<HostedNewWorkspace<String>>() {
         if let DialogResult::Ok(NewWorkspace { name, keeps, .. }) = result {
             // `confirm` refused what `check_name` refuses, so a refusal here has nothing to reopen.
@@ -316,7 +316,7 @@ pub fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
 }
 
 /// The state of each workspace command, for the command source.
-pub fn states(app: &PhotocraftApp) -> Vec<(CommandRef, CommandState)> {
+pub fn states(app: &PatronusPhotoApp) -> Vec<(CommandRef, CommandState)> {
     workspace_states(&app.workspaces.set).into_iter().map(|(command, state)| (CommandRef::from(command), state)).collect()
 }
 
@@ -334,7 +334,7 @@ pub(crate) fn owns_param(key: &str) -> bool {
 }
 
 /// A shell parameter dialog's OK: runs its command with the fields; an error goes to the status line.
-pub(crate) fn run_param(app: &mut PhotocraftApp, ctx: &egui::Context, result: ParamResult) {
+pub(crate) fn run_param(app: &mut PatronusPhotoApp, ctx: &egui::Context, result: ParamResult) {
     let params = serde_json::to_value(&result.fields).unwrap_or_default();
     if let Err(message) = crate::menus::invoke(app, ctx, &result.key, params) {
         app.ui.status = message;
@@ -343,7 +343,7 @@ pub(crate) fn run_param(app: &mut PhotocraftApp, ctx: &egui::Context, result: Pa
 }
 
 /// Opens the parameter dialog `key` over `fields`; the reply names its id.
-fn open_form(app: &mut PhotocraftApp, key: &'static str, title: &'static str, fields: DialogFields, params: Vec<Param>) -> Result<Value, String> {
+fn open_form(app: &mut PatronusPhotoApp, key: &'static str, title: &'static str, fields: DialogFields, params: Vec<Param>) -> Result<Value, String> {
     // PLAN: assumed dialogs-w2 `params::open_param(app, key, fields, captured: Value, build) -> DialogId`. A held OK
     // with a name check for Save Pixel Aspect Ratio needs a `ParamFamily::check` row (dialogs-w19); `custom_par`
     // refuses an empty name and the status line shows it.
@@ -353,14 +353,14 @@ fn open_form(app: &mut PhotocraftApp, key: &'static str, title: &'static str, fi
     Ok(json!({"dialog": id.value().to_string()}))
 }
 
-fn open_custom_par(app: &mut PhotocraftApp) -> Result<Value, String> {
+fn open_custom_par(app: &mut PatronusPhotoApp) -> Result<Value, String> {
     let fields = DialogFields::from_pairs([("name", FieldValue::Text(String::new())), ("ratio", FieldValue::Number(1.0))]);
     let params =
         vec![Param::new("name", tl!("Name:"), ParamKind::text("")), Param::new("ratio", tl!("Factor:"), ParamKind::range(0.1, 10.0, 1.0, SliderScale::Linear))];
     open_form(app, CUSTOM_PAR, "Save Pixel Aspect Ratio", fields, params)
 }
 
-fn open_extras(app: &mut PhotocraftApp) -> Result<Value, String> {
+fn open_extras(app: &mut PatronusPhotoApp) -> Result<Value, String> {
     let show = serde_json::to_value(app.ui.view.show).unwrap_or_default();
     let mut fields = DialogFields::new();
     let mut params = Vec::new();
@@ -372,7 +372,7 @@ fn open_extras(app: &mut PhotocraftApp) -> Result<Value, String> {
     open_form(app, EXTRAS_OPTIONS, "Show Extras Options", fields, params)
 }
 
-fn open_preview32(app: &mut PhotocraftApp) -> Option<Result<Value, String>> {
+fn open_preview32(app: &mut PatronusPhotoApp) -> Option<Result<Value, String>> {
     let d = app.session.active()?;
     let h = app.session.color.hdr.get(&d.doc.id).copied().unwrap_or_default();
     let method = if h.highlight_compression { "highlightCompression" } else { "exposureGamma" };
@@ -392,7 +392,7 @@ fn open_preview32(app: &mut PhotocraftApp) -> Option<Result<Value, String>> {
 }
 
 /// Run a shell command, or open its dialog. `None` when `id` isn't ours.
-pub fn menu(app: &mut PhotocraftApp, id: &str, params: &Value) -> Option<Result<Value, String>> {
+pub fn menu(app: &mut PatronusPhotoApp, id: &str, params: &Value) -> Option<Result<Value, String>> {
     if id == PREVIEW32 && no_params(params) {
         return open_preview32(app);
     }
@@ -451,7 +451,7 @@ fn parse_custom_par(p: &Value) -> Result<CustomPar, String> {
 }
 
 /// Judges a shell parameter dialog's OK before it closes: the Custom Pixel Aspect Ratio needs a name and a ratio in range.
-pub(crate) fn check_param(_app: &mut PhotocraftApp, result: &ParamResult) -> Result<(), craft::ui::runtime::env::Label> {
+pub(crate) fn check_param(_app: &mut PatronusPhotoApp, result: &ParamResult) -> Result<(), craft::ui::runtime::env::Label> {
     if result.key == CUSTOM_PAR {
         parse_custom_par(&serde_json::to_value(&result.fields).unwrap_or_default()).map_err(craft::ui::runtime::env::Label::from)?;
     }
@@ -460,7 +460,7 @@ pub(crate) fn check_param(_app: &mut PhotocraftApp, result: &ParamResult) -> Res
 
 /// Custom Pixel Aspect Ratio: `{name, ratio}` adds (or updates) and selects; `{delete: name}`
 /// removes; `{select: name}` selects a saved one.
-fn custom_par(app: &mut PhotocraftApp, p: &Value) -> Result<Value, String> {
+fn custom_par(app: &mut PatronusPhotoApp, p: &Value) -> Result<Value, String> {
     let s = &mut app.ui.shell;
     if let Some(n) = p.get("delete").and_then(Value::as_str) {
         let before = s.custom_pars.len();
@@ -511,13 +511,13 @@ fn extras_options() -> [(&'static str, &'static str); 13] {
 mod tests {
     use super::*;
 
-    fn app() -> (Box<PhotocraftApp>, egui::Context) {
-        let app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    fn app() -> (Box<PatronusPhotoApp>, egui::Context) {
+        let app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         let ctx = app.ctx().clone();
         (app, ctx)
     }
 
-    fn shown(app: &PhotocraftApp, panel: &str) -> bool {
+    fn shown(app: &PatronusPhotoApp, panel: &str) -> bool {
         panel_docking::is_shown(app, panel)
     }
 
@@ -582,8 +582,8 @@ mod tests {
     #[test]
     fn shell_view_commands_take_their_params() {
         let (mut app, _ctx) = app();
-        let ok = |app: &mut PhotocraftApp, id: &str, p: Value| menu(app, id, &p).expect("handled").unwrap();
-        let err = |app: &mut PhotocraftApp, id: &str, p: Value| menu(app, id, &p).expect("handled").unwrap_err();
+        let ok = |app: &mut PatronusPhotoApp, id: &str, p: Value| menu(app, id, &p).expect("handled").unwrap();
+        let err = |app: &mut PatronusPhotoApp, id: &str, p: Value| menu(app, id, &p).expect("handled").unwrap_err();
 
         ok(&mut app, CUSTOM_PAR, json!({"name": "Cinema", "ratio": 1.25}));
         assert_eq!(crate::view_cmds::pixel_aspect_ratio(&app.ui.view.pixel_aspect), 1.25);

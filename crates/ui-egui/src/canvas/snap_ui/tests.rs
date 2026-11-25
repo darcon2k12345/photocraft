@@ -3,8 +3,8 @@ use crate::canvas::{ToolEvent, tool_event, tool_event_response};
 use craft::behavior::geometry::SnapLine;
 use serde_json::json;
 
-fn app_with_box() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app_with_box() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
     app.sync_views();
     app.ui.views[0].zoom = 1.0;
@@ -20,13 +20,13 @@ fn app_with_box() -> Box<PhotocraftApp> {
     app
 }
 
-fn mover_bounds(app: &PhotocraftApp) -> photocraft_geom::Rect {
+fn mover_bounds(app: &PatronusPhotoApp) -> patronusphoto_geom::Rect {
     let st = app.session.active().unwrap();
     st.doc.layer(st.active_layer.unwrap()).unwrap().surface().unwrap().content_bounds()
 }
 
 /// The target of kind `kind` at `at` on `along` that a position within `tol` of `at + 0.5` snaps to.
-fn near(app: &PhotocraftApp, exclude: &[LayerId], along: Axis, at: f64) -> Option<(SnapKind, f64)> {
+fn near(app: &PatronusPhotoApp, exclude: &[LayerId], along: Axis, at: f64) -> Option<(SnapKind, f64)> {
     targets(app, 0, exclude).nearest(along, at + 0.5, 1.0).map(|t| (t.kind, t.position))
 }
 
@@ -35,7 +35,7 @@ fn has_line(lines: &[SnapLine], position: f64) -> bool {
 }
 
 /// Drags the Move tool from the mover's body to `to` and returns the snap lines of the last move.
-fn move_drag(app: &mut PhotocraftApp, to: [f64; 2], m: egui::Modifiers) -> Vec<SnapLine> {
+fn move_drag(app: &mut PatronusPhotoApp, to: [f64; 2], m: egui::Modifiers) -> Vec<SnapLine> {
     tool_event(app, ToolEvent::Down { x: 60.0, y: 60.0, pressure: 1.0 }, m);
     let lines = tool_event_response(app, ToolEvent::Move { x: to[0], y: to[1], pressure: 1.0 }, m).snapped;
     tool_event(app, ToolEvent::Up { x: to[0], y: to[1] }, m);
@@ -170,10 +170,10 @@ fn snap_targets_follow_the_document() {
     // An artboard offers its own edges and centre.
     app.session
         .edit("artboard", |doc, _| {
-            let mut board = photocraft_doc::Layer::group("Artboard 1", vec![]);
-            if let photocraft_doc::LayerContent::Group(g) = &mut board.content {
-                g.artboard = Some(photocraft_doc::Artboard {
-                    rect: photocraft_geom::Rect::new(20, 110, 120, 170),
+            let mut board = patronusphoto_doc::Layer::group("Artboard 1", vec![]);
+            if let patronusphoto_doc::LayerContent::Group(g) = &mut board.content {
+                g.artboard = Some(patronusphoto_doc::Artboard {
+                    rect: patronusphoto_geom::Rect::new(20, 110, 120, 170),
                     background: Default::default(),
                     preset: String::new(),
                 });
@@ -190,7 +190,7 @@ fn snap_targets_follow_the_document() {
     let off = app.session.active().unwrap().active_layer.unwrap();
     app.session
         .edit("paint past the edge", |doc, _| {
-            doc.layer_mut(off).unwrap().surface_mut().unwrap().fill_rect(photocraft_geom::Rect::new(-40, -20, 160, 80), &[1.0, 0.0, 0.0, 1.0]);
+            doc.layer_mut(off).unwrap().surface_mut().unwrap().fill_rect(patronusphoto_geom::Rect::new(-40, -20, 160, 80), &[1.0, 0.0, 0.0, 1.0]);
             Ok(())
         })
         .unwrap();
@@ -200,7 +200,7 @@ fn snap_targets_follow_the_document() {
 }
 
 /// A group of two layers (40..90 x 40..80 and 100..140 x 100..130) selected, as one layer.
-fn app_with_group() -> Box<PhotocraftApp> {
+fn app_with_group() -> Box<PatronusPhotoApp> {
     let mut app = app_with_box();
     app.run("layer.new.layer", json!({"name": "second"})).unwrap();
     app.run("select.rect", json!({"x": 100, "y": 100, "width": 40, "height": 30})).unwrap();
@@ -214,14 +214,14 @@ fn app_with_group() -> Box<PhotocraftApp> {
     app
 }
 
-fn child_bounds(app: &PhotocraftApp, name: &str) -> photocraft_geom::Rect {
+fn child_bounds(app: &PatronusPhotoApp, name: &str) -> patronusphoto_geom::Rect {
     let st = app.session.active().unwrap();
     let (_, _, l) = st.doc.walk().into_iter().find(|(_, _, l)| l.name == name).unwrap();
     l.surface().unwrap().content_bounds()
 }
 
 /// A plain Move drag from `from` to `to`, released there.
-fn group_drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2]) {
+fn group_drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2]) {
     let m = egui::Modifiers::NONE;
     crate::canvas::tool_event(app, ToolEvent::Down { x: from[0], y: from[1], pressure: 1.0 }, m);
     crate::canvas::tool_event(app, ToolEvent::Move { x: to[0], y: to[1], pressure: 1.0 }, m);

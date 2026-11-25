@@ -1,5 +1,5 @@
 //! Edit › Keyboard Shortcuts and Menus: the framework's Keyboard Shortcuts dialog over a draft
-//! keymap, with PhotoCraft's Menus tab beside it.
+//! keymap, with Patronus Photo's Menus tab beside it.
 //!
 //! The session holds everything the dialog edits: the draft keymap, the shortcut sets, the Menus
 //! draft and the text of a set waiting to be reviewed. Cancel drops it and the runtime never saw
@@ -19,12 +19,12 @@ use craft::ui::contract::{Bind, Entry, Props as _, Show as _};
 use craft::ui::pickers::Select;
 use craft::ui::runtime::env::Env;
 use craft::ui::runtime::windows;
-use photocraft_engine::keymap_defs;
-use photocraft_engine::prefs::{MenuCustomization, Preferences};
-use photocraft_engine::shortcut_sets::DEFAULTS_NAME;
+use patronusphoto_engine::keymap_defs;
+use patronusphoto_engine::prefs::{MenuCustomization, Preferences};
+use patronusphoto_engine::shortcut_sets::DEFAULTS_NAME;
 use serde_json::{Map, Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The id of the `.kys` format in the dialog's import and export lists.
 const KYS_FORMAT: &str = "kys";
@@ -63,7 +63,7 @@ impl MenusDraft {
     }
 }
 
-/// The built-in sets: PhotoCraft's defaults.
+/// The built-in sets: Patronus Photo's defaults.
 fn builtins() -> [(&'static str, Overrides); 1] {
     [(DEFAULTS_NAME, Overrides::new())]
 }
@@ -77,7 +77,7 @@ pub(crate) fn profiles_of(prefs: &Preferences) -> Profiles {
 
 /// The keymap the dialog and the offer edit: the rows the runtime catalog binds, the platform the
 /// runtime's keymap is built for, and the preferences' bindings as overrides.
-pub(crate) fn draft_keymap(app: &PhotocraftApp) -> Keymap {
+pub(crate) fn draft_keymap(app: &PatronusPhotoApp) -> Keymap {
     let platform = windows::os_of(app.ctx());
     // The runtime catalog's held rows while they are current; built here before the first frame holds them.
     let rows = match app.framework.catalog_rows_at(app.session.actions.list.revision()) {
@@ -101,7 +101,7 @@ pub(crate) fn kys_text(name: &str, bytes: &[u8]) -> Result<String, String> {
 }
 
 /// Opens the dialog (when it is not open) on tab `tab`: 0 Keyboard Shortcuts, 1 Menus.
-pub fn open(app: &mut PhotocraftApp, tab: u64) {
+pub fn open(app: &mut PatronusPhotoApp, tab: u64) {
     if app.prefs_rt.shortcuts.is_some() {
         return;
     }
@@ -118,7 +118,7 @@ pub fn open(app: &mut PhotocraftApp, tab: u64) {
 }
 
 /// Whether the dialog is open: the runtime's keys step aside for its modal.
-pub fn shortcuts_open(app: &PhotocraftApp) -> bool {
+pub fn shortcuts_open(app: &PatronusPhotoApp) -> bool {
     app.prefs_rt.shortcuts.is_some()
 }
 
@@ -133,24 +133,24 @@ pub(crate) fn control_reply() -> Value {
 }
 
 /// The dialog as `ui.inspect` lists it among the dialogs while it is open, in the host's entry shape.
-pub(crate) fn inspect(app: &PhotocraftApp) -> Option<Value> {
+pub(crate) fn inspect(app: &PatronusPhotoApp) -> Option<Value> {
     shortcuts_open(app).then(|| json!({"id": CONTROL_ID, "key": "edit.keyboardShortcuts", "parent": null, "fields": {}}))
 }
 
 /// Cancel for a control client, as the dialog's Cancel: the session goes and nothing it edited is saved. False with
 /// the dialog closed.
-pub(crate) fn cancel(app: &mut PhotocraftApp) -> bool {
+pub(crate) fn cancel(app: &mut PatronusPhotoApp) -> bool {
     app.prefs_rt.shortcuts.take().is_some()
 }
 
 /// Whether the dialog is recording a chord: the key goes to the recorder and runs nothing, and the
 /// native menu bar pauses its key equivalents.
-pub fn recording(app: &PhotocraftApp) -> bool {
+pub fn recording(app: &PatronusPhotoApp) -> bool {
     app.prefs_rt.shortcuts.as_ref().is_some_and(|session| session.state.is_recording())
 }
 
 /// Queues the text of a set for review on the dialog's next pass.
-pub(crate) fn queue_import(app: &mut PhotocraftApp, text: String) {
+pub(crate) fn queue_import(app: &mut PatronusPhotoApp, text: String) {
     open(app, 0);
     if let Some(session) = app.prefs_rt.shortcuts.as_mut() {
         session.pending_import = Some(text);
@@ -177,13 +177,13 @@ fn dialog<'a>(keymap: &'a mut Keymap, profiles: &'a mut Profiles, builtins: &'a 
 }
 
 /// One pass of the dialog while it is open.
-pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn show(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     pass(app, ui, false);
 }
 
 /// One pass; with `press_ok` the pass presses OK first. The session is out of `app.prefs_rt`
 /// during the pass, so nothing in the pass reads it through [`recording`].
-fn pass(app: &mut PhotocraftApp, ui: &mut egui::Ui, press_ok: bool) {
+fn pass(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, press_ok: bool) {
     let Some(mut session) = app.prefs_rt.shortcuts.take() else { return };
     let rows = crate::menus::base_rows(app);
     let options = options();
@@ -235,7 +235,7 @@ fn review(ui: &egui::Ui, state: &mut DialogState, dialog: ShortcutsDialog<'_>, t
 }
 
 /// Import…: ask for the file; the text is reviewed on the pass after it arrives.
-fn ask_import(app: &mut PhotocraftApp, state: &mut DialogState) {
+fn ask_import(app: &mut PatronusPhotoApp, state: &mut DialogState) {
     let picked = app.pick_file_bytes_filtered(&["kys", "psp", "json"], |app, name, bytes| {
         let text = kys_text(&name, &bytes)?;
         queue_import(app, text);
@@ -247,7 +247,7 @@ fn ask_import(app: &mut PhotocraftApp, state: &mut DialogState) {
 }
 
 /// Saves `text` through the save dialog under the suggested file name.
-fn save_text(app: &mut PhotocraftApp, state: &mut DialogState, suggested: &str, text: String) {
+fn save_text(app: &mut PatronusPhotoApp, state: &mut DialogState, suggested: &str, text: String) {
     // A set name can hold characters a file name can't.
     let name: String = suggested.chars().map(|c| if matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|') { '_' } else { c }).collect();
     let saved = app.pick_save(&name, move |app, path| {
@@ -263,10 +263,10 @@ fn save_text(app: &mut PhotocraftApp, state: &mut DialogState, suggested: &str, 
 /// Writes the bindings and sets of the dialog (or of an import) to the preferences in one
 /// `edit.keyboardShortcuts` call: the one writer of the shortcut preferences. An action's function
 /// key belongs to the action, not to a set, so the preferences' own stay whatever set was chosen.
-pub(crate) fn save_keys(app: &mut PhotocraftApp, keymap: &Keymap, profiles: &Profiles) -> Result<Value, String> {
+pub(crate) fn save_keys(app: &mut PatronusPhotoApp, keymap: &Keymap, profiles: &Profiles) -> Result<Value, String> {
     let (mut set, mut alternates) = keymap_defs::overrides_to_prefs(keymap.overrides());
     let prefs = app.session.prefs();
-    let is_action = |id: &String| id.starts_with(photocraft_engine::actions_cmds::PLAY_SHORTCUT_PREFIX);
+    let is_action = |id: &String| id.starts_with(patronusphoto_engine::actions_cmds::PLAY_SHORTCUT_PREFIX);
     set.retain(|id, _| !is_action(id));
     alternates.retain(|id, _| !is_action(id));
     set.extend(prefs.shortcuts.iter().filter(|(id, _)| is_action(id)).map(|(id, key)| (id.clone(), key.clone())));
@@ -291,7 +291,7 @@ pub(crate) fn save_keys(app: &mut PhotocraftApp, keymap: &Keymap, profiles: &Pro
 }
 
 /// Writes the Menus tab's draft to the preferences.
-fn save_menus(app: &mut PhotocraftApp, menus: &MenusDraft) -> Result<Value, String> {
+fn save_menus(app: &mut PatronusPhotoApp, menus: &MenusDraft) -> Result<Value, String> {
     let call = json!({"values": {"menus": {"hidden": menus.hidden, "colors": menus.colors}}});
     app.run("prefs.set", call).map_err(|e| e.to_string())
 }
@@ -353,7 +353,7 @@ fn menus_body(ui: &mut egui::Ui, rows: &[Row], draft: &mut MenusDraft) -> bool {
 /// Test hook: adds `binding` to `command` in the open dialog's draft keymap, as the dialog's own edit does.
 #[cfg(test)]
 pub(crate) fn assign(
-    app: &mut PhotocraftApp,
+    app: &mut PatronusPhotoApp,
     command: &CommandRef,
     binding: craft::keymap::Binding,
     policy: craft::keymap::Policy,
@@ -366,7 +366,7 @@ pub(crate) fn assign(
 /// key in the dialog does.
 #[cfg(test)]
 pub(crate) fn rebind(
-    app: &mut PhotocraftApp,
+    app: &mut PatronusPhotoApp,
     command: &CommandRef,
     binding: craft::keymap::Binding,
     policy: craft::keymap::Policy,
@@ -377,6 +377,6 @@ pub(crate) fn rebind(
 
 /// Test hook: presses OK in the open dialog and handles the outcome, in one pass on `ctx`.
 #[cfg(test)]
-pub(crate) fn press_ok(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(crate) fn press_ok(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     crate::testing::run_ui(ctx, Default::default(), |ui| pass(app, ui, true));
 }

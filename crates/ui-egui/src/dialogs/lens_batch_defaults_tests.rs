@@ -7,8 +7,8 @@ use serde_json::json;
 
 use super::lens_batch_layout_tests::{field, opened, set, source_folder};
 
-const LENS: &str = photocraft_engine::lens_cmds::LENS;
-const LENS_BATCH: &str = photocraft_engine::lens_cmds::LENS_BATCH;
+const LENS: &str = patronusphoto_engine::lens_cmds::LENS;
+const LENS_BATCH: &str = patronusphoto_engine::lens_cmds::LENS_BATCH;
 
 #[test]
 fn first_open_shows_the_reference_defaults() {
@@ -45,16 +45,16 @@ fn ok_on_the_defaults_saves_psd() {
 /// source's own format.
 #[test]
 fn the_command_keeps_its_own_defaults() {
-    let lc = photocraft_engine::lens_cmds::lens_params(LENS, &json!({}), photocraft_geom::Rect::new(0, 0, 40, 20), None).unwrap();
+    let lc = patronusphoto_engine::lens_cmds::lens_params(LENS, &json!({}), patronusphoto_geom::Rect::new(0, 0, 40, 20), None).unwrap();
     assert!(lc.correct_distortion && lc.correct_ca && lc.correct_vignette, "corrections default to on");
-    let doc = photocraft_engine::commands::find(LENS).unwrap().params;
+    let doc = patronusphoto_engine::commands::find(LENS).unwrap().params;
     for key in [r#""correctVignette":bool=true"#, r#""correctCA":bool=true"#] {
         assert!(doc.contains(key), "{key} in {doc}");
     }
 
     let dir = source_folder();
     let out = dir.path().join("out");
-    let r = photocraft_engine::Session::new().execute(LENS_BATCH, json!({"input": dir.path().to_string_lossy(), "output": out.to_string_lossy()}));
+    let r = patronusphoto_engine::Session::new().execute(LENS_BATCH, json!({"input": dir.path().to_string_lossy(), "output": out.to_string_lossy()}));
     assert!(r.is_ok(), "{r:?}");
     assert!(out.join("a.png").exists(), "without a format the batch keeps the source's format");
 }

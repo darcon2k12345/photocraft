@@ -1,10 +1,10 @@
 //! The engine's commands and the helpers they share. Ids follow Photoshop's menu structure (see
 //! the parity checklist).
 
-use photocraft_color::{Color, ColorMode, SampleType};
-use photocraft_doc::{Adjustment, Document, Fill, Layer, LayerContent, LayerId, LayerMask, Size};
-use photocraft_geom::{Rect, TILE_SIZE};
-use photocraft_raster::Surface;
+use patronusphoto_color::{Color, ColorMode, SampleType};
+use patronusphoto_doc::{Adjustment, Document, Fill, Layer, LayerContent, LayerId, LayerMask, Size};
+use patronusphoto_geom::{Rect, TILE_SIZE};
+use patronusphoto_raster::Surface;
 use serde_json::{Value, json};
 
 use crate::{EngineError, Result, Session, inspect, pixels};
@@ -166,7 +166,7 @@ use ops::{arrange, merge_group, move_mask, set_mask, set_mask_and_deselect};
 pub(crate) use ops::{layer_copy, translate_layer, translate_layer_wrapped};
 use params::{bad, set_clipped};
 pub(crate) use params::{check_f32_values, cmyk_param, color_param, int, int_i32, parse_hex, u32_id, u32_id_param};
-pub use photocraft_color::blend::parse_blend;
+pub use patronusphoto_color::blend::parse_blend;
 
 pub use crate::install::{command_specs, find};
 pub use crate::registry::{CommandSpec, list_entry, list_entry_matches, search_keywords};

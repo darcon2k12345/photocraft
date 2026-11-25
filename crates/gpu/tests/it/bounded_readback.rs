@@ -1,12 +1,12 @@
 //! Tests for bounded, checked band readback across chunks, pages, and device failure modes.
 
-use photocraft_color::{BlendMode, Color, ColorMode, SampleType};
-use photocraft_doc::{Document, Effect, Layer, LayerContent};
-use photocraft_geom::{Rect, Size};
-use photocraft_gpu::context::{NativeContext, NativeContextOptions};
-use photocraft_gpu::readback::{DEFAULT_MAX_STAGING_BYTES, ReadbackError, render_bands, render_to_vec};
-use photocraft_gpu::{Compositor, DeviceHealth};
-use photocraft_raster::Surface;
+use patronusphoto_color::{BlendMode, Color, ColorMode, SampleType};
+use patronusphoto_doc::{Document, Effect, Layer, LayerContent};
+use patronusphoto_geom::{Rect, Size};
+use patronusphoto_gpu::context::{NativeContext, NativeContextOptions};
+use patronusphoto_gpu::readback::{DEFAULT_MAX_STAGING_BYTES, ReadbackError, render_bands, render_to_vec};
+use patronusphoto_gpu::{Compositor, DeviceHealth};
+use patronusphoto_raster::Surface;
 
 use crate::GPU_LOCK;
 
@@ -51,7 +51,7 @@ fn bounded_readback_matches_independent_cpu_oracle() {
 
     // Independent reference CPU compositor oracle
     let mut cpu_pixels = Vec::new();
-    photocraft_compose::render_bands(&doc, rect, 0, |buf| {
+    patronusphoto_compose::render_bands(&doc, rect, 0, |buf| {
         cpu_pixels.extend_from_slice(&buf.px);
         Ok::<(), std::convert::Infallible>(())
     })
@@ -60,7 +60,7 @@ fn bounded_readback_matches_independent_cpu_oracle() {
     // GPU bounded readback in bands of 16 rows
     let mut gpu_banded = Vec::new();
     let mut total_rows = 0;
-    render_bands(&mut comp, ctx.device(), ctx.queue(), &doc, rect, 16, 32 * 1024, &photocraft_raster::Interrupt::NONE, |band_rect, px| {
+    render_bands(&mut comp, ctx.device(), ctx.queue(), &doc, rect, 16, 32 * 1024, &patronusphoto_raster::Interrupt::NONE, |band_rect, px| {
         total_rows += band_rect.height();
         gpu_banded.extend_from_slice(&px);
         Ok::<(), std::convert::Infallible>(())
@@ -104,7 +104,7 @@ fn bounded_readback_strictly_respects_staging_budget() {
         rect,
         0, // let provider calculate bounded rows
         budget,
-        &photocraft_raster::Interrupt::NONE,
+        &patronusphoto_raster::Interrupt::NONE,
         |band_rect, px| {
             let actual_staging = band_rect.height() as u64 * row_staging_bytes;
             assert!(actual_staging <= budget as u64, "band staging {} exceeds budget {}", actual_staging, budget);
@@ -129,7 +129,7 @@ fn hostile_dimensions_rejects_without_huge_allocation() {
         doc.bounds(),
         0,
         128, // less than 256
-        &photocraft_raster::Interrupt::NONE,
+        &patronusphoto_raster::Interrupt::NONE,
         |_r, _px| Ok::<(), String>(()),
     );
     assert!(matches!(res, Err(ReadbackError::AllocationFailed(_))));
@@ -138,7 +138,7 @@ fn hostile_dimensions_rejects_without_huge_allocation() {
     let wide_doc = sample_doc(10_000, 10);
     let small_budget = 4096; // 4 KiB cannot fit 1 row of 10,000 pixels (>= 80 KiB)
     let res =
-        render_bands(&mut comp, ctx.device(), ctx.queue(), &wide_doc, wide_doc.bounds(), 0, small_budget, &photocraft_raster::Interrupt::NONE, |_r, _px| {
+        render_bands(&mut comp, ctx.device(), ctx.queue(), &wide_doc, wide_doc.bounds(), 0, small_budget, &patronusphoto_raster::Interrupt::NONE, |_r, _px| {
             Ok::<(), String>(())
         });
     assert!(matches!(res, Err(ReadbackError::Unsupported(_))), "must safely fall back when 1 row cannot fit in budget: {res:?}");
@@ -154,7 +154,7 @@ fn hostile_dimensions_rejects_without_huge_allocation() {
         multi_chunk_doc.bounds(),
         16,
         DEFAULT_MAX_STAGING_BYTES,
-        &photocraft_raster::Interrupt::NONE,
+        &patronusphoto_raster::Interrupt::NONE,
         |_r, px| {
             multi_chunk_px.extend_from_slice(&px);
             Ok::<(), String>(())
@@ -170,7 +170,7 @@ fn sink_cancellation_and_error_preservation() {
     let doc = sample_doc(128, 128);
 
     let mut band_count = 0;
-    let res = render_bands(&mut comp, ctx.device(), ctx.queue(), &doc, doc.bounds(), 16, 64 * 1024, &photocraft_raster::Interrupt::NONE, |_r, _px| {
+    let res = render_bands(&mut comp, ctx.device(), ctx.queue(), &doc, doc.bounds(), 16, 64 * 1024, &patronusphoto_raster::Interrupt::NONE, |_r, _px| {
         band_count += 1;
         Err("abort_sink_now")
     });
@@ -186,7 +186,7 @@ fn sink_cancellation_and_error_preservation() {
 fn readback_honors_cancellation_before_waiting() {
     let Some((ctx, mut comp, _lock)) = test_gpu() else { return };
     let doc = sample_doc(128, 128);
-    let cancelled = photocraft_raster::Interrupt::cancel_only(&|| true);
+    let cancelled = patronusphoto_raster::Interrupt::cancel_only(&|| true);
     let mut called = false;
     let res = render_bands(&mut comp, ctx.device(), ctx.queue(), &doc, doc.bounds(), 16, 64 * 1024, &cancelled, |_rect, _px| {
         called = true;
@@ -202,7 +202,7 @@ fn readback_honors_cancellation_between_bands() {
     let doc = sample_doc(128, 128);
     let cancel = std::sync::atomic::AtomicBool::new(false);
     let is_cancelled = || cancel.load(std::sync::atomic::Ordering::SeqCst);
-    let cancelled = photocraft_raster::Interrupt::cancel_only(&is_cancelled);
+    let cancelled = patronusphoto_raster::Interrupt::cancel_only(&is_cancelled);
     let mut calls = 0usize;
     let res = render_bands(&mut comp, ctx.device(), ctx.queue(), &doc, doc.bounds(), 16, 64 * 1024, &cancelled, |_rect, _px| {
         calls += 1;
@@ -243,7 +243,7 @@ fn bounded_readback_preserves_effect_halos_across_seams() {
             rect,
             32,
             32 * 1024,
-            &photocraft_raster::Interrupt::NONE,
+            &patronusphoto_raster::Interrupt::NONE,
             |_, _| -> Result<(), std::convert::Infallible> {
                 panic!("unsupported layer effects must not emit pixels");
             },
@@ -256,7 +256,7 @@ fn bounded_readback_preserves_effect_halos_across_seams() {
 
     // Render with bands of 32 rows so the shadow seamlessly crosses multiple band boundaries
     let mut banded = Vec::new();
-    render_bands(&mut comp, ctx.device(), ctx.queue(), &doc, rect, 32, 32 * 1024, &photocraft_raster::Interrupt::NONE, |_band_rect, px| {
+    render_bands(&mut comp, ctx.device(), ctx.queue(), &doc, rect, 32, 32 * 1024, &patronusphoto_raster::Interrupt::NONE, |_band_rect, px| {
         banded.extend_from_slice(&px);
         Ok::<(), std::convert::Infallible>(())
     })
@@ -277,10 +277,11 @@ fn high_depth_documents_are_rejected_before_readback() {
     for depth in [SampleType::U16, SampleType::F32] {
         let doc = Document::with_background("high_depth", Size::new(64, 64), ColorMode::Rgb, depth, Color::WHITE);
         let mut called = false;
-        let res = render_bands(&mut comp, ctx.device(), ctx.queue(), &doc, doc.bounds(), 16, 64 * 1024, &photocraft_raster::Interrupt::NONE, |_rect, _px| {
-            called = true;
-            Ok::<(), std::convert::Infallible>(())
-        });
+        let res =
+            render_bands(&mut comp, ctx.device(), ctx.queue(), &doc, doc.bounds(), 16, 64 * 1024, &patronusphoto_raster::Interrupt::NONE, |_rect, _px| {
+                called = true;
+                Ok::<(), std::convert::Infallible>(())
+            });
         assert!(matches!(res, Err(ReadbackError::Unsupported(_))), "{depth:?} must be rejected before readback: {res:?}");
         assert!(!called, "no band may be read for a {depth:?} document");
     }
@@ -292,7 +293,7 @@ fn bounded_readback_handles_empty_rect() {
     let doc = sample_doc(100, 100);
     let mut called = false;
     let res =
-        render_bands(&mut comp, ctx.device(), ctx.queue(), &doc, Rect::new(0, 0, 0, 0), 16, 64 * 1024, &photocraft_raster::Interrupt::NONE, |_rect, _px| {
+        render_bands(&mut comp, ctx.device(), ctx.queue(), &doc, Rect::new(0, 0, 0, 0), 16, 64 * 1024, &patronusphoto_raster::Interrupt::NONE, |_rect, _px| {
             called = true;
             Ok::<(), std::convert::Infallible>(())
         });
@@ -307,10 +308,10 @@ fn bounded_readback_notices_device_fault() {
 
     // Simulate an explicit device fault
     let health = DeviceHealth::new();
-    health.mark(photocraft_gpu::Fault::Lost("simulated driver crash".into()));
+    health.mark(patronusphoto_gpu::Fault::Lost("simulated driver crash".into()));
     comp.set_health(health);
 
-    let res = render_bands(&mut comp, ctx.device(), ctx.queue(), &doc, doc.bounds(), 16, 64 * 1024, &photocraft_raster::Interrupt::NONE, |_rect, _px| {
+    let res = render_bands(&mut comp, ctx.device(), ctx.queue(), &doc, doc.bounds(), 16, 64 * 1024, &patronusphoto_raster::Interrupt::NONE, |_rect, _px| {
         Ok::<(), std::convert::Infallible>(())
     });
 

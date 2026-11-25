@@ -24,7 +24,7 @@ use craft::ui::runtime::env::Label;
 use serde_json::{Value, json};
 use std::borrow::Cow;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// The tool name crop presets are saved under.
@@ -34,7 +34,7 @@ pub const MAX_NAME: usize = 255;
 /// The key of the New Crop Preset dialog.
 const NEW_KEY: &str = "newCropPreset";
 /// The key of the Delete Crop Preset dialog.
-const DELETE_KEY: &str = "photocraft.deleteCropPreset";
+const DELETE_KEY: &str = "patronusphoto.deleteCropPreset";
 
 /// An already translated text as a label.
 fn label(text: impl ToString) -> Label {
@@ -44,7 +44,7 @@ fn label(text: impl ToString) -> Label {
 /// The saved crop presets, in saved order. A preset whose `toolOptions` hold no readable crop
 /// settings is skipped, so an index into this list is the index the preset list and
 /// `CropSettings::choose` use: every caller passes this same list.
-pub fn user_presets(app: &PhotocraftApp) -> Vec<CropUserPreset> {
+pub fn user_presets(app: &PatronusPhotoApp) -> Vec<CropUserPreset> {
     app.session
         .presets
         .tool_presets
@@ -63,12 +63,12 @@ pub fn user_presets(app: &PhotocraftApp) -> Vec<CropUserPreset> {
 
 /// Choose a saved crop preset: its fields fill the options bar (`tool.presets.select`, the same
 /// as clicking it in the Tool Presets panel).
-pub fn select(app: &mut PhotocraftApp, name: &str) {
+pub fn select(app: &mut PatronusPhotoApp, name: &str) {
     crate::preset_panels::select_tool_preset(app, name);
 }
 
 /// Shows a failed command in the status line.
-fn report(app: &mut PhotocraftApp, result: Result<(), String>) {
+fn report(app: &mut PatronusPhotoApp, result: Result<(), String>) {
     if let Err(e) = result {
         app.ui.status = e;
         app.ui.status_error = true;
@@ -90,7 +90,7 @@ fn new_dialog(fields: &mut DialogFields) -> ParamDialog<'_> {
 
 /// Open New Crop Preset with the name made from the current options. `None` (nothing opens) when
 /// there is nothing to save; an open one is reused.
-pub fn open_new(app: &mut PhotocraftApp) -> Option<DialogId> {
+pub fn open_new(app: &mut PatronusPhotoApp) -> Option<DialogId> {
     let suggested = app.ui.tool_options.crop.preset_name(&crate::crop_ui::words(app), &crate::crop_ui::units(app))?;
     let fields = DialogFields::from_pairs([("name", suggested)]);
     Some(crate::dialogs::params::open_param(app, NEW_KEY, fields, Value::Null, new_dialog))
@@ -102,12 +102,12 @@ pub fn owns(key: &str) -> bool {
 }
 
 /// Refuses an OK without a usable name.
-pub fn check(_app: &mut PhotocraftApp, result: &ParamResult) -> Result<(), Label> {
+pub fn check(_app: &mut PatronusPhotoApp, result: &ParamResult) -> Result<(), Label> {
     valid_name(result.fields.text("name").unwrap_or_default()).map(|_| ()).ok_or_else(|| label(tl!("Enter a name for the crop preset")))
 }
 
 /// New Crop Preset's OK: saves the ratio and size fields of the options under the name.
-pub fn run(app: &mut PhotocraftApp, _ctx: &egui::Context, result: ParamResult) {
+pub fn run(app: &mut PatronusPhotoApp, _ctx: &egui::Context, result: ParamResult) {
     let Some(name) = valid_name(result.fields.text("name").unwrap_or_default()) else { return };
     let crop = &app.ui.tool_options.crop;
     let options = json!({"toolOptions": {"crop": {"ratio": crop.ratio, "size": crop.size}}});
@@ -197,7 +197,7 @@ impl StackDialog for DeleteCropPreset {
 }
 
 /// Open Delete Crop Preset. `None` when no crop preset is saved; an open one is reused.
-pub fn open_delete(app: &mut PhotocraftApp) -> Option<DialogId> {
+pub fn open_delete(app: &mut PatronusPhotoApp) -> Option<DialogId> {
     let names: Vec<String> = user_presets(app).into_iter().map(|p| p.name).collect();
     if names.is_empty() {
         return None;
@@ -210,7 +210,7 @@ pub fn open_delete(app: &mut PhotocraftApp) -> Option<DialogId> {
 }
 
 /// Runs the answer of the Delete dialog (the `TAKERS` entry): deletes the selected presets.
-pub fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
+pub fn take(app: &mut PatronusPhotoApp, _ctx: &egui::Context) {
     let Some(DialogResult::Ok(names)) = app.framework.dialogs.take::<DeleteCropPreset>() else { return };
     let outcome = app.run("tool.presets.edit", json!({"action": "delete", "preset": names})).map(|_| ());
     report(app, outcome);
@@ -221,41 +221,41 @@ mod tests {
     use super::*;
     use craft::draw::ui::crop::{CropLength, CropRatio, ResolutionUnit};
     use craft::ui::runtime::env::UnitKind;
-    use photocraft_doc::{Color, ColorMode, Document, SampleType, Size};
-    use photocraft_engine::presets::tools::ToolPreset;
+    use patronusphoto_doc::{Color, ColorMode, Document, SampleType, Size};
+    use patronusphoto_engine::presets::tools::ToolPreset;
 
-    fn app_over(files: &std::sync::Arc<craft::settings::testing::MemoryFiles>) -> Box<PhotocraftApp> {
+    fn app_over(files: &std::sync::Arc<craft::settings::testing::MemoryFiles>) -> Box<PatronusPhotoApp> {
         let mut doc = Document::with_background("crop", Size::new(400, 300), ColorMode::Rgb, SampleType::U8, Color::WHITE);
         doc.resolution_dpi = 72.0;
-        let mut s = photocraft_engine::Session::new();
+        let mut s = patronusphoto_engine::Session::new();
         s.add_document(doc, None);
 
         let services = crate::testing::services_over(files);
-        let mut app = PhotocraftApp::new(s, services);
+        let mut app = PatronusPhotoApp::new(s, services);
         app.ui.tool = Tool::Crop;
         app
     }
 
-    fn names(app: &PhotocraftApp) -> Vec<String> {
+    fn names(app: &PatronusPhotoApp) -> Vec<String> {
         user_presets(app).into_iter().map(|p| p.name).collect()
     }
 
     /// OK on dialog `id`; the passes after it deliver the held answer to the family that runs it.
-    fn confirm(app: &mut PhotocraftApp, ctx: &egui::Context, id: DialogId) -> Result<(), String> {
+    fn confirm(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: DialogId) -> Result<(), String> {
         let answered = crate::dialogs::confirm(app, ctx, id);
         settle(app);
         answered
     }
 
     /// Runs the dialog passes a held answer needs to reach its family.
-    fn settle(app: &mut PhotocraftApp) {
+    fn settle(app: &mut PatronusPhotoApp) {
         for _ in 0..2 {
             crate::dialogs::testing::show(app);
         }
     }
 
     /// Sets a field of the open dialog `id` as `ui.dialog.set` does.
-    fn set(app: &mut PhotocraftApp, ctx: &egui::Context, id: DialogId, field: &str, value: Value) -> Result<(), String> {
+    fn set(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: DialogId, field: &str, value: Value) -> Result<(), String> {
         app.framework.dialogs.set_json_field(ctx, id, field, value)
     }
 
@@ -331,7 +331,7 @@ mod tests {
         let files = std::sync::Arc::new(craft::settings::testing::MemoryFiles::new());
         let mut app = app_over(&files);
         let ctx = app.ctx().clone();
-        let call = |app: &mut PhotocraftApp, m: &str, p: Value| {
+        let call = |app: &mut PatronusPhotoApp, m: &str, p: Value| {
             let (r, _rx) = ControlRequest::new(m, p);
             match handle(app, &ctx, &r) {
                 Reply::Done(v) => v,

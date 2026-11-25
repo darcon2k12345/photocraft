@@ -4,21 +4,21 @@
 use egui::{Key, Modifiers};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 20, "height": 10})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     app
 }
 
 /// The key press and release through the window host, with the app's own frames routing it.
-fn press(app: &mut PhotocraftApp, key: Key, modifiers: Modifiers) {
+fn press(app: &mut PatronusPhotoApp, key: Key, modifiers: Modifiers) {
     crate::canvas::testing::key(app, key, modifiers);
 }
 
-fn locks(app: &PhotocraftApp) -> photocraft_doc::Locks {
+fn locks(app: &PatronusPhotoApp) -> patronusphoto_doc::Locks {
     let st = app.session.active().unwrap();
     st.doc.layer(st.active_layer.unwrap()).unwrap().locks
 }
@@ -38,7 +38,7 @@ fn command_slash_runs_what_the_menu_item_runs() {
 
 #[test]
 fn command_slash_does_nothing_when_the_menu_item_is_greyed() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     assert!(!crate::menus::is_enabled(&app, "layer.lockLayers"));
     press(&mut app, Key::Slash, Modifiers::COMMAND);
     assert!(app.session.active().is_none());

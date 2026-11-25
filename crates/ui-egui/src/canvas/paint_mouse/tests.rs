@@ -8,8 +8,8 @@ use crate::canvas::{ToolEvent, tool_event};
 
 mod right_click;
 
-pub(super) fn harness(prefs: Option<&str>) -> Harness<'static, Box<PhotocraftApp>> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+pub(super) fn harness(prefs: Option<&str>) -> Harness<'static, Box<PatronusPhotoApp>> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     app.run("tools.setColors", json!({"foreground": "#0000ff"})).unwrap();
@@ -20,7 +20,7 @@ pub(super) fn harness(prefs: Option<&str>) -> Harness<'static, Box<PhotocraftApp
     app.ui.tool = Tool::Brush;
     app.sync_views();
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(vec2(1200.0, 800.0)).with_step_dt(1.0 / 60.0).build_app(
-        |ui, app: &mut PhotocraftApp| {
+        |ui, app: &mut PatronusPhotoApp| {
             let ctx = ui.ctx().clone();
             if !ctx.fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 return;
@@ -29,18 +29,18 @@ pub(super) fn harness(prefs: Option<&str>) -> Harness<'static, Box<PhotocraftApp
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     h.run_steps(4);
     h
 }
 
-pub(super) fn press(h: &mut Harness<'static, Box<PhotocraftApp>>, pos: Pos2, button: PointerButton, pressed: bool) {
+pub(super) fn press(h: &mut Harness<'static, Box<PatronusPhotoApp>>, pos: Pos2, button: PointerButton, pressed: bool) {
     h.event(egui::Event::PointerButton { pos, button, pressed, modifiers: Modifiers::NONE });
     h.run_steps(2);
 }
 
 /// Drag across the canvas centre with `button`; returns the document points it covered.
-pub(super) fn drag(h: &mut Harness<'static, Box<PhotocraftApp>>, button: PointerButton) -> (Pos2, Pos2) {
+pub(super) fn drag(h: &mut Harness<'static, Box<PatronusPhotoApp>>, button: PointerButton) -> (Pos2, Pos2) {
     let c = h.state().last_canvas_rect.center();
     let (a, b) = (c - vec2(80.0, 0.0), c + vec2(80.0, 0.0));
     h.event(egui::Event::PointerMoved(a));
@@ -54,7 +54,7 @@ pub(super) fn drag(h: &mut Harness<'static, Box<PhotocraftApp>>, button: Pointer
     (a, b)
 }
 
-fn alpha_at(h: &Harness<'static, Box<PhotocraftApp>>, screen: Pos2) -> f32 {
+fn alpha_at(h: &Harness<'static, Box<PatronusPhotoApp>>, screen: Pos2) -> f32 {
     let app = h.state();
     let v = app.ui.views[0].clone();
     let r = app.last_canvas_rect;
@@ -64,12 +64,12 @@ fn alpha_at(h: &Harness<'static, Box<PhotocraftApp>>, screen: Pos2) -> f32 {
     st.doc.layer(st.active_layer.unwrap()).unwrap().surface().unwrap().rgba(x, y)[3]
 }
 
-fn strokes(h: &Harness<'static, Box<PhotocraftApp>>) -> Vec<serde_json::Value> {
+fn strokes(h: &Harness<'static, Box<PatronusPhotoApp>>) -> Vec<serde_json::Value> {
     h.state().session.journal.iter().filter(|(id, _)| id == "paint.stroke").map(|(_, p)| p.clone()).collect()
 }
 
 /// Where the Shift+right-click mode menu is open, if it is.
-fn mode_menu_at(h: &Harness<'static, Box<PhotocraftApp>>) -> Option<Pos2> {
+fn mode_menu_at(h: &Harness<'static, Box<PatronusPhotoApp>>) -> Option<Pos2> {
     h.state()
         .ui
         .canvas_tool_menu
@@ -79,11 +79,11 @@ fn mode_menu_at(h: &Harness<'static, Box<PhotocraftApp>>) -> Option<Pos2> {
 }
 
 /// Where the Brush Preset picker is open, if it is.
-fn picker_at(h: &Harness<'static, Box<PhotocraftApp>>) -> Option<Pos2> {
+fn picker_at(h: &Harness<'static, Box<PatronusPhotoApp>>) -> Option<Pos2> {
     crate::brush_picker::opened_at(h.state())
 }
 
-fn mode_right_click(h: &mut Harness<'static, Box<PhotocraftApp>>, mods: Modifiers) {
+fn mode_right_click(h: &mut Harness<'static, Box<PatronusPhotoApp>>, mods: Modifiers) {
     let p = h.state().last_canvas_rect.center();
     h.event(egui::Event::ModifiersChanged(mods));
     h.event(egui::Event::PointerMoved(p));
@@ -109,7 +109,7 @@ fn shift_right_mode_picker_selects_journals_and_clear_erases() {
     h.get_by_label("Multiply").click();
     h.run_steps(2);
     assert!(mode_menu_at(&h).is_none());
-    assert_eq!(h.state().session.tools.brush.mode, photocraft_doc::BlendMode::Multiply);
+    assert_eq!(h.state().session.tools.brush.mode, patronusphoto_doc::BlendMode::Multiply);
     assert_eq!(h.state().session.journal.last().unwrap(), &("tools.setBrush".into(), json!({"brush": {"mode": "Multiply", "behind": false}})));
     let (a, b) = drag(&mut h, PointerButton::Primary);
     let mid = a + (b - a) * 0.5;
@@ -118,7 +118,7 @@ fn shift_right_mode_picker_selects_journals_and_clear_erases() {
     h.get_by_label("Clear").click();
     h.run_steps(2);
     assert!(h.state().ui.tool_options.brush_clear);
-    assert_eq!(h.state().session.tools.brush.mode, photocraft_doc::BlendMode::Multiply, "Clear keeps the underlying mode, as the options bar does");
+    assert_eq!(h.state().session.tools.brush.mode, patronusphoto_doc::BlendMode::Multiply, "Clear keeps the underlying mode, as the options bar does");
     drag(&mut h, PointerButton::Primary);
     assert_eq!(alpha_at(&h, mid), 0.0);
     assert!(strokes(&h).last().unwrap()["erase"].as_bool().unwrap());
@@ -147,7 +147,7 @@ fn mode_control_can_pick_a_row_with_ui_click() {
     // The window host injects the move, the press and the release one pass each.
     h.run_steps(5);
     assert!(mode_menu_at(&h).is_none());
-    assert_eq!(h.state().session.tools.brush.mode, photocraft_doc::BlendMode::Darken);
+    assert_eq!(h.state().session.tools.brush.mode, patronusphoto_doc::BlendMode::Darken);
     assert_eq!(h.state().session.journal.last().unwrap(), &("tools.setBrush".into(), json!({"brush": {"mode": "Darken", "behind": false}})));
 }
 
@@ -263,7 +263,7 @@ fn right_drag_erases_with_the_erase_preference() {
 
 /// A secondary-button stroke across the canvas centre with the pen reporting 0.4 at the press and
 /// rising to 0.8 at the release.
-fn secondary_pen_stroke(h: &mut Harness<'static, Box<PhotocraftApp>>) {
+fn secondary_pen_stroke(h: &mut Harness<'static, Box<PatronusPhotoApp>>) {
     use crate::stylus::PenSample;
     let pen = |p: f32| Some(PenSample { pressure: p, ..Default::default() });
     let c = h.state().last_canvas_rect.center();
@@ -307,7 +307,7 @@ fn shift_alt_right_through_the_control_channel_respects_the_erase_preference() {
     // As on the canvas, with the right-erase preference the erase stroke wins over the HUD
     // for Brush/Eraser; without it, Shift+Alt+right opens the HUD (#6098).
     let shift_alt = Modifiers::SHIFT | Modifiers::ALT;
-    let gesture = |h: &mut Harness<'static, Box<PhotocraftApp>>| {
+    let gesture = |h: &mut Harness<'static, Box<PatronusPhotoApp>>| {
         let c = h.state().last_canvas_rect.center();
         h.event(egui::Event::ModifiersChanged(shift_alt));
         h.event(egui::Event::PointerMoved(c));
@@ -338,9 +338,9 @@ fn shift_alt_right_through_the_control_channel_respects_the_erase_preference() {
 
 #[test]
 fn the_brush_is_a_per_tool_option_that_presets_keep() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 64, "height": 64})).unwrap();
-    let amount = |app: &PhotocraftApp| app.session.tools.brush.smoothing.amount;
+    let amount = |app: &PatronusPhotoApp| app.session.tools.brush.smoothing.amount;
     app.ui.tool = Tool::Brush;
     sync_tool_brush(&mut app);
     assert_eq!(amount(&app), 0.1, "Photoshop's default");
@@ -376,7 +376,7 @@ fn the_brush_is_a_per_tool_option_that_presets_keep() {
 /// tip rather than the old tool's (#12631; other tools still take its opacity).
 #[test]
 fn art_history_brush_starts_at_full_opacity() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 64, "height": 64})).unwrap();
     app.ui.tool = Tool::Brush;
     sync_tool_brush(&mut app);
@@ -399,9 +399,9 @@ fn art_history_brush_starts_at_full_opacity() {
 /// dynamics of one tool never leak into another's, and each tool gets its own back.
 #[test]
 fn each_tool_keeps_its_own_brush() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 64, "height": 64})).unwrap();
-    let brush = |app: &PhotocraftApp| app.session.tools.brush.clone();
+    let brush = |app: &PatronusPhotoApp| app.session.tools.brush.clone();
     let size = |b: &BrushSettings| b.size;
     let hardness = |b: &BrushSettings| b.hardness;
     let opacity = |b: &BrushSettings| b.opacity;
@@ -432,14 +432,14 @@ fn each_tool_keeps_its_own_brush() {
     // Mode, opacity, flow and the dynamics sections are per tool too.
     app.ui.tool = Tool::CloneStamp;
     sync_tool_brush(&mut app);
-    assert_eq!(mode(&brush(&app)), photocraft_color::BlendMode::Normal, "a new tool starts in Normal, not the Brush's Multiply");
+    assert_eq!(mode(&brush(&app)), patronusphoto_color::BlendMode::Normal, "a new tool starts in Normal, not the Brush's Multiply");
     app.run("tools.setBrush", json!({"brush": {"mode": "Screen", "opacity": 0.3}})).unwrap();
     app.ui.tool = Tool::Brush;
     sync_tool_brush(&mut app);
-    assert_eq!((mode(&brush(&app)), opacity(&brush(&app))), (photocraft_color::BlendMode::Multiply, 0.7), "the Brush's own mode and opacity");
+    assert_eq!((mode(&brush(&app)), opacity(&brush(&app))), (patronusphoto_color::BlendMode::Multiply, 0.7), "the Brush's own mode and opacity");
     app.ui.tool = Tool::CloneStamp;
     sync_tool_brush(&mut app);
-    assert_eq!((mode(&brush(&app)), opacity(&brush(&app))), (photocraft_color::BlendMode::Screen, 0.3), "the Clone Stamp keeps its own");
+    assert_eq!((mode(&brush(&app)), opacity(&brush(&app))), (patronusphoto_color::BlendMode::Screen, 0.3), "the Clone Stamp keeps its own");
 
     // The colours, the erase flag and the seed belong to the session, so a swap keeps what is
     // live now instead of restoring another tool's copy (a picked colour reaches every tool).
@@ -463,7 +463,7 @@ fn each_tool_keeps_its_own_brush() {
 #[test]
 fn eraser_tool_on_the_background_paints_the_background_colour() {
     // #76: the Eraser on the Background (locked transparency) paints the background colour.
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 120, "height": 80})).unwrap();
     app.run("tools.setColors", json!({"background": "#ff0000"})).unwrap();
     app.run("tools.setBrush", json!({"brush": {"size": 12, "hardness": 1.0}})).unwrap();
@@ -480,7 +480,7 @@ fn eraser_tool_on_the_background_paints_the_background_colour() {
 }
 
 /// Shift+right-click with `tool` and the labels of the menu it opened (empty: none opened).
-fn open_tool_menu(h: &mut Harness<'static, Box<PhotocraftApp>>, tool: Tool) -> Vec<&'static str> {
+fn open_tool_menu(h: &mut Harness<'static, Box<PatronusPhotoApp>>, tool: Tool) -> Vec<&'static str> {
     h.state_mut().ui.tool = tool;
     h.run_steps(1);
     mode_right_click(h, Modifiers::SHIFT);
@@ -491,7 +491,7 @@ fn open_tool_menu(h: &mut Harness<'static, Box<PhotocraftApp>>, tool: Tool) -> V
 fn shift_right_menu_lists_each_tools_own_rows_in_order() {
     use crate::brush_mode_menu::{Item, items};
     use egui_kittest::kittest::Queryable;
-    let blend: Vec<&'static str> = photocraft_doc::BlendMode::LAYER_MODES.iter().map(|m| m.label()).collect();
+    let blend: Vec<&'static str> = patronusphoto_doc::BlendMode::LAYER_MODES.iter().map(|m| m.label()).collect();
     let with = |extra: &[&'static str]| {
         let mut v = blend.clone();
         for (i, l) in extra.iter().enumerate() {
@@ -527,7 +527,7 @@ fn shift_right_menu_lists_each_tools_own_rows_in_order() {
             assert_eq!(rows.get(1), Some(&Item::Separator), "{tool:?}");
         }
         if want.contains(&"Darken") && want.contains(&"Dissolve") {
-            let at = rows.iter().position(|i| *i == Item::Blend(photocraft_doc::BlendMode::Darken)).unwrap();
+            let at = rows.iter().position(|i| *i == Item::Blend(patronusphoto_doc::BlendMode::Darken)).unwrap();
             assert_eq!(rows[at - 1], Item::Separator, "{tool:?}");
         }
         // The rows the menu shows first are drawn, top to bottom, in that order.
@@ -550,7 +550,7 @@ fn behind_and_clear_are_greyed_on_the_background_layer() {
         open_tool_menu(&mut h, tool);
         assert!(!enabled(h.state(), Item::Clear), "{tool:?}");
         assert!(find(h.state(), "Clear").is_err(), "{tool:?}");
-        assert!(enabled(h.state(), Item::Blend(photocraft_doc::BlendMode::Multiply)));
+        assert!(enabled(h.state(), Item::Blend(patronusphoto_doc::BlendMode::Multiply)));
         let journal = h.state().session.journal.len();
         h.get_by_label("Clear").click();
         h.run_steps(2);

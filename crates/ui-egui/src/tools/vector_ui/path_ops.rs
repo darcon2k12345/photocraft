@@ -1,7 +1,7 @@
 use super::overlay::selected_saved_path_index;
 use super::paths_panel::{PathEntry, PathRow, path_rows};
 use super::pen::pen_commit;
-use super::{Affine, Document, LayerContent, Path, PhotocraftApp, Tool, Value, json};
+use super::{Affine, Document, LayerContent, Path, PatronusPhotoApp, Tool, Value, json};
 use crate::direct_select::PathRef;
 use craft::behavior::kurbo::Point as EditPoint;
 use craft::draw::ui::pen::{EditPath, EditSubpath, Knot as EditKnot};
@@ -9,7 +9,7 @@ use craft::draw::ui::pen::{EditPath, EditSubpath, Knot as EditKnot};
 /// The path that path commands act on without a name: the one selected in the Paths panel, else
 /// the work path while it is shown (not after Make Selection hid it, #6079), else the selected
 /// layer's shape path or vector mask; `None` when there's none.
-pub fn active_path_name(app: &PhotocraftApp) -> Option<String> {
+pub fn active_path_name(app: &PatronusPhotoApp) -> Option<String> {
     let st = app.session.active()?;
     let rows = path_rows(&st.doc, st.active_layer);
     let key = |r: &PathEntry| match r.kind {
@@ -28,7 +28,7 @@ pub fn takes_path_mask(id: &str) -> bool {
 }
 
 /// The work or saved path explicitly selected in the Paths panel (not a layer's own path).
-pub fn selected_document_path(app: &PhotocraftApp) -> Option<String> {
+pub fn selected_document_path(app: &PatronusPhotoApp) -> Option<String> {
     let st = app.session.active()?;
     let sel = app.ui.selected_path.as_deref()?;
     let listed = path_rows(&st.doc, st.active_layer).iter().any(|r| match r.kind {
@@ -43,7 +43,7 @@ pub fn selected_document_path(app: &PhotocraftApp) -> Option<String> {
 /// as in Photoshop (#1419): the command gets it as `"path"` unless the caller set one (`null`
 /// opts out). Only an explicitly selected work or saved path counts; deselect it by clicking the
 /// panel's empty area.
-pub fn with_active_path(app: &PhotocraftApp, id: &str, params: Value) -> Value {
+pub fn with_active_path(app: &PatronusPhotoApp, id: &str, params: Value) -> Value {
     if !takes_path_mask(id) || params.get("path").is_some() {
         return params;
     }
@@ -60,7 +60,7 @@ pub fn with_active_path(app: &PhotocraftApp, id: &str, params: Value) -> Value {
 /// ⌘↩ / Ctrl+Enter (#306): load a path as a selection, like Photoshop with a Pen or Path
 /// Selection tool or a path selected in the Paths panel. A path being drawn with the Pen is
 /// finished first and loads; otherwise [`active_path_name`]. `params` may set feather, mode…
-pub fn path_to_selection(app: &mut PhotocraftApp, params: Value) -> Result<Value, String> {
+pub fn path_to_selection(app: &mut PatronusPhotoApp, params: Value) -> Result<Value, String> {
     if app.ui.pen.as_ref().is_some_and(|p| p.draft.knots.len() >= 2) {
         // The finished path becomes the work path, or a shape layer's path or a vector mask.
         if !pen_commit(app, false) {
@@ -83,7 +83,7 @@ pub fn path_to_selection(app: &mut PhotocraftApp, params: Value) -> Result<Value
 /// stays), see [`super::pen::make_shape_from_draft`]. A shape layer's own path or vector mask
 /// isn't copied. The Work Path becomes the shape's path, so it is no longer selected in the Paths
 /// panel.
-pub fn make_shape(app: &mut PhotocraftApp) -> Result<Value, String> {
+pub fn make_shape(app: &mut PatronusPhotoApp) -> Result<Value, String> {
     // #12910 measured: with the Pen in an Indexed Color document the reference application shows this
     // alert with OK and changes nothing, so return before the draft is touched or any command runs.
     // The alert names the tool: #12840 measures the Freeform Pen with different wording, and the
@@ -112,13 +112,13 @@ pub fn make_shape(app: &mut PhotocraftApp) -> Result<Value, String> {
 /// Whether the active document is Indexed Color: the colour mode the reference application refuses the
 /// Pen for (#12910; the Freeform Pen's own wording is #12840). Bitmap, Duotone and Multichannel were
 /// not measured and keep today's behaviour.
-pub(super) fn indexed_document(app: &PhotocraftApp) -> bool {
-    app.session.active().is_some_and(|st| st.doc.mode == photocraft_doc::ColorMode::Indexed)
+pub(super) fn indexed_document(app: &PatronusPhotoApp) -> bool {
+    app.session.active().is_some_and(|st| st.doc.mode == patronusphoto_doc::ColorMode::Indexed)
 }
 
 /// The path Make Shape makes a shape from without a draft: [`active_path_name`] when it is the
 /// Work Path or a saved path, never a layer's own path (that would duplicate the shape or mask).
-pub fn shape_source_path(app: &PhotocraftApp) -> Option<String> {
+pub fn shape_source_path(app: &PatronusPhotoApp) -> Option<String> {
     active_path_name(app).filter(|n| n != "layer")
 }
 
@@ -127,7 +127,7 @@ pub fn shape_source_path(app: &PhotocraftApp) -> Option<String> {
 /// path itself stays (#6079). The Work Path is hidden too when a saved path was loaded, so no
 /// path is the target path afterwards. A shape layer's path or vector mask (`"layer"`) stays the active
 /// path, so layer targeting is unchanged.
-pub(crate) fn deselect_loaded_path(app: &mut PhotocraftApp, name: &str) {
+pub(crate) fn deselect_loaded_path(app: &mut PatronusPhotoApp, name: &str) {
     if name == "layer" {
         return;
     }
@@ -139,7 +139,7 @@ pub(crate) fn deselect_loaded_path(app: &mut PhotocraftApp, name: &str) {
 
 /// Path Selection has components of the saved path targeted in the Paths panel selected: what its bare Enter and
 /// Esc deselect (#13287).
-pub(crate) fn saved_path_components_selected(app: &PhotocraftApp) -> bool {
+pub(crate) fn saved_path_components_selected(app: &PatronusPhotoApp) -> bool {
     selected_saved_path_index(app).is_some_and(|(index, _)| matches!(crate::path_components::selected(app), Some((PathRef::Saved(i), ..)) if i == index))
 }
 
@@ -147,14 +147,14 @@ pub(crate) fn saved_path_components_selected(app: &PhotocraftApp) -> bool {
 /// [`deselect_loaded_path`] hid it, until the Work Path is selected again in the Paths panel (which
 /// ends the hide; a saved path or a layer's path doesn't show it) or it changes (a new one drawn, Make Work Path,
 /// `path.set`…) (#6079).
-pub(crate) fn work_path_shown(app: &PhotocraftApp) -> bool {
+pub(crate) fn work_path_shown(app: &PatronusPhotoApp) -> bool {
     app.session.active().is_none_or(|st| work_path_shown_in(app, &st.doc))
 }
 
 /// [`work_path_shown`] for `doc`, which the canvas may draw while another document is already
 /// active (the frame a click into another arranged tile activates it). The Paths panel's
 /// selection belongs to the active document only.
-pub(crate) fn work_path_shown_in(app: &PhotocraftApp, doc: &Document) -> bool {
+pub(crate) fn work_path_shown_in(app: &PatronusPhotoApp, doc: &Document) -> bool {
     let active = app.session.active().is_some_and(|st| st.doc.id == doc.id);
     if active && app.ui.selected_path.as_deref() == Some("work") {
         return true;
@@ -168,7 +168,7 @@ pub(crate) fn work_path_shown_in(app: &PhotocraftApp, doc: &Document) -> bool {
 
 /// The work or saved path explicitly selected in the Paths panel, by name, and its geometry. Only
 /// such a selection overrides the active layer's path.
-pub(super) fn selected_document_geometry(app: &PhotocraftApp) -> Option<(String, &Path)> {
+pub(super) fn selected_document_geometry(app: &PatronusPhotoApp) -> Option<(String, &Path)> {
     let st = app.session.active()?;
     match app.ui.selected_path.as_deref()? {
         "work" => st.doc.work_path.as_ref().map(|p| ("work".into(), p)),
@@ -178,32 +178,32 @@ pub(super) fn selected_document_geometry(app: &PhotocraftApp) -> Option<(String,
 }
 
 /// The targeted vector mask of the active layer, if the Layers panel targets it.
-pub(crate) fn targeted_vector_mask(app: &PhotocraftApp) -> Option<(u64, Path)> {
+pub(crate) fn targeted_vector_mask(app: &PatronusPhotoApp) -> Option<(u64, Path)> {
     let id = targeted_vector_mask_id(app)?;
-    let mask = app.session.active()?.doc.layer(photocraft_doc::LayerId(id))?.vector_mask.as_ref()?;
+    let mask = app.session.active()?.doc.layer(patronusphoto_doc::LayerId(id))?.vector_mask.as_ref()?;
     Some((id, mask.path.clone()))
 }
 
-pub(super) fn targeted_vector_mask_id(app: &PhotocraftApp) -> Option<u64> {
+pub(super) fn targeted_vector_mask_id(app: &PatronusPhotoApp) -> Option<u64> {
     let st = app.session.active()?;
     let l = st.active_layer.and_then(|id| st.doc.layer(id))?;
-    let targeted = app.ui.vector_mask_target || st.channel_view.target == photocraft_engine::channel_cmds::ChannelTarget::VectorMask;
+    let targeted = app.ui.vector_mask_target || st.channel_view.target == patronusphoto_engine::channel_cmds::ChannelTarget::VectorMask;
     (targeted && !matches!(l.content, LayerContent::Shape(_))).then_some(())?;
     l.vector_mask.as_ref().map(|_| l.id.0)
 }
 
 /// The active type layer's path in document space, if it is type on a path (#9114).
-pub(crate) fn active_type_path(app: &PhotocraftApp) -> Option<(u64, Path)> {
+pub(crate) fn active_type_path(app: &PatronusPhotoApp) -> Option<(u64, Path)> {
     let st = app.session.active()?;
     let l = st.active_layer.and_then(|id| st.doc.layer(id))?;
     match &l.content {
-        LayerContent::Text(t) => photocraft_engine::type_extra_cmds::type_path(t).map(|p| (l.id.0, p)),
+        LayerContent::Text(t) => patronusphoto_engine::type_extra_cmds::type_path(t).map(|p| (l.id.0, p)),
         _ => None,
     }
 }
 
 /// The active shape layer's path, if the active layer is a shape layer.
-pub(crate) fn active_shape_path(app: &PhotocraftApp) -> Option<(u64, Path)> {
+pub(crate) fn active_shape_path(app: &PatronusPhotoApp) -> Option<(u64, Path)> {
     let st = app.session.active()?;
     let l = st.active_layer.and_then(|id| st.doc.layer(id))?;
     match &l.content {
@@ -217,7 +217,7 @@ pub(crate) fn active_shape_path(app: &PhotocraftApp) -> Option<(u64, Path)> {
 /// shape layer or targeted vector mask in front of it), as in Photoshop (#5702, #12695). It was
 /// drawn whenever one of these tools was active, but the key reached Edit › Clear, so it looked
 /// impossible to delete. A selected anchor goes first (the overlay's own key).
-pub(crate) fn delete_key_deletes_work_path(app: &PhotocraftApp) -> bool {
+pub(crate) fn delete_key_deletes_work_path(app: &PatronusPhotoApp) -> bool {
     matches!(app.ui.tool, Tool::Pen | Tool::FreeformPen | Tool::CurvaturePen | Tool::PathSelection)
         && app.ui.pen.is_none()
         && app.ui.transform.is_none()
@@ -232,7 +232,7 @@ pub(crate) fn delete_key_deletes_work_path(app: &PhotocraftApp) -> bool {
 /// saved path, the work path or a vector mask. The work path with the Pen, Freeform Pen,
 /// Curvature Pen or Path Selection is [`delete_key_deletes_work_path`]. A shape layer's path
 /// wasn't measured: the key keeps deleting the layer.
-pub(crate) fn delete_key_edits_path(app: &PhotocraftApp) -> Option<(&'static str, Value)> {
+pub(crate) fn delete_key_edits_path(app: &PatronusPhotoApp) -> Option<(&'static str, Value)> {
     if delete_key_deletes_work_path(app) {
         return Some(("path.delete", json!({"name": "work"})));
     }
@@ -270,7 +270,7 @@ pub(crate) fn delete_key_edits_path(app: &PhotocraftApp) -> Option<(&'static str
 
 /// The path Path Selection edits: the selected Work or saved path, the targeted vector mask, the
 /// active shape layer's path (both `PathRef::Layer`), else the work path.
-pub(super) fn target_path(app: &PhotocraftApp) -> Option<(PathRef, Path)> {
+pub(super) fn target_path(app: &PatronusPhotoApp) -> Option<(PathRef, Path)> {
     if let Some((name, p)) = selected_document_geometry(app) {
         if name == "work" {
             return Some((PathRef::Work, p.clone()));
@@ -298,8 +298,8 @@ const RETRACTED: f64 = 1e-9;
 /// The overlay's `EditPath` of a document path, keyed `key` (`PathRef::key`). A Type Path takes no copies of its
 /// subpaths: Direct Selection's ⌥ drag on its segment moves the subpath.
 pub(crate) fn edit_path(path: &Path, key: u64) -> EditPath {
-    let point = |p: &photocraft_geom::Point| EditPoint::new(p.x, p.y);
-    let handle = |anchor: EditPoint, h: &photocraft_geom::Point| {
+    let point = |p: &patronusphoto_geom::Point| EditPoint::new(p.x, p.y);
+    let handle = |anchor: EditPoint, h: &patronusphoto_geom::Point| {
         let h = point(h);
         if h.distance(anchor) < RETRACTED { anchor } else { h }
     };
@@ -324,7 +324,7 @@ pub(crate) fn edit_path(path: &Path, key: u64) -> EditPath {
 
 /// Edit › Free Transform Path (⌘T with Path Selection or Direct Selection): the path the
 /// box transforms (the one Path Selection edits) and `path.transform`'s params that name it.
-pub(crate) fn free_transform_path(app: &PhotocraftApp) -> Option<(Value, Path)> {
+pub(crate) fn free_transform_path(app: &PatronusPhotoApp) -> Option<(Value, Path)> {
     if !matches!(app.ui.tool, Tool::PathSelection | Tool::DirectSelection) {
         return None;
     }
@@ -333,7 +333,7 @@ pub(crate) fn free_transform_path(app: &PhotocraftApp) -> Option<(Value, Path)> 
     Some((target.params(app), path))
 }
 
-fn point_in_subpath(sp: &photocraft_doc::vector::Subpath, pt: [f64; 2]) -> bool {
+fn point_in_subpath(sp: &patronusphoto_doc::vector::Subpath, pt: [f64; 2]) -> bool {
     if !sp.closed || sp.knots.len() < 3 {
         return false;
     }
@@ -356,7 +356,7 @@ fn point_in_subpath(sp: &photocraft_doc::vector::Subpath, pt: [f64; 2]) -> bool 
 /// The topmost visible shape layer under `at` (document coordinates):
 /// hits the shape path or anchor within `tol`, or any non-transparent pixel of the shape's raster surface,
 /// or point inside the shape's filled geometry.
-pub fn pick_shape_at(doc: &Document, at: [f64; 2], tol: f64) -> Option<photocraft_doc::LayerId> {
+pub fn pick_shape_at(doc: &Document, at: [f64; 2], tol: f64) -> Option<patronusphoto_doc::LayerId> {
     let (x, y) = (at[0].floor() as i32, at[1].floor() as i32);
     for (path, _, l) in doc.walk().iter().rev() {
         if !l.visible || !(1..=path.len()).all(|n| doc.layer_at(&path[..n]).is_some_and(|a| a.visible)) {
@@ -367,18 +367,18 @@ pub fn pick_shape_at(doc: &Document, at: [f64; 2], tol: f64) -> Option<photocraf
             continue;
         }
         if let LayerContent::Shape(sh) = &l.content {
-            if near_outline(&sh.path, at, tol) && photocraft_vector::edit::hit(&sh.path, photocraft_geom::Point::new(at[0], at[1]), tol, &[]).is_some() {
+            if near_outline(&sh.path, at, tol) && patronusphoto_vector::edit::hit(&sh.path, patronusphoto_geom::Point::new(at[0], at[1]), tol, &[]).is_some() {
                 return Some(l.id);
             }
             if sh.fill.is_some() {
                 if let Some(surf) = l.surface() {
                     let mut px = [[0.0f32; 4]; 1];
-                    surf.read_rgba_into(photocraft_doc::Rect::from_xywh(x, y, 1, 1), &mut px);
+                    surf.read_rgba_into(patronusphoto_doc::Rect::from_xywh(x, y, 1, 1), &mut px);
                     if px[0][3] > 0.0 {
                         return Some(l.id);
                     }
                 }
-                if let Some(photocraft_doc::LiveShape::Rect { rect, .. }) = &sh.live {
+                if let Some(patronusphoto_doc::LiveShape::Rect { rect, .. }) = &sh.live {
                     let x0 = rect[0].min(rect[0] + rect[2]);
                     let x1 = rect[0].max(rect[0] + rect[2]);
                     let y0 = rect[1].min(rect[1] + rect[3]);
@@ -387,7 +387,7 @@ pub fn pick_shape_at(doc: &Document, at: [f64; 2], tol: f64) -> Option<photocraf
                         return Some(l.id);
                     }
                 }
-                if let Some(photocraft_doc::LiveShape::Ellipse { rect }) = &sh.live {
+                if let Some(patronusphoto_doc::LiveShape::Ellipse { rect }) = &sh.live {
                     let rx = rect[2].abs() / 2.0;
                     let ry = rect[3].abs() / 2.0;
                     if rx > 1e-6 && ry > 1e-6 {
@@ -571,7 +571,7 @@ pub(crate) enum MovedPath {
 /// some but not all are), so the outline follows the pointer instead of jumping on release.
 /// `None` without a live drag on `doc`, for a click, and for a shape layer's or vector mask's
 /// path, whose pixels move only on release.
-pub(crate) fn path_selection_preview(app: &PhotocraftApp, doc: &Document) -> Option<(MovedPath, Path)> {
+pub(crate) fn path_selection_preview(app: &PatronusPhotoApp, doc: &Document) -> Option<(MovedPath, Path)> {
     let d = app.canvas_tools.vector.path_selection.drag().filter(|d| d.owner.as_ref().is_some_and(|o| o.valid(app)))?;
     if app.session.active().is_none_or(|st| st.doc.id != doc.id) {
         return None;
@@ -593,7 +593,7 @@ pub(crate) fn path_selection_preview(app: &PhotocraftApp, doc: &Document) -> Opt
     Some((moved, path.transform(&Affine::translate(dx, dy))))
 }
 
-pub fn path_selection_finish(app: &mut PhotocraftApp, start: [f64; 2], end: [f64; 2]) {
+pub fn path_selection_finish(app: &mut PatronusPhotoApp, start: [f64; 2], end: [f64; 2]) {
     let tol = 6.0 / f64::from(app.point_zoom().max(0.01));
     let Some([dx, dy]) = path_selection_offset(start, end) else {
         let Some(st) = app.session.active() else { return };
@@ -617,7 +617,7 @@ pub fn path_selection_finish(app: &mut PhotocraftApp, start: [f64; 2], end: [f64
         return;
     }
     let Some((target, path)) = target_path(app) else { return };
-    let moved_json = || photocraft_engine::vector_cmds::path_json(&path.transform(&Affine::translate(dx, dy)));
+    let moved_json = || patronusphoto_engine::vector_cmds::path_json(&path.transform(&Affine::translate(dx, dy)));
     let _ = match target {
         // The targeted vector mask's pixels move through its own command; a shape layer's through the shape's.
         PathRef::Layer(id) if targeted_vector_mask(app).is_some_and(|(mask, _)| mask == id) => {

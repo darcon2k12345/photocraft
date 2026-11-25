@@ -1,8 +1,8 @@
 use super::tests::open_here;
 use super::*;
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
     app.ui.tool = Tool::ContentAwareMove;
     app
@@ -10,7 +10,7 @@ fn app() -> Box<PhotocraftApp> {
 
 #[test]
 fn content_aware_move_boundary_modes_and_overlay_guards() {
-    let mut empty = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut empty = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     empty.ui.tool = Tool::ContentAwareMove;
     crate::color_hud::open(&mut empty, [12.0, 12.0], false);
     assert!(!open_here(&mut empty, Tool::ContentAwareMove, [8.0, 8.0]));

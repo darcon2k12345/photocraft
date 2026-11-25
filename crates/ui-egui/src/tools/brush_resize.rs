@@ -15,9 +15,9 @@ use craft::ui::canvas_controls::CanvasControlWords;
 use craft::ui::canvas_controls::brush::{BrushDimensions, BrushLevel, BrushResize, BrushResizeOptions, ResizeStep, TipFalloff};
 use craft::ui::contract::Show as _;
 use craft::ui::style::DataColor;
-use photocraft_engine::paint::MAX_BRUSH_SIZE;
+use patronusphoto_engine::paint::MAX_BRUSH_SIZE;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// Screen points of vertical drag that take the hardness from 0 % to 100 %: Photoshop's rate,
@@ -29,7 +29,7 @@ const OPACITY_TRAVEL: f32 = 200.0;
 /// The overlay alpha of the preview tint.
 const TINT_ALPHA: u8 = 110;
 
-/// The brush resize drag of the painting tools, kept in `PhotocraftApp::brush_resize`. The painting tool takes it
+/// The brush resize drag of the painting tools, kept in `PatronusPhotoApp::brush_resize`. The painting tool takes it
 /// out of the app for each call, so its methods get the app as an argument.
 #[derive(Default)]
 pub(crate) struct PaintResize {
@@ -44,12 +44,12 @@ fn applies(tool: Tool) -> bool {
 }
 
 /// Whether "Vary Round Brush Hardness on HUD" is on: the vertical movement takes the hardness, else the opacity.
-fn varies_hardness(app: &PhotocraftApp) -> bool {
+fn varies_hardness(app: &PatronusPhotoApp) -> bool {
     app.session.prefs().tools.vary_round_brush_hardness_on_hud
 }
 
 /// How a resize behaves for the current preferences.
-fn options(app: &PhotocraftApp) -> BrushResizeOptions {
+fn options(app: &PatronusPhotoApp) -> BrushResizeOptions {
     let options = BrushResizeOptions::new(f64::from(MAX_BRUSH_SIZE));
     let options = if varies_hardness(app) {
         options.level(BrushLevel::Hardness).travel(HARDNESS_TRAVEL)
@@ -82,7 +82,7 @@ impl PaintResize {
 
     /// A press: begins a resize when it is the gesture's chord on a tool it resizes, and says whether it did, so the
     /// tool paints nothing.
-    pub(crate) fn press(&mut self, app: &mut PhotocraftApp, pointer: &ToolPointer, cx: &mut ToolContext<'_>) -> bool {
+    pub(crate) fn press(&mut self, app: &mut PatronusPhotoApp, pointer: &ToolPointer, cx: &mut ToolContext<'_>) -> bool {
         if !applies(app.ui.tool) || !BrushResize::chord(pointer.button, pointer.mods) {
             return false;
         }
@@ -100,7 +100,7 @@ impl PaintResize {
 
     /// The pointer moved during a resize. Applies only the movement this call carries: a pass without pointer input
     /// does not call it, so a second pass in a frame sets nothing again.
-    pub(crate) fn drag(&mut self, app: &mut PhotocraftApp, pointer: &ToolPointer, cx: &mut ToolContext<'_>) {
+    pub(crate) fn drag(&mut self, app: &mut PatronusPhotoApp, pointer: &ToolPointer, cx: &mut ToolContext<'_>) {
         let Some(space) = cx.space() else { return };
         let step = self.resize.track(&space.view, pointer.pos);
         self.apply(app, step);
@@ -108,14 +108,14 @@ impl PaintResize {
     }
 
     /// The button came up: the last values stay.
-    pub(crate) fn release(&mut self, app: &mut PhotocraftApp, pointer: &ToolPointer, cx: &mut ToolContext<'_>) {
+    pub(crate) fn release(&mut self, app: &mut PatronusPhotoApp, pointer: &ToolPointer, cx: &mut ToolContext<'_>) {
         let Some(space) = cx.space() else { return };
         let step = self.resize.finish(&space.view, pointer.pos);
         self.apply(app, step);
     }
 
     /// Escape or a lost pointer: the values the resize started from go back.
-    pub(crate) fn cancel(&mut self, app: &mut PhotocraftApp, _cx: &mut ToolContext<'_>) {
+    pub(crate) fn cancel(&mut self, app: &mut PatronusPhotoApp, _cx: &mut ToolContext<'_>) {
         let step = self.resize.cancel();
         self.apply(app, step);
     }
@@ -134,20 +134,20 @@ impl PaintResize {
 
     /// The falloff preview at the press point, shown in the canvas body (`brush_feedback::show`). Nothing while no
     /// resize runs.
-    pub(crate) fn show_preview(&self, ui: &mut egui::Ui, app: &PhotocraftApp, rect: egui::Rect) {
+    pub(crate) fn show_preview(&self, ui: &mut egui::Ui, app: &PatronusPhotoApp, rect: egui::Rect) {
         // The brush already holds the resize's current values: each step is applied as it comes.
         let brush = &app.session.tools.brush;
         let (radius, hardness) = (brush.size / 2.0, brush.hardness);
-        let (core, _) = photocraft_paint::tip_shape(radius, hardness);
-        let reach = photocraft_paint::tip_reach(radius, hardness).max(core);
-        let falloff = TipFalloff::sampled(f64::from(core), f64::from(reach), |d| photocraft_paint::tip_falloff(d as f32, radius, hardness));
+        let (core, _) = patronusphoto_paint::tip_shape(radius, hardness);
+        let reach = patronusphoto_paint::tip_reach(radius, hardness).max(core);
+        let falloff = TipFalloff::sampled(f64::from(core), f64::from(reach), |d| patronusphoto_paint::tip_falloff(d as f32, radius, hardness));
         if let Some(preview) = self.resize.preview(&falloff) {
             preview.show_at(ui, rect);
         }
     }
 
     /// Sets the brush to the step's values: an `Update` or `Commit` that changed them, or a `Cancel`'s start values.
-    fn apply(&self, app: &mut PhotocraftApp, step: Option<ResizeStep>) {
+    fn apply(&self, app: &mut PatronusPhotoApp, step: Option<ResizeStep>) {
         let Some(step) = step else { return };
         if !step.changed && step.phase != GesturePhase::Cancel {
             return;

@@ -8,8 +8,8 @@ const LOCKED: &str = "Could not apply data set because the layer is locked.";
 
 /// An app with a type layer bound to a `headline` text variable and one data set `Zed` for it,
 /// the layer under Lock All when `locked`.
-fn app(locked: bool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(Session::new(), Services::default());
+fn app(locked: bool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(Session::new(), Services::default());
     app.session.execute("file.new", json!({"width": 64, "height": 48})).unwrap();
     let id = app.session.execute("type.create", json!({"x": 4, "y": 30, "text": "Old", "size": 12})).unwrap()["layer"].clone();
     app.session.execute("image.variables.define", json!({"defs": [{"name": "headline", "layer": id, "type": "textReplacement"}]})).unwrap();
@@ -24,7 +24,7 @@ fn app(locked: bool) -> Box<PhotocraftApp> {
 }
 
 /// The messages of the open framework alerts.
-fn alerts(app: &PhotocraftApp) -> Vec<String> {
+fn alerts(app: &PatronusPhotoApp) -> Vec<String> {
     app.framework.dialogs.open_dialogs().iter().filter_map(|d| d.fields.as_ref()?.get("message")?.as_str().map(String::from)).collect()
 }
 

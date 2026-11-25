@@ -3,21 +3,21 @@
 
 use egui::{Modifiers, PointerButton, Pos2, vec2};
 use egui_kittest::Harness;
-use photocraft_geom::Rect;
+use patronusphoto_geom::Rect;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
-fn harness() -> Harness<'static, Box<PhotocraftApp>> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn harness() -> Harness<'static, Box<PatronusPhotoApp>> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
     app.sync_views();
     app.ui.extras.rulers = false;
     app.ui.tool = Tool::PolygonLasso;
     // 60 fps, so a double-click's two clicks fall inside egui's 0.3 s window.
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(vec2(1000.0, 700.0)).with_step_dt(1.0 / 60.0).build_ui_state(
-        |ui, app: &mut Box<PhotocraftApp>| {
+        |ui, app: &mut Box<PatronusPhotoApp>| {
             let ctx = ui.ctx().clone();
             if !ctx.fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 return;
@@ -26,7 +26,7 @@ fn harness() -> Harness<'static, Box<PhotocraftApp>> {
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     h.run_steps(4);
     // 100 %: one document pixel per point.
     let v = &mut h.state_mut().ui.views[0];
@@ -38,17 +38,17 @@ fn harness() -> Harness<'static, Box<PhotocraftApp>> {
 }
 
 /// Where the canvas shows document point `(x, y)`.
-fn screen(h: &Harness<'static, Box<PhotocraftApp>>, x: f32, y: f32) -> Pos2 {
+fn screen(h: &Harness<'static, Box<PatronusPhotoApp>>, x: f32, y: f32) -> Pos2 {
     crate::canvas::testing::to_screen(h.state(), [f64::from(x), f64::from(y)])
 }
 
-fn button(h: &mut Harness<'static, Box<PhotocraftApp>>, p: Pos2, down: bool, m: Modifiers) {
+fn button(h: &mut Harness<'static, Box<PatronusPhotoApp>>, p: Pos2, down: bool, m: Modifiers) {
     h.event(egui::Event::PointerButton { pos: p, button: PointerButton::Primary, pressed: down, modifiers: m });
     h.run_steps(1);
 }
 
 /// A click at document point `(x, y)`, the pointer still between press and release.
-fn click(h: &mut Harness<'static, Box<PhotocraftApp>>, x: f32, y: f32, m: Modifiers) {
+fn click(h: &mut Harness<'static, Box<PatronusPhotoApp>>, x: f32, y: f32, m: Modifiers) {
     let p = screen(h, x, y);
     h.event(egui::Event::PointerMoved(p));
     h.run_steps(1);
@@ -56,8 +56,8 @@ fn click(h: &mut Harness<'static, Box<PhotocraftApp>>, x: f32, y: f32, m: Modifi
     button(h, p, false, m);
 }
 
-fn polygon_app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn polygon_app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 400, "height": 300, "background": "transparent"})).unwrap();
     app.sync_views();
     app.ui.extras.snap = false;
@@ -65,7 +65,7 @@ fn polygon_app() -> Box<PhotocraftApp> {
     app
 }
 
-fn ev(app: &mut PhotocraftApp, kind: &str, x: f64, y: f64, m: Modifiers) {
+fn ev(app: &mut PatronusPhotoApp, kind: &str, x: f64, y: f64, m: Modifiers) {
     use crate::canvas::{ToolEvent, tool_event};
     let e = match kind {
         "down" => ToolEvent::Down { x, y, pressure: 1.0 },
@@ -75,16 +75,16 @@ fn ev(app: &mut PhotocraftApp, kind: &str, x: f64, y: f64, m: Modifiers) {
     tool_event(app, e, m);
 }
 
-fn steps(app: &PhotocraftApp) -> usize {
+fn steps(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.entries().len()
 }
 
-fn bounds(app: &PhotocraftApp) -> Option<Rect> {
+fn bounds(app: &PatronusPhotoApp) -> Option<Rect> {
     app.session.active().unwrap().doc.selection.as_ref().map(|s| s.content_bounds())
 }
 
 /// The tool or document changed: the next pass of the canvas.
-fn switched(app: &mut PhotocraftApp) {
+fn switched(app: &mut PatronusPhotoApp) {
     crate::canvas::testing::frame(app);
 }
 
@@ -104,7 +104,7 @@ fn cmd_drag_inside_the_selection_floats_it_with_the_polygonal_lasso() {
     ev(&mut app, "down", 20.0, 20.0, Modifiers::COMMAND);
     ev(&mut app, "move", 40.0, 20.0, Modifiers::COMMAND);
     ev(&mut app, "up", 40.0, 20.0, Modifiers::COMMAND);
-    let f = photocraft_engine::float_cmds::floating(app.session.active().unwrap()).map(|f| f.offset);
+    let f = patronusphoto_engine::float_cmds::floating(app.session.active().unwrap()).map(|f| f.offset);
     assert_eq!(f, Some((20, 0)));
     assert!(!app.canvas_tools.selection.outline_open(), "no polygon point was placed");
     app.run("select.drop", json!({})).unwrap();
@@ -166,7 +166,7 @@ fn polygon_outline_lifecycle() {
 }
 
 /// Two vertices placed with the Polygonal Lasso, well apart in time so they aren't a double-click.
-fn two_vertices(h: &mut Harness<'static, Box<PhotocraftApp>>) {
+fn two_vertices(h: &mut Harness<'static, Box<PatronusPhotoApp>>) {
     click(h, 50.0, 50.0, Modifiers::NONE);
     h.run_steps(30);
     click(h, 150.0, 50.0, Modifiers::NONE);

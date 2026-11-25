@@ -7,14 +7,14 @@ use serde_json::json;
 
 use super::tests::{filter, listed};
 
-fn new_session() -> photocraft_engine::Session {
-    let mut s = photocraft_engine::Session::new();
+fn new_session() -> patronusphoto_engine::Session {
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 64, "height": 48})).unwrap();
     s
 }
 
 /// Make a layer with `cmd`, name it `name` and return its id.
-fn make(s: &mut photocraft_engine::Session, cmd: &str, params: serde_json::Value, name: &str) -> u64 {
+fn make(s: &mut patronusphoto_engine::Session, cmd: &str, params: serde_json::Value, name: &str) -> u64 {
     let id = s.execute(cmd, params).unwrap()["layer"].as_u64().unwrap();
     s.execute("layer.setProps", json!({"layer": id, "name": name})).unwrap();
     id
@@ -25,7 +25,7 @@ fn kinds(kinds: &[FilterKind]) -> LayerFilter {
 }
 
 /// Every kind of fill layer, a solid fill with a vector mask, and a Gradient Map adjustment.
-fn fills() -> photocraft_engine::Session {
+fn fills() -> patronusphoto_engine::Session {
     let mut s = new_session();
     make(&mut s, "layer.newFillLayer.solidColor", json!({"color": "#112233"}), "Solid");
     let shaped = make(&mut s, "layer.newFillLayer.solidColor", json!({"color": "#445566"}), "Solid shape");

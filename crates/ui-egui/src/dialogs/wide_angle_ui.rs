@@ -17,14 +17,14 @@ use craft::ui::canvas::RasterSource;
 use craft::ui::dialog::HostedWorkspace;
 use craft::ui::dialog::{DialogId, DialogResult};
 use craft::ui::runtime::pending::Job;
-use photocraft_algo::transform::Interp;
-use photocraft_algo::wideangle::{self, Camera, Constraint, WideAngle, WideMesh};
-use photocraft_doc::{DocId, LayerId};
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use patronusphoto_algo::transform::Interp;
+use patronusphoto_algo::wideangle::{self, Camera, Constraint, WideAngle, WideMesh};
+use patronusphoto_doc::{DocId, LayerId};
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::Surface;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::gallery_ui::SharedPicture;
 
 const PROXY_SIDE: usize = 800;
@@ -57,11 +57,11 @@ fn proxy_params(session: &WideAngle, frame: Rect, scale: f64) -> WideAngle {
 /// solve; the mesh comes back so the geometry can map through it.
 fn preview_surface(proxy: &Surface, params: &WideAngle, pf: Rect, target: &Value, mesh: Option<Arc<WideMesh>>) -> Result<(Surface, Arc<WideMesh>), String> {
     let mesh = mesh.unwrap_or_else(|| Arc::new(wideangle::solve(params, pf)));
-    let mut out = photocraft_algo::warp::warp_triangles(proxy, pf, &mesh.verts, &mesh.triangles(), Interp::Bilinear);
+    let mut out = patronusphoto_algo::warp::warp_triangles(proxy, pf, &mesh.verts, &mesh.triangles(), Interp::Bilinear);
     if let Some(colors) =
-        photocraft_engine::color_channels::explicit(&json!({"target": target}), proxy.format().mode.color_channels()).map_err(|e| e.to_string())?
+        patronusphoto_engine::color_channels::explicit(&json!({"target": target}), proxy.format().mode.color_channels()).map_err(|e| e.to_string())?
     {
-        photocraft_engine::color_channels::restrict_surface_in(proxy, &mut out, colors, pf).map_err(|e| e.to_string())?;
+        patronusphoto_engine::color_channels::restrict_surface_in(proxy, &mut out, colors, pf).map_err(|e| e.to_string())?;
     }
     Ok((out, mesh))
 }
@@ -200,7 +200,7 @@ pub(crate) struct WideAngleApp {
 }
 
 /// The open workspace's fields for automation, with the layer it edits.
-pub(crate) fn describe(app: &PhotocraftApp) -> Option<Value> {
+pub(crate) fn describe(app: &PatronusPhotoApp) -> Option<Value> {
     let w = app.wide_angle.as_ref()?;
     let mut v: Value = crate::distort_ui::workspace_fields(app, KEY).unwrap_or_else(|| json!({}));
     if let Some(o) = v.as_object_mut() {
@@ -212,7 +212,7 @@ pub(crate) fn describe(app: &PhotocraftApp) -> Option<Value> {
 
 /// Runs OK's session as `filter.adaptiveWideAngle` when the workspace finished. The constraint
 /// events need no action: the workspace applied and recorded them already.
-pub(crate) fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
+pub(crate) fn take(app: &mut PatronusPhotoApp, _ctx: &egui::Context) {
     let Some(id) = app.wide_angle.as_ref().map(|w| w.id) else { return };
 
     if let Some(h) = app.framework.dialogs.get_mut_by_id::<Hosted>(id) {
@@ -229,8 +229,8 @@ pub(crate) fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
     }
 }
 
-pub fn open(app: &mut PhotocraftApp, _ctx: &egui::Context) -> Result<(), String> {
-    photocraft_engine::commands::find(KEY).map(|c| (c.enabled)(&app.session)).unwrap_or(Err("unknown command".into()))?;
+pub fn open(app: &mut PatronusPhotoApp, _ctx: &egui::Context) -> Result<(), String> {
+    patronusphoto_engine::commands::find(KEY).map(|c| (c.enabled)(&app.session)).unwrap_or(Err("unknown command".into()))?;
     let (layer, surf, _) = crate::distort_ui::active_filter_target(app)?;
     let st = app.session.active().ok_or("no document")?;
     let frame = st.doc.bounds();
@@ -242,7 +242,7 @@ pub fn open(app: &mut PhotocraftApp, _ctx: &egui::Context) -> Result<(), String>
     let proxy = if k == 1 {
         surf.clone()
     } else {
-        photocraft_algo::resample::resize_surface(&surf, 1.0 / k as f64, 1.0 / k as f64, photocraft_algo::resample::Resample::Bilinear)
+        patronusphoto_algo::resample::resize_surface(&surf, 1.0 / k as f64, 1.0 / k as f64, patronusphoto_algo::resample::Resample::Bilinear)
     };
     // Normalise the proxy to start at the origin.
     let mut px = Surface::new(surf.format());
@@ -254,8 +254,8 @@ pub fn open(app: &mut PhotocraftApp, _ctx: &egui::Context) -> Result<(), String>
     );
     px.write_region(Rect::new(0, 0, pw as i32, ph as i32), &proxy.read_region(src_r));
     // EXIF focal length / crop factor, as the engine would resolve them.
-    let info = st.doc.metadata.exif.as_ref().map(|e| photocraft_algo::exif::read(e));
-    let params = photocraft_engine::lens_cmds::wide_params(KEY, &json!({}), info.as_ref()).unwrap_or_default();
+    let info = st.doc.metadata.exif.as_ref().map(|e| patronusphoto_algo::exif::read(e));
+    let params = patronusphoto_engine::lens_cmds::wide_params(KEY, &json!({}), info.as_ref()).unwrap_or_default();
     let target = crate::distort_ui::colour_set_target(app);
     let source = Arc::new(PcWideAngleSource::new(px, frame, k, (pw, ph), target.clone()));
     let workspace = WideAngleWorkspace::new(WideAngleOpen::new([w as u32, h as u32], name).session(params));
@@ -274,7 +274,7 @@ pub fn open(app: &mut PhotocraftApp, _ctx: &egui::Context) -> Result<(), String>
 
 /// Opens the workspace for the menu command; a `{ui}` request addresses the open workspace (`workspace_ui`), and is an
 /// error while it is closed rather than a run with the defaults.
-pub fn menu(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, params: &Value) -> Option<Result<Value, String>> {
+pub fn menu(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: &str, params: &Value) -> Option<Result<Value, String>> {
     #[cfg(not(target_arch = "wasm32"))]
     let request = workspace_request;
     #[cfg(target_arch = "wasm32")]
@@ -283,11 +283,11 @@ pub fn menu(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, params: &Val
 }
 
 fn menu_with_workspace_request(
-    app: &mut PhotocraftApp,
+    app: &mut PatronusPhotoApp,
     ctx: &egui::Context,
     id: &str,
     params: &Value,
-    request: impl FnOnce(&mut PhotocraftApp, &egui::Context, &Value) -> Option<Result<Value, String>>,
+    request: impl FnOnce(&mut PatronusPhotoApp, &egui::Context, &Value) -> Option<Result<Value, String>>,
 ) -> Option<Result<Value, String>> {
     if id != KEY {
         return None;
@@ -302,13 +302,13 @@ fn menu_with_workspace_request(
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn workspace_request(app: &mut PhotocraftApp, ctx: &egui::Context, params: &Value) -> Option<Result<Value, String>> {
+fn workspace_request(app: &mut PatronusPhotoApp, ctx: &egui::Context, params: &Value) -> Option<Result<Value, String>> {
     let ui = params.get("ui")?;
     Some(if app.wide_angle.is_some() { crate::control::dialogs::workspace_ui(app, ctx, KEY, ui) } else { Err("Adaptive Wide Angle is not open".into()) })
 }
 
 #[cfg(any(target_arch = "wasm32", test))]
-fn browser_workspace_request(_app: &mut PhotocraftApp, _ctx: &egui::Context, params: &Value) -> Option<Result<Value, String>> {
+fn browser_workspace_request(_app: &mut PatronusPhotoApp, _ctx: &egui::Context, params: &Value) -> Option<Result<Value, String>> {
     // A workspace control must never fall through to an engine edit with default parameters.
     params.get("ui").map(|_| Err("Workspace controls are unavailable in the browser".into()))
 }
@@ -341,25 +341,25 @@ mod tests {
         assert_eq!(app.session.active().unwrap().history.past_len(), before);
     }
 
-    fn ui(app: &mut PhotocraftApp, v: Value) -> Result<Value, String> {
+    fn ui(app: &mut PatronusPhotoApp, v: Value) -> Result<Value, String> {
         let ctx = app.ctx().clone();
 
         crate::control::dialogs::workspace_ui(app, &ctx, KEY, &v)
     }
 
     /// The session the open workspace holds.
-    fn session_of(app: &PhotocraftApp) -> WideAngle {
+    fn session_of(app: &PatronusPhotoApp) -> WideAngle {
         let id = app.wide_angle.as_ref().unwrap().id;
         app.framework.dialogs.get_by_id::<Hosted>(id).unwrap().workspace().session().clone()
     }
 
-    fn source_of(app: &PhotocraftApp) -> Arc<PcWideAngleSource> {
+    fn source_of(app: &PatronusPhotoApp) -> Arc<PcWideAngleSource> {
         app.wide_angle.as_ref().unwrap().source.clone()
     }
 
     /// A 160 × 100 grey layer to open the workspace on.
-    fn grey_layer() -> Box<PhotocraftApp> {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    fn grey_layer() -> Box<PatronusPhotoApp> {
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
         app.run("file.new", json!({"width": 160, "height": 100})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();
         app.run("edit.fill", json!({"color": "#808080"})).unwrap();
@@ -367,7 +367,7 @@ mod tests {
     }
 
     /// Open the workspace with one free constraint across the middle of the layer.
-    fn open_with_a_constraint(app: &mut PhotocraftApp) {
+    fn open_with_a_constraint(app: &mut PatronusPhotoApp) {
         let ctx = app.ctx().clone();
         open(app, &ctx).unwrap();
         ui(app, json!({"add": {"a": [20, 50], "b": [140, 50]}})).unwrap();

@@ -1,5 +1,5 @@
 //! The control channel's UI-thread side (desktop only, as craft-automation's channel is):
-//! craft-automation's `ControlChannel` hands each request to PhotoCraft's method table
+//! craft-automation's `ControlChannel` hands each request to Patronus Photo's method table
 //! (`crate::control::handle`) and settles its reply now, after the queued synthetic input, after a
 //! job, or through its screenshot queue.
 
@@ -10,9 +10,9 @@ use craft::automation::screenshot::{DocumentId, settle_ms};
 use craft::ui::runtime::motion;
 use craft::ui::runtime::windows::WindowHost;
 
-use super::PhotocraftApp;
+use super::PatronusPhotoApp;
 
-impl PhotocraftApp {
+impl PatronusPhotoApp {
     /// Attach a control channel (requests arrive from a transport thread: TCP, stdin, tests).
     pub fn with_control(mut self: Box<Self>, rx: Receiver<ControlRequest>) -> Box<Self> {
         self.control = Some(ControlChannel::new(rx));
@@ -111,7 +111,7 @@ impl PhotocraftApp {
     }
 
     /// Job `job` ended: `reply` answers the requests waiting on it.
-    pub(crate) fn reply_job(&mut self, job: photocraft_engine::jobs::JobId, reply: &ControlResponse) {
+    pub(crate) fn reply_job(&mut self, job: patronusphoto_engine::jobs::JobId, reply: &ControlResponse) {
         if let Some(channel) = self.control.as_mut() {
             channel.job_finished(job.0, reply);
         }

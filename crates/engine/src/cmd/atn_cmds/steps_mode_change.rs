@@ -95,7 +95,7 @@ fn dst_m(to: usize) -> D {
     D::Descriptor(desc(TARGETS[to].1))
 }
 
-/// The descriptor a step recorded in PhotoCraft saves as: the measured class and key order. The
+/// The descriptor a step recorded in Patronus Photo saves as: the measured class and key order. The
 /// message is empty: it is the script's own text, not a setting, and no text of the reference
 /// application is copied.
 fn canonical(c: &Change) -> Descriptor {
@@ -121,7 +121,7 @@ pub(super) fn mode_change_from(d: &Descriptor) -> Mapped {
     let from: Vec<&str> = c.from.iter().map(|&i| SOURCES[i].0).collect();
     let mut p = json!({"from": from, "to": TARGETS[c.to].0});
     if *d != canonical(&c) {
-        p[SOURCE] = photocraft_paint::tile::b64_encode(&d.to_bytes()).into();
+        p[SOURCE] = patronusphoto_paint::tile::b64_encode(&d.to_bytes()).into();
     }
     step(MODE_CHANGE, p)
 }
@@ -166,7 +166,7 @@ fn native(p: &Value) -> Option<Change> {
 
 /// The recorded descriptor carried in `SOURCE`, when it decodes to the measured form.
 fn source(p: &Value) -> Option<(Descriptor, Change)> {
-    let d = Descriptor::from_bytes(&photocraft_paint::tile::b64_decode(jstr(p, SOURCE)?)?).ok()?;
+    let d = Descriptor::from_bytes(&patronusphoto_paint::tile::b64_decode(jstr(p, SOURCE)?)?).ok()?;
     let c = recorded(&d)?;
     Some((d, c))
 }

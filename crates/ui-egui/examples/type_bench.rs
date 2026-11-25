@@ -5,12 +5,12 @@
 //! the GPU compositor is absent or falls back).
 //!
 //! ```sh
-//! cargo run --release -p photocraft-ui-egui --example type_bench -- [--size 6000x4000] [--layers 50] [--steps 30] [--effects] [--typing]
+//! cargo run --release -p patronusphoto-ui-egui --example type_bench -- [--size 6000x4000] [--layers 50] [--steps 30] [--effects] [--typing]
 //! ```
 
 use std::time::Instant;
 
-use photocraft_ui_egui::{PhotocraftApp, Services};
+use patronusphoto_ui_egui::{PatronusPhotoApp, Services};
 use serde_json::json;
 
 fn arg(args: &[String], name: &str) -> Option<String> {
@@ -18,18 +18,18 @@ fn arg(args: &[String], name: &str) -> Option<String> {
 }
 
 /// One pass of document 0's canvas, as the app draws it each frame.
-fn refresh(app: &mut PhotocraftApp, ctx: &egui::Context) {
+fn refresh(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     let rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1600.0, 1000.0));
     let view = app.ui.views.first().cloned().unwrap_or_default();
     let _ = ctx.run_ui(egui::RawInput { screen_rect: Some(rect), ..Default::default() }, |ui| {
-        let (_, _) = photocraft_ui_egui::canvas::canvas_view(app, ui, photocraft_ui_egui::canvas::CanvasHost::main(0), rect, view.clone(), true);
+        let (_, _) = patronusphoto_ui_egui::canvas::canvas_view(app, ui, patronusphoto_ui_egui::canvas::CanvasHost::main(0), rect, view.clone(), true);
     });
 }
 
 /// A context set up as the app's.
 fn context() -> egui::Context {
     let ctx = egui::Context::default();
-    PhotocraftApp::setup_context(&ctx, Default::default());
+    PatronusPhotoApp::setup_context(&ctx, Default::default());
     ctx
 }
 
@@ -41,8 +41,8 @@ fn median(mut v: Vec<f64>) -> f64 {
 /// `--typing`: per-keystroke cost of typing into a horizontal and a vertical (#199) Japanese type
 /// layer: the edit command (re-layout and re-render), the Type tool's overlay layout and the CPU
 /// canvas refresh, as the Type tool does it for each character.
-fn typing(app: &mut PhotocraftApp, steps: usize) {
-    let text: Vec<char> = "縦書きのテキストは、「右から左へ」進みます。PhotoCraft 2026年ー".chars().collect();
+fn typing(app: &mut PatronusPhotoApp, steps: usize) {
+    let text: Vec<char> = "縦書きのテキストは、「右から左へ」進みます。Patronus Photo 2026年ー".chars().collect();
     for orient in ["horizontal", "vertical"] {
         let r = app.run("type.create", json!({"x": 3000, "y": 200, "text": "", "size": 48, "font": "Hiragino Sans"})).expect("type.create");
         let id = r["layer"].as_u64().unwrap_or(0);
@@ -57,7 +57,7 @@ fn typing(app: &mut PhotocraftApp, steps: usize) {
             app.run("type.edit", json!({"layer": id, "replace": {"start": i, "end": i, "text": c.to_string()}, "coalesce": format!("typing-{orient}")}))
                 .expect("type.edit");
             let t1 = Instant::now();
-            let _ = photocraft_ui_egui::type_tool::layout(app, photocraft_doc::LayerId(id));
+            let _ = patronusphoto_ui_egui::type_tool::layout(app, patronusphoto_doc::LayerId(id));
             let t2 = Instant::now();
             refresh(app, &ctx);
             let t3 = Instant::now();
@@ -87,7 +87,7 @@ fn main() {
     // `--no-coalesce`: one history step per step, as the options bar did before #124.
     let coalesce = !args.iter().any(|a| a == "--no-coalesce");
 
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Services::default());
     app.run("file.new", json!({"width": w, "height": h})).expect("new document");
     if args.iter().any(|a| a == "--typing") {
         typing(&mut app, steps);
@@ -132,8 +132,8 @@ fn main() {
         total.push((t2 - t0).as_secs_f64() * 1e3);
     }
     // Undo steps back to the size before the drag.
-    let size = |app: &PhotocraftApp| match app.session.active().and_then(|s| s.doc.layer(photocraft_doc::LayerId(id))).map(|l| &l.content) {
-        Some(photocraft_doc::LayerContent::Text(t)) => t.size_pt,
+    let size = |app: &PatronusPhotoApp| match app.session.active().and_then(|s| s.doc.layer(patronusphoto_doc::LayerId(id))).map(|l| &l.content) {
+        Some(patronusphoto_doc::LayerContent::Text(t)) => t.size_pt,
         _ => 0.0,
     };
     let start = 24.0 + ((n / 2) % 5) as f32 * 6.0;
@@ -143,8 +143,8 @@ fn main() {
     }
     // `--json out.json` (`cargo xtask perf`): the per-step samples.
     if let Some(out) = arg(&args, "--json") {
-        use photocraft_testkit::perf::{process_peak_rss_bytes, report, row, write_report};
-        let rss = photocraft_testkit::perf::current_rss_bytes().max(process_peak_rss_bytes());
+        use patronusphoto_testkit::perf::{process_peak_rss_bytes, report, row, write_report};
+        let rss = patronusphoto_testkit::perf::current_rss_bytes().max(process_peak_rss_bytes());
         let rows = vec![
             row("font size step: command", &cmd, rss, None),
             row("font size step: canvas refresh", &canvas, rss, None),

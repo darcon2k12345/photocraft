@@ -5,8 +5,8 @@ use serde_json::{Value, json};
 
 use super::count_readout;
 
-fn session(groups: &[usize]) -> photocraft_engine::Session {
-    let mut s = photocraft_engine::Session::new();
+fn session(groups: &[usize]) -> patronusphoto_engine::Session {
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 100, "height": 100})).unwrap();
     for (g, n) in groups.iter().enumerate() {
         s.execute("count.newGroup", json!({"name": format!("G{g}")})).unwrap();

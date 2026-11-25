@@ -2,13 +2,13 @@
 use super::*;
 use serde_json::json;
 
-type Harness = egui_kittest::Harness<'static, Box<PhotocraftApp>>;
+type Harness = egui_kittest::Harness<'static, Box<PatronusPhotoApp>>;
 
 /// The CPU-canvas fixture on the offscreen software adapter, or `None` when this machine has no
 /// graphics adapter. Only creating the renderer may be skipped: a failing fixture command or a
 /// panic in the first frames must fail the test, not pass it as "no adapter".
 fn harness(size: [u32; 2], background: &str) -> Option<Harness> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     // app.gpu remains None: compose on the CPU, use the harness's software window adapter.
     app.run("file.new", json!({"width": size[0], "height": size[1], "background": background})).unwrap();
     app.run("select.rect", json!({"x": size[0] / 2, "y": size[1] / 2, "width": size[0] / 10, "height": size[1] / 10})).unwrap();
@@ -16,11 +16,11 @@ fn harness(size: [u32; 2], background: &str) -> Option<Harness> {
     app.run("select.deselect", json!({})).unwrap();
     // `wgpu()` creates the render state and panics when no adapter is found.
     let builder = std::panic::catch_unwind(|| {
-        egui_kittest::Harness::<Box<PhotocraftApp>>::builder().with_size(egui::vec2(1440.0, 900.0)).with_pixels_per_point(1.0).with_max_steps(64).wgpu()
+        egui_kittest::Harness::<Box<PatronusPhotoApp>>::builder().with_size(egui::vec2(1440.0, 900.0)).with_pixels_per_point(1.0).with_max_steps(64).wgpu()
     })
     .ok()?;
     let mut h = builder.build_eframe(move |cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
         if let Some(rs) = &cc.wgpu_render_state {
             app.perf.gpu_info.set_adapter(&rs.adapter.get_info());
         }
@@ -33,7 +33,7 @@ fn harness(size: [u32; 2], background: &str) -> Option<Harness> {
 #[test]
 #[ignore = "manual release benchmark: 24 MP CPU canvas on the offscreen software adapter"]
 fn cpu_canvas_background_benchmark() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     use std::time::Instant;
     let mut results = Vec::new();
     for background in ["white", "transparent"] {

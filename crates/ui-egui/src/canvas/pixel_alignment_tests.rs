@@ -15,7 +15,7 @@ fn assert_pixel_edges(view: &CanvasView, ppp: f32) {
 /// centre, as the canvas shows it; Classic Crop moves the frame and keeps the alignment.
 #[test]
 fn crop_image_movement_keeps_its_continuous_camera_mapping() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", serde_json::json!({"width": 3000, "height": 2000})).unwrap();
     app.sync_views();
     app.ui.tool = Tool::Crop;

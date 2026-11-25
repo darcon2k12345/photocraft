@@ -3,18 +3,18 @@
 //!
 //! The three filters act on the active pixel layer (inside the selection) or, on a smart
 //! object, record a smart filter whose params are fully resolved (EXIF-derived values are
-//! written into them), so re-rendering is deterministic. Algorithms: [`photocraft_algo::lens`],
-//! [`photocraft_algo::wideangle`], [`photocraft_algo::camera_raw`].
+//! written into them), so re-rendering is deterministic. Algorithms: [`patronusphoto_algo::lens`],
+//! [`patronusphoto_algo::wideangle`], [`patronusphoto_algo::camera_raw`].
 
-use photocraft_algo::camera_raw::{self, CameraRaw};
-use photocraft_algo::exif;
-use photocraft_algo::lens::{self, EdgeMode, LensCorrection};
-use photocraft_algo::transform::Interp;
-use photocraft_algo::wideangle::{self, WideAngle};
-use photocraft_color::{ColorMode, SampleType};
-use photocraft_doc::{Document, Layer, LayerContent, LayerId, SmartFilter};
-use photocraft_geom::Rect;
-use photocraft_raster::{Surface, from_rgba_into};
+use patronusphoto_algo::camera_raw::{self, CameraRaw};
+use patronusphoto_algo::exif;
+use patronusphoto_algo::lens::{self, EdgeMode, LensCorrection};
+use patronusphoto_algo::transform::Interp;
+use patronusphoto_algo::wideangle::{self, WideAngle};
+use patronusphoto_color::{ColorMode, SampleType};
+use patronusphoto_doc::{Document, Layer, LayerContent, LayerId, SmartFilter};
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::{Surface, from_rgba_into};
 use serde_json::{Value, json};
 
 use crate::commands::CommandSpec;
@@ -284,7 +284,7 @@ fn raw_enabled(s: &Session) -> std::result::Result<(), String> {
 /// gets a smart filter with `stored` params).
 fn run_filter(s: &mut Session, cmd: &str, label: &str, p: &Value, stored: Value, float_bg: bool, f: &dyn Fn(&Surface, Rect) -> Surface) -> Result<LayerId> {
     let state = s.active().ok_or(EngineError::NoDocument)?;
-    let _working = photocraft_raster::memory::try_reserve_operation(state.doc.size.area().saturating_mul(64)).map_err(EngineError::Other)?;
+    let _working = patronusphoto_raster::memory::try_reserve_operation(state.doc.size.area().saturating_mul(64)).map_err(EngineError::Other)?;
     let id = target(s, p)?;
     let colors = crate::color_channels::target(s, p)?.is_some();
     let mut stored = stored;
@@ -302,7 +302,8 @@ fn run_filter(s: &mut Session, cmd: &str, label: &str, p: &Value, stored: Value,
             return Err(EngineError::Other(format!("layer \"{}\" is locked", l.name)));
         }
         if let LayerContent::Smart(_) = l.content {
-            let sf = SmartFilter { command: cmd.to_string(), params: stored.clone(), blend: photocraft_color::BlendMode::Normal, opacity: 1.0, visible: true };
+            let sf =
+                SmartFilter { command: cmd.to_string(), params: stored.clone(), blend: patronusphoto_color::BlendMode::Normal, opacity: 1.0, visible: true };
             return crate::smart_cmds::add_smart_filter(doc, id, sf, selection.as_ref());
         }
         // A Background layer gains transparency when the edge mode exposes it (as in Photoshop).
@@ -352,7 +353,7 @@ fn adaptive_wide_angle(s: &mut Session, p: &Value) -> Result<Value> {
     let id = run_filter(s, WIDE, "Adaptive Wide Angle", p, stored.clone(), true, &|surf, canvas| {
         let tris = mesh.triangles();
         if canvas == frame {
-            photocraft_algo::warp::warp_triangles(surf, canvas, &mesh.verts, &tris, interp)
+            patronusphoto_algo::warp::warp_triangles(surf, canvas, &mesh.verts, &tris, interp)
         } else {
             wideangle::apply(surf, canvas, &wa, interp)
         }
@@ -539,7 +540,7 @@ mod tests {
             for y in 0..80 {
                 for x in 0..120 {
                     let v = if x % 12 < 2 || y % 12 < 2 { 0.9 } else { 0.35 };
-                    surf.write_pixel(x, y, &photocraft_raster::from_rgba(&fmt, [v, v * 0.9, v * 0.7, 1.0]));
+                    surf.write_pixel(x, y, &patronusphoto_raster::from_rgba(&fmt, [v, v * 0.9, v * 0.7, 1.0]));
                 }
             }
             Ok(())

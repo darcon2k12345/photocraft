@@ -3,27 +3,27 @@ use egui_kittest::Harness;
 
 use super::*;
 
-fn app() -> Box<PhotocraftApp> {
-    let mut session = photocraft_engine::Session::new();
+fn app() -> Box<PatronusPhotoApp> {
+    let mut session = patronusphoto_engine::Session::new();
     session.execute("file.new", json!({"width":1200,"height":800})).unwrap();
-    PhotocraftApp::new(session, crate::Services::default())
+    PatronusPhotoApp::new(session, crate::Services::default())
 }
 
 /// A harness whose every pass runs the dialog host, as the shell does.
-fn harness(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
-    Harness::<'static, Box<PhotocraftApp>>::builder()
+fn harness(app: Box<PatronusPhotoApp>) -> Harness<'static, Box<PatronusPhotoApp>> {
+    Harness::<'static, Box<PatronusPhotoApp>>::builder()
         .with_context(app.ctx().clone())
         .with_size(egui::vec2(1400.0, 900.0))
-        .build_ui_state(|ui: &mut egui::Ui, app: &mut Box<PhotocraftApp>| crate::dialogs::run(app, ui), app)
+        .build_ui_state(|ui: &mut egui::Ui, app: &mut Box<PatronusPhotoApp>| crate::dialogs::run(app, ui), app)
 }
 
-fn open_dialog(h: &mut Harness<'static, Box<PhotocraftApp>>) -> DialogId {
+fn open_dialog(h: &mut Harness<'static, Box<PatronusPhotoApp>>) -> DialogId {
     let id = open(h.state_mut()).unwrap();
     h.run_steps(2);
     id
 }
 
-fn set(h: &mut Harness<'static, Box<PhotocraftApp>>, id: DialogId, field: &str, value: Value) -> Result<(), String> {
+fn set(h: &mut Harness<'static, Box<PatronusPhotoApp>>, id: DialogId, field: &str, value: Value) -> Result<(), String> {
     let ctx = h.ctx.clone();
     let result = h.state_mut().framework.dialogs.set_json_field(&ctx, id, field, value);
     h.run_steps(2);
@@ -31,33 +31,33 @@ fn set(h: &mut Harness<'static, Box<PhotocraftApp>>, id: DialogId, field: &str, 
 }
 
 /// Sets the group field after `edit` changed what the dialog reports for it.
-fn set_group(h: &mut Harness<'static, Box<PhotocraftApp>>, id: DialogId, field: &str, edit: impl FnOnce(&mut Value)) {
+fn set_group(h: &mut Harness<'static, Box<PatronusPhotoApp>>, id: DialogId, field: &str, edit: impl FnOnce(&mut Value)) {
     let mut group = fields(h, id)[field].clone();
     edit(&mut group);
     set(h, id, field, group).unwrap();
 }
 
-fn confirm(h: &mut Harness<'static, Box<PhotocraftApp>>, id: DialogId) -> bool {
+fn confirm(h: &mut Harness<'static, Box<PatronusPhotoApp>>, id: DialogId) -> bool {
     let accepted = crate::dialogs::testing::confirm(h.state_mut(), id).is_ok();
     h.run_steps(3);
     accepted
 }
 
-fn cancel(h: &mut Harness<'static, Box<PhotocraftApp>>, id: DialogId) {
+fn cancel(h: &mut Harness<'static, Box<PatronusPhotoApp>>, id: DialogId) {
     let ctx = h.ctx.clone();
     h.state_mut().framework.dialogs.cancel_by_id(&ctx, id);
     h.run_steps(3);
 }
 
-fn fields(h: &Harness<'static, Box<PhotocraftApp>>, id: DialogId) -> Value {
+fn fields(h: &Harness<'static, Box<PatronusPhotoApp>>, id: DialogId) -> Value {
     h.state().framework.dialogs.get_by_id::<HostedGuideLayoutDialog>(id).unwrap().json_fields().unwrap()
 }
 
-fn shown(h: &Harness<'static, Box<PhotocraftApp>>) -> Option<(Guides, Color32)> {
+fn shown(h: &Harness<'static, Box<PatronusPhotoApp>>) -> Option<(Guides, Color32)> {
     preview(h.state(), &h.state().session.active().unwrap().doc)
 }
 
-fn guides(h: &Harness<'static, Box<PhotocraftApp>>) -> Guides {
+fn guides(h: &Harness<'static, Box<PatronusPhotoApp>>) -> Guides {
     h.state().session.active().unwrap().doc.guides.clone()
 }
 

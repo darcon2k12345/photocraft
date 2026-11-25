@@ -4,13 +4,13 @@
 use egui::Modifiers;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::cursor_policy::pencil_tip_is_round;
 use crate::canvas::{ToolEvent, tool_event};
 use crate::state::Tool;
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 120, "height": 80, "background": "transparent"})).unwrap();
     app.run("tools.setColors", json!({"foreground": "#000000", "background": "#ffffff"})).unwrap();
     // Each tool keeps its own brush (#218): switch first, then set the Pencil's options, as the
@@ -21,16 +21,16 @@ fn app() -> Box<PhotocraftApp> {
     app
 }
 
-fn layer(app: &PhotocraftApp) -> photocraft_engine::doc::Layer {
+fn layer(app: &PatronusPhotoApp) -> patronusphoto_engine::doc::Layer {
     let st = app.session.active().unwrap();
     st.doc.layer(st.active_layer.unwrap()).unwrap().clone()
 }
 
-fn rgba(app: &PhotocraftApp, x: i32, y: i32) -> [f32; 4] {
+fn rgba(app: &PatronusPhotoApp, x: i32, y: i32) -> [f32; 4] {
     layer(app).surface().unwrap().rgba(x, y)
 }
 
-fn drag(app: &mut PhotocraftApp, pts: &[(f64, f64)], mods: Modifiers) {
+fn drag(app: &mut PatronusPhotoApp, pts: &[(f64, f64)], mods: Modifiers) {
     let (x, y) = pts[0];
     tool_event(app, ToolEvent::Down { x, y, pressure: 1.0 }, mods);
     for &(x, y) in &pts[1..] {
@@ -40,7 +40,7 @@ fn drag(app: &mut PhotocraftApp, pts: &[(f64, f64)], mods: Modifiers) {
     tool_event(app, ToolEvent::Up { x, y }, mods);
 }
 
-fn last(app: &PhotocraftApp) -> (String, serde_json::Value) {
+fn last(app: &PatronusPhotoApp) -> (String, serde_json::Value) {
     app.session.journal.last().cloned().unwrap()
 }
 
@@ -129,7 +129,7 @@ fn shift_clicked_one_pixel_line_uses_the_clicked_pixels_not_subpixel_positions()
 fn shift_clicked_pencil_does_not_split_a_click_near_a_pixel_boundary() {
     let mut app = app();
     app.run("tools.setBrush", json!({"brush": {"size": 1.0, "hardness": 1.0}})).unwrap();
-    let click = |app: &mut PhotocraftApp, x: f64, y: f64, modifiers| {
+    let click = |app: &mut PatronusPhotoApp, x: f64, y: f64, modifiers| {
         tool_event(app, ToolEvent::Down { x, y, pressure: 1.0 }, modifiers);
         tool_event(app, ToolEvent::Up { x, y }, modifiers);
     };
@@ -162,7 +162,7 @@ fn the_cursor_is_round_exactly_when_the_pencil_dab_is() {
     for n in 1..=12u32 {
         let (x, y) = (8.0 + f64::from((n - 1) % 6) * 18.0 + 0.3, 15.0 + f64::from((n - 1) / 6) * 30.0 + 0.6);
         app.run("paint.pencil", json!({"points": [[x, y]], "size": n})).unwrap();
-        let [x0, y0, ..] = photocraft_engine::paint::grid_square(x, y, n as f32);
+        let [x0, y0, ..] = patronusphoto_engine::paint::grid_square(x, y, n as f32);
         let corner = rgba(&app, x0 as i32, y0 as i32)[3] == 1.0;
         assert_eq!(pencil_tip_is_round(n as f32), !corner, "{n} px");
     }
@@ -258,7 +258,7 @@ fn alt_at_the_press_reverses_erase_to_history_for_one_eraser_stroke() {
         crate::paint_mouse::sync_tool_brush(&mut app);
         app.run("tools.setBrush", json!({"brush": {"size": 15, "hardness": 1.0, "smoothing": {"amount": 0.0}}})).unwrap();
         app.ui.tool_options.eraser_mode = mode.into();
-        let stroke = |app: &mut PhotocraftApp, down: Modifiers, later: Modifiers| {
+        let stroke = |app: &mut PatronusPhotoApp, down: Modifiers, later: Modifiers| {
             tool_event(app, ToolEvent::Down { x: 55.0, y: 40.0, pressure: 1.0 }, down);
             tool_event(app, ToolEvent::Move { x: 65.0, y: 40.0, pressure: 1.0 }, later);
             tool_event(app, ToolEvent::Up { x: 65.0, y: 40.0 }, later);

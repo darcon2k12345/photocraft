@@ -1,9 +1,9 @@
 //! Mask feathering: the Gaussian blur Properties › Feather applies to a mask (pixel masks, vector
 //! masks and a shape layer's own path, so equal feathers match exactly). Pure `f32` planes; the
-//! compositor (`photocraft-compose::masks`) and the shape renderer share it.
+//! compositor (`patronusphoto-compose::masks`) and the shape renderer share it.
 
-use photocraft_doc::Path;
-use photocraft_geom::Rect;
+use patronusphoto_doc::Path;
+use patronusphoto_geom::Rect;
 
 /// Gaussian sigma of a mask feather of `px` pixels (Properties › Feather): the feather itself,
 /// widened by [`SMALL_FEATHER_VARIANCE`] for the small ones. Blurred with that variance,

@@ -2,18 +2,18 @@
 //!
 //! Measured in Photoshop: with a Magnetic Lasso border in progress, a right-click on the canvas
 //! opens nothing and changes nothing; the border stays live, and ↩ still closes it. With no border
-//! in progress the right-click opens the selection tools' menu as before. PhotoCraft opened that
+//! in progress the right-click opens the selection tools' menu as before. Patronus Photo opened that
 //! menu over the live border, from the canvas and from the control channel alike.
 //!
 //! The border is drawn with ⌥-clicks (straight segments), so its points don't depend on edges.
 //! Driven through the control channel in an egui_kittest harness (no GPU needed): the canvas takes
 //! each `ui.pointer` call's input on the frames that follow it.
 
-use photocraft_ui_egui::PhotocraftApp;
-use photocraft_ui_egui::control::{ControlRequest, Reply, handle};
+use patronusphoto_ui_egui::PatronusPhotoApp;
+use patronusphoto_ui_egui::control::{ControlRequest, Reply, handle};
 use serde_json::{Value, json};
 
-type Harness = egui_kittest::Harness<'static, Box<PhotocraftApp>>;
+type Harness = egui_kittest::Harness<'static, Box<PatronusPhotoApp>>;
 
 /// The border's corners: a plain click starts it, ⌥-clicks add the others.
 const CORNERS: [[f64; 2]; 3] = [[50.0, 50.0], [250.0, 50.0], [150.0, 200.0]];
@@ -23,8 +23,8 @@ const INSIDE: [f64; 2] = [150.0, 100.0];
 
 fn app() -> Harness {
     let mut h = Harness::builder().with_size(egui::vec2(1000.0, 700.0)).with_max_steps(64).build_eframe(|cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), Default::default());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), Default::default());
         app.session.prefs.edit(|p| p.interface.language = "en".into());
         app.run("file.new", json!({"width": 400, "height": 300})).expect("new document");
         app

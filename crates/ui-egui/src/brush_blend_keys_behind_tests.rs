@@ -7,8 +7,8 @@ use serde_json::{Value, json};
 use super::*;
 
 /// A 64 × 64 document with a layer filled 220,30,30, black foreground, the Brush.
-fn app(tool: Tool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app(tool: Tool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 64, "height": 64})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     app.run("edit.fill", json!({"color": "#dc1e1e"})).unwrap();
@@ -18,25 +18,25 @@ fn app(tool: Tool) -> Box<PhotocraftApp> {
 }
 
 /// One blend key command through the module's entry point; every blend key is taken.
-fn fire(app: &mut PhotocraftApp, command: impl Into<CommandRef>) {
+fn fire(app: &mut PatronusPhotoApp, command: impl Into<CommandRef>) {
     assert!(fired(app, &test_fired(command.into())));
 }
 
-fn brush(app: &mut PhotocraftApp) -> Value {
+fn brush(app: &mut PatronusPhotoApp) -> Value {
     app.run("brush.get", json!({})).unwrap()
 }
 
-fn behind_on(app: &mut PhotocraftApp) {
+fn behind_on(app: &mut PatronusPhotoApp) {
     fire(app, BlendShortcut::Behind);
     assert_eq!(brush(app)["behind"], true, "Shift+Alt+Q turns Behind on");
 }
 
-fn journal(app: &PhotocraftApp) -> usize {
+fn journal(app: &PatronusPhotoApp) -> usize {
     app.session.journal.len()
 }
 
 /// The layer's pixel at (x, y) as 8-bit RGB.
-fn pixel(app: &PhotocraftApp, x: i32, y: i32) -> [u8; 3] {
+fn pixel(app: &PatronusPhotoApp, x: i32, y: i32) -> [u8; 3] {
     let st = app.session.active().unwrap();
     let c = st.doc.layer(st.active_layer.unwrap()).unwrap().surface().unwrap().rgba(x, y);
     [0, 1, 2].map(|i| (c[i] * 255.0).round() as u8)

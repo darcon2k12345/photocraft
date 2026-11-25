@@ -6,19 +6,19 @@ use egui::{Key, Modifiers, PointerButton, Pos2, vec2};
 use egui_kittest::Harness;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::app::framework::BuildApp as _;
 use crate::state::Tool;
 
 /// A 400 × 300 document with a 100 × 60 red rectangle on its own layer at (100, 100), the Move
 /// tool active, at 100 %.
-fn harness() -> Harness<'static, Box<PhotocraftApp>> {
+fn harness() -> Harness<'static, Box<PatronusPhotoApp>> {
     harness_tool(Tool::Move)
 }
 
 /// The same document with a chosen tool selected (e.g. Hand, #2302).
-fn harness_tool(tool: Tool) -> Harness<'static, Box<PhotocraftApp>> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn harness_tool(tool: Tool) -> Harness<'static, Box<PatronusPhotoApp>> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     app.run("select.rect", json!({"x": 100, "y": 100, "width": 100, "height": 60})).unwrap();
@@ -28,7 +28,7 @@ fn harness_tool(tool: Tool) -> Harness<'static, Box<PhotocraftApp>> {
     app.ui.extras.rulers = false;
     app.ui.tool = tool;
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(vec2(1000.0, 700.0)).build_app(
-        |ui, app: &mut PhotocraftApp| {
+        |ui, app: &mut PatronusPhotoApp| {
             egui::CentralPanel::default().show(ui, |ui| crate::canvas::document_area(app, ui));
         },
         app,
@@ -42,12 +42,12 @@ fn harness_tool(tool: Tool) -> Harness<'static, Box<PhotocraftApp>> {
     h
 }
 
-fn screen(h: &mut Harness<'static, Box<PhotocraftApp>>, p: [f64; 2]) -> Pos2 {
+fn screen(h: &mut Harness<'static, Box<PatronusPhotoApp>>, p: [f64; 2]) -> Pos2 {
     crate::canvas::testing::to_screen(h.state_mut(), p)
 }
 
 /// Press at document point `from`, drag to `to` in a few steps and release.
-fn drag(h: &mut Harness<'static, Box<PhotocraftApp>>, from: [f64; 2], to: [f64; 2]) {
+fn drag(h: &mut Harness<'static, Box<PatronusPhotoApp>>, from: [f64; 2], to: [f64; 2]) {
     let (a, b) = (screen(h, from), screen(h, to));
     h.event(egui::Event::PointerMoved(a));
     h.run_steps(1);
@@ -61,21 +61,21 @@ fn drag(h: &mut Harness<'static, Box<PhotocraftApp>>, from: [f64; 2], to: [f64; 
     h.run_steps(3);
 }
 
-fn begin(h: &mut Harness<'static, Box<PhotocraftApp>>) {
+fn begin(h: &mut Harness<'static, Box<PatronusPhotoApp>>) {
     let ctx = h.ctx.clone();
     crate::menus::invoke(h.state_mut(), &ctx, "edit.freeTransform", json!({})).unwrap();
     h.run_steps(2);
 }
 
-fn quad(h: &Harness<'static, Box<PhotocraftApp>>) -> [[f64; 2]; 4] {
+fn quad(h: &Harness<'static, Box<PatronusPhotoApp>>) -> [[f64; 2]; 4] {
     h.state().ui.transform.as_ref().expect("transforming").session.quad().map(|p| [p.x, p.y])
 }
 
-fn history(h: &Harness<'static, Box<PhotocraftApp>>) -> usize {
+fn history(h: &Harness<'static, Box<PatronusPhotoApp>>) -> usize {
     h.state().session.active().unwrap().history.entries().len()
 }
 
-fn key(h: &mut Harness<'static, Box<PhotocraftApp>>, m: Modifiers, k: Key) {
+fn key(h: &mut Harness<'static, Box<PatronusPhotoApp>>, m: Modifiers, k: Key) {
     h.key_press_modifiers(m, k);
     h.run_steps(2);
 }
@@ -89,12 +89,12 @@ fn free_transform_starts_where_the_selected_pixels_were_moved() {
     let mut h = harness();
     h.state_mut().run("select.rect", json!({"x": 100, "y": 100, "width": 100, "height": 60})).unwrap();
     drag(&mut h, [150.0, 130.0], [250.0, 180.0]);
-    assert_eq!(photocraft_engine::float_cmds::floating(h.state().session.active().unwrap()).unwrap().offset, (100, 50));
+    assert_eq!(patronusphoto_engine::float_cmds::floating(h.state().session.active().unwrap()).unwrap().offset, (100, 50));
     begin(&mut h);
     assert_eq!(quad(&h), [[200.0, 150.0], [300.0, 150.0], [300.0, 210.0], [200.0, 210.0]]);
     let st = h.state().session.active().unwrap();
-    assert!(photocraft_engine::float_cmds::floating(st).is_none());
-    assert_eq!(st.doc.selection.as_ref().unwrap().content_bounds(), photocraft_geom::Rect::new(200, 150, 300, 210));
+    assert!(patronusphoto_engine::float_cmds::floating(st).is_none());
+    assert_eq!(st.doc.selection.as_ref().unwrap().content_bounds(), patronusphoto_geom::Rect::new(200, 150, 300, 210));
 }
 
 /// Scale ×2, then down again, then ⌘Z: back to the ×2 box, not the fill before the transform.
@@ -145,7 +145,7 @@ fn undo_steps_back_through_the_transform_not_the_document() {
 
 /// `engine.execute` over the control channel (and MCP, which goes through it) as a programmatic
 /// caller: the result's `ok` flag.
-fn execute(h: &mut Harness<'static, Box<PhotocraftApp>>, command: &str) -> bool {
+fn execute(h: &mut Harness<'static, Box<PatronusPhotoApp>>, command: &str) -> bool {
     let ctx = h.ctx.clone();
     let (req, _rx) = crate::control::ControlRequest::new("engine.execute", json!({"command": command}));
     let crate::control::Reply::Done(reply) = crate::control::handle(h.state_mut(), &ctx, &req) else {
@@ -183,7 +183,7 @@ fn automation_undo_steps_through_the_transform() {
     assert_eq!(history(&h), steps - 1, "the fill is undone");
 }
 
-fn width(h: &Harness<'static, Box<PhotocraftApp>>) -> u32 {
+fn width(h: &Harness<'static, Box<PatronusPhotoApp>>) -> u32 {
     let st = h.state().session.active().unwrap();
     st.doc.layer(st.active_layer.unwrap()).unwrap().surface().unwrap().content_bounds().width()
 }
@@ -222,7 +222,7 @@ fn holding_space_still_pans_while_transforming() {
     begin(&mut h);
     let q0 = quad(&h);
     let center0 = h.state().ui.views[0].center;
-    let space = |h: &mut Harness<'static, Box<PhotocraftApp>>, down: bool| {
+    let space = |h: &mut Harness<'static, Box<PatronusPhotoApp>>, down: bool| {
         h.event(egui::Event::Key { key: Key::Space, physical_key: None, pressed: down, repeat: false, modifiers: Modifiers::NONE });
         h.run_steps(1);
     };
@@ -255,7 +255,7 @@ fn transform_preview_stays_visible_while_panning() {
             _ => false,
         }
     }
-    let has_preview = |h: &Harness<'static, Box<PhotocraftApp>>| h.output().shapes.iter().any(|clipped| shows(&clipped.shape, texture));
+    let has_preview = |h: &Harness<'static, Box<PatronusPhotoApp>>| h.output().shapes.iter().any(|clipped| shows(&clipped.shape, texture));
     assert!(has_preview(&h), "the transformed pixels are visible before panning");
 
     let center0 = h.state().ui.views[0].center;
@@ -304,7 +304,7 @@ fn picking_another_layer_applies_the_transform_of_moved_selected_pixels() {
     h.run_steps(3);
     assert!(h.state().ui.transform.is_none(), "picking another layer applies the transform");
     let st = h.state().session.active().unwrap();
-    let landed = photocraft_geom::Rect::new(220, 160, 320, 220);
+    let landed = patronusphoto_geom::Rect::new(220, 160, 320, 220);
     let (pixels, selection) = (st.doc.layer(layer).unwrap().surface().unwrap().content_bounds(), st.doc.selection.as_ref().map(|s| s.content_bounds()));
     assert_eq!((pixels, selection), (landed, Some(landed)));
 }
@@ -324,13 +324,13 @@ fn free_transform_opens_on_the_selection_and_moves_it_with_the_pixels() {
     key(&mut h, Modifiers::NONE, Key::Enter);
     assert!(h.state().ui.transform.is_none());
     let st = h.state().session.active().unwrap();
-    assert_eq!(st.doc.selection.as_ref().unwrap().content_bounds(), photocraft_geom::Rect::new(110, 110, 210, 230));
+    assert_eq!(st.doc.selection.as_ref().unwrap().content_bounds(), patronusphoto_geom::Rect::new(110, 110, 210, 230));
     // What stayed (160..200 × 100..160) and what moved (to 150..210 × 130..190).
-    assert_eq!(st.doc.layer(layer).unwrap().surface().unwrap().content_bounds(), photocraft_geom::Rect::new(150, 100, 210, 190));
+    assert_eq!(st.doc.layer(layer).unwrap().surface().unwrap().content_bounds(), patronusphoto_geom::Rect::new(150, 100, 210, 190));
 }
 
 /// The harness's red layer plus a blue 50 × 50 one at (250, 200), both selected (#3592).
-fn two_selected(h: &mut Harness<'static, Box<PhotocraftApp>>) -> (u64, u64) {
+fn two_selected(h: &mut Harness<'static, Box<PatronusPhotoApp>>) -> (u64, u64) {
     let app = h.state_mut();
     let red = app.session.active().unwrap().active_layer.unwrap().0;
     app.run("layer.new.layer", json!({})).unwrap();
@@ -344,9 +344,9 @@ fn two_selected(h: &mut Harness<'static, Box<PhotocraftApp>>) -> (u64, u64) {
     (red, blue)
 }
 
-fn bounds(h: &Harness<'static, Box<PhotocraftApp>>, id: u64) -> photocraft_geom::Rect {
+fn bounds(h: &Harness<'static, Box<PatronusPhotoApp>>, id: u64) -> patronusphoto_geom::Rect {
     let st = h.state().session.active().unwrap();
-    st.doc.layer(photocraft_doc::LayerId(id)).unwrap().surface().unwrap().content_bounds()
+    st.doc.layer(patronusphoto_doc::LayerId(id)).unwrap().surface().unwrap().content_bounds()
 }
 
 #[test]
@@ -363,13 +363,13 @@ fn free_transform_moves_every_selected_layer_in_one_step() {
     key(&mut h, Modifiers::NONE, Key::Enter);
     assert!(h.state().ui.transform.is_none());
     assert_eq!(history(&h), steps + 1, "one history step");
-    assert_eq!(bounds(&h, red), photocraft_geom::Rect::new(100, 100, 150, 130));
-    assert_eq!(bounds(&h, blue), photocraft_geom::Rect::new(175, 150, 200, 175));
+    assert_eq!(bounds(&h, red), patronusphoto_geom::Rect::new(100, 100, 150, 130));
+    assert_eq!(bounds(&h, blue), patronusphoto_geom::Rect::new(175, 150, 200, 175));
     // One Undo restores both.
     key(&mut h, Modifiers::COMMAND, Key::Z);
     assert_eq!(history(&h), steps);
-    assert_eq!(bounds(&h, red), photocraft_geom::Rect::new(100, 100, 200, 160));
-    assert_eq!(bounds(&h, blue), photocraft_geom::Rect::new(250, 200, 300, 250));
+    assert_eq!(bounds(&h, red), patronusphoto_geom::Rect::new(100, 100, 200, 160));
+    assert_eq!(bounds(&h, blue), patronusphoto_geom::Rect::new(250, 200, 300, 250));
 }
 
 #[test]
@@ -384,8 +384,8 @@ fn cancelling_a_multi_layer_transform_leaves_every_layer() {
     key(&mut h, Modifiers::NONE, Key::Escape);
     assert!(h.state().ui.transform.is_none());
     assert_eq!(history(&h), steps);
-    assert_eq!(bounds(&h, red), photocraft_geom::Rect::new(100, 100, 200, 160));
-    assert_eq!(bounds(&h, blue), photocraft_geom::Rect::new(250, 200, 300, 250));
+    assert_eq!(bounds(&h, red), patronusphoto_geom::Rect::new(100, 100, 200, 160));
+    assert_eq!(bounds(&h, blue), patronusphoto_geom::Rect::new(250, 200, 300, 250));
 }
 
 #[test]
@@ -404,7 +404,7 @@ fn a_locked_layer_in_the_selection_refuses_the_box() {
     h.state_mut()
         .session
         .edit("lock", |doc, _| {
-            doc.layer_mut(photocraft_doc::LayerId(blue)).unwrap().locks.position = true;
+            doc.layer_mut(patronusphoto_doc::LayerId(blue)).unwrap().locks.position = true;
             Ok(())
         })
         .unwrap();
@@ -414,7 +414,7 @@ fn a_locked_layer_in_the_selection_refuses_the_box() {
 }
 
 /// Sets the open box's corners through the session, as a typed field would.
-fn set_quad(h: &mut Harness<'static, Box<PhotocraftApp>>, quad: [[f64; 2]; 4]) {
+fn set_quad(h: &mut Harness<'static, Box<PatronusPhotoApp>>, quad: [[f64; 2]; 4]) {
     h.state_mut().ui.transform.as_mut().expect("transforming").edit_box(|b| b.quad = quad.map(|[x, y]| (x, y).into()));
 }
 
@@ -441,7 +441,7 @@ fn free_transform_a_copy_duplicates_every_selected_layer_and_moves_the_copies() 
     let mut h = harness();
     let (red, blue) = two_selected(&mut h);
     let steps = history(&h);
-    let count = |h: &Harness<'static, Box<PhotocraftApp>>| h.state().session.active().unwrap().doc.walk().len();
+    let count = |h: &Harness<'static, Box<PatronusPhotoApp>>| h.state().session.active().unwrap().doc.walk().len();
     let n = count(&h);
     let ctx = h.ctx.clone();
     crate::menus::invoke(h.state_mut(), &ctx, "edit.freeTransformCopy", json!({})).unwrap();
@@ -453,10 +453,10 @@ fn free_transform_a_copy_duplicates_every_selected_layer_and_moves_the_copies() 
     set_quad(&mut h, shift_x(t.quad_array(), 20.0));
     key(&mut h, Modifiers::NONE, Key::Enter);
     assert_eq!(history(&h), steps + 1, "the copies and their transform are one step");
-    assert_eq!(bounds(&h, red), photocraft_geom::Rect::new(100, 100, 200, 160));
-    assert_eq!(bounds(&h, blue), photocraft_geom::Rect::new(250, 200, 300, 250));
-    assert_eq!(bounds(&h, t.layers[0]), photocraft_geom::Rect::new(120, 100, 220, 160));
-    assert_eq!(bounds(&h, t.layers[1]), photocraft_geom::Rect::new(270, 200, 320, 250));
+    assert_eq!(bounds(&h, red), patronusphoto_geom::Rect::new(100, 100, 200, 160));
+    assert_eq!(bounds(&h, blue), patronusphoto_geom::Rect::new(250, 200, 300, 250));
+    assert_eq!(bounds(&h, t.layers[0]), patronusphoto_geom::Rect::new(120, 100, 220, 160));
+    assert_eq!(bounds(&h, t.layers[1]), patronusphoto_geom::Rect::new(270, 200, 320, 250));
     key(&mut h, Modifiers::COMMAND, Key::Z);
     assert_eq!((count(&h), history(&h)), (n, steps), "one Undo takes both copies back");
 
@@ -476,13 +476,13 @@ fn flip_and_rotate_menu_items_turn_every_selected_layer_around_the_shared_box() 
     crate::menus::invoke(h.state_mut(), &ctx, "edit.transform.flipHorizontal", json!({})).unwrap();
     h.run_steps(2);
     assert_eq!(history(&h), steps + 1);
-    assert_eq!(bounds(&h, red), photocraft_geom::Rect::new(200, 100, 300, 160));
-    assert_eq!(bounds(&h, blue), photocraft_geom::Rect::new(100, 200, 150, 250));
+    assert_eq!(bounds(&h, red), patronusphoto_geom::Rect::new(200, 100, 300, 160));
+    assert_eq!(bounds(&h, blue), patronusphoto_geom::Rect::new(100, 200, 150, 250));
     key(&mut h, Modifiers::COMMAND, Key::Z);
     crate::menus::invoke(h.state_mut(), &ctx, "edit.transform.rotate180", json!({})).unwrap();
     h.run_steps(2);
-    assert_eq!(bounds(&h, red), photocraft_geom::Rect::new(200, 190, 300, 250));
-    assert_eq!(bounds(&h, blue), photocraft_geom::Rect::new(100, 100, 150, 150));
+    assert_eq!(bounds(&h, red), patronusphoto_geom::Rect::new(200, 190, 300, 250));
+    assert_eq!(bounds(&h, blue), patronusphoto_geom::Rect::new(100, 100, 150, 150));
 }
 
 #[test]
@@ -496,7 +496,7 @@ fn several_layers_keep_the_selection_frame_and_move_the_selection_once() {
     set_quad(&mut h, shift_x(q, 10.0));
     key(&mut h, Modifiers::NONE, Key::Enter);
     assert!(h.state().ui.transform.is_none());
-    assert_eq!(bounds(&h, red), photocraft_geom::Rect::new(110, 100, 210, 160));
-    assert_eq!(bounds(&h, blue), photocraft_geom::Rect::new(260, 200, 310, 250));
-    assert_eq!(h.state().session.active().unwrap().doc.selection.as_ref().unwrap().content_bounds(), photocraft_geom::Rect::new(70, 80, 350, 300));
+    assert_eq!(bounds(&h, red), patronusphoto_geom::Rect::new(110, 100, 210, 160));
+    assert_eq!(bounds(&h, blue), patronusphoto_geom::Rect::new(260, 200, 310, 250));
+    assert_eq!(h.state().session.active().unwrap().doc.selection.as_ref().unwrap().content_bounds(), patronusphoto_geom::Rect::new(70, 80, 350, 300));
 }

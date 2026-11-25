@@ -1,4 +1,4 @@
-//! `plugin.*` commands: sandboxed WebAssembly filter plug-ins (`photocraft-plugins`).
+//! `plugin.*` commands: sandboxed WebAssembly filter plug-ins (`patronusphoto-plugins`).
 //!
 //! Plug-ins are installed per process (`plugin.install`, or the Plug-ins preference folder),
 //! listed with `plugin.list` and run with `plugin.run` on the active pixel layer, a targeted
@@ -7,9 +7,9 @@
 
 use std::sync::Mutex;
 
-use photocraft_doc::{LayerContent, SmartFilter};
-use photocraft_plugins::{Plugin, registry};
-use photocraft_raster::Surface;
+use patronusphoto_doc::{LayerContent, SmartFilter};
+use patronusphoto_plugins::{Plugin, registry};
+use patronusphoto_raster::Surface;
 use serde_json::{Map, Value, json};
 
 use crate::commands::CommandSpec;
@@ -22,7 +22,7 @@ fn bad(cmd: &str, msg: impl Into<String>) -> EngineError {
     EngineError::BadParams { cmd: cmd.into(), msg: msg.into() }
 }
 
-fn err(e: photocraft_plugins::Error) -> EngineError {
+fn err(e: patronusphoto_plugins::Error) -> EngineError {
     EngineError::Other(e.to_string())
 }
 
@@ -59,7 +59,7 @@ fn command_key(k: &str) -> bool {
 }
 
 /// Proxy factor for a live preview of `plugin.run` with `p` on a document reduced `k` times: the
-/// plug-in's [`photocraft_plugins::Manifest::preview_factor`] (its `"unit": "px"` parameters set
+/// plug-in's [`patronusphoto_plugins::Manifest::preview_factor`] (its `"unit": "px"` parameters set
 /// the limit, not the built-in filters' parameter names). `k` when the plug-in isn't installed.
 pub fn preview_factor(p: &Value, k: u32) -> u32 {
     let Ok(plugin) = plugin_by_id(RUN, p) else { return k };
@@ -99,7 +99,7 @@ pub fn scale_for_preview(p: &mut Value, k: u32) {
 
 fn plugin_by_id(cmd: &str, p: &Value) -> Result<std::sync::Arc<Plugin>> {
     let id = p.get("id").and_then(Value::as_str).ok_or_else(|| bad(cmd, "missing `id` (see plugin.list)"))?;
-    registry::get(id).ok_or_else(|| err(photocraft_plugins::Error::NotFound(id.into())))
+    registry::get(id).ok_or_else(|| err(patronusphoto_plugins::Error::NotFound(id.into())))
 }
 
 fn run(s: &mut Session, p: &Value) -> Result<Value> {
@@ -134,7 +134,7 @@ fn run(s: &mut Session, p: &Value) -> Result<Value> {
                 let sf = SmartFilter {
                     command: RUN.into(),
                     params: json!({"id": id, "params": resolved}),
-                    blend: photocraft_color::BlendMode::Normal,
+                    blend: patronusphoto_color::BlendMode::Normal,
                     opacity: 1.0,
                     visible: true,
                 };
@@ -149,7 +149,13 @@ fn run(s: &mut Session, p: &Value) -> Result<Value> {
 /// Smart-filter re-render of a recorded `plugin.run` (see `filters::apply_filter_to_surface`).
 /// `None` when `command` isn't a plug-in run or the plug-in isn't installed (the smart filter is
 /// then skipped, as for other unknown filters) or fails.
-pub(crate) fn apply_to_surface(command: &str, params: &Value, surf: &Surface, selection: Option<&Surface>, canvas: photocraft_geom::Rect) -> Option<Surface> {
+pub(crate) fn apply_to_surface(
+    command: &str,
+    params: &Value,
+    surf: &Surface,
+    selection: Option<&Surface>,
+    canvas: patronusphoto_geom::Rect,
+) -> Option<Surface> {
     if command != RUN {
         return None;
     }
@@ -163,7 +169,7 @@ const MAX_DATA_CHARS: usize = (32 << 20) / 3 * 4 + 4;
 fn b64_decode(s: &str) -> Option<Vec<u8>> {
     // plugin.install historically accepts both alphabet variants, including mixed input.
     // Keep that input policy while the library validates padding and decodes the bytes.
-    photocraft_paint::tile::b64_decode(&s.replace('-', "+").replace('_', "/"))
+    patronusphoto_paint::tile::b64_decode(&s.replace('-', "+").replace('_', "/"))
 }
 
 fn install(_s: &mut Session, p: &Value) -> Result<Value> {
@@ -174,7 +180,7 @@ fn install(_s: &mut Session, p: &Value) -> Result<Value> {
             return Err(bad(CMD, "`data` is larger than the module limit"));
         }
         let bytes = b64_decode(data).ok_or_else(|| bad(CMD, "`data` is not valid base64"))?;
-        Plugin::load(&bytes, photocraft_plugins::Limits::default()).map_err(err)?
+        Plugin::load(&bytes, patronusphoto_plugins::Limits::default()).map_err(err)?
     } else if let Some(path) = p.get("path") {
         let path = path.as_str().filter(|s| !s.is_empty()).ok_or_else(|| bad(CMD, "`path` must be a file path"))?;
         load_path(path)?
@@ -190,7 +196,7 @@ fn install(_s: &mut Session, p: &Value) -> Result<Value> {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn load_path(path: &str) -> Result<Plugin> {
-    registry::load_file(std::path::Path::new(path), photocraft_plugins::Limits::default()).map_err(err)
+    registry::load_file(std::path::Path::new(path), patronusphoto_plugins::Limits::default()).map_err(err)
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -280,7 +286,7 @@ pub fn specs() -> Vec<CommandSpec> {
             enabled: always,
             run: |_, p| {
                 let id = p.get("id").and_then(Value::as_str).ok_or_else(|| bad("plugin.remove", "missing `id`"))?;
-                if registry::remove(id) { Ok(json!({"removed": id})) } else { Err(err(photocraft_plugins::Error::NotFound(id.into()))) }
+                if registry::remove(id) { Ok(json!({"removed": id})) } else { Err(err(patronusphoto_plugins::Error::NotFound(id.into()))) }
             },
             journal: false,
         },

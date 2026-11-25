@@ -24,10 +24,10 @@ use craft::ui::list::{List, ListRow};
 use craft::ui::patterns::form_dialogs::FormDialog;
 use craft::ui::runtime::env::Label;
 use craft::ui::runtime::overlay::CloseReason;
-use photocraft_doc::{DocId, Document};
+use patronusphoto_doc::{DocId, Document};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 fn label(text: &str) -> Label {
     Label::from(text.to_string())
@@ -109,7 +109,7 @@ impl StackDialog for ApplyDataSetDialog {
     type Result = ApplyAnswer;
 
     fn id(&self) -> DialogId {
-        dialog_id("photocraft.applyDataSet")
+        dialog_id("patronusphoto.applyDataSet")
     }
 
     fn show(&mut self, ui: &mut egui::Ui, _stack: &DialogStack) -> Option<DialogResult<ApplyAnswer>> {
@@ -179,13 +179,13 @@ impl StackDialog for ApplyDataSetDialog {
 }
 
 /// The document's data set names, in document order.
-fn names(app: &PhotocraftApp) -> Vec<String> {
+fn names(app: &PatronusPhotoApp) -> Vec<String> {
     app.session.active().map(|st| st.doc.variables.data_sets.iter().map(|s| s.name.clone()).collect()).unwrap_or_default()
 }
 
 /// Opens the dialog with the first set selected, as on every open in the reference application,
 /// and Preview as the last Apply left it.
-pub fn open(app: &mut PhotocraftApp) -> DialogId {
+pub fn open(app: &mut PatronusPhotoApp) -> DialogId {
     let names = names(app);
     let selected = if names.is_empty() { Selection::default() } else { Selection::single(0) };
     let preview = app.data_set_preview.remembered;
@@ -194,7 +194,7 @@ pub fn open(app: &mut PhotocraftApp) -> DialogId {
 
 /// Show set `wanted` in the active document, or nothing. A set that can't be applied (a missing
 /// or unreadable replacement file, an index past the list) shows nothing rather than part of it.
-fn sync(app: &mut PhotocraftApp, wanted: Option<usize>) {
+fn sync(app: &mut PatronusPhotoApp, wanted: Option<usize>) {
     let active = app.session.active().map(|st| st.doc.id);
     if app.data_set_preview.shown.as_ref().is_some_and(|p| Some(p.doc) == active && Some(p.index) == wanted) {
         return;
@@ -207,7 +207,7 @@ fn sync(app: &mut PhotocraftApp, wanted: Option<usize>) {
     if app.data_set_preview.failed == Some(key) {
         return;
     }
-    let Ok(previewed) = photocraft_engine::data_set_preview(&app.session, index) else {
+    let Ok(previewed) = patronusphoto_engine::data_set_preview(&app.session, index) else {
         app.data_set_preview.failed = Some(key);
         return;
     };
@@ -220,7 +220,7 @@ fn sync(app: &mut PhotocraftApp, wanted: Option<usize>) {
 
 /// A new revision for a document swapped in by Preview: everything is redrawn, a clean document
 /// stays clean.
-fn shown(st: &mut photocraft_engine::DocState, was_clean: bool) {
+fn shown(st: &mut patronusphoto_engine::DocState, was_clean: bool) {
     st.revision += 1;
     if was_clean {
         st.saved_revision = st.revision;
@@ -230,7 +230,7 @@ fn shown(st: &mut photocraft_engine::DocState, was_clean: bool) {
 
 /// Put the document back as it was before Preview showed a set, whether it is active or not. A
 /// document changed since keeps that change (and with it the preview).
-fn revert(app: &mut PhotocraftApp) {
+fn revert(app: &mut PatronusPhotoApp) {
     let Some(p) = app.data_set_preview.shown.take() else { return };
     if let Some(st) = app.session.document_mut(p.doc)
         && st.revision == p.revision
@@ -242,12 +242,12 @@ fn revert(app: &mut PhotocraftApp) {
 
 /// Before any command runs: the document goes back to itself, so the command neither works on
 /// nor saves the preview. The dialog, still open with Preview on, shows the set again.
-pub(crate) fn end_preview(app: &mut PhotocraftApp) {
+pub(crate) fn end_preview(app: &mut PatronusPhotoApp) {
     revert(app);
 }
 
 /// Whether Preview is showing a set (autosave waits for it to end).
-pub(crate) fn previewing(app: &PhotocraftApp) -> bool {
+pub(crate) fn previewing(app: &PatronusPhotoApp) -> bool {
     app.data_set_preview.shown.is_some()
 }
 
@@ -255,7 +255,7 @@ pub(crate) fn previewing(app: &PhotocraftApp) -> bool {
 /// keeps Preview in step with the box and the selected row. Apply, Enter or a double-click puts
 /// the document back and applies the selected set once; Cancel, Escape and the close box put it
 /// back and turn Preview off for the next open. The variables and data sets are never written here.
-pub(crate) fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
+pub(crate) fn take(app: &mut PatronusPhotoApp, _ctx: &egui::Context) {
     match app.framework.dialogs.take::<ApplyDataSetDialog>() {
         Some(DialogResult::Ok(answer)) => {
             revert(app);

@@ -1,5 +1,5 @@
 [package]
-name = "photocraft-engine"
+name = "patronusphoto-engine"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -12,34 +12,34 @@ workspace = true
 corpus = []
 
 [dependencies]
-photocraft-geom = { workspace = true }
-photocraft-color = { workspace = true }
+patronusphoto-geom = { workspace = true }
+patronusphoto-color = { workspace = true }
 craft-cms = { workspace = true }
 # PCTIP codec from craft-libs#1564; isolated pin until the shared revision is adopted workspace-wide.
 craft-pcraft-tip = { package = "craft-pcraft-format", git = "https://github.com/storytold/craft-libs", rev = "683fe06031224725b913c8ad3697d8e8bfec6c90" }
-photocraft-raster = { workspace = true }
-photocraft-doc = { workspace = true }
-photocraft-ops = { workspace = true }
-photocraft-compose = { workspace = true }
+patronusphoto-raster = { workspace = true }
+patronusphoto-doc = { workspace = true }
+patronusphoto-ops = { workspace = true }
+patronusphoto-compose = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 rayon = { workspace = true }
 chrono = { workspace = true }
 web-time = { workspace = true }
-photocraft-paint = { workspace = true }
-photocraft-algo = { workspace = true }
-photocraft-text = { workspace = true }
-photocraft-vector = { workspace = true }
-photocraft-io = { workspace = true }
+patronusphoto-paint = { workspace = true }
+patronusphoto-algo = { workspace = true }
+patronusphoto-text = { workspace = true }
+patronusphoto-vector = { workspace = true }
+patronusphoto-io = { workspace = true }
 craft-xml = { workspace = true }
 craft-psd = { workspace = true }
-photocraft-format = { workspace = true }
-photocraft-plugins = { workspace = true }
+patronusphoto-format = { workspace = true }
+patronusphoto-plugins = { workspace = true }
 base64 = "0.22"
 blake3 = { version = "1.8", default-features = false, features = ["pure"] }
-photocraft-codecs = { workspace = true }
-photocraft-formats = { workspace = true }
+patronusphoto-codecs = { workspace = true }
+patronusphoto-formats = { workspace = true }
 flate2 = { workspace = true }
 craft-print = { workspace = true }
 # The framework through its facade: the actions model (`craft::automation`), the `.kys` model
@@ -67,14 +67,14 @@ winsafe = { version = "=0.0.29", default-features = false, features = ["kernel"]
 
 # Printing on Unix: an IPP client for CUPS (pure Rust); the web build cannot print.
 [target.'cfg(all(not(target_arch = "wasm32"), not(target_os = "windows")))'.dependencies]
-photocraft-ipp = { workspace = true }
+patronusphoto-ipp = { workspace = true }
 
 [dev-dependencies]
 craft-affinity = { workspace = true, features = ["synth"] }
-photocraft-io = { workspace = true, features = ["testgen"] }
+patronusphoto-io = { workspace = true, features = ["testgen"] }
 # Synthetic camera raw files for the open tests.
-photocraft-raw = { workspace = true, features = ["testgen"] }
-photocraft-testkit = { workspace = true }
+patronusphoto-raw = { workspace = true, features = ["testgen"] }
+patronusphoto-testkit = { workspace = true }
 exr = { version = "1.73", default-features = false }
 # WebAssembly text -> binary for plug-in test modules (Apache-2.0 WITH LLVM-exception).
 wat = "1.228"

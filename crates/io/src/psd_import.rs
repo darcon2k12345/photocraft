@@ -6,13 +6,13 @@ use craft_psd::layer::{CHANNEL_REAL_USER_MASK, CHANNEL_TRANSPARENCY, CHANNEL_USE
 use craft_psd::resources::ids;
 use craft_psd::tagged::BlockData;
 use craft_psd::{ColorMode as PsdMode, LayerNode, LayerRecord, PsdFile, TaggedBlock};
-use photocraft_color::{BlendMode, ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{
+use patronusphoto_color::{BlendMode, ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::{
     AlphaChannel, Document, Effects, FillCache, Group, Layer, LayerContent, LayerMask, PsdGlobalBlock, ShapeLayer, SmartContentsId, SmartObject, SmartSource,
     TextLayer,
 };
-use photocraft_geom::{Rect, Size, TILE_SIZE};
-use photocraft_raster::Surface;
+use patronusphoto_geom::{Rect, Size, TILE_SIZE};
+use patronusphoto_raster::Surface;
 
 use crate::adjust_map::{self, ADJUSTMENT_KEYS};
 use crate::blocks;
@@ -61,7 +61,7 @@ pub(crate) struct Ctx<'a> {
     /// Document resolution (type sizes are converted to points with it).
     pub dpi: f32,
     /// The parsed `Txt2` block (type settings EngineData lacks, e.g. optical kerning).
-    pub txt2: Option<photocraft_text::engine_data::Value>,
+    pub txt2: Option<patronusphoto_text::engine_data::Value>,
     /// Smart-filter caches from the global `FEid`/`FXid` blocks (filter masks, by placed id).
     pub filter_effects: Vec<craft_psd::filter_effects::FilterEffectsItem>,
     /// Filter masks already decoded, by placed id: every layer of a source reads the same item, and
@@ -78,11 +78,11 @@ pub(crate) struct Ctx<'a> {
     /// Shared vector previews are hashed/parsed once, under a per-file work budget.
     pub vector_previews: crate::vector_preview::ImportCache,
     /// Cancellation and progress for background opens (checked per layer record).
-    pub ctl: photocraft_raster::Interrupt<'a>,
+    pub ctl: patronusphoto_raster::Interrupt<'a>,
     /// Layer records decoded so far, out of `total` (progress).
     pub done: usize,
     /// Uniform tiles shared across imported layers.
-    pub uniform: photocraft_raster::TileInterner,
+    pub uniform: patronusphoto_raster::TileInterner,
     pub total: usize,
 }
 
@@ -157,7 +157,7 @@ fn shape_mask_params(rec: &LayerRecord) -> (f32, f32) {
 /// with a vector mask: when it fills with a pattern, which the shape renderer can't draw (`.1`
 /// true when its vector mask is also soft: a density below 100 % or a feather). Other soft
 /// shapes stay shapes with that density and feather.
-fn soft_shape_fill(rec: &LayerRecord, has_vector: bool, fill_key: Option<&[u8; 4]>) -> Option<(photocraft_doc::Fill, bool)> {
+fn soft_shape_fill(rec: &LayerRecord, has_vector: bool, fill_key: Option<&[u8; 4]>) -> Option<(patronusphoto_doc::Fill, bool)> {
     if !has_vector || rec.block(b"vstk").is_some() || rec.block(b"vscg").is_some() {
         return None;
     }
@@ -169,7 +169,7 @@ fn soft_shape_fill(rec: &LayerRecord, has_vector: bool, fill_key: Option<&[u8; 4
     // document's patterns for fill layers), and its stored pixels may be the unclipped fill
     // (our own export writes fill layers so, #1907): it is a pattern fill layer seen through
     // its vector mask.
-    let pattern = matches!(fill, photocraft_doc::Fill::Pattern { .. });
+    let pattern = matches!(fill, patronusphoto_doc::Fill::Pattern { .. });
     pattern.then_some((fill, soft))
 }
 
@@ -190,9 +190,9 @@ struct DecodedImport<'a> {
 #[derive(Default)]
 struct Placement {
     id: String,
-    transform: photocraft_geom::Affine,
+    transform: patronusphoto_geom::Affine,
     perspective: Option<[f64; 9]>,
-    warp: Option<photocraft_geom::warp::Warp>,
+    warp: Option<patronusphoto_geom::warp::Warp>,
 }
 
 impl Ctx<'_> {
@@ -332,7 +332,7 @@ impl Ctx<'_> {
             // import): it is a fresh page-faulted mmap otherwise. The decoded planes don't: the
             // decoder allocates its own, so pooled ones would only sit there.
             drop(refs);
-            photocraft_raster::scratch::give(bytes);
+            patronusphoto_raster::scratch::give(bytes);
             drop(planes);
         }
         surf.prune();
@@ -428,8 +428,8 @@ impl Ctx<'_> {
             l.frame = data
                 .data
                 .get(..end)
-                .and_then(|bytes| serde_json::from_slice::<photocraft_doc::Frame>(bytes).ok())
-                .filter(photocraft_doc::Frame::valid)
+                .and_then(|bytes| serde_json::from_slice::<patronusphoto_doc::Frame>(bytes).ok())
+                .filter(patronusphoto_doc::Frame::valid)
                 .map(Box::new);
         }
         l.visible = rec.is_visible();
@@ -533,7 +533,7 @@ impl Ctx<'_> {
             );
             // Kept verbatim for saving, but it renders as nothing: say so rather than open the
             // layer silently without its effect (#1763).
-            if matches!(adj, photocraft_doc::Adjustment::Unsupported { .. }) {
+            if matches!(adj, patronusphoto_doc::Adjustment::Unsupported { .. }) {
                 // Photoshop 2026's Light adjustment shares the Brightness/Contrast key (#6542).
                 let light = k == b"brit" && adjust_map::is_extended_brit(cged);
                 let why = if light {
@@ -554,28 +554,28 @@ impl Ctx<'_> {
             // text), so its TySh is saved back verbatim instead of being dropped with the raster.
             let parsed = (!block.is_foreign_order())
                 .then(|| {
-                    photocraft_text::psd::text_layer_from_tysh(&block.data, self.dpi).or_else(|| {
+                    patronusphoto_text::psd::text_layer_from_tysh(&block.data, self.dpi).or_else(|| {
                         let (text, transform) = blocks::parse_tysh(&block.data)?;
-                        photocraft_text::psd::transform_is_safe(&transform).then(|| TextLayer { text, transform, ..Default::default() })
+                        patronusphoto_text::psd::transform_is_safe(&transform).then(|| TextLayer { text, transform, ..Default::default() })
                     })
                 })
                 .flatten();
             if let Some(mut t) = parsed {
                 let mut path_error = None;
                 if let Some(txt2) = &self.txt2 {
-                    photocraft_text::psd::apply_txt2(&mut t, &block.data, txt2);
+                    patronusphoto_text::psd::apply_txt2(&mut t, &block.data, txt2);
                     // Type on a path keeps its path only in its `Txt2` frame (#7962).
-                    path_error = photocraft_text::psd::apply_txt2_path(&mut t, &block.data, txt2).err();
-                    photocraft_text::psd::apply_txt2_frame(&mut t, &block.data, txt2);
+                    path_error = patronusphoto_text::psd::apply_txt2_path(&mut t, &block.data, txt2).err();
+                    patronusphoto_text::psd::apply_txt2_frame(&mut t, &block.data, txt2);
                 }
                 if let Some(e) = path_error {
-                    let shape = if matches!(t.shape, photocraft_doc::text::TextShape::Box { .. }) { "paragraph" } else { "point" };
+                    let shape = if matches!(t.shape, patronusphoto_doc::text::TextShape::Box { .. }) { "paragraph" } else { "point" };
                     self.warn(format!("layer \"{name}\": its type path could not be read ({e}); it opens as {shape} text"));
                 }
                 // Photoshop's pixels stay until edited. Writers without type pixels are
                 // rendered by text_import::prepare instead of retaining an empty cache.
                 let cache = self.record_surface(rec, &name);
-                let drawn = !cache.content_bounds().is_empty() || photocraft_text::psd::engine_text_is_blank(&block.data);
+                let drawn = !cache.content_bounds().is_empty() || patronusphoto_text::psd::engine_text_is_blank(&block.data);
                 t.cache = drawn.then_some(cache);
                 t.psd_raw = principal(b"TySh");
                 LayerContent::Text(t)
@@ -589,7 +589,7 @@ impl Ctx<'_> {
             // A pattern-filled shape is a pattern fill layer seen through its vector mask (soft
             // or not). Unless that mask is soft, the stored pixels stay its rendering (a soft
             // mask's pixels lack the fill beyond the path).
-            if !soft && matches!(f, photocraft_doc::Fill::Pattern { .. }) && !rec.rect.is_empty() {
+            if !soft && matches!(f, patronusphoto_doc::Fill::Pattern { .. }) && !rec.rect.is_empty() {
                 fill_cache = Some(FillCache { fill: f.clone(), surface: self.record_surface(rec, &name) });
             }
             LayerContent::Fill(f)
@@ -607,7 +607,7 @@ impl Ctx<'_> {
             if self.fatal_error.is_none() && (soft || ((rec.rect.is_empty() || rec.rect.size().is_err()) && (!sh.path.subpaths.is_empty() || sh.path.inverted)))
             {
                 let canvas = Rect::new(0, 0, self.file.header.width as i32, self.file.header.height as i32);
-                sh.cache = Some(photocraft_vector::render_shape(&sh, self.fmt, canvas));
+                sh.cache = Some(patronusphoto_vector::render_shape(&sh, self.fmt, canvas));
             }
             LayerContent::Shape(sh)
         } else if let Some(k) = fill_key {
@@ -632,7 +632,7 @@ impl Ctx<'_> {
                 "layer \"{name}\": its adjustment settings could not be read (unknown adjustment type \"{key}\"); the layer is kept as saved but has no effect"
             ));
             let raw = rec.block(&k).map(|b| b.data.as_slice()).unwrap_or_default().into();
-            LayerContent::Adjustment(photocraft_doc::Adjustment::Unsupported { psd_key: key, raw })
+            LayerContent::Adjustment(patronusphoto_doc::Adjustment::Unsupported { psd_key: key, raw })
         } else {
             LayerContent::Raster(self.record_surface(rec, &name))
         };
@@ -685,8 +685,9 @@ impl Ctx<'_> {
                         // bounded: past the limit the layer keeps its stored pixels, unmixed.
                         let item = self.filter_effects.iter().find(|i| i.id == p.placed);
                         // The surface keeps whole tiles over the item's rect, not its logical pixels.
-                        let cost = item
-                            .map_or(0, |i| photocraft_raster::tile_storage_bytes(Rect::new(i.rect.left, i.rect.top, i.rect.right, i.rect.bottom), &self.fmt));
+                        let cost = item.map_or(0, |i| {
+                            patronusphoto_raster::tile_storage_bytes(Rect::new(i.rect.left, i.rect.top, i.rect.right, i.rect.bottom), &self.fmt)
+                        });
                         let fits = self.unfiltered_bytes.saturating_add(cost) <= MAX_UNFILTERED_BYTES;
                         let made = item.filter(|_| fits).and_then(|i| crate::smart_map::unfiltered_from_item(i, self.fmt));
                         if made.is_some() {
@@ -697,7 +698,7 @@ impl Ctx<'_> {
                     }
                 };
                 match unfiltered {
-                    Some(u) => photocraft_compose::filter_mask::mix(&u, &stored, m),
+                    Some(u) => patronusphoto_compose::filter_mask::mix(&u, &stored, m),
                     None => stored,
                 }
             }
@@ -765,11 +766,11 @@ impl Ctx<'_> {
                     let rec = &layers[*index];
                     // The recursion here (and in every later consumer of the tree) is bounded by
                     // the document model's nesting cap; a deeper subtree is not imported.
-                    let children = if depth >= photocraft_doc::MAX_GROUP_DEPTH {
+                    let children = if depth >= patronusphoto_doc::MAX_GROUP_DEPTH {
                         self.warn(format!(
                             "group `{}` nests deeper than {} groups; its contents were not imported",
                             rec.name(),
-                            photocraft_doc::MAX_GROUP_DEPTH
+                            patronusphoto_doc::MAX_GROUP_DEPTH
                         ));
                         Vec::new()
                     } else {
@@ -824,7 +825,7 @@ fn apply_link_groups(nodes: &[LayerNode], layers: &mut [Layer], records: &[Layer
                         None => (children, depth),
                     };
                     // Matches the importer's nesting cap: deeper children were not imported.
-                    if depth < photocraft_doc::MAX_GROUP_DEPTH
+                    if depth < patronusphoto_doc::MAX_GROUP_DEPTH
                         && let LayerContent::Group(g) = &mut l.content
                     {
                         rec(children, &mut g.children, records, ids, depth + 1);
@@ -841,8 +842,8 @@ fn apply_link_groups(nodes: &[LayerNode], layers: &mut [Layer], records: &[Layer
 /// Rejects a file whose groups nest deeper than the document model's cap, with the actionable
 /// limit error. Nesting past the cap could never be saved (.pcraft refuses it).
 pub(crate) fn check_group_depth(file: &PsdFile) -> Result<(), crate::IoError> {
-    if group_depth(file) > photocraft_doc::MAX_GROUP_DEPTH {
-        return Err(crate::IoError::Unsupported(format!("layer groups nested deeper than {}", photocraft_doc::MAX_GROUP_DEPTH)));
+    if group_depth(file) > patronusphoto_doc::MAX_GROUP_DEPTH {
+        return Err(crate::IoError::Unsupported(format!("layer groups nested deeper than {}", patronusphoto_doc::MAX_GROUP_DEPTH)));
     }
     Ok(())
 }
@@ -878,7 +879,7 @@ const LAYER_INFO_KEYS: [&[u8; 4]; 50] = [
 ];
 
 /// The key of an adjustment layer whose type no mapper knows (#6575), e.g. Photoshop 4's
-/// `hue ` or a type newer than PhotoCraft. Photoshop writes every adjustment layer without
+/// `hue ` or a type newer than Patronus Photo. Photoshop writes every adjustment layer without
 /// pixels and with "pixel data irrelevant" set (every one in the corpus; pixel, type and smart
 /// layers never have it). Such a record that is not a group and carries exactly one block that
 /// is neither a known layer-information key nor a known adjustment is that adjustment. More than
@@ -969,7 +970,7 @@ fn write_rgba8(s: &mut Surface, canvas: Rect, data: &[u8]) -> Result<(), String>
         vals.clear();
         vals.try_reserve(rows.len().saturating_mul(fmt.channels()) / 4).map_err(|e| e.to_string())?;
         for p in rows.as_chunks::<4>().0 {
-            vals.extend(photocraft_raster::from_rgba(&fmt, p.map(|x| f32::from(x) / 255.0)));
+            vals.extend(patronusphoto_raster::from_rgba(&fmt, p.map(|x| f32::from(x) / 255.0)));
         }
         s.try_write_region(band, &vals).map_err(|e| e.to_string())?;
         y = band.y1;
@@ -1032,13 +1033,13 @@ fn mark_background(file: &PsdFile, layers: &mut [Layer]) {
 /// Converts a parsed PSD into a document, preserving best-effort recovery warnings.
 pub fn psd_to_document(file: &PsdFile) -> (Document, Vec<String>) {
     // Never cancelled, so always `Some`; the fallback is unreachable.
-    psd_to_document_with(file, &photocraft_raster::Interrupt::NONE)
+    psd_to_document_with(file, &patronusphoto_raster::Interrupt::NONE)
         .unwrap_or_else(|| (Document::new("Untitled", Size::new(1, 1), ColorMode::Rgb, SampleType::U8), Vec::new()))
 }
 
 /// [`psd_to_document`] for a background open: checks `ctl` per layer record and reports
 /// progress. `None` when cancelled.
-pub fn psd_to_document_with(file: &PsdFile, ctl: &photocraft_raster::Interrupt) -> Option<(Document, Vec<String>)> {
+pub fn psd_to_document_with(file: &PsdFile, ctl: &patronusphoto_raster::Interrupt) -> Option<(Document, Vec<String>)> {
     psd_to_document_decoded(file, ctl, None)
 }
 
@@ -1049,7 +1050,7 @@ pub fn psd_to_document_with(file: &PsdFile, ctl: &photocraft_raster::Interrupt) 
 /// because its file became unreadable while it opened).
 pub(crate) fn psd_to_document_owned(
     mut file: PsdFile,
-    ctl: &photocraft_raster::Interrupt,
+    ctl: &patronusphoto_raster::Interrupt,
     decoded: Option<craft_psd::Result<Vec<u8>>>,
 ) -> Option<(Document, Vec<String>, bool, Option<crate::IoError>)> {
     let global = file
@@ -1064,7 +1065,7 @@ pub(crate) fn psd_to_document_owned(
     psd_to_document_global(&file, ctl, decoded, global, true)
 }
 
-/// Whether `file` stores spot planes the way earlier PhotoCraft versions (releases 0.1.0 to
+/// Whether `file` stores spot planes the way earlier Patronus Photo versions (releases 0.1.0 to
 /// 0.16.0) wrote them: straight (the maximum = solid ink), the opposite of Photoshop, which
 /// stores 0 = solid ink in every PSD and TIFF it saves. Their files are recognised by three
 /// things together:
@@ -1072,8 +1073,8 @@ pub(crate) fn psd_to_document_owned(
 /// - DisplayInfo (1077) marks at least one spot channel;
 /// - there is no Alpha Identifiers resource (1053), or one that lists fewer channels than the
 ///   file has ([`photoshop_identified_channels`]). Photoshop has written it, one identifier per
-///   extra channel, in every file with an extra channel since version 6, and PhotoCraft writes it
-///   now. No earlier PhotoCraft wrote one of its own, but each kept the 1053 of a Photoshop file
+///   extra channel, in every file with an extra channel since version 6, and Patronus Photo writes it
+///   now. No earlier Patronus Photo wrote one of its own, but each kept the 1053 of a Photoshop file
 ///   it opened (a transparent document's `[0]`, for one) and wrote it back unchanged, after the
 ///   channels added in it, which it stored straight;
 /// - the version info (1057) is byte for byte what those versions wrote: writer "Adobe Photoshop"
@@ -1082,14 +1083,14 @@ pub(crate) fn psd_to_document_owned(
 ///
 /// Any other file is read in Photoshop's polarity. psd-tools' `cmyk-spot.psd`, for one, also has
 /// spots and no 1053, but names psd-tools in 1057 and stores Photoshop's polarity. A Photoshop
-/// file that an earlier PhotoCraft opened and saved again kept Photoshop's 1053 and its planes as
+/// file that an earlier Patronus Photo opened and saved again kept Photoshop's 1053 and its planes as
 /// Photoshop stored them, so it is read in Photoshop's polarity too; when channels were added
 /// there, only the planes after the ones the kept 1053 lists are read straight.
 ///
 /// Keeping these files' ink is the only reason this exists: deleting it (and its one caller)
 /// reads every file in Photoshop's polarity, at the cost of inverting the spot ink of PSDs saved
 /// by those versions.
-pub(crate) fn earlier_photocraft_spot_planes(file: &PsdFile) -> bool {
+pub(crate) fn earlier_patronusphoto_spot_planes(file: &PsdFile) -> bool {
     use craft_psd::descriptor::UnicodeString;
     use craft_psd::resources::VersionInfo;
 
@@ -1121,7 +1122,7 @@ pub(crate) fn earlier_photocraft_spot_planes(file: &PsdFile) -> bool {
 /// How many extra channels, after the merged transparency, the Alpha Identifiers resource (1053)
 /// lists: its identifiers other than 0, which Photoshop gives the merged transparency (first, and
 /// in some files with no transparency plane at all). 0 without a 1053. In a file from an earlier
-/// PhotoCraft ([`earlier_photocraft_spot_planes`]) these are the channels of the Photoshop file
+/// Patronus Photo ([`earlier_patronusphoto_spot_planes`]) these are the channels of the Photoshop file
 /// it opened, stored as Photoshop stored them; the channels after them were added there.
 pub(crate) fn photoshop_identified_channels(file: &PsdFile) -> usize {
     file.resource(crate::channel_map::ALPHA_IDENTIFIERS).map_or(0, |r| r.data.as_chunks::<4>().0.iter().filter(|id| **id != [0; 4]).count())
@@ -1180,7 +1181,7 @@ fn read_initial_metadata(
                 }
             }
             id if crate::vector_map::SAVED_PATHS.contains(&id) => match crate::vector_map::path_from_resource(&resource.data, header.width, header.height) {
-                Some(path) => doc.paths.push(photocraft_doc::NamedPath {
+                Some(path) => doc.paths.push(patronusphoto_doc::NamedPath {
                     name: String::from_utf8_lossy(&resource.name).into_owned(),
                     path,
                     psd_raw: Some(Arc::new(resource.data.clone())),
@@ -1190,7 +1191,7 @@ fn read_initial_metadata(
             crate::vector_map::WORK_PATH => doc.work_path = crate::vector_map::path_from_resource(&resource.data, header.width, header.height),
             crate::vector_map::CLIPPING_PATH => {
                 let name = String::from_utf8_lossy(craft_psd::path::clipping_path_name(&resource.data).unwrap_or_default()).into_owned();
-                doc.clipping_path = Some(photocraft_doc::ClippingPath { name, flatness: crate::vector_map::clipping_flatness(&resource.data) });
+                doc.clipping_path = Some(patronusphoto_doc::ClippingPath { name, flatness: crate::vector_map::clipping_flatness(&resource.data) });
                 doc.metadata.psd_resources.push((resource.id, String::from_utf8_lossy(&resource.name).into_owned(), Arc::new(resource.data.clone())));
             }
             crate::channel_map::ALPHA_IDENTIFIERS if !multichannel => {}
@@ -1233,7 +1234,7 @@ fn read_initial_metadata(
 /// [`PsdFile::from_bytes_and_merged`] with [`merged_needed`]), so it is not decoded again.
 pub(crate) fn psd_to_document_decoded(
     file: &PsdFile,
-    ctl: &photocraft_raster::Interrupt,
+    ctl: &patronusphoto_raster::Interrupt,
     decoded: Option<craft_psd::Result<Vec<u8>>>,
 ) -> Option<(Document, Vec<String>)> {
     psd_to_document_decoded_integrity(file, ctl, decoded).map(|(document, warnings, _)| (document, warnings))
@@ -1244,7 +1245,7 @@ pub(crate) fn psd_to_document_decoded(
 /// the low-level conversion API retain their existing best-effort behaviour.
 pub(crate) fn psd_to_document_decoded_integrity(
     file: &PsdFile,
-    ctl: &photocraft_raster::Interrupt,
+    ctl: &patronusphoto_raster::Interrupt,
     decoded: Option<craft_psd::Result<Vec<u8>>>,
 ) -> Option<(Document, Vec<String>, bool)> {
     let global = file.global_blocks.iter().map(|b| (b.signature, b.key, Arc::new(b.data.clone()))).collect();
@@ -1257,7 +1258,10 @@ pub(crate) fn psd_to_document_decoded_integrity(
 /// A standalone conversion refuses an ineligible file before waiting for the decode gate and
 /// rechecks the fresh measurement once admitted, so a refused file never waits behind an active
 /// decode and a memory drop during the wait is seen before any pixel is decoded.
-fn legacy_admission(est: &crate::psd_budget::PsdMemoryEstimate, ctl: &photocraft_raster::Interrupt) -> Result<crate::psd_gate::AdmissionGuard, crate::IoError> {
+fn legacy_admission(
+    est: &crate::psd_budget::PsdMemoryEstimate,
+    ctl: &patronusphoto_raster::Interrupt,
+) -> Result<crate::psd_gate::AdmissionGuard, crate::IoError> {
     if crate::psd_gate::is_holding_admission() {
         // Cancellation is checked before the charge and admission is reentrant here, so a
         // cancelled or refused nested conversion never spends its parent's allowance.
@@ -1277,7 +1281,7 @@ fn legacy_admission(est: &crate::psd_budget::PsdMemoryEstimate, ctl: &photocraft
 
 fn psd_to_document_global(
     file: &PsdFile,
-    ctl: &photocraft_raster::Interrupt,
+    ctl: &patronusphoto_raster::Interrupt,
     decoded: Option<craft_psd::Result<Vec<u8>>>,
     global: Vec<PsdGlobalBlock>,
     preflighted: bool,
@@ -1327,7 +1331,7 @@ fn psd_to_document_global(
         damaged,
         fatal_error: None,
         dpi: doc.resolution_dpi,
-        txt2: global.iter().find(|(_, k, _)| k == b"Txt2").and_then(|(_, _, d)| photocraft_text::psd::parse_txt2(d)),
+        txt2: global.iter().find(|(_, k, _)| k == b"Txt2").and_then(|(_, _, d)| patronusphoto_text::psd::parse_txt2(d)),
         filter_effects: Vec::new(),
         filter_masks: Default::default(),
         unfiltered: Default::default(),
@@ -1367,7 +1371,7 @@ fn psd_to_document_global(
     finish_import(doc, cx, ctl)
 }
 
-fn finish_import(mut doc: Document, mut cx: Ctx<'_>, ctl: &photocraft_raster::Interrupt) -> Option<(Document, Vec<String>, bool, Option<crate::IoError>)> {
+fn finish_import(mut doc: Document, mut cx: Ctx<'_>, ctl: &patronusphoto_raster::Interrupt) -> Option<(Document, Vec<String>, bool, Option<crate::IoError>)> {
     let raw_comps = doc.metadata.psd_resources.iter().find(|(id, _, _)| *id == crate::comps_map::LAYER_COMPS).map(|(_, _, data)| data.clone());
     let (comps, applied, state, warnings) = crate::comps_map::decode_comps(raw_comps.as_deref().map(Vec::as_slice), &doc);
     (doc.layer_comps, doc.last_applied_comp, doc.last_document_state) = (comps, applied, state);
@@ -1384,7 +1388,7 @@ fn finish_import(mut doc: Document, mut cx: Ctx<'_>, ctl: &photocraft_raster::In
 fn decode_merged(
     file: &PsdFile,
     decoded: Option<craft_psd::Result<Vec<u8>>>,
-    ctl: &photocraft_raster::Interrupt,
+    ctl: &patronusphoto_raster::Interrupt,
     cx: &mut Ctx<'_>,
 ) -> Option<Option<craft_psd::Result<Vec<u8>>>> {
     if merged_needed(file) {
@@ -1444,9 +1448,9 @@ fn import_multichannel(file: &PsdFile, merged: &Option<craft_psd::Result<Vec<u8>
 fn import_layered(import: DecodedImport<'_>, doc: &mut Document, cx: &mut Ctx<'_>) {
     let DecodedImport { file, merged, sizes, canvas, depth, fmt, .. } = import;
     let cc = fmt.mode.color_channels();
-    let tree = file.layer_tree_max_depth(photocraft_doc::MAX_GROUP_DEPTH);
-    let space = photocraft_compose::cmyk_space(doc);
-    doc.layers = photocraft_color::convert::with_cmyk_space(space.as_ref(), || cx.build(&tree, 0)).into();
+    let tree = file.layer_tree_max_depth(patronusphoto_doc::MAX_GROUP_DEPTH);
+    let space = patronusphoto_compose::cmyk_space(doc);
+    doc.layers = patronusphoto_color::convert::with_cmyk_space(space.as_ref(), || cx.build(&tree, 0)).into();
     mark_background(file, &mut doc.layers);
     if let Some(Ok(craft_psd::resources::ResourceData::LayerGroupInfo(groups))) =
         file.resources.iter().find(|r| r.id == ids::LAYER_GROUP_INFO).and_then(craft_psd::resources::ImageResource::parsed)
@@ -1476,9 +1480,9 @@ fn import_layered(import: DecodedImport<'_>, doc: &mut Document, cx: &mut Ctx<'_
     if let Err(error) = surface.try_write_interleaved(canvas, &bytes) {
         return cx.allocation_failed(format!("merged image: {error}"));
     }
-    photocraft_raster::scratch::give(bytes);
+    patronusphoto_raster::scratch::give(bytes);
     if alpha_idx.is_some() {
-        let white = photocraft_raster::from_rgba(&fmt, [1.0, 1.0, 1.0, 1.0]);
+        let white = patronusphoto_raster::from_rgba(&fmt, [1.0, 1.0, 1.0, 1.0]);
         let mut vals = Vec::new();
         let mut y = canvas.y0;
         while y < canvas.y1 {
@@ -1526,7 +1530,7 @@ fn import_flattened(
         let count = u16_of(crate::palette_map::COLOR_TABLE_COUNT).map_or(256, usize::from).clamp(1, 256);
         let colors = (0..count).map(|i| [m[i], m[256 + i], m[512 + i]]).collect();
         let transparent = u16_of(crate::palette_map::TRANSPARENCY_INDEX).filter(|&i| usize::from(i) < count).map(|i| i as u8);
-        doc.color_table = Some(photocraft_doc::ColorTable { colors, transparent });
+        doc.color_table = Some(patronusphoto_doc::ColorTable { colors, transparent });
     } else if h.color_mode == PsdMode::Duotone && !file.color_mode_data.is_empty() {
         let mut unknown = false;
         let alternate = file.resource(crate::duotone_map::ALTERNATE_DUOTONE_COLORS).map(|r| r.data.as_slice());
@@ -1534,8 +1538,8 @@ fn import_flattened(
         if inks.is_none() {
             cx.warn("duotone inks are not interpreted (shown as grayscale)");
         }
-        let inks = inks.unwrap_or_else(|| vec![photocraft_doc::DuotoneInk::new("Black", [0.0; 3])]);
-        doc.duotone = Some(photocraft_doc::Duotone { inks, psd_raw: Some(file.color_mode_data.as_slice().into()) });
+        let inks = inks.unwrap_or_else(|| vec![patronusphoto_doc::DuotoneInk::new("Black", [0.0; 3])]);
+        doc.duotone = Some(patronusphoto_doc::Duotone { inks, psd_raw: Some(file.color_mode_data.as_slice().into()) });
     } else if !file.color_mode_data.is_empty() {
         cx.warn("color mode data is not preserved");
     }
@@ -1574,7 +1578,7 @@ fn import_flattened(
     }
 }
 
-/// Spot inks whose DisplayInfo colour is in a space PhotoCraft doesn't read take their colour
+/// Spot inks whose DisplayInfo colour is in a space Patronus Photo doesn't read take their colour
 /// from the Alternate Spot Colors (1067), matched by the identifiers of 1053. `ids_from` is the
 /// first imported channel's position in 1053 (1 past a merged transparency), `skip` the
 /// DisplayInfo records before it.
@@ -1616,9 +1620,9 @@ fn import_extra_channels(import: DecodedImport<'_>, doc: &mut Document, cx: &mut
     let names = names.get(skip..).unwrap_or_default();
     // Which planes hold spot ink in Photoshop's polarity (0 = solid): the DisplayInfo records
     // the channel options are read from below, the transparency's first when `skip` is 1.
-    // A file from an earlier PhotoCraft stores them straight as it was written,
+    // A file from an earlier Patronus Photo stores them straight as it was written,
     // past the channels of the Photoshop file it opened, if any.
-    let straight_from = if earlier_photocraft_spot_planes(file) { photoshop_identified_channels(file) } else { usize::MAX };
+    let straight_from = if earlier_patronusphoto_spot_planes(file) { photoshop_identified_channels(file) } else { usize::MAX };
     let photoshop_spots = if let Some(r) = file.resource(crate::channel_map::DISPLAY_INFO) {
         crate::channel_map::spot_flags(&r.data, true, skip)
     } else if let Some(r) = file.resource(crate::channel_map::DISPLAY_INFO_OLD) {
@@ -1642,7 +1646,7 @@ fn import_extra_channels(import: DecodedImport<'_>, doc: &mut Document, cx: &mut
         if let Err(error) = s.try_write_interleaved(canvas, &raw) {
             return cx.allocation_failed(format!("extra channel {idx}: {error}"));
         }
-        photocraft_raster::scratch::give(raw);
+        patronusphoto_raster::scratch::give(raw);
         s.prune();
         let name = names.get(k).cloned().unwrap_or_else(|| format!("Alpha {}", k + 1));
         doc.channels.push(AlphaChannel::new(name, s));

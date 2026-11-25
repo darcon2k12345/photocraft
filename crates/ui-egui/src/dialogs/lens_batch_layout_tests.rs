@@ -6,27 +6,27 @@ use craft::ui::patterns::form_dialogs::{HostedParamDialog, ParamKind};
 use egui_kittest::kittest::Queryable;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
-pub(super) type H = egui_kittest::Harness<'static, Box<PhotocraftApp>>;
+pub(super) type H = egui_kittest::Harness<'static, Box<PatronusPhotoApp>>;
 
 /// The open dialogs drawn over `app`, as the window shows them.
-pub(super) fn harness(app: Box<PhotocraftApp>) -> H {
+pub(super) fn harness(app: Box<PatronusPhotoApp>) -> H {
     let mut h = egui_kittest::Harness::builder().with_context(app.ctx().clone()).with_size(egui::vec2(900.0, 1000.0)).build_ui_state(
-        |ui, app: &mut Box<PhotocraftApp>| {
+        |ui, app: &mut Box<PatronusPhotoApp>| {
             if ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 crate::dialogs::run(app, ui);
             }
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, Default::default());
+    PatronusPhotoApp::setup_context(&h.ctx, Default::default());
     h.run_steps(4);
     h
 }
 
 /// Opens the dialog from the File menu over `app`.
-pub(super) fn open_in(mut app: Box<PhotocraftApp>) -> (H, DialogId) {
+pub(super) fn open_in(mut app: Box<PatronusPhotoApp>) -> (H, DialogId) {
     let ctx = app.ctx().clone();
     let reply = crate::menus::invoke(&mut app, &ctx, super::COMMAND, json!({})).unwrap();
     let want = reply["dialog"].as_str().expect("the reply names a dialog").to_owned();
@@ -36,7 +36,7 @@ pub(super) fn open_in(mut app: Box<PhotocraftApp>) -> (H, DialogId) {
 
 /// The dialog open over an app without a document (the command needs none).
 pub(super) fn opened() -> (H, DialogId) {
-    open_in(PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default()))
+    open_in(PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default()))
 }
 
 pub(super) fn field(h: &H, id: DialogId, key: &str) -> Value {
@@ -63,9 +63,9 @@ pub(super) fn params(h: &H, id: DialogId) -> Value {
 /// A fresh folder holding one source, `a.png`.
 pub(super) fn source_folder() -> tempfile::TempDir {
     let dir = tempfile::tempdir().unwrap();
-    let mut image = photocraft_engine::Session::new();
+    let mut image = patronusphoto_engine::Session::new();
     image.execute("file.new", json!({"width": 40, "height": 20, "background": "white"})).unwrap();
-    let png = photocraft_io::export(&image.active().unwrap().doc, "a.png", &Default::default()).unwrap().bytes;
+    let png = patronusphoto_io::export(&image.active().unwrap().doc, "a.png", &Default::default()).unwrap().bytes;
     std::fs::write(dir.path().join("a.png"), png).unwrap();
     dir
 }

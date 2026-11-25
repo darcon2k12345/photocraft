@@ -2,17 +2,17 @@
 //! its two segments (a closed subpath opens there), never the active layer.
 
 use egui::Modifiers;
-use photocraft_doc::vector::Path;
+use patronusphoto_doc::vector::Path;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing;
 use crate::state::Tool;
 
 /// 800 x 600 on white, pixel layer Red active, saved path Path 1 (a closed corner square)
 /// targeted in the Paths panel, the Add Anchor Point tool on.
-pub(super) fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+pub(super) fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 800, "height": 600, "background": "white"})).unwrap();
     app.sync_views();
     app.run("layer.new.layer", json!({"name": "Red"})).unwrap();
@@ -23,24 +23,24 @@ pub(super) fn app() -> Box<PhotocraftApp> {
     app
 }
 
-pub(super) fn path1(app: &PhotocraftApp) -> Path {
+pub(super) fn path1(app: &PatronusPhotoApp) -> Path {
     app.session.active().unwrap().doc.paths.iter().find(|p| p.name == "Path 1").unwrap().path.clone()
 }
 
-pub(super) fn layers(app: &PhotocraftApp) -> usize {
+pub(super) fn layers(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().doc.layers.len()
 }
 
-pub(super) fn steps(app: &PhotocraftApp) -> usize {
+pub(super) fn steps(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.past_len()
 }
 
-pub(super) fn ctrl_click(app: &mut PhotocraftApp, at: [f64; 2]) {
+pub(super) fn ctrl_click(app: &mut PatronusPhotoApp, at: [f64; 2]) {
     testing::click(app, at, Modifiers::COMMAND);
 }
 
 /// A key as the canvas gets it: the overlay's session keys first, then the app's key route.
-pub(super) fn press(app: &mut PhotocraftApp, key: egui::Key) {
+pub(super) fn press(app: &mut PatronusPhotoApp, key: egui::Key) {
     testing::key(app, key, Modifiers::NONE);
 }
 

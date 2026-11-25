@@ -20,12 +20,12 @@ use craft::ui::patterns::preferences::{
 use craft::ui::runtime::env::{Words, WordsOverride, with_env};
 use craft::ui::runtime::memory::SaveKey;
 use craft::ui::runtime::requests::ColorRequest;
-use photocraft_engine::prefs::SECTIONS;
+use patronusphoto_engine::prefs::SECTIONS;
 use serde_json::{Value, json};
 
 use super::custom_rows::PrefsCustom;
 use super::fields::{PrefPages, rules};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::color_picker_ui::PickWindow;
 
 /// The document the window edits between passes. The custom rows borrow the app, so each pass attaches `PrefsCustom`
@@ -36,7 +36,7 @@ type Doc = SettingsDocument<PrefPages, ()>;
 
 /// Shell front ends for Edit-menu commands invoked without parameters (dialogs, pickers).
 /// `None` when `id` isn't handled here.
-pub fn invoke(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, params: &Value) -> Option<Result<Value, String>> {
+pub fn invoke(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: &str, params: &Value) -> Option<Result<Value, String>> {
     let empty = params.as_object().is_none_or(|o| o.is_empty());
     if !empty {
         return None;
@@ -70,7 +70,7 @@ pub fn invoke(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, params: &V
         }
         "edit.fade" | "edit.findAndReplaceText" | "edit.defineBrushPreset" | "edit.defineCustomShape" | "edit.autoAlignLayers" | "edit.autoBlendLayers" => {
             if !app.session.is_enabled(id) {
-                return Some(Err(photocraft_engine::commands::find(id)
+                return Some(Err(patronusphoto_engine::commands::find(id)
                     .map_or("not available".into(), |c| format!("{} is not available right now", c.label.trim_end_matches('…')))));
             }
             dialog(crate::filter_dialog::open(app, id))
@@ -158,7 +158,7 @@ impl StackDialog for PrefsDialog {
     type Result = PrefsAnswer;
 
     fn id(&self) -> DialogId {
-        dialog_id("photocraft.preferences")
+        dialog_id("patronusphoto.preferences")
     }
 
     fn key(&self) -> Option<&str> {
@@ -176,7 +176,7 @@ impl StackDialog for PrefsDialog {
         let out = with_env(
             ui,
             |set| set.words = Some(WordsOverride::Replace(words)),
-            |ui| PreferencesWindow::new(Bind::bound(&mut self.state)).remember(SaveKey::new("photocraft.preferences")).show(ui, &mut with_custom),
+            |ui| PreferencesWindow::new(Bind::bound(&mut self.state)).remember(SaveKey::new("patronusphoto.preferences")).show(ui, &mut with_custom),
         );
         self.doc = Some(with_custom.custom(()));
         if let Some(request) = out.pick_color {
@@ -212,12 +212,12 @@ impl StackDialog for PrefsDialog {
 }
 
 /// Whether the Preferences window is open.
-pub fn window_open(app: &PhotocraftApp) -> bool {
+pub fn window_open(app: &PatronusPhotoApp) -> bool {
     app.framework.dialogs.is_open::<PrefsDialog>()
 }
 
 /// Opens Edit › Preferences on `section` (`general` for an unknown one). With the window open only its page changes.
-pub fn open_preferences(app: &mut PhotocraftApp, section: &str) {
+pub fn open_preferences(app: &mut PatronusPhotoApp, section: &str) {
     let section = if SECTIONS.iter().any(|(id, _)| *id == section) { section } else { "general" };
     if let Some(open) = app.framework.dialogs.get_mut::<PrefsDialog>() {
         open.state.selected = section.to_string();
@@ -265,7 +265,7 @@ fn language_of(host: &Host, code: &str) -> Lang {
 /// Writes the keys Apply or OK changed through the engine, and returns the `prefs.set` reply. Only these keys go,
 /// so a setting changed elsewhere while the window is open is not overwritten. Keys Reset Section removed go through
 /// `prefs.reset`.
-fn write_edits(app: &mut PhotocraftApp, (values, resets): Edits) -> Result<Value, String> {
+fn write_edits(app: &mut PatronusPhotoApp, (values, resets): Edits) -> Result<Value, String> {
     let mut reply = json!({});
     if values.as_object().is_some_and(|map| !map.is_empty()) {
         reply = app.run("prefs.set", json!({"values": values}))?;
@@ -277,7 +277,7 @@ fn write_edits(app: &mut PhotocraftApp, (values, resets): Edits) -> Result<Value
 }
 
 /// Writes every batch of edits; the reply of the last `prefs.set`. The first refusal stops the rest.
-fn write_all(app: &mut PhotocraftApp, batches: Vec<Edits>) -> Result<Value, String> {
+fn write_all(app: &mut PatronusPhotoApp, batches: Vec<Edits>) -> Result<Value, String> {
     let mut reply = json!({});
     for edits in batches {
         reply = write_edits(app, edits)?;
@@ -286,7 +286,7 @@ fn write_all(app: &mut PhotocraftApp, batches: Vec<Edits>) -> Result<Value, Stri
 }
 
 /// Hands the open window what it reads of the app, before the host runs it.
-pub(crate) fn feed(app: &mut PhotocraftApp) {
+pub(crate) fn feed(app: &mut PatronusPhotoApp) {
     let Some(shown_rev) = app.framework.dialogs.get::<PrefsDialog>().map(|d| d.saved_rev) else { return };
     let custom = PrefsCustom::new(&*app, crate::color_picker_ui::window_picker_open(app, PickWindow::Preferences));
     let rev = app.session.prefs.rev();
@@ -299,7 +299,7 @@ pub(crate) fn feed(app: &mut PhotocraftApp) {
 
 /// Carries the window's requests out after a host pass: the answer it ended with, the edits Apply filed, the colour
 /// picker its swatch asked for and the picker's answer. A window that is gone takes its picker with it.
-pub(crate) fn take(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(crate) fn take(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     let mut batches = match app.framework.dialogs.take::<PrefsDialog>() {
         Some(DialogResult::Ok(PrefsAnswer(edits))) => edits,
         _ => Vec::new(),
@@ -328,7 +328,7 @@ pub(crate) fn take(app: &mut PhotocraftApp, ctx: &egui::Context) {
 
 /// Applies the open window's draft as its Apply button does and keeps the window open. `Err` when it is closed, a
 /// colour picker it opened is still open, or the engine refuses a value.
-pub fn apply_window(app: &mut PhotocraftApp) -> Result<Value, String> {
+pub fn apply_window(app: &mut PatronusPhotoApp) -> Result<Value, String> {
     // The window judges Apply on what it reads of the app (an open picker among it), as its button does after a feed.
     feed(app);
     let Some(dialog) = app.framework.dialogs.get_mut::<PrefsDialog>() else { return Err("Preferences is not open".into()) };
@@ -345,7 +345,7 @@ pub fn apply_window(app: &mut PhotocraftApp) -> Result<Value, String> {
 /// Sets a row of the open window's draft as the user editing it would (type and range checks included).
 /// `false` when the window is closed.
 #[cfg(test)]
-pub(crate) fn set_draft(app: &mut PhotocraftApp, key: &str, value: PrefValue) -> bool {
+pub(crate) fn set_draft(app: &mut PatronusPhotoApp, key: &str, value: PrefValue) -> bool {
     match app.framework.dialogs.get_mut::<PrefsDialog>().and_then(|d| d.doc.as_mut()) {
         Some(doc) => {
             doc.set(key, value);

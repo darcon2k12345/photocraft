@@ -24,7 +24,7 @@ fn bitmap_documents_get_the_mode_alert() {
         let mut app = app(tool);
         app.run("image.mode.grayscale", json!({})).unwrap();
         app.run("image.mode.bitmap", json!({})).unwrap();
-        assert_eq!(app.session.active().unwrap().doc.mode, photocraft_doc::ColorMode::Bitmap);
+        assert_eq!(app.session.active().unwrap().doc.mode, patronusphoto_doc::ColorMode::Bitmap);
         refused(&mut app, &format!("Could not use the {name} because it does not work with Bitmap images (convert image to Grayscale mode to edit)."));
     }
 }

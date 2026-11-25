@@ -5,14 +5,14 @@ use egui_kittest::{
     Harness,
     kittest::{NodeT, Queryable},
 };
-use photocraft_doc::{Color, SampleType, Size};
+use patronusphoto_doc::{Color, SampleType, Size};
 use std::{cell::RefCell, path::Path, rc::Rc};
 
 const CONVERT: &str = "Convert to sRGB";
 const EMBED: &str = "Embed Color Profile";
 type Writes = Rc<RefCell<Vec<Vec<u8>>>>;
 
-fn harness(gpu: bool) -> (Harness<'static, Box<PhotocraftApp>>, Writes) {
+fn harness(gpu: bool) -> (Harness<'static, Box<PatronusPhotoApp>>, Writes) {
     let writes = Writes::default();
     let captured = writes.clone();
     let files = std::sync::Arc::new(craft::host::ScriptedFiles::answering([
@@ -22,7 +22,7 @@ fn harness(gpu: bool) -> (Harness<'static, Box<PhotocraftApp>>, Writes) {
     let services = crate::Services {
         files: Some(files),
         export: Some(Box::new(|doc, path, settings| {
-            photocraft_io::export(doc, path, &settings.io_options()).map(|r| (r.bytes, r.warnings)).map_err(|e| e.to_string())
+            patronusphoto_io::export(doc, path, &settings.io_options()).map(|r| (r.bytes, r.warnings)).map_err(|e| e.to_string())
         })),
         write: Some(Box::new(move |_, bytes| {
             captured.borrow_mut().push(bytes.to_vec());
@@ -30,11 +30,11 @@ fn harness(gpu: bool) -> (Harness<'static, Box<PhotocraftApp>>, Writes) {
         })),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     let mut doc = Document::with_background("Wide gamut", Size::new(200, 150), ColorMode::Rgb, SampleType::U8, Color::WHITE);
     let blue = [30.0 / 255.0, 30.0 / 255.0, 200.0 / 255.0, 1.0];
     let surface = doc.layers[0].surface_mut().unwrap();
-    surface.fill_rect(photocraft_geom::Rect::new(50, 25, 150, 125), &photocraft_raster::from_rgba(&surface.format(), blue));
+    surface.fill_rect(patronusphoto_geom::Rect::new(50, 25, 150, 125), &patronusphoto_raster::from_rgba(&surface.format(), blue));
     doc.icc_profile = Some(Builtin::AdobeRgbCompat.profile().to_bytes());
     app.session.add_document(doc, None);
     // The whole app on its own context: its frame runs the dialog host and the file service's answers.
@@ -43,29 +43,29 @@ fn harness(gpu: bool) -> (Harness<'static, Box<PhotocraftApp>>, Writes) {
     (builder.build_eframe(move |_cc| app), writes)
 }
 
-fn checkbox(h: &Harness<'_, Box<PhotocraftApp>>, label: &str) -> Toggled {
+fn checkbox(h: &Harness<'_, Box<PatronusPhotoApp>>, label: &str) -> Toggled {
     h.get_by_role_and_label(Role::CheckBox, label).accesskit_node().toggled().unwrap()
 }
 
-fn click(h: &mut Harness<'_, Box<PhotocraftApp>>, role: Role, label: &str) {
+fn click(h: &mut Harness<'_, Box<PatronusPhotoApp>>, role: Role, label: &str) {
     h.get_by_role_and_label(role, label).click();
     h.run_steps(6);
 }
 
-fn open_dialog(h: &mut Harness<'_, Box<PhotocraftApp>>) {
+fn open_dialog(h: &mut Harness<'_, Box<PatronusPhotoApp>>) {
     let ctx = h.ctx.clone();
     crate::menus::invoke(h.state_mut(), &ctx, COMMAND, json!({})).unwrap();
     h.run_steps(6);
 }
 
-fn snapshot(h: &mut Harness<'_, Box<PhotocraftApp>>, dir: Option<&Path>, file: &str) {
+fn snapshot(h: &mut Harness<'_, Box<PatronusPhotoApp>>, dir: Option<&Path>, file: &str) {
     if let Some(dir) = dir {
         h.render().unwrap().save(dir.join(file)).unwrap();
     }
 }
 
 fn verify_png(bytes: &[u8], want: [u8; 3], tolerance: u8, embedded: bool) {
-    let doc = photocraft_io::import("out.png", bytes).unwrap().document;
+    let doc = patronusphoto_io::import("out.png", bytes).unwrap().document;
     let pixel = doc.layers[0].surface().unwrap().rgba(100, 75);
     for (channel, (got, want)) in pixel.into_iter().zip(want).enumerate() {
         let got = (got * 255.0).round() as u8;
@@ -128,9 +128,9 @@ mod gpu_tests {
 
     #[test]
     fn export_as_color_space_gpu_snapshots() {
-        let Some(dir) = std::env::var_os("PHOTOCRAFT_SRGB_SNAPSHOTS") else { return };
+        let Some(dir) = std::env::var_os("PATRONUSPHOTO_SRGB_SNAPSHOTS") else { return };
         let dir = std::path::PathBuf::from(dir);
-        let _gpu = photocraft_testkit::gpu_lock();
+        let _gpu = patronusphoto_testkit::gpu_lock();
         std::fs::create_dir_all(&dir).unwrap();
         export_both_ways(Some(&dir));
     }

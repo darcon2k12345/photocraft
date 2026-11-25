@@ -3,7 +3,7 @@
 
 use super::tests::{images, tmp};
 use super::*;
-use photocraft_doc::{BlendMode, Locks};
+use patronusphoto_doc::{BlendMode, Locks};
 
 fn sheet(s: &mut Session, dir: &str, extra: Value) -> Vec<usize> {
     let mut p = json!({"input": dir, "units": "pixels", "width": 300, "height": 200, "resolution": 72, "columns": 2, "rows": 2, "caption": false});
@@ -43,7 +43,7 @@ fn flattening_keeps_the_pixels_of_the_unflattened_sheet() {
     let flat = sheet(&mut s, &dir, json!({"flatten": true}))[0];
     let (layered, flat) = (&s.documents()[layered].doc, &s.documents()[flat].doc);
     assert_eq!(flat.layers[0].surface().unwrap().content_bounds(), flat.bounds(), "covers the whole sheet");
-    assert_eq!(photocraft_compose::flatten(flat), photocraft_compose::flatten(layered));
+    assert_eq!(patronusphoto_compose::flatten(flat), patronusphoto_compose::flatten(layered));
 }
 
 #[test]

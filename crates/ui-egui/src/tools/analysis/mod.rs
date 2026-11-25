@@ -11,7 +11,7 @@ use craft::behavior::Selection;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 pub(crate) mod bars;
@@ -56,7 +56,7 @@ const NOTES: &str = "notes";
 /// is hidden), as "5 (2)". The single-group case counts a hidden group too (not measured, so it
 /// keeps the old total). An out-of-range current index means the last group, as in the Group
 /// dropdown and `count.add`.
-pub(crate) fn count_readout(m: &photocraft_doc::analysis::Measurement) -> String {
+pub(crate) fn count_readout(m: &patronusphoto_doc::analysis::Measurement) -> String {
     if m.count_groups.len() < 2 {
         return m.count_total().to_string();
     }
@@ -89,7 +89,7 @@ impl Default for AnalysisUi {
             log_selected: Selection::default(),
             note_selected: None,
             note_author: String::new(),
-            note_color: photocraft_engine::notes_cmds::DEFAULT_NOTE_COLOR,
+            note_color: patronusphoto_engine::notes_cmds::DEFAULT_NOTE_COLOR,
             use_measurement_scale: false,
         }
     }
@@ -103,7 +103,7 @@ pub fn handles(id: &str) -> bool {
 }
 
 /// The check mark of a menu item of this module.
-pub fn checked(app: &PhotocraftApp, id: &str) -> Option<bool> {
+pub fn checked(app: &PatronusPhotoApp, id: &str) -> Option<bool> {
     match id {
         "window.panel.measurementLog" => Some(crate::panel_docking::is_shown(app, MEASUREMENT_LOG)),
         "window.panel.notes" => Some(crate::panel_docking::is_shown(app, NOTES)),
@@ -112,7 +112,7 @@ pub fn checked(app: &PhotocraftApp, id: &str) -> Option<bool> {
         _ => {
             // View › Proof Setup simulations: checked while that proof is shown.
             // A check item with no document too: an item's kind never changes (native menus).
-            let kind = id.strip_prefix("view.proofSetup.").and_then(photocraft_engine::proof_sim::ProofKind::from_id)?;
+            let kind = id.strip_prefix("view.proofSetup.").and_then(patronusphoto_engine::proof_sim::ProofKind::from_id)?;
             let Some(d) = app.session.active() else { return Some(false) };
             let pv = app.session.color.proof(d.doc.id);
             Some(pv.enabled && pv.setup.kind == kind)
@@ -126,7 +126,7 @@ fn no_params(p: &Value) -> bool {
 
 /// Menu front ends: panel toggles, tool selection, dialogs and pickers in front of the engine's
 /// analysis commands. `None` when `id` isn't ours (or the engine should run it directly).
-pub fn menu(app: &mut PhotocraftApp, id: &str, params: &Value) -> Option<Result<Value, String>> {
+pub fn menu(app: &mut PatronusPhotoApp, id: &str, params: &Value) -> Option<Result<Value, String>> {
     if let "window.panel.measurementLog" | "window.panel.notes" = id {
         let panel = if id.ends_with("measurementLog") { MEASUREMENT_LOG } else { NOTES };
         let show = params.get("show").and_then(Value::as_bool);
@@ -171,7 +171,7 @@ pub fn menu(app: &mut PhotocraftApp, id: &str, params: &Value) -> Option<Result<
         "file.import.notes" => match app.active_doc_id() {
             Ok(doc) => app.pick_file_bytes(move |app, name, bytes| {
                 app.refocus(doc)?;
-                let r = photocraft_engine::notes_cmds::import_notes_from(&mut app.session, &name, &bytes).map_err(|e| e.to_string());
+                let r = patronusphoto_engine::notes_cmds::import_notes_from(&mut app.session, &name, &bytes).map_err(|e| e.to_string());
                 if r.is_ok() {
                     let _ = crate::panel_docking::show_panel(app, NOTES, Some(true));
                     app.sync_views();
@@ -186,7 +186,7 @@ pub fn menu(app: &mut PhotocraftApp, id: &str, params: &Value) -> Option<Result<
 }
 
 /// Export the Measurement Log (or the given rows) as CSV through the save picker.
-pub(crate) fn export_log(app: &mut PhotocraftApp, rows: Option<Vec<u64>>) -> Result<Value, String> {
+pub(crate) fn export_log(app: &mut PatronusPhotoApp, rows: Option<Vec<u64>>) -> Result<Value, String> {
     let p = rows.map_or(json!({}), |r| json!({"rows": r}));
     let csv = app.run("measurementLog.export", p)?;
     let text = csv["csv"].as_str().unwrap_or_default().to_string();
@@ -200,7 +200,7 @@ pub(crate) fn export_log(app: &mut PhotocraftApp, rows: Option<Vec<u64>>) -> Res
 /// Create a note at the rounded document position using the Note tool's options.
 /// After `notes.add` succeeds, select the note and open the Notes panel. Enable Show Notes
 /// while leaving the master Extras switch alone.
-pub(crate) fn create_note(app: &mut PhotocraftApp, x: f64, y: f64) -> Result<Value, String> {
+pub(crate) fn create_note(app: &mut PatronusPhotoApp, x: f64, y: f64) -> Result<Value, String> {
     let a = &app.ui.analysis;
     let params = json!({"x": x.round(), "y": y.round(), "author": a.note_author, "color": a.note_color});
     let result = app.run("notes.add", params)?;
@@ -212,7 +212,7 @@ pub(crate) fn create_note(app: &mut PhotocraftApp, x: f64, y: f64) -> Result<Val
 
 /// Selecting note `i` shows its author and colour in the Note tool's options bar, as Photoshop
 /// does (#7940); a new note then takes them unless they are changed.
-pub(crate) fn show_note_options(app: &mut PhotocraftApp, i: usize) {
+pub(crate) fn show_note_options(app: &mut PatronusPhotoApp, i: usize) {
     let Some(note) = app.session.active().and_then(|d| d.doc.notes.get(i)) else { return };
     let (author, color) = (note.author.clone(), note.color.to_rgb());
     app.ui.analysis.note_author = author;
@@ -221,7 +221,7 @@ pub(crate) fn show_note_options(app: &mut PhotocraftApp, i: usize) {
 
 /// The Color Sampler point under document point `at` on the active document, by the hit test a click uses (the
 /// tool's reach), so the right-click menu acts on the sampler a click would grab.
-pub(crate) fn sampler_at(app: &PhotocraftApp, at: [f64; 2]) -> Option<usize> {
+pub(crate) fn sampler_at(app: &PatronusPhotoApp, at: [f64; 2]) -> Option<usize> {
     if !at.iter().all(|v| v.is_finite()) {
         return None;
     }
@@ -230,7 +230,7 @@ pub(crate) fn sampler_at(app: &PhotocraftApp, at: [f64; 2]) -> Option<usize> {
 }
 
 /// Show a command error in the status bar without treating the sample-limit message as a fault.
-pub(super) fn status_on_err(app: &mut PhotocraftApp, r: Result<Value, String>) {
+pub(super) fn status_on_err(app: &mut PatronusPhotoApp, r: Result<Value, String>) {
     if let Err(e) = r {
         app.ui.status = e;
         app.ui.status_error = false;

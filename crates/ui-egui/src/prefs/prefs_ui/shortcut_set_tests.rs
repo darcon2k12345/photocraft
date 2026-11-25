@@ -5,15 +5,15 @@
 use craft::keymap::{Binding, CommandRef, Overrides, Policy};
 use egui::{Key, Modifiers};
 use egui_kittest::Harness;
-use photocraft_engine::shortcut_sets::{DEFAULTS_NAME, ShortcutSet, modified};
+use patronusphoto_engine::shortcut_sets::{DEFAULTS_NAME, ShortcutSet, modified};
 use serde_json::json;
 
 use super::shortcut_capture_tests::{harness, tap};
 use super::shortcuts::{press_ok, rebind};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// Makes the dialog's draft use the set `name`, as choosing it in the Set row does.
-fn choose(app: &mut PhotocraftApp, name: &str) {
+fn choose(app: &mut PatronusPhotoApp, name: &str) {
     let session = app.prefs_rt.shortcuts.as_mut().expect("the dialog is open");
     let builtins = [(DEFAULTS_NAME, Overrides::new())];
     session.profiles.select(name, &builtins).unwrap();
@@ -21,11 +21,11 @@ fn choose(app: &mut PhotocraftApp, name: &str) {
     session.keymap.set_overrides(overrides);
 }
 
-fn open(h: &mut Harness<'_, Box<PhotocraftApp>>) {
+fn open(h: &mut Harness<'_, Box<PatronusPhotoApp>>) {
     crate::prefs_ui::open_shortcuts(h.state_mut(), 0);
 }
 
-fn ok(h: &mut Harness<'_, Box<PhotocraftApp>>) {
+fn ok(h: &mut Harness<'_, Box<PatronusPhotoApp>>) {
     let ctx = h.ctx.clone();
     press_ok(h.state_mut(), &ctx);
     h.run_steps(2);
@@ -96,7 +96,7 @@ fn the_set_dropdown_keeps_action_function_keys_like_use_set() {
 
     open(&mut h);
     choose(h.state_mut(), "A");
-    let (shortcuts, _) = photocraft_engine::keymap_defs::overrides_to_prefs(h.state().prefs_rt.shortcuts.as_ref().unwrap().keymap.overrides());
+    let (shortcuts, _) = patronusphoto_engine::keymap_defs::overrides_to_prefs(h.state().prefs_rt.shortcuts.as_ref().unwrap().keymap.overrides());
     assert_eq!(shortcuts.get("edit.copy").map(String::as_str), Some("F9"), "A's keys are the draft's");
     ok(&mut h);
     let p = h.state().session.prefs();
@@ -118,7 +118,7 @@ fn the_set_dropdown_keeps_action_function_keys_like_use_set() {
     choose(h.state_mut(), "B");
     ok(&mut h);
     let mut engine = h.state().session.prefs().clone();
-    photocraft_engine::shortcut_sets::load(&mut engine, &json!({"useSet": "B"})).unwrap();
+    patronusphoto_engine::shortcut_sets::load(&mut engine, &json!({"useSet": "B"})).unwrap();
     let p = h.state().session.prefs();
     assert_eq!(p.shortcuts, engine.shortcuts);
     assert_eq!(p.shortcuts.get("actions.play:Sepia").map(String::as_str), Some("F2"));

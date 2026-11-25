@@ -3,24 +3,24 @@
 //! is the before/after measure for that fix.
 //!
 //! ```sh
-//! cargo run --release -p photocraft-ui-egui --example layers_panel_bench -- [--groups 300] [--frames 300] [--expanded] [--plain] [--json out.json]
+//! cargo run --release -p patronusphoto-ui-egui --example layers_panel_bench -- [--groups 300] [--frames 300] [--expanded] [--plain] [--json out.json]
 //! ```
 //!
 //! The document is built through Session commands on a tiny 64x48 canvas, so the canvas costs next
 //! to nothing: `--groups N` top-level collapsed groups, each holding one pixel layer (`--expanded`
 //! opens them all afterwards); `--plain` builds N plain pixel layers instead, a control whose rows
-//! were already culled off-screen. The real `PhotocraftApp` runs in a plain CPU egui_kittest
+//! were already culled off-screen. The real `PatronusPhotoApp` runs in a plain CPU egui_kittest
 //! harness (no wgpu), so a frame's time is the UI's own CPU work. After a warm-up, the row is the
 //! median / p90 / max of `--frames` idle frames (`h.step()` each).
 
 use std::time::Instant;
 
 use egui_kittest::kittest::Queryable;
-use photocraft_ui_egui::{PhotocraftApp, Services};
+use patronusphoto_ui_egui::{PatronusPhotoApp, Services};
 use serde_json::{Value, json};
 
 /// The app in an offscreen harness.
-type H = egui_kittest::Harness<'static, Box<PhotocraftApp>>;
+type H = egui_kittest::Harness<'static, Box<PatronusPhotoApp>>;
 
 /// The value after `name` on the command line, if any.
 fn arg(args: &[String], name: &str) -> Option<String> {
@@ -59,8 +59,8 @@ impl Rows {
 }
 
 /// `n` top-level collapsed groups (or plain layers), each group holding one pixel layer.
-fn build(n: usize, plain: bool, expanded: bool) -> photocraft_engine::Session {
-    let mut s = photocraft_engine::Session::new();
+fn build(n: usize, plain: bool, expanded: bool) -> patronusphoto_engine::Session {
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 64, "height": 48})).expect("file.new");
     for i in 0..n {
         s.execute("layer.new.layer", json!({"name": format!("Layer {i}")})).expect("layer.new.layer");
@@ -88,8 +88,8 @@ fn main() {
     println!("built {groups} {} in {:.0} ms", if plain { "plain layers" } else { "groups" }, ms(t));
 
     let mut h: H = egui_kittest::Harness::builder().with_size(egui::vec2(1440.0, 900.0)).with_pixels_per_point(1.0).build_eframe(move |cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::new(session, Services::default())
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        PatronusPhotoApp::new(session, Services::default())
     });
     // Warm up. The layer made last is the top one and is active, so the panel is scrolled to the
     // top and most rows are off-screen.

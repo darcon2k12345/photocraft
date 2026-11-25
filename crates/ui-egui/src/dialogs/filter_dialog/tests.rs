@@ -9,11 +9,11 @@ const COLOR_LOOKUP: &str = "image.adjustments.colorLookup";
 const LENS_BLUR: &str = "filter.blur.lensBlur";
 const REPLACE_COLOR: &str = "image.adjustments.replaceColor";
 
-fn new_app() -> Box<PhotocraftApp> {
-    PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default())
+fn new_app() -> Box<PatronusPhotoApp> {
+    PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default())
 }
 
-fn fields_of(app: &PhotocraftApp, id: DialogId) -> DialogFields {
+fn fields_of(app: &PatronusPhotoApp, id: DialogId) -> DialogFields {
     app.framework.dialogs.get_by_id::<HostedParamDialog>(id).expect("open dialog").fields().clone()
 }
 
@@ -22,32 +22,32 @@ fn params_json(fields: &DialogFields) -> Value {
     serde_json::to_value(fields).expect("fields serialize")
 }
 
-fn field_json(app: &PhotocraftApp, id: DialogId, key: &str) -> Value {
+fn field_json(app: &PatronusPhotoApp, id: DialogId, key: &str) -> Value {
     params_json(&fields_of(app, id)).get(key).cloned().unwrap_or(Value::Null)
 }
 
-fn try_set(app: &mut PhotocraftApp, id: DialogId, key: &str, value: Value) -> Result<(), String> {
+fn try_set(app: &mut PatronusPhotoApp, id: DialogId, key: &str, value: Value) -> Result<(), String> {
     let ctx = app.ctx().clone();
     app.framework.dialogs.set_json_field(&ctx, id, key, value)
 }
 
-fn set(app: &mut PhotocraftApp, id: DialogId, key: &str, value: Value) {
+fn set(app: &mut PatronusPhotoApp, id: DialogId, key: &str, value: Value) {
     try_set(app, id, key, value).unwrap_or_else(|e| panic!("{key}: {e}"));
 }
 
-fn passes(app: &mut PhotocraftApp, n: usize) {
+fn passes(app: &mut PatronusPhotoApp, n: usize) {
     let ctx = app.ctx().clone();
     for _ in 0..n {
         crate::testing::run_ui(&ctx, Default::default(), |ui| crate::dialogs::run(app, ui));
     }
 }
 
-fn is_open(app: &PhotocraftApp, id: DialogId) -> bool {
+fn is_open(app: &PatronusPhotoApp, id: DialogId) -> bool {
     app.framework.dialogs.get_by_id::<HostedParamDialog>(id).is_some()
 }
 
 /// OK, then the passes in which the family runs (or refuses, for a held OK). True when the dialog closed.
-fn ok(app: &mut PhotocraftApp, id: DialogId) -> bool {
+fn ok(app: &mut PatronusPhotoApp, id: DialogId) -> bool {
     let ctx = app.ctx().clone();
     // A refusal comes back as the Err; the dialog staying open is what the callers read.
     let _ = crate::dialogs::confirm(app, &ctx, id);
@@ -55,25 +55,27 @@ fn ok(app: &mut PhotocraftApp, id: DialogId) -> bool {
     !is_open(app, id)
 }
 
-fn cancel(app: &mut PhotocraftApp, id: DialogId) {
+fn cancel(app: &mut PatronusPhotoApp, id: DialogId) {
     let ctx = app.ctx().clone();
     app.framework.dialogs.cancel_by_id(&ctx, id);
     passes(app, 2);
 }
 
-fn history(app: &PhotocraftApp) -> usize {
+fn history(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.past_len()
 }
 
 /// The app drawn through `dialogs::run`, as the window shows its dialogs.
-fn harness(app: Box<PhotocraftApp>, size: egui::Vec2) -> Harness<'static, Box<PhotocraftApp>> {
-    let h =
-        Harness::builder().with_context(app.ctx().clone()).with_size(size).build_ui_state(|ui, app: &mut Box<PhotocraftApp>| crate::dialogs::run(app, ui), app);
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+fn harness(app: Box<PatronusPhotoApp>, size: egui::Vec2) -> Harness<'static, Box<PatronusPhotoApp>> {
+    let h = Harness::builder()
+        .with_context(app.ctx().clone())
+        .with_size(size)
+        .build_ui_state(|ui, app: &mut Box<PatronusPhotoApp>| crate::dialogs::run(app, ui), app);
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     h
 }
 
-fn top_dialog(app: &PhotocraftApp) -> DialogId {
+fn top_dialog(app: &PatronusPhotoApp) -> DialogId {
     app.framework.dialogs.stack().top().expect("a dialog is open")
 }
 
@@ -82,7 +84,7 @@ fn color_settings_working_spaces_list_installed_profiles_of_their_space() {
     // #6323: a press condition installed in the system can be the CMYK working space, as in
     // Photoshop's Color Settings; each working-space menu lists only profiles of its space.
     use craft::cms::{ColorSpace, ProfileClass};
-    let p = |path: &str, class, color_space| photocraft_engine::installed_profiles::InstalledProfile {
+    let p = |path: &str, class, color_space| patronusphoto_engine::installed_profiles::InstalledProfile {
         path: path.into(),
         description: path.to_uppercase(),
         class,
@@ -111,18 +113,18 @@ fn color_settings_working_spaces_list_installed_profiles_of_their_space() {
 fn indexed_matte_tool_seeds_use_document_encoded_rgb() {
     use craft::cms::Transform;
 
-    let mut session = photocraft_engine::Session::new();
+    let mut session = patronusphoto_engine::Session::new();
     session.color.settings.working_rgb = "display-p3".into();
     session.execute("file.new", json!({"width": 2, "height": 2, "background": "transparent"})).unwrap();
     session.execute("edit.assignProfile", json!({"profile": "adobe-rgb-compat"})).unwrap();
-    let mut app = PhotocraftApp::new(session, crate::Services::default());
+    let mut app = PatronusPhotoApp::new(session, crate::Services::default());
     // The app holds the tool colours as a preferences section: they are set after it starts.
     app.run("tools.setColors", json!({"foreground": "#3366cc", "background": "#cc6633"})).unwrap();
     let colors = rows::indexed_matte_defaults(&app);
 
     let doc = app.session.active().unwrap().doc.clone();
-    let source = app.session.color.working(photocraft_doc::ColorMode::Rgb);
-    let destination = photocraft_engine::color_cmds::document_profile(&doc);
+    let source = app.session.color.working(patronusphoto_doc::ColorMode::Rgb);
+    let destination = patronusphoto_engine::color_cmds::document_profile(&doc);
     let transform = Transform::new(&source, &destination, app.session.color.settings.intent(), app.session.color.settings.bpc).unwrap();
     for (value, input) in [("foreground", [0.2, 0.4, 0.8]), ("background", [0.8, 0.4, 0.2])] {
         let mut output = [0.0; 16];
@@ -139,7 +141,7 @@ fn only_direction_angles_get_the_dial() {
     // Every listed command still has a degree `angle` row, so the list cannot go stale.
     let mut app = new_app();
     let mut has_dial = |cmd: &str| {
-        let spec = photocraft_engine::commands::find(cmd).unwrap_or_else(|| panic!("{cmd} is not a command")).params;
+        let spec = patronusphoto_engine::commands::find(cmd).unwrap_or_else(|| panic!("{cmd} is not a command")).params;
         params(&mut app, cmd, spec).iter().any(|p| p.key == "angle" && matches!(p.kind, ParamKind::Angle { .. }))
     };
     for cmd in ANGLE_DIAL {
@@ -157,15 +159,15 @@ fn only_direction_angles_get_the_dial() {
 /// with the chosen file; Cancel in the picker applies nothing; a map already given runs at once.
 #[test]
 fn displace_asks_for_its_map_after_ok() {
-    let dir = std::env::temp_dir().join(format!("photocraft-displace-map-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("patronusphoto-displace-map-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let map = dir.join("map.png");
-    let mut m = photocraft_engine::Session::new();
+    let mut m = patronusphoto_engine::Session::new();
     m.execute("file.new", json!({"width": 16, "height": 16, "background": "white"})).unwrap();
-    std::fs::write(&map, photocraft_io::export(&m.active().unwrap().doc, "map.png", &Default::default()).unwrap().bytes).unwrap();
+    std::fs::write(&map, patronusphoto_io::export(&m.active().unwrap().doc, "map.png", &Default::default()).unwrap().bytes).unwrap();
     // The first pick is answered with the map; the second has nothing queued, so it is cancelled.
     let files = std::sync::Arc::new(craft::host::ScriptedFiles::answering([craft::host::Picked::Paths(vec![map.clone()])]));
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services { files: Some(files.clone()), ..Default::default() });
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services { files: Some(files.clone()), ..Default::default() });
     app.run("file.new", json!({"width": 16, "height": 16, "background": "white"})).unwrap();
     app.run("select.rect", json!({"x": 0, "y": 0, "width": 8, "height": 16})).unwrap();
     app.run("edit.fill", json!({"color": "#000000"})).unwrap();
@@ -201,9 +203,9 @@ fn displace_asks_for_its_map_after_ok() {
 fn remembering_dialogs_never_persists_paths_or_document_indices() {
     let dir = tempfile::tempdir().unwrap();
     let map = dir.path().join("map.png");
-    let mut m = photocraft_engine::Session::new();
+    let mut m = patronusphoto_engine::Session::new();
     m.execute("file.new", json!({"width": 16, "height": 16, "background": "white"})).unwrap();
-    std::fs::write(&map, photocraft_io::export(&m.active().unwrap().doc, "map.png", &Default::default()).unwrap().bytes).unwrap();
+    std::fs::write(&map, patronusphoto_io::export(&m.active().unwrap().doc, "map.png", &Default::default()).unwrap().bytes).unwrap();
     let mut app = new_app();
     app.run("file.new", json!({"width": 16, "height": 16})).unwrap();
     let id = open(&mut app, "filter.distort.displace").unwrap();
@@ -242,7 +244,7 @@ fn arbitrary_rotation_interpolation_reopens_at_the_preference() {
     cancel(&mut app, id);
 
     // 3. A changed preference reaches the next opening.
-    app.session.edit_prefs(|p| p.general.image_interpolation = photocraft_engine::prefs::Interpolation::Nearest);
+    app.session.edit_prefs(|p| p.general.image_interpolation = patronusphoto_engine::prefs::Interpolation::Nearest);
     let id = open(&mut app, CMD).unwrap();
     assert_eq!(field_json(&app, id, "interpolation"), json!("nearest"), "Nearest Neighbor shows nearest");
     cancel(&mut app, id);
@@ -255,7 +257,7 @@ fn layer_id_params_stay_out_of_the_dialog() {
     let mut app = new_app();
     app.run("file.new", json!({"width": 8, "height": 8})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
-    let spec = photocraft_engine::commands::find("edit.autoAlignLayers").unwrap().params;
+    let spec = patronusphoto_engine::commands::find("edit.autoAlignLayers").unwrap().params;
     assert!(!params(&mut app, "edit.autoAlignLayers", spec).iter().any(|p| p.key == "reference"), "no reference row");
     let id = open(&mut app, "edit.autoAlignLayers").expect("Auto-Align opens");
     assert!(!fields_of(&app, id).contains("reference"), "no reference field");
@@ -270,7 +272,7 @@ fn global_light_dialog_reflects_active_document_light() {
     let mut app = new_app();
     app.run("file.new", json!({"width": 8, "height": 8})).unwrap();
     let doc1_id = app.session.active().unwrap().doc.id;
-    let light = |app: &PhotocraftApp| {
+    let light = |app: &PatronusPhotoApp| {
         let gl = app.session.active().unwrap().doc.global_light;
         (gl.angle, gl.altitude)
     };
@@ -423,7 +425,7 @@ fn color_lookup_dialog_defaults_run_a_3dl_file() {
     app.run(COLOR_LOOKUP, params_json(&fields_of(&app, id))).unwrap();
     set(&mut app, id, "file", json!(path.to_str().unwrap()));
     app.run(COLOR_LOOKUP, params_json(&fields_of(&app, id))).unwrap();
-    let px = app.session.active().unwrap().doc.layers[0].surface().unwrap().read_region(photocraft_geom::Rect::new(0, 0, 1, 1));
+    let px = app.session.active().unwrap().doc.layers[0].surface().unwrap().read_region(patronusphoto_geom::Rect::new(0, 0, 1, 1));
     assert!(px[0] > 0.99 && px[1] > 0.99 && px[2] > 0.99, "black through the inverse .3dl is white: {px:?}");
 }
 
@@ -442,7 +444,7 @@ fn color_lookup_dialog_lists_and_applies_lut_folder_files() {
     set(&mut app, id, "file", json!(path));
     assert_eq!(fields_of(&app, id).text("file"), Some(path.as_str()));
     assert!(ok(&mut app, id), "OK with the picked file closes the dialog");
-    let px = app.session.active().unwrap().doc.layers[0].surface().unwrap().read_region(photocraft_geom::Rect::new(0, 0, 1, 1));
+    let px = app.session.active().unwrap().doc.layers[0].surface().unwrap().read_region(patronusphoto_geom::Rect::new(0, 0, 1, 1));
     assert!(px[0] < 0.01 && px[1] > 0.99 && px[2] > 0.99, "the picked non-identity LUT was applied: {px:?}");
     assert_eq!(history(&app), 1);
 }
@@ -487,7 +489,7 @@ fn new_filters_have_dialogs_or_run_directly() {
         assert_eq!(has_dialog(id), dialog, "{id}");
     }
     // Every filter spec parses, and every dialog command has plain parameter keys.
-    for c in photocraft_engine::command_specs().iter().filter(|c| c.id.starts_with("filter.") || has_dialog(c.id)) {
+    for c in patronusphoto_engine::command_specs().iter().filter(|c| c.id.starts_with("filter.") || has_dialog(c.id)) {
         for p in Param::parse_list(c.params) {
             assert!(p.key.chars().all(|ch| ch.is_ascii_alphanumeric() || ch == '_'), "{}: junk parameter {:?}", c.id, p.key);
         }
@@ -519,7 +521,7 @@ fn preview_runs_engine_command_on_proxy() {
 /// only the edited document, and the map's `mapDocument` sits inside the filter's `params`.
 #[test]
 fn smart_displace_preview_uses_the_map_document() {
-    let mut s = photocraft_engine::Session::new();
+    let mut s = patronusphoto_engine::Session::new();
     // Documents 0 and 1: a white and a black map, opened before the edited one.
     s.execute("file.new", json!({"width": 8, "height": 8, "background": "white"})).unwrap();
     s.execute("file.new", json!({"width": 8, "height": 8, "background": "black"})).unwrap();
@@ -527,7 +529,7 @@ fn smart_displace_preview_uses_the_map_document() {
     s.edit("square", |doc, active| {
         let fmt = doc.pixel_format();
         let surf = doc.layer_mut(active.unwrap()).unwrap().surface_mut().unwrap();
-        surf.fill_rect(photocraft_geom::Rect::new(10, 10, 20, 12), &photocraft_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 1.0]));
+        surf.fill_rect(patronusphoto_geom::Rect::new(10, 10, 20, 12), &patronusphoto_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 1.0]));
         Ok(())
     })
     .unwrap();
@@ -538,12 +540,12 @@ fn smart_displace_preview_uses_the_map_document() {
     let documents: Vec<_> = s.documents().iter().map(|d| d.doc.clone()).collect();
     for map in [1, 0] {
         let p = json!({"index": 0, "params": {"mapDocument": map}});
-        let mut applied = photocraft_engine::Session::new();
+        let mut applied = patronusphoto_engine::Session::new();
         for d in &documents {
             applied.add_document((**d).clone(), None);
         }
         applied.execute(SMART_FILTER_SET_PARAMS, p.clone()).unwrap();
-        let want = photocraft_compose::render(&applied.active().unwrap().doc, doc.bounds()).into_px();
+        let want = patronusphoto_compose::render(&applied.active().unwrap().doc, doc.bounds()).into_px();
         let preview = preview_document_for_target(
             &doc,
             layer,
@@ -551,20 +553,20 @@ fn smart_displace_preview_uses_the_map_document() {
             &p,
             1,
             None,
-            photocraft_engine::channel_cmds::ChannelTarget::Composite,
+            patronusphoto_engine::channel_cmds::ChannelTarget::Composite,
             &documents,
             &ColorSettings::default(),
             None,
         )
         .unwrap_or_else(|| panic!("map {map}: no preview"));
-        assert!(photocraft_compose::render(&preview, doc.bounds()).px == want, "map {map}: the preview differs from what OK applies");
+        assert!(patronusphoto_compose::render(&preview, doc.bounds()).px == want, "map {map}: the preview differs from what OK applies");
     }
 }
 
 /// #10839: Layer is a visible choice tied to Source, never a remembered or name-based reference.
 #[test]
 fn match_color_source_layer_picker_keeps_references_with_the_source() {
-    use photocraft_doc::{Color, ColorMode, Layer, SampleType, Size};
+    use patronusphoto_doc::{Color, ColorMode, Layer, SampleType, Size};
 
     let mut source = Document::with_background("reference", Size::new(16, 16), ColorMode::Rgb, SampleType::U8, Color::WHITE);
     source.layers[0].name = "Sample".into();
@@ -574,11 +576,11 @@ fn match_color_source_layer_picker_keeps_references_with_the_source() {
     // A different document can contain copied layer IDs. Changing Source must still reset Layer.
     let mut other = Document::with_background("other reference", source.size, source.mode, source.depth, Color::WHITE);
     other.layers = source.layers.clone();
-    let mut session = photocraft_engine::Session::new();
+    let mut session = patronusphoto_engine::Session::new();
     session.add_document(source, None);
     session.add_document(other, None);
     session.execute("file.new", json!({"width": 16, "height": 16})).unwrap();
-    let mut app = PhotocraftApp::new(session, Default::default());
+    let mut app = PatronusPhotoApp::new(session, Default::default());
     let id = open(&mut app, "image.adjustments.matchColor").unwrap();
     assert_eq!(fields_of(&app, id).text("source"), Some("-1"));
     assert!(field_json(&app, id, "sourceLayer").is_null(), "None starts with no layer reference");
@@ -606,7 +608,7 @@ fn match_color_source_layer_picker_keeps_references_with_the_source() {
 }
 
 /// Send an actual control-protocol request and require its synchronous reply.
-fn match_color_control(app: &mut PhotocraftApp, ctx: &egui::Context, method: &str, params: Value) -> Value {
+fn match_color_control(app: &mut PatronusPhotoApp, ctx: &egui::Context, method: &str, params: Value) -> Value {
     let (request, _) = crate::control::ControlRequest::new(method, params);
     let crate::control::Reply::Done(reply) = crate::control::handle(app, ctx, &request) else { panic!("{method} should finish immediately") };
     reply
@@ -629,7 +631,7 @@ fn match_color_refuses_a_changed_destination_without_closing() {
     let forged = json!((app.session.documents()[0].doc.id, app.session.documents()[0].active_layer));
     assert!(try_set(&mut app, id, MATCH_COLOR_DESTINATION, forged).is_err(), "the destination is not a field a caller sets");
 
-    let refuse = |app: &mut PhotocraftApp, index: usize| {
+    let refuse = |app: &mut PatronusPhotoApp, index: usize| {
         assert!(crate::canvas::ensure_filter_preview(app, index, &ctx).is_none());
         assert!(!ok(app, id), "refusal leaves the dialog open");
         assert_eq!(app.session.active_index(), Some(index), "refusal does not navigate");
@@ -680,8 +682,8 @@ fn match_color_explicit_unavailable_source_layer_is_refused_with_or_without_a_fr
 
 /// Exercise actual nested command dialogs, rather than mutating the source behind the UI's gates.
 fn match_color_after_source_change(change: &str) {
-    use photocraft_doc::{Color, ColorMode, Layer, SampleType, Size};
-    use photocraft_geom::Rect;
+    use patronusphoto_doc::{Color, ColorMode, Layer, SampleType, Size};
+    use patronusphoto_geom::Rect;
     let area = Rect::new(0, 0, 8, 8);
     let make = |name| Document::with_background(name, Size::new(8, 8), ColorMode::Rgb, SampleType::U8, Color::WHITE);
     let mut source = make("reference");
@@ -695,12 +697,12 @@ fn match_color_after_source_change(change: &str) {
     // A copied layer ID must never make a shifted source index identify the target document.
     target.layers[0].id = reference_id;
     let target_id = target.id;
-    let mut session = photocraft_engine::Session::new();
+    let mut session = patronusphoto_engine::Session::new();
     session.add_document(make("earlier"), None);
     session.add_document(source, None);
     session.select_layer(reference_id).unwrap();
     session.add_document(target, None);
-    let mut app = PhotocraftApp::new(session, Default::default());
+    let mut app = PatronusPhotoApp::new(session, Default::default());
     app.sync_views();
     let ctx = app.ctx().clone();
     let root = open(&mut app, "image.adjustments.matchColor").unwrap();
@@ -798,15 +800,15 @@ fn match_color_source_identity_follows_the_documents() {
 /// preview session held only the edited document, so a Source showed no change (#4851).
 #[test]
 fn match_color_preview_uses_the_source_document() {
-    use photocraft_doc::{Color, ColorMode, SampleType, Size};
+    use patronusphoto_doc::{Color, ColorMode, SampleType, Size};
     let solid = |name: &str, c: [f32; 4]| {
         let mut d = Document::with_background(name, Size::new(32, 32), ColorMode::Rgb, SampleType::U8, Color::WHITE);
-        d.layers[0].surface_mut().unwrap().fill_rect(photocraft_geom::Rect::new(0, 0, 32, 32), &c);
-        d.layers[0].surface_mut().unwrap().fill_rect(photocraft_geom::Rect::new(0, 0, 16, 32), &[c[0] * 0.5, c[1] * 0.5, c[2] * 0.5, 1.0]);
+        d.layers[0].surface_mut().unwrap().fill_rect(patronusphoto_geom::Rect::new(0, 0, 32, 32), &c);
+        d.layers[0].surface_mut().unwrap().fill_rect(patronusphoto_geom::Rect::new(0, 0, 16, 32), &[c[0] * 0.5, c[1] * 0.5, c[2] * 0.5, 1.0]);
         d
     };
     // The source document is open before the edited one, so indices differ between sessions.
-    let mut s = photocraft_engine::Session::new();
+    let mut s = patronusphoto_engine::Session::new();
     s.add_document(solid("reference", [0.1, 0.3, 0.9, 1.0]), None);
     s.add_document(solid("texture", [0.9, 0.5, 0.2, 1.0]), None);
     let doc = s.active().unwrap().doc.clone();
@@ -822,7 +824,7 @@ fn match_color_preview_uses_the_source_document() {
         if let Some(layer) = source_layer {
             p["sourceLayer"] = json!(layer);
         }
-        let mut applied = photocraft_engine::Session::new();
+        let mut applied = patronusphoto_engine::Session::new();
         for d in &documents {
             applied.add_document((**d).clone(), None);
         }
@@ -835,7 +837,7 @@ fn match_color_preview_uses_the_source_document() {
             &p,
             1,
             None,
-            photocraft_engine::channel_cmds::ChannelTarget::Composite,
+            patronusphoto_engine::channel_cmds::ChannelTarget::Composite,
             &documents,
             &ColorSettings::default(),
             None,
@@ -852,7 +854,7 @@ fn match_color_preview_uses_the_source_document() {
         &json!({"source": 0}),
         2,
         None,
-        photocraft_engine::channel_cmds::ChannelTarget::Composite,
+        patronusphoto_engine::channel_cmds::ChannelTarget::Composite,
         &documents,
         &ColorSettings::default(),
         None,
@@ -864,8 +866,8 @@ fn match_color_preview_uses_the_source_document() {
 
 #[test]
 fn core_filter_previews_keep_minimum_settings_after_downsampling() {
-    use photocraft_doc::{Color, ColorMode, SampleType, Size};
-    use photocraft_geom::Rect;
+    use patronusphoto_doc::{Color, ColorMode, SampleType, Size};
+    use patronusphoto_geom::Rect;
 
     for depth in [SampleType::U8, SampleType::U16, SampleType::F32] {
         let mut doc = Document::with_background("preview", Size::new(32, 32), ColorMode::Rgb, depth, Color::WHITE);
@@ -909,7 +911,7 @@ fn float_type_error(e: &str) -> bool {
 /// live preview without a type error from integer fields sent as floats.
 #[test]
 fn every_dialog_default_runs_without_float_type_errors() {
-    let ids: Vec<&str> = photocraft_engine::command_specs().iter().map(|c| c.id).filter(|id| has_dialog(id)).collect();
+    let ids: Vec<&str> = patronusphoto_engine::command_specs().iter().map(|c| c.id).filter(|id| has_dialog(id)).collect();
     assert!(ids.len() > 100, "{} dialogs", ids.len());
     let mut failures = Vec::new();
     for id in ids {
@@ -929,7 +931,7 @@ fn every_dialog_default_runs_without_float_type_errors() {
         }
         // The preview swallows the error; rerun its params at full size to see it.
         if preview_document(&doc, active, id, &params, 1).is_none() {
-            let mut s = photocraft_engine::Session::new();
+            let mut s = patronusphoto_engine::Session::new();
             s.add_document(doc, None);
             if let Some(a) = active {
                 s.select_layer(a).unwrap();
@@ -946,13 +948,13 @@ fn every_dialog_default_runs_without_float_type_errors() {
 
 #[test]
 fn preview_stays_inside_the_selection_at_every_proxy_factor() {
-    use photocraft_doc::SampleType;
+    use patronusphoto_doc::SampleType;
     for depth in [SampleType::U8, SampleType::U16, SampleType::F32] {
         let mut doc =
-            Document::with_background("p", photocraft_doc::Size::new(64, 64), photocraft_doc::ColorMode::Rgb, depth, photocraft_doc::Color::gray(0.5));
+            Document::with_background("p", patronusphoto_doc::Size::new(64, 64), patronusphoto_doc::ColorMode::Rgb, depth, patronusphoto_doc::Color::gray(0.5));
         let bg = doc.layers[0].id;
-        let mut sel = photocraft_raster::Surface::new(photocraft_doc::PixelFormat::GRAY8);
-        sel.fill_rect(photocraft_geom::Rect::new(0, 0, 32, 64), &[1.0]);
+        let mut sel = patronusphoto_raster::Surface::new(patronusphoto_doc::PixelFormat::GRAY8);
+        sel.fill_rect(patronusphoto_geom::Rect::new(0, 0, 32, 64), &[1.0]);
         doc.selection = Some(sel);
         for k in [1, 2, 4] {
             let out = preview_document(&doc, Some(bg), "filter.noise.addNoise", &json!({"amount": 100.0}), k).unwrap();
@@ -971,7 +973,7 @@ fn preview_stays_inside_the_selection_at_every_proxy_factor() {
 fn define_pattern_asks_for_a_name() {
     let mut app = new_app();
     app.run("file.new", json!({"width": 8, "height": 8, "name": "ask.jpg"})).unwrap();
-    let define = |app: &mut PhotocraftApp, name: Option<&str>| {
+    let define = |app: &mut PatronusPhotoApp, name: Option<&str>| {
         let id = open(app, "edit.definePattern").expect("Define Pattern opens a dialog");
         let shown = fields_of(app, id).text("name").unwrap().to_string();
         if let Some(n) = name {
@@ -993,16 +995,16 @@ fn define_pattern_asks_for_a_name() {
 fn waves(n: u32) -> Document {
     let mut doc = Document::with_background(
         "w",
-        photocraft_doc::Size::new(n, n),
-        photocraft_doc::ColorMode::Rgb,
-        photocraft_doc::SampleType::U8,
-        photocraft_doc::Color::WHITE,
+        patronusphoto_doc::Size::new(n, n),
+        patronusphoto_doc::ColorMode::Rgb,
+        patronusphoto_doc::SampleType::U8,
+        patronusphoto_doc::Color::WHITE,
     );
     let s = doc.layers[0].surface_mut().unwrap();
     for y in 0..n as i32 {
         for x in 0..n as i32 {
             let v = 0.5 + 0.4 * (x as f32 / 23.0).sin() * (y as f32 / 31.0).cos();
-            s.fill_rect(photocraft_geom::Rect::new(x, y, x + 1, y + 1), &[v, 1.0 - v, x as f32 / n as f32, 1.0]);
+            s.fill_rect(patronusphoto_geom::Rect::new(x, y, x + 1, y + 1), &[v, 1.0 - v, x as f32 / n as f32, 1.0]);
         }
     }
     doc
@@ -1010,7 +1012,7 @@ fn waves(n: u32) -> Document {
 
 /// Mean absolute RGB difference of two documents, compared at 1/4 scale.
 fn diff_at_quarter(a: &Document, b: &Document) -> f32 {
-    let quarter = |d: &Document| photocraft_compose::flatten(&crate::proxy::proxy_document(d, (d.size.width / 64).max(1)));
+    let quarter = |d: &Document| patronusphoto_compose::flatten(&crate::proxy::proxy_document(d, (d.size.width / 64).max(1)));
     let (a, b) = (quarter(a), quarter(b));
     assert_eq!(a.px.len(), b.px.len());
     a.px.iter().zip(&b.px).map(|(p, q)| (0..3).map(|c| (p[c] - q[c]).abs()).sum::<f32>() / 3.0).sum::<f32>() / a.px.len() as f32
@@ -1152,7 +1154,7 @@ fn proxy_previews_scale_only_lengths() {
 /// scale: the preview showed the text k times too large. It is the full-size result, reduced.
 #[test]
 fn warp_text_preview_matches_the_full_size_result_on_a_reduced_proxy() {
-    let mut s = photocraft_engine::Session::new();
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 4000, "height": 3000})).unwrap();
     s.execute("type.create", json!({"x": 300, "y": 1600, "text": "Warp", "size": 400})).unwrap();
     let st = s.active().unwrap();
@@ -1161,14 +1163,14 @@ fn warp_text_preview_matches_the_full_size_result_on_a_reduced_proxy() {
     let k = preview_factor("type.warpText", &p, crate::proxy::preview_factor(&doc, true));
     assert!(k > 1, "the preview runs on a reduced proxy");
     let cache = |d: &Document| match &d.layer(layer).unwrap().content {
-        photocraft_doc::LayerContent::Text(t) => t.cache.clone().unwrap(),
+        patronusphoto_doc::LayerContent::Text(t) => t.cache.clone().unwrap(),
         _ => panic!("a type layer"),
     };
     let full = crate::proxy::proxy_document(&preview_document(&doc, Some(layer), "type.warpText", &p, 1).unwrap(), k);
     let shown = preview_document(&doc, Some(layer), "type.warpText", &p, k).unwrap();
     assert_eq!(shown.size, full.size);
     assert_eq!(cache(&shown).content_bounds(), cache(&full).content_bounds());
-    assert_eq!(photocraft_compose::flatten(&shown).px, photocraft_compose::flatten(&full).px);
+    assert_eq!(patronusphoto_compose::flatten(&shown).px, patronusphoto_compose::flatten(&full).px);
 }
 
 /// #5766: Curves on a smart object adds a smart filter, which re-renders the source through
@@ -1176,7 +1178,7 @@ fn warp_text_preview_matches_the_full_size_result_on_a_reduced_proxy() {
 /// coordinates, so the preview showed the object `k` times too large until OK.
 #[test]
 fn smart_object_curves_preview_keeps_its_size_on_a_reduced_proxy() {
-    let mut s = photocraft_engine::Session::new();
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 64, "height": 64})).unwrap();
     s.execute("layer.new.layer", json!({})).unwrap();
     s.execute("select.rect", json!({"x": 16, "y": 16, "width": 16, "height": 16})).unwrap();
@@ -1186,16 +1188,16 @@ fn smart_object_curves_preview_keeps_its_size_on_a_reduced_proxy() {
     let st = s.active().unwrap();
     let (doc, layer) = ((*st.doc).clone(), st.active_layer.unwrap());
     let alpha = |d: &Document, x: i32, y: i32| match &d.layer(layer).unwrap().content {
-        photocraft_doc::LayerContent::Smart(sm) => sm.cache.as_ref().unwrap().pixel(x, y).last().copied().unwrap(),
+        patronusphoto_doc::LayerContent::Smart(sm) => sm.cache.as_ref().unwrap().pixel(x, y).last().copied().unwrap(),
         _ => panic!("a smart object"),
     };
     let k = 4;
     let params = json!({"points": [[0, 20], [90, 150], [255, 230]]});
     let shown = preview_document(&doc, Some(layer), "image.adjustments.curves", &params, k).unwrap();
     let full = preview_document(&doc, Some(layer), "image.adjustments.curves", &params, 1).unwrap();
-    let photocraft_doc::LayerContent::Smart(full_sm) = &full.layer(layer).unwrap().content else { panic!("a smart object") };
-    let reference = photocraft_algo::resample::resize_surface(full_sm.cache.as_ref().unwrap(), 0.25, 0.25, photocraft_algo::resample::Resample::Bicubic);
-    let photocraft_doc::LayerContent::Smart(sm) = &shown.layer(layer).unwrap().content else { panic!("a smart object") };
+    let patronusphoto_doc::LayerContent::Smart(full_sm) = &full.layer(layer).unwrap().content else { panic!("a smart object") };
+    let reference = patronusphoto_algo::resample::resize_surface(full_sm.cache.as_ref().unwrap(), 0.25, 0.25, patronusphoto_algo::resample::Resample::Bicubic);
+    let patronusphoto_doc::LayerContent::Smart(sm) = &shown.layer(layer).unwrap().content else { panic!("a smart object") };
     assert_eq!(sm.smart_filters.len(), 1, "the preview adds the Curves smart filter");
     assert_eq!(shown.size, crate::proxy::proxy_document(&doc, k).size);
     // The 16 px square at (16, 16) is a 4 px square at (4, 4) on the proxy, not 16 px at (16, 16).
@@ -1235,7 +1237,7 @@ fn proxy_previews_never_clamp_pixel_sized_params() {
     assert_eq!(preview_factor("no.such.command", &json!({"cellSize": 1.0}), 4), 4);
     assert_eq!(preview_factor("filter.pixelate.pointillize", &json!({"cellSize": 5.0}), 0), 1);
     // Every previewed command, at each pixel-sized param's minimum, default and in between.
-    let previewed = photocraft_engine::command_specs().iter().filter(|c| has_dialog(c.id) && (c.id.starts_with("filter.") || PREVIEWED.contains(&c.id)));
+    let previewed = patronusphoto_engine::command_specs().iter().filter(|c| has_dialog(c.id) && (c.id.starts_with("filter.") || PREVIEWED.contains(&c.id)));
     for c in previewed {
         for p in Param::parse_list(c.params) {
             let ParamKind::Range { min, default, .. } = p.kind else { continue };
@@ -1259,7 +1261,7 @@ fn sharp(n: u32) -> Document {
     for (i, size) in [2, 3, 4, 6, 8, 12, 16, 24, 32].into_iter().enumerate() {
         for y0 in (4..n as i32 * 3 / 4 - size).step_by((size * 3) as usize) {
             let v = if (i + y0 as usize / 7).is_multiple_of(2) { 0.05 } else { 0.95 };
-            s.fill_rect(photocraft_geom::Rect::new(x0, y0, x0 + size, y0 + size), &[v, v * 0.8, 1.0 - v, 1.0]);
+            s.fill_rect(patronusphoto_geom::Rect::new(x0, y0, x0 + size, y0 + size), &[v, v * 0.8, 1.0 - v, 1.0]);
         }
         x0 += size + 6;
     }
@@ -1272,7 +1274,7 @@ fn sharp(n: u32) -> Document {
             if y >= n as i32 * 3 / 4 && y % 2 == 1 {
                 px[0] = 1.0 - px[0];
             }
-            s.fill_rect(photocraft_geom::Rect::new(x, y, x + 1, y + 1), &px);
+            s.fill_rect(patronusphoto_geom::Rect::new(x, y, x + 1, y + 1), &px);
         }
     }
     doc
@@ -1289,7 +1291,7 @@ fn noisy(n: u32) -> Document {
             for (c, v) in px.iter_mut().take(3).enumerate() {
                 *v = (*v + (hash(x * 3 + c as i32, y) as f32 / (1u32 << 24) as f32 - 0.5) * 0.3).clamp(0.0, 1.0);
             }
-            s.fill_rect(photocraft_geom::Rect::new(x, y, x + 1, y + 1), &px);
+            s.fill_rect(patronusphoto_geom::Rect::new(x, y, x + 1, y + 1), &px);
         }
     }
     doc
@@ -1310,7 +1312,7 @@ struct PreviewError {
 
 /// Mean absolute difference of neighbouring pixels at the document's own resolution.
 fn detail(d: &Document) -> f32 {
-    let b = photocraft_compose::flatten(d);
+    let b = patronusphoto_compose::flatten(d);
     let w = b.rect.width() as usize;
     let mut sum = 0.0;
     for (i, p) in b.px.iter().enumerate() {
@@ -1324,7 +1326,7 @@ fn detail(d: &Document) -> f32 {
 /// Pixels of `d` at every `k`-th row and column: the document pixels a factor-`k` proxy
 /// samples, so a preview at `k` compares with them one to one.
 fn every_kth(d: &Document, k: u32) -> Vec<[f32; 4]> {
-    let b = photocraft_compose::flatten(d);
+    let b = patronusphoto_compose::flatten(d);
     let w = b.rect.width() as usize;
     let k = k as usize;
     let h = b.px.len() / w.max(1);
@@ -1356,12 +1358,12 @@ fn preview_error(doc: &Document, command: &str, p: &Value, k: u32) -> Option<Pre
 /// The parameter sets to preview `command` with: the dialog's defaults, and each pixel-sized
 /// value at its minimum and at a large value (whole numbers as integers: Tree and Picture
 /// Frame read some ranges as `u32`).
-fn sweep_params(app: &mut PhotocraftApp, command: &str) -> Vec<(String, Value)> {
+fn sweep_params(app: &mut PatronusPhotoApp, command: &str) -> Vec<(String, Value)> {
     let Ok(id) = open(app, command) else { return Vec::new() };
     let base = params_json(&fields_of(app, id));
     cancel(app, id);
     let mut out = vec![("default".to_string(), base.clone())];
-    for p in Param::parse_list(photocraft_engine::commands::find(command).unwrap().params) {
+    for p in Param::parse_list(patronusphoto_engine::commands::find(command).unwrap().params) {
         if !is_pixel_param_of(command, &p.key) {
             continue;
         }
@@ -1388,14 +1390,17 @@ fn sweep_params(app: &mut PhotocraftApp, command: &str) -> Vec<(String, Value)> 
 
 /// Every previewed command with its parameter sets.
 fn previewed_cases() -> Vec<(&'static str, String, Value)> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
-    let ids: Vec<&'static str> =
-        photocraft_engine::command_specs().iter().map(|c| c.id).filter(|id| has_dialog(id) && (id.starts_with("filter.") || PREVIEWED.contains(id))).collect();
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
+    let ids: Vec<&'static str> = patronusphoto_engine::command_specs()
+        .iter()
+        .map(|c| c.id)
+        .filter(|id| has_dialog(id) && (id.starts_with("filter.") || PREVIEWED.contains(id)))
+        .collect();
     ids.into_iter().flat_map(|id| sweep_params(&mut app, id).into_iter().map(move |(label, p)| (id, label, p))).collect()
 }
 
 fn grayscale(d: &Document) -> Document {
-    let mut s = photocraft_engine::Session::new();
+    let mut s = patronusphoto_engine::Session::new();
     s.add_document(d.clone(), None);
     s.execute("image.mode.grayscale", json!({})).unwrap();
     s.active().map(|d| (*d.doc).clone()).unwrap()
@@ -1466,7 +1471,7 @@ fn every_preview_shows_what_ok_applies() {
 
 /// The table behind [`every_preview_shows_what_ok_applies`]: every previewed command at a
 /// plain 1/4 proxy and at its chosen factor, on each test image.
-/// `cargo test -p photocraft-ui-egui --lib filter_dialog::tests::sweep_all_previews -- --ignored --nocapture`
+/// `cargo test -p patronusphoto-ui-egui --lib filter_dialog::tests::sweep_all_previews -- --ignored --nocapture`
 #[test]
 #[ignore]
 fn sweep_all_previews() {
@@ -1495,7 +1500,7 @@ fn assign_profile_offers(mode: Option<&str>) -> (Vec<String>, Vec<String>) {
     if let Some(mode) = mode {
         app.run(mode, json!({})).unwrap();
     }
-    let spec = photocraft_engine::commands::find("edit.assignProfile").unwrap();
+    let spec = patronusphoto_engine::commands::find("edit.assignProfile").unwrap();
     let ids = |rows: Vec<Param>| {
         let row = rows.into_iter().find(|p| p.key == "profile").expect("a profile row");
         let ParamKind::Choice { options, .. } = row.kind else { panic!("profile is a menu") };
@@ -1545,16 +1550,16 @@ fn artboard_from_layers_opens_at_the_selected_layers_size() {
     let doc = &app.session.active().unwrap().doc;
     let boards = doc.artboards();
     assert_eq!(boards.len(), 1);
-    assert_eq!((boards[0].1, boards[0].2.rect), ("Artboard 1", photocraft_geom::Rect::new(10, 5, 30, 35)));
+    assert_eq!((boards[0].1, boards[0].2.rect), ("Artboard 1", patronusphoto_geom::Rect::new(10, 5, 30, 35)));
 }
 
 /// #4143: Replace Color shows the From colour (defaulting to the foreground) and its canvas
 /// eyedropper samples the merged image into the dialog.
 #[test]
 fn replace_color_eyedropper_samples_the_image() {
-    let mut s = photocraft_engine::Session::new();
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 16, "height": 16, "background": "#00ff00"})).unwrap();
-    let mut app = PhotocraftApp::new(s, crate::Services::default());
+    let mut app = PatronusPhotoApp::new(s, crate::Services::default());
     app.run("tools.setColors", json!({"foreground": "#ff0000"})).unwrap();
     let id = open(&mut app, REPLACE_COLOR).unwrap();
     passes(&mut app, 2);
@@ -1572,7 +1577,7 @@ fn replace_color_eyedropper_samples_the_image() {
 }
 
 /// A press at the document point `(x, y)` with the dialog's eyedropper armed, as the canvas's pick takes it.
-fn color_eyedropper_sample(app: &mut PhotocraftApp, x: f64, y: f64, mods: egui::Modifiers) -> bool {
+fn color_eyedropper_sample(app: &mut PatronusPhotoApp, x: f64, y: f64, mods: egui::Modifiers) -> bool {
     let consumed = crate::dialogs::canvas_input::pick_dropper(app, [x, y], craft::keymap::Mods::from_egui(&mods, craft::keymap::Platform::current()));
     // The host applies the sampled colour on the next pass, as the frame after the press does.
     passes(app, 1);
@@ -1583,9 +1588,9 @@ fn color_eyedropper_sample(app: &mut PhotocraftApp, x: f64, y: f64, mods: egui::
 /// order the command takes (CodeRabbit review on #10443).
 #[test]
 fn replace_color_reset_forgets_the_click_order() {
-    let mut s = photocraft_engine::Session::new();
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 16, "height": 16, "background": "#00ff00"})).unwrap();
-    let app = PhotocraftApp::new(s, crate::Services::default());
+    let app = PatronusPhotoApp::new(s, crate::Services::default());
     let mut h = harness(app, egui::vec2(900.0, 800.0));
     let id = open(h.state_mut(), REPLACE_COLOR).unwrap();
     h.run_steps(3);
@@ -1606,9 +1611,9 @@ fn replace_color_reset_forgets_the_click_order() {
 /// sampled colour becomes it.
 #[test]
 fn replace_color_result_swatch_sets_the_sliders() {
-    let mut s = photocraft_engine::Session::new();
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 16, "height": 16})).unwrap();
-    let mut app = PhotocraftApp::new(s, crate::Services::default());
+    let mut app = PatronusPhotoApp::new(s, crate::Services::default());
     app.run("tools.setColors", json!({"foreground": "#cc3333"})).unwrap();
     let mut h = harness(app, egui::vec2(900.0, 900.0));
     let id = open(h.state_mut(), REPLACE_COLOR).unwrap();
@@ -1624,7 +1629,7 @@ fn replace_color_result_swatch_sets_the_sliders() {
     h.run_steps(3);
     let f = fields_of(h.state(), id);
     let n = |k: &str| f.number(k).unwrap() as f32;
-    let got = photocraft_algo::tone::replace_color_result([0.8, 0.2, 0.2], n("hue"), n("saturation"), n("lightness"));
+    let got = patronusphoto_algo::tone::replace_color_result([0.8, 0.2, 0.2], n("hue"), n("saturation"), n("lightness"));
     let want = crate::color_picker_ui::parse_hex("#3355cc").unwrap();
     assert!(got.iter().zip(want).all(|(a, b)| (a - b).abs() < 0.02), "the sliders turn the sampled colour into the pick: {got:?}");
     assert!(n("hue") != 0.0, "the hue moved");
@@ -1639,9 +1644,9 @@ fn replace_color_result_swatch_sets_the_sliders() {
 #[test]
 fn replace_color_localized_color_clusters() {
     // Left half red, right half red too: localized on the left point, the right half stays.
-    let mut s = photocraft_engine::Session::new();
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 40, "height": 10, "background": "#ff0000"})).unwrap();
-    let mut app = PhotocraftApp::new(s, crate::Services::default());
+    let mut app = PatronusPhotoApp::new(s, crate::Services::default());
     let id = open(&mut app, REPLACE_COLOR).unwrap();
     passes(&mut app, 2);
     assert!(color_eyedropper_sample(&mut app, 2.0, 5.0, egui::Modifiers::NONE));
@@ -1653,15 +1658,15 @@ fn replace_color_localized_color_clusters() {
     // The command with the dialog's fields, small range and a hue shift: only near (2, 5).
     app.run(REPLACE_COLOR, f).unwrap();
     let doc = &app.session.active().unwrap().doc;
-    let px = |x: i32| doc.layers[0].surface().unwrap().read_region(photocraft_geom::Rect::new(x, 5, x + 1, 6));
+    let px = |x: i32| doc.layers[0].surface().unwrap().read_region(patronusphoto_geom::Rect::new(x, 5, x + 1, 6));
     assert!(px(2)[1] > 0.5, "near the point: shifted to green {:?}", px(2));
     assert!(px(38)[0] > 0.9 && px(38)[1] < 0.1, "far away: still red {:?}", px(38));
 }
 
 #[test]
 fn match_color_control_source_changes_reset_layer_even_with_copied_ids() {
-    use photocraft_doc::{Color, ColorMode, Layer, SampleType, Size};
-    use photocraft_geom::Rect;
+    use patronusphoto_doc::{Color, ColorMode, Layer, SampleType, Size};
+    use patronusphoto_geom::Rect;
     let area = Rect::new(0, 0, 8, 8);
     let mut source = Document::with_background("first", Size::new(8, 8), ColorMode::Rgb, SampleType::U8, Color::WHITE);
     let bottom = source.layers[0].id;
@@ -1673,11 +1678,11 @@ fn match_color_control_source_changes_reset_layer_even_with_copied_ids() {
     other.name = "second".into();
     other.layers[0].surface_mut().unwrap().fill_rect(area, &[0.1, 0.8, 0.2, 1.0]);
     for frame in [false, true] {
-        let mut session = photocraft_engine::Session::new();
+        let mut session = patronusphoto_engine::Session::new();
         session.add_document(source.clone(), None);
         session.add_document(other.clone(), None);
         session.execute("file.new", json!({"width":8,"height":8,"background":"white"})).unwrap();
-        let mut app = PhotocraftApp::new(session, Default::default());
+        let mut app = PatronusPhotoApp::new(session, Default::default());
         app.sync_views();
         for explicit_layer in [false, true] {
             let id = open(&mut app, "image.adjustments.matchColor").unwrap();
@@ -1706,16 +1711,16 @@ fn match_color_control_source_changes_reset_layer_even_with_copied_ids() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn match_color_preview_refreshes_when_a_source_job_lands() {
-    use photocraft_doc::{Color, ColorMode, SampleType, Size};
-    use photocraft_geom::Rect;
+    use patronusphoto_doc::{Color, ColorMode, SampleType, Size};
+    use patronusphoto_geom::Rect;
     let area = Rect::new(0, 0, 8, 8);
     {
         let mut source = Document::with_background("reference", Size::new(8, 8), ColorMode::Rgb, SampleType::U8, Color::WHITE);
         source.layers[0].surface_mut().unwrap().fill_rect(area, &[0.1, 0.3, 0.9, 1.0]);
-        let mut session = photocraft_engine::Session::new();
+        let mut session = patronusphoto_engine::Session::new();
         session.add_document(source, None);
         // Start before opening the dialog; applying a completed source job is a normal producer.
-        let photocraft_engine::jobs::Started::Job(job) = session
+        let patronusphoto_engine::jobs::Started::Job(job) = session
             .start_job(
                 "test.source",
                 json!({}),
@@ -1735,7 +1740,7 @@ fn match_color_preview_refreshes_when_a_source_job_lands() {
             panic!("native source job");
         };
         session.execute("file.new", json!({"width":8,"height":8,"background":"white"})).unwrap();
-        let mut app = PhotocraftApp::new(session, Default::default());
+        let mut app = PatronusPhotoApp::new(session, Default::default());
         app.sync_views();
         app.background_jobs = false;
         let target = app.session.active().unwrap().doc.clone();
@@ -1745,7 +1750,7 @@ fn match_color_preview_refreshes_when_a_source_job_lands() {
         set(&mut app, id, "source", json!("0"));
         // The Preview box is on from the dialog's first drawn pass.
         passes(&mut app, 2);
-        let preview = |app: &mut PhotocraftApp, blue: bool| {
+        let preview = |app: &mut PatronusPhotoApp, blue: bool| {
             crate::canvas::ensure_filter_preview(app, 1, &ctx).expect("inline preview");
             let pixel = app.filter_preview.as_ref().unwrap().result.as_ref().unwrap().layers[0].surface().unwrap().rgba(4, 4);
             assert_eq!(pixel[2] > pixel[0], blue, "preview follows current source pixels: {pixel:?}");
@@ -1777,7 +1782,7 @@ fn match_color_preview_refreshes_when_a_source_job_lands() {
 
 #[test]
 fn preview_source_revisions_follow_only_referenced_documents() {
-    let mut session = photocraft_engine::Session::new();
+    let mut session = patronusphoto_engine::Session::new();
     for _ in 0..2 {
         session.execute("file.new", json!({"width":1,"height":1})).unwrap();
     }
@@ -1803,7 +1808,7 @@ fn indexed_matte_dropdown_and_picker_change_the_applied_edge_color() {
 
     for (choice, matte) in [("Black", [0.0, 0.0, 0.0]), ("50% Gray", [128.0 / 255.0; 3]), ("Netscape Gray", [192.0 / 255.0; 3]), ("Other…", [0.0, 0.0, 1.0])]
     {
-        let mut session = photocraft_engine::Session::new();
+        let mut session = patronusphoto_engine::Session::new();
         session.execute("file.new", json!({"width": 2, "height": 1, "depth": 32, "background": "transparent"})).unwrap();
         session
             .edit("fixture", |doc, active| {
@@ -1812,7 +1817,7 @@ fn indexed_matte_dropdown_and_picker_change_the_applied_edge_color() {
                 Ok(())
             })
             .unwrap();
-        let app = PhotocraftApp::new(session, crate::Services::default());
+        let app = PatronusPhotoApp::new(session, crate::Services::default());
         let mut harness = harness(app, egui::vec2(900.0, 1000.0));
         let id = open(harness.state_mut(), "image.mode.indexedColor").unwrap();
         set(harness.state_mut(), id, "palette", json!("exact"));
@@ -1829,7 +1834,7 @@ fn indexed_matte_dropdown_and_picker_change_the_applied_edge_color() {
         harness.get_by_label("OK").click();
         harness.run_steps(3);
         let doc = &harness.state().session.active().unwrap().doc;
-        assert_eq!(doc.mode, photocraft_color::ColorMode::Indexed);
+        assert_eq!(doc.mode, patronusphoto_color::ColorMode::Indexed);
         let surface = doc.layers[0].surface().unwrap();
         let edge = surface.rgba(0, 0);
         let expected = [0.75 + 0.25 * matte[0], 0.25 * matte[1], 0.25 * matte[2]];
@@ -1843,9 +1848,9 @@ fn indexed_matte_dropdown_and_picker_change_the_applied_edge_color() {
 fn indexed_matte_other_shows_the_color_row_and_none_hides_it() {
     use egui::accesskit::Role;
 
-    let mut session = photocraft_engine::Session::new();
+    let mut session = patronusphoto_engine::Session::new();
     session.execute("file.new", json!({"width": 2, "height": 1, "depth": 32, "background": "transparent"})).unwrap();
-    let app = PhotocraftApp::new(session, crate::Services::default());
+    let app = PatronusPhotoApp::new(session, crate::Services::default());
     let mut harness = harness(app, egui::vec2(900.0, 1000.0));
     let id = open(harness.state_mut(), "image.mode.indexedColor").unwrap();
     harness.run_steps(3);

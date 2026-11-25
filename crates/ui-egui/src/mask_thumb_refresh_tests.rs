@@ -4,20 +4,20 @@
 
 use craft::layers::ui::thumbs::LayerThumb;
 use craft::ui::primitives::textures::{ThumbRequest, ThumbSource};
-use photocraft_doc::LayerId;
+use patronusphoto_doc::LayerId;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::panels::layers_tree::PhotoThumbs;
 
 /// The mask thumbnail's revision follows Invert on a tile-less mask.
 #[test]
 fn inverting_a_tileless_mask_refreshes_its_thumbnail() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
     let id = LayerId(app.run("layer.new.layer", json!({"name": "Masked"})).unwrap()["layer"].as_u64().unwrap());
     app.run("layer.layerMask.revealAll", json!({"layer": id.0})).unwrap();
-    let revision = |app: &PhotocraftApp| {
+    let revision = |app: &PatronusPhotoApp| {
         let doc = &app.session.active().unwrap().doc;
         PhotoThumbs::new(app, doc).revision(&LayerThumb::mask(id), &ThumbRequest::for_cell(32.0, 1.0))
     };

@@ -3,7 +3,7 @@ use super::planes::{channel_format, edit_mode, next_alpha_name, plane_surface, r
 use super::refs::{Blending, bad, doc_index, mask_plane, source, source_spec};
 use super::targeting::{Target, is_channel_target, is_spot_target, target_of, target_surface};
 use super::{AlphaChannel, ColorMode, EngineError, Result, SelectionMode, Session, Value, json, sel};
-use photocraft_color::blend::blend_rgb;
+use patronusphoto_color::blend::blend_rgb;
 
 #[cfg(test)]
 #[path = "apply_image_preserve_tests.rs"]

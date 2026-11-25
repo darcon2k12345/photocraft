@@ -1,21 +1,21 @@
 //! #12007: a live (Gradient mode) drag makes a Normal, 100 % fill layer and the options change
 //! never changes a selected fill layer's blend or opacity.
 
-use photocraft_color::BlendMode;
+use patronusphoto_color::BlendMode;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::{ToolEvent, tool_event};
 use crate::state::Tool;
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 120, "background": "white"})).unwrap();
     app.ui.tool = Tool::Gradient;
     app
 }
 
-fn drag(app: &mut PhotocraftApp, a: [f64; 2], b: [f64; 2]) {
+fn drag(app: &mut PatronusPhotoApp, a: [f64; 2], b: [f64; 2]) {
     let none = egui::Modifiers::NONE;
     tool_event(app, ToolEvent::Down { x: a[0], y: a[1], pressure: 1.0 }, none);
     tool_event(app, ToolEvent::Move { x: (a[0] + b[0]) / 2.0, y: (a[1] + b[1]) / 2.0, pressure: 1.0 }, none);

@@ -3,22 +3,22 @@
 
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 use super::{tab_title_at, titled_name};
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 40, "height": 30, "name": "oracle"})).unwrap();
     app
 }
 
 /// The tab's title; the tab's modified mark is not part of the text.
-fn title(app: &PhotocraftApp) -> String {
+fn title(app: &PatronusPhotoApp) -> String {
     tab_title_at(app, 0, 100.0)
 }
 
-fn status(app: &mut PhotocraftApp, status: &str) {
+fn status(app: &mut PatronusPhotoApp, status: &str) {
     app.run("file.fileInfo", json!({"copyrightStatus": status})).unwrap();
 }
 

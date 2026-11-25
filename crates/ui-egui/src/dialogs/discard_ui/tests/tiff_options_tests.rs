@@ -31,7 +31,7 @@ fn tiff_app(background: &str, to: &str) -> (Prompted, Writes) {
         Ok(())
     }));
     let builder = egui_kittest::Harness::builder().with_size(egui::vec2(800.0, 600.0)).with_context(app.ctx().clone());
-    let builder = if std::env::var_os("PHOTOCRAFT_TIFF_SNAPSHOTS").is_some() { builder.wgpu() } else { builder };
+    let builder = if std::env::var_os("PATRONUSPHOTO_TIFF_SNAPSHOTS").is_some() { builder.wgpu() } else { builder };
     let h = builder.build_ui_state(
         |ui, app| {
             crate::dialogs::run(app, ui);
@@ -39,14 +39,14 @@ fn tiff_app(background: &str, to: &str) -> (Prompted, Writes) {
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     craft::ui::testing::windows::set_os(&h.ctx, craft::host::target::Os::Windows);
     (h, writes)
 }
 
-/// `PHOTOCRAFT_TIFF_SNAPSHOTS=<dir>` saves the dialog as a PNG to look at.
+/// `PATRONUSPHOTO_TIFF_SNAPSHOTS=<dir>` saves the dialog as a PNG to look at.
 fn capture(h: &mut Prompted, name: &str) {
-    if let Some(dir) = std::env::var_os("PHOTOCRAFT_TIFF_SNAPSHOTS") {
+    if let Some(dir) = std::env::var_os("PATRONUSPHOTO_TIFF_SNAPSHOTS") {
         let dir = std::path::PathBuf::from(dir);
         std::fs::create_dir_all(&dir).unwrap();
         h.render().unwrap().save(dir.join(format!("{name}.png"))).unwrap();
@@ -57,7 +57,7 @@ fn capture(h: &mut Prompted, name: &str) {
 /// to choose. The answer is written, recorded and remembered for the next TIFF.
 #[test]
 fn save_as_to_a_flat_tiff_asks_for_compression_and_pyramid() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let (mut h, writes) = tiff_app("white", "unused.tif");
     h.state_mut().run("actions.record", json!({})).unwrap();
     h.state_mut().save_as(Some("p.tif".into())).unwrap();
@@ -106,7 +106,7 @@ fn save_as_to_a_flat_tiff_asks_for_compression_and_pyramid() {
 /// which saves a copy.
 #[test]
 fn layered_transparent_documents_choose_transparency_and_layers() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let (mut h, writes) = tiff_app("transparent", "unused.tif");
     h.state_mut().run("layer.new.layer", json!({})).unwrap();
     h.state_mut().save_as(Some("t.tif".into())).unwrap();
@@ -139,7 +139,7 @@ fn layered_transparent_documents_choose_transparency_and_layers() {
 /// "Don't show again" turns off the layered-file note for the next save.
 #[test]
 fn dont_show_again_clears_the_layered_tiff_preference() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let (mut h, _) = tiff_app("transparent", "unused.tif");
     h.state_mut().run("layer.new.layer", json!({})).unwrap();
     h.state_mut().save_as(Some("t.tif".into())).unwrap();
@@ -167,7 +167,7 @@ fn dont_show_again_clears_the_layered_tiff_preference() {
 /// the action is played on, not the one it was recorded on (#3531).
 #[test]
 fn recorded_plain_save_of_a_tiff_writes_the_file_it_is_played_on() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let (mut h, writes) = tiff_app("white", "own.tif");
     let ctx = h.ctx.clone();
     crate::menus::invoke(h.state_mut(), &ctx, "file.saveAs", json!({"path": "own.tif", "tiffCompression": "none"})).unwrap();
@@ -192,7 +192,7 @@ fn recorded_plain_save_of_a_tiff_writes_the_file_it_is_played_on() {
 /// way: `file.save` with the answers and no path, so playback writes the file it is played on.
 #[test]
 fn recorded_scripted_plain_save_of_a_tiff_has_no_path() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let (mut h, writes) = tiff_app("white", "own.tif");
     let ctx = h.ctx.clone();
     crate::menus::invoke(h.state_mut(), &ctx, "file.saveAs", json!({"path": "own.tif", "tiffCompression": "none"})).unwrap();
@@ -213,7 +213,7 @@ fn recorded_scripted_plain_save_of_a_tiff_has_no_path() {
 /// active: its path is what linked smart objects resolve against.
 #[test]
 fn confirm_uses_the_waiting_documents_settings_not_the_active_tabs() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let (mut h, _) = tiff_app("white", "unused.tif");
     let seen: Rc<RefCell<Vec<Option<std::path::PathBuf>>>> = Rc::default();
     let saw = seen.clone();
@@ -244,7 +244,7 @@ fn confirm_uses_the_waiting_documents_settings_not_the_active_tabs() {
 /// Scripted saves that pass TIFF answers skip the prompt; a bad one is an error, not a save.
 #[test]
 fn scripted_tiff_answers_skip_the_prompt() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let (mut h, writes) = tiff_app("transparent", "unused.tif");
     let ctx = h.ctx.clone();
     crate::menus::invoke(h.state_mut(), &ctx, "file.saveAs", json!({"path": "s.tif", "tiffCompression": "zip", "tiffTransparency": true, "tiffPyramid": true}))

@@ -6,16 +6,16 @@ use egui::accesskit::Role;
 use egui::vec2;
 use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
-use photocraft_doc::{LayerContent, LayerId, LiveShape};
+use patronusphoto_doc::{LayerContent, LayerId, LiveShape};
 use serde_json::json;
 
 use super::shape_properties;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// An 800 x 600 document with a weight 4 End arrow (5 x 10 px head) from 400,300 to 600,300.
-fn app_with_arrow() -> (Box<PhotocraftApp>, LayerId) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app_with_arrow() -> (Box<PatronusPhotoApp>, LayerId) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 800, "height": 600})).unwrap();
     let made = app
         .run("shape.create", json!({"kind": "line", "from": [400, 300], "to": [600, 300], "weight": 4, "arrowEnd": true, "arrowWidth": 5, "arrowLength": 10}))
@@ -24,7 +24,7 @@ fn app_with_arrow() -> (Box<PhotocraftApp>, LayerId) {
     (app, id)
 }
 
-fn properties() -> (Harness<'static, Box<PhotocraftApp>>, LayerId) {
+fn properties() -> (Harness<'static, Box<PatronusPhotoApp>>, LayerId) {
     let (app, id) = app_with_arrow();
     let mut h =
         Harness::builder().with_context(app.ctx().clone()).with_size(vec2(400.0, 900.0)).build_ui_state(move |ui, app| shape_properties(app, ui, id), app);
@@ -33,7 +33,7 @@ fn properties() -> (Harness<'static, Box<PhotocraftApp>>, LayerId) {
 }
 
 /// The options bar with the Line tool active, its arrowhead gear menu open.
-fn gear() -> Harness<'static, Box<PhotocraftApp>> {
+fn gear() -> Harness<'static, Box<PatronusPhotoApp>> {
     let (mut app, _) = app_with_arrow();
     app.ui.tool = Tool::Line;
     let mut h =
@@ -45,7 +45,7 @@ fn gear() -> Harness<'static, Box<PhotocraftApp>> {
 }
 
 /// Types `text` into the Concavity field, then Tabs out of it.
-fn type_concavity(h: &mut Harness<'static, Box<PhotocraftApp>>, text: &str) {
+fn type_concavity(h: &mut Harness<'static, Box<PatronusPhotoApp>>, text: &str) {
     h.query_all_by_role(Role::SpinButton).find(|n| n.accesskit_node().label().as_deref() == Some("Concavity")).expect("the Concavity field").click();
     h.run_steps(1);
     h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::A);
@@ -56,11 +56,11 @@ fn type_concavity(h: &mut Harness<'static, Box<PhotocraftApp>>, text: &str) {
 }
 
 /// How many alerts are open.
-fn alerts(h: &Harness<'static, Box<PhotocraftApp>>) -> usize {
+fn alerts(h: &Harness<'static, Box<PatronusPhotoApp>>) -> usize {
     crate::dialogs::alerts::alerts(h.state()).len()
 }
 
-fn concavity(h: &Harness<'static, Box<PhotocraftApp>>, id: LayerId) -> f64 {
+fn concavity(h: &Harness<'static, Box<PatronusPhotoApp>>, id: LayerId) -> f64 {
     match h.state().session.active().and_then(|st| st.doc.layer(id)).map(|l| &l.content) {
         Some(LayerContent::Shape(sh)) => match sh.live {
             Some(LiveShape::ArrowLine { concavity, .. }) => concavity,

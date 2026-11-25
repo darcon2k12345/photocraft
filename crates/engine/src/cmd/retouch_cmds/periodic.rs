@@ -39,7 +39,7 @@ pub(super) fn stroke(
     paint_format: PixelFormat,
     mut paint: impl FnMut(&Surface, Rect) -> Result<Region>,
 ) -> Result<Rect> {
-    let mut renderer = photocraft_paint::StrokeRenderer::new(&stroke.brush, None, 1.0);
+    let mut renderer = patronusphoto_paint::StrokeRenderer::new(&stroke.brush, None, 1.0);
     renderer.push(&stroke.points);
     renderer.finish();
     let before = target.clone();
@@ -72,8 +72,8 @@ pub(super) struct Composite<'a> {
 impl Composite<'_> {
     /// Fold dabs into bounded destination patches before applying selection, opacity and blending.
     pub fn draw(&mut self, dirty: Rect, brush: &BrushSettings, points: &[StrokePoint], mut paint: impl FnMut(Rect) -> Result<Region>) -> Result<Rect> {
-        let ctx = photocraft_paint::BrushContext::new(brush);
-        let mut generator = photocraft_paint::dynamics::DabGenerator::new(brush, 1.0);
+        let ctx = patronusphoto_paint::BrushContext::new(brush);
+        let mut generator = patronusphoto_paint::dynamics::DabGenerator::new(brush, 1.0);
         let (mut primary, mut dual) = (Vec::new(), Vec::new());
         generator.push(points, &mut primary, &mut dual);
         generator.finish(&mut primary, &mut dual);
@@ -146,8 +146,8 @@ impl Composite<'_> {
     /// Gather one dab's periodic copies using its strongest coverage at each destination pixel.
     fn fold_dab(
         &self,
-        ctx: &photocraft_paint::BrushContext,
-        dab: &photocraft_paint::Dab,
+        ctx: &patronusphoto_paint::BrushContext,
+        dab: &patronusphoto_paint::Dab,
         bounds: Rect,
         dst: Rect,
         dual: bool,
@@ -224,7 +224,7 @@ impl PatchStroke {
     }
 
     /// Accumulate flow-weighted, premultiplied native colours and independent source alpha.
-    fn accumulate(&mut self, dab: &photocraft_paint::Dab, footprint: &PatchStroke, alpha: Option<usize>) {
+    fn accumulate(&mut self, dab: &patronusphoto_paint::Dab, footprint: &PatchStroke, alpha: Option<usize>) {
         let rect = self.paint.rect;
         for y in rect.y0..rect.y1 {
             for x in rect.x0..rect.x1 {

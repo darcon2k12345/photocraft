@@ -13,9 +13,9 @@ use craft::ui::contract::{SweepStep, ToggleEdit};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use photocraft_engine::actions_cmds::{self, Action};
+use patronusphoto_engine::actions_cmds::{self, Action};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 use host::PhotoActions;
 
@@ -58,7 +58,7 @@ mod stop_tests;
 mod tests;
 
 /// The Actions panel's state: the framework panel's selection, expansion and settings. The action
-/// list itself is [`photocraft_engine::Session::actions`]. Only Button Mode and the collapsed sets
+/// list itself is [`patronusphoto_engine::Session::actions`]. Only Button Mode and the collapsed sets
 /// are saved (see [`saved`]).
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(from = "saved::Saved", into = "saved::Saved")]
@@ -99,7 +99,7 @@ mod saved {
 }
 
 pub(crate) fn label_of(id: &str) -> String {
-    photocraft_engine::commands::find(id)
+    patronusphoto_engine::commands::find(id)
         .map(|c| c.label)
         .or_else(|| crate::menus::UI_COMMANDS.iter().find(|c| c.0 == id).map(|c| c.1))
         // Shell menu items recorded as steps, like Save a Copy (#4373).
@@ -109,7 +109,7 @@ pub(crate) fn label_of(id: &str) -> String {
 }
 
 /// The action a selected row belongs to: the action itself or the action of a selected step.
-fn selected_action_index(app: &PhotocraftApp) -> Option<usize> {
+fn selected_action_index(app: &PatronusPhotoApp) -> Option<usize> {
     match app.ui.actions.panel.selected.as_ref()? {
         ActionSelection::Action(i) | ActionSelection::Step(i, _) => Some(*i).filter(|i| *i < app.session.actions.list.actions().len()),
         _ => None,
@@ -118,7 +118,7 @@ fn selected_action_index(app: &PhotocraftApp) -> Option<usize> {
 
 /// The selected action, else the first action of the selected set (Batch and Create Droplet start
 /// on the panel's selection), else the first one.
-pub fn selected_action(app: &PhotocraftApp) -> Option<&Action> {
+pub fn selected_action(app: &PatronusPhotoApp) -> Option<&Action> {
     let list = &app.session.actions.list;
     selected_action_index(app)
         .and_then(|i| list.action(i))
@@ -129,7 +129,7 @@ pub fn selected_action(app: &PhotocraftApp) -> Option<&Action> {
 /// The Set and Action dropdowns of the Batch and Create Droplet dialogs, as in the reference
 /// application: each action name once and each set once, in list order. A loaded library can hold
 /// one name in two sets, so the dialog sends the set too and the command picks that set's action.
-pub fn action_form_choices(app: &PhotocraftApp) -> (Vec<String>, Vec<String>) {
+pub fn action_form_choices(app: &PatronusPhotoApp) -> (Vec<String>, Vec<String>) {
     let (mut names, mut sets) = (Vec::new(), Vec::new());
     for action in app.session.actions.list.actions() {
         if !names.contains(&action.name) {
@@ -143,7 +143,7 @@ pub fn action_form_choices(app: &PhotocraftApp) -> (Vec<String>, Vec<String>) {
 }
 
 /// The selected set folder, if it still exists.
-pub(crate) fn selected_set(app: &PhotocraftApp) -> Option<&str> {
+pub(crate) fn selected_set(app: &PatronusPhotoApp) -> Option<&str> {
     match app.ui.actions.panel.selected.as_ref()? {
         ActionSelection::Set(name) if app.session.actions.list.sets().contains(&name.as_str()) => Some(name),
         _ => None,
@@ -151,20 +151,20 @@ pub(crate) fn selected_set(app: &PhotocraftApp) -> Option<&str> {
 }
 
 /// The actions of `set`, in list order (empty for an empty or unknown set).
-fn set_actions(app: &PhotocraftApp, set: &str) -> Vec<usize> {
+fn set_actions(app: &PatronusPhotoApp, set: &str) -> Vec<usize> {
     let list = &app.session.actions.list;
     (0..list.actions().len()).filter(|i| list.set_of(*i) == Some(set)).collect()
 }
 
 /// The actions of the selected set, in list order (empty when no set is selected, or it is empty).
-fn selected_set_actions(app: &PhotocraftApp) -> Vec<usize> {
+fn selected_set_actions(app: &PatronusPhotoApp) -> Vec<usize> {
     selected_set(app).map(|set| set_actions(app, set)).unwrap_or_default()
 }
 
 #[cfg(test)]
 /// What Play plays: the selected action; with a set folder selected, every action of that set in
 /// order, as Photoshop plays a selected set (nothing for an empty set); else the first action.
-pub(crate) fn playback_targets(app: &PhotocraftApp) -> Vec<usize> {
+pub(crate) fn playback_targets(app: &PatronusPhotoApp) -> Vec<usize> {
     if selected_set(app).is_some() {
         return selected_set_actions(app);
     }
@@ -174,7 +174,7 @@ pub(crate) fn playback_targets(app: &PhotocraftApp) -> Vec<usize> {
 #[cfg(test)]
 /// Index of the playback target. Photoshop's Play button uses the first action when
 /// the panel has actions but none of its rows is selected.
-fn playback_selection(app: &PhotocraftApp) -> Option<usize> {
+fn playback_selection(app: &PatronusPhotoApp) -> Option<usize> {
     if app.session.actions.list.actions().is_empty() { None } else { Some(selected_action_index(app).unwrap_or(0)) }
 }
 
@@ -192,8 +192,8 @@ pub(crate) fn shortcut_id(name: &str) -> String {
     format!("{SHORTCUT_PREFIX}{name}")
 }
 
-pub(crate) fn assign_shortcut(app: &mut PhotocraftApp, name: &str, shortcut: &str) -> Result<Value, String> {
-    use photocraft_engine::prefs::normalize_shortcut;
+pub(crate) fn assign_shortcut(app: &mut PatronusPhotoApp, name: &str, shortcut: &str) -> Result<Value, String> {
+    use patronusphoto_engine::prefs::normalize_shortcut;
     let id = shortcut_id(name);
     let mut set = serde_json::Map::new();
     let mut alternates = serde_json::Map::new();
@@ -220,7 +220,7 @@ pub(crate) fn assign_shortcut(app: &mut PhotocraftApp, name: &str, shortcut: &st
 
 /// After Clear All, Reset, Replace or their undo the rows hold other actions: none stays
 /// selected, open or in rename.
-pub(crate) fn library_changed(app: &mut PhotocraftApp) {
+pub(crate) fn library_changed(app: &mut PatronusPhotoApp) {
     let ui = &mut app.ui.actions;
     ui.panel.selected = None;
     ui.panel.expanded.clear();
@@ -228,7 +228,7 @@ pub(crate) fn library_changed(app: &mut PhotocraftApp) {
 }
 
 /// The set New Action records into: the selected action's, else the selected set folder's.
-pub(crate) fn new_action_set(app: &PhotocraftApp) -> Option<String> {
+pub(crate) fn new_action_set(app: &PatronusPhotoApp) -> Option<String> {
     match selected_action_index(app) {
         Some(i) => app.session.actions.list.set_of(i).map(str::to_owned),
         None => selected_set(app).map(str::to_owned),
@@ -237,7 +237,7 @@ pub(crate) fn new_action_set(app: &PhotocraftApp) -> Option<String> {
 
 /// Start recording: into action `into`, or into a new action in [`new_action_set`] when `None`.
 /// The recorded action is selected and shown open, with its set open.
-pub(crate) fn begin_recording(app: &mut PhotocraftApp, into: Option<usize>) {
+pub(crate) fn begin_recording(app: &mut PatronusPhotoApp, into: Option<usize>) {
     if app.session.actions.recording.is_some() {
         return;
     }
@@ -260,7 +260,7 @@ pub(crate) fn begin_recording(app: &mut PhotocraftApp, into: Option<usize>) {
 
 /// Duplicate one action or step and select the copy. A copied action is open when its source is;
 /// the action of a copied step opens.
-fn duplicate_row(app: &mut PhotocraftApp, action: usize, step: Option<usize>) -> Result<Value, String> {
+fn duplicate_row(app: &mut PatronusPhotoApp, action: usize, step: Option<usize>) -> Result<Value, String> {
     let source_open = app.session.actions.list.action(action).is_some_and(|a| app.ui.actions.panel.expanded.contains(&a.name));
     let result = app.run("actions.duplicate", json!({"action": action, "step": step}))?;
     let index = result["index"].as_u64().and_then(|i| usize::try_from(i).ok()).ok_or("the copy has no action index")?;
@@ -280,7 +280,7 @@ fn duplicate_row(app: &mut PhotocraftApp, action: usize, step: Option<usize>) ->
 }
 
 /// Delete one action or step. False when the engine refused.
-fn delete_row(app: &mut PhotocraftApp, action: usize, step: Option<usize>) -> bool {
+fn delete_row(app: &mut PatronusPhotoApp, action: usize, step: Option<usize>) -> bool {
     let mut params = json!({"action": action});
     if let Some(step) = step {
         params["step"] = json!(step);
@@ -288,7 +288,7 @@ fn delete_row(app: &mut PhotocraftApp, action: usize, step: Option<usize>) -> bo
     app.run("actions.delete", params).is_ok()
 }
 
-fn rename_action(app: &mut PhotocraftApp, index: usize, name: String) {
+fn rename_action(app: &mut PatronusPhotoApp, index: usize, name: String) {
     if let Err(e) = app.run("actions.rename", json!({"action": index, "name": name})) {
         let template = "Could not rename the action: {error}";
         app.ui.status = crate::i18n::fmt(tl!(template), &[("error", &e)]);
@@ -297,7 +297,7 @@ fn rename_action(app: &mut PhotocraftApp, index: usize, name: String) {
 }
 
 /// Draws the Actions panel and runs what the user did in it.
-pub fn panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn panel(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let rename = app.ui.actions.rename.take();
     let paced = playback::pending(app);
     let host = PhotoActions::new(&app.session, paced);
@@ -312,7 +312,7 @@ pub fn panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 /// Runs the events of the panel, its footer, its row menus and its panel menu, in order. An error
 /// other than a cancelled dialog goes to the status bar. A pass applies only the events it was
 /// given.
-pub(crate) fn apply_actions_events(app: &mut PhotocraftApp, events: Vec<ActionsEvent>) {
+pub(crate) fn apply_actions_events(app: &mut PatronusPhotoApp, events: Vec<ActionsEvent>) {
     for event in events {
         if let Err(e) = apply_event(app, event)
             && e != "cancelled"
@@ -324,7 +324,7 @@ pub(crate) fn apply_actions_events(app: &mut PhotocraftApp, events: Vec<ActionsE
 }
 
 /// Plays `targets` from step `from` and reports the result in the status bar.
-fn play_and_report(app: &mut PhotocraftApp, targets: &[usize], from: usize) {
+fn play_and_report(app: &mut PatronusPhotoApp, targets: &[usize], from: usize) {
     match runner::play_targets(app, targets, from, 0) {
         Ok(Some(v)) => runner::report_play(app, &v),
         Ok(None) => {}
@@ -337,7 +337,7 @@ fn play_and_report(app: &mut PhotocraftApp, targets: &[usize], from: usize) {
 }
 
 /// The action and the step position after the selected row, for inserting a step.
-fn insert_target(app: &PhotocraftApp) -> Result<(usize, Option<usize>), String> {
+fn insert_target(app: &PatronusPhotoApp) -> Result<(usize, Option<usize>), String> {
     match app.ui.actions.panel.selected.as_ref() {
         Some(ActionSelection::Action(i)) if *i < app.session.actions.list.actions().len() => Ok((*i, None)),
         Some(ActionSelection::Step(i, s)) if *i < app.session.actions.list.actions().len() => Ok((*i, Some(s.saturating_add(1)))),
@@ -345,7 +345,7 @@ fn insert_target(app: &PhotocraftApp) -> Result<(usize, Option<usize>), String> 
     }
 }
 
-fn apply_event(app: &mut PhotocraftApp, event: ActionsEvent) -> Result<(), String> {
+fn apply_event(app: &mut PatronusPhotoApp, event: ActionsEvent) -> Result<(), String> {
     match event {
         ActionsEvent::Play { action, from, .. } => play_and_report(app, &[action], from),
         ActionsEvent::PlaySet(set) => {
@@ -395,7 +395,7 @@ fn apply_event(app: &mut PhotocraftApp, event: ActionsEvent) -> Result<(), Strin
         }
         ActionsEvent::AssignShortcut { action, choice, .. } => {
             let name = app.session.actions.list.action(action).map(|a| a.name.clone()).ok_or("no such action")?;
-            let key = choice.map_or_else(String::new, |c| photocraft_engine::atn_cmds::function_key_name(u16::from(c.key), c.shift, c.command));
+            let key = choice.map_or_else(String::new, |c| patronusphoto_engine::atn_cmds::function_key_name(u16::from(c.key), c.shift, c.command));
             assign_shortcut(app, &name, &key)?;
         }
         ActionsEvent::Reorder(ActionMove { row, place, .. }) => reorder(app, row, place)?,
@@ -423,7 +423,7 @@ fn apply_event(app: &mut PhotocraftApp, event: ActionsEvent) -> Result<(), Strin
 /// A drop of an action (into a set or out of one) or of a step (within its action). A step has no
 /// place in another action: the engine moves steps only inside their action. `index` is the final
 /// position `actions.move` takes.
-fn reorder(app: &mut PhotocraftApp, row: ActionSelection, place: ActionPlace) -> Result<(), String> {
+fn reorder(app: &mut PatronusPhotoApp, row: ActionSelection, place: ActionPlace) -> Result<(), String> {
     match (row, place) {
         (ActionSelection::Action(action), ActionPlace::Action { index, set, .. }) => {
             app.run("actions.move", json!({"action": action, "to": index}))?;
@@ -442,7 +442,7 @@ fn reorder(app: &mut PhotocraftApp, row: ActionSelection, place: ActionPlace) ->
 
 /// Sets the cell a sweep step names: a step's include or dialog cell, or every step of an action
 /// for its include cell.
-fn toggle_cell(app: &mut PhotocraftApp, edit: &ToggleEdit<ActionSelection>) -> Result<(), String> {
+fn toggle_cell(app: &mut PatronusPhotoApp, edit: &ToggleEdit<ActionSelection>) -> Result<(), String> {
     let include = edit.column == INCLUDE_COLUMN;
     if !include && edit.column != DIALOG_COLUMN {
         return Ok(());
@@ -456,7 +456,7 @@ fn toggle_cell(app: &mut PhotocraftApp, edit: &ToggleEdit<ActionSelection>) -> R
 
 /// Sets one step's include (`include`) or dialog flag to `on`. With `enabled` the engine commands
 /// set the flag; without it they flip it.
-fn set_step_cell(app: &mut PhotocraftApp, action: usize, step: usize, include: bool, on: bool) -> Result<(), String> {
+fn set_step_cell(app: &mut PatronusPhotoApp, action: usize, step: usize, include: bool, on: bool) -> Result<(), String> {
     let command = if include { "actions.toggle" } else { "actions.dialog" };
     app.run(command, json!({"action": action, "step": step, "enabled": on})).map(drop)
 }

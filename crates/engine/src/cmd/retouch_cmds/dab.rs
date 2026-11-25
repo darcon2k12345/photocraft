@@ -4,8 +4,8 @@ use super::{
     Region, Result, Session, Smudge, Stroke, StrokePoint, Surface, ToneRange, Value, alpha_index, apply_dab_stroke, bad, damage_json, dodge_burn, flag,
     from_rgba_into, has_pixel_layer, json, local_blur, local_sharpen, num, parse_blend, parse_brush, run_stroke, sponge, string, to_rgba,
 };
-use photocraft_algo::retouch::sponge_rgb;
-use photocraft_color::{ColorMode, SampleType};
+use patronusphoto_algo::retouch::sponge_rgb;
+use patronusphoto_color::{ColorMode, SampleType};
 
 // ---------------------------------------------------------------------------------------------
 // Toning (Dodge / Burn / Sponge) and focus (Blur / Sharpen), Smudge
@@ -36,7 +36,7 @@ fn protect_detail_share(moved: Option<f32>, radius: f32) -> f32 {
 #[derive(Default)]
 pub(super) struct ProtectDetailShares {
     /// The previous dab's centre and share.
-    prev: Option<(photocraft_geom::Point, f32)>,
+    prev: Option<(patronusphoto_geom::Point, f32)>,
     /// The most coverage the dabs on the current centre have applied at each pixel of the rect.
     covered: Option<(Rect, Vec<f32>)>,
 }
@@ -233,7 +233,7 @@ impl DabNeighborhood {
         }
     }
 
-    fn read_rect(self, rect: Rect, dab: &photocraft_paint::Dab) -> Rect {
+    fn read_rect(self, rect: Rect, dab: &patronusphoto_paint::Dab) -> Rect {
         match self {
             Self::Halo(radius) => rect.inflate(radius),
             Self::Smudge(radius) => {
@@ -294,7 +294,9 @@ impl DabTool {
     fn neighborhood(&self) -> DabNeighborhood {
         match self {
             // Protect Detail sharpens against its own, wider Gaussian (#12938).
-            Self::Focus { sharpen: true, protect: true, .. } => DabNeighborhood::Halo((photocraft_algo::retouch::PROTECT_DETAIL_SIGMA * 3.0).ceil() as i32 + 1),
+            Self::Focus { sharpen: true, protect: true, .. } => {
+                DabNeighborhood::Halo((patronusphoto_algo::retouch::PROTECT_DETAIL_SIGMA * 3.0).ceil() as i32 + 1)
+            }
             Self::Focus { sigma, .. } => DabNeighborhood::Halo((sigma * 3.0).ceil() as i32 + 1),
             Self::Smudge { max_size, .. } => DabNeighborhood::Smudge(Smudge::sampling_radius(*max_size)),
             _ => DabNeighborhood::Halo(0),
@@ -355,9 +357,9 @@ impl DabTool {
                 })
             }
             Self::Smudge { strength, finger, max_size, mode } => {
-                let finger_px = finger.map(|fg| photocraft_raster::from_rgba(&fmt, fg));
+                let finger_px = finger.map(|fg| patronusphoto_raster::from_rgba(&fmt, fg));
                 // The Mode was measured in 8-bit RGB (#12959); other colour modes and depths smudge as Normal.
-                let measured = fmt.mode == photocraft_color::ColorMode::Rgb && fmt.sample == photocraft_color::SampleType::U8;
+                let measured = fmt.mode == patronusphoto_color::ColorMode::Rgb && fmt.sample == patronusphoto_color::SampleType::U8;
                 let mode = if measured { mode } else { BlendMode::Normal };
                 // Premultiplied mixing: transparent pixels carry no colour, so no dark fringes.
                 let mut sm = Smudge::new(strength, finger_px, max_size).with_alpha(alpha_index(&fmt)).with_mode(mode);
@@ -382,8 +384,8 @@ fn mode_refusal(s: &Session, cmd: &str) -> Result<()> {
         _ => return Ok(()),
     };
     let why = match s.active().map(|st| st.doc.mode) {
-        Some(photocraft_color::ColorMode::Indexed) => "it does not work with Indexed Color images (convert image to RGB Color mode to edit).",
-        Some(photocraft_color::ColorMode::Bitmap) => "it does not work with Bitmap images (convert image to Grayscale mode to edit).",
+        Some(patronusphoto_color::ColorMode::Indexed) => "it does not work with Indexed Color images (convert image to RGB Color mode to edit).",
+        Some(patronusphoto_color::ColorMode::Bitmap) => "it does not work with Bitmap images (convert image to Grayscale mode to edit).",
         _ => return Ok(()),
     };
     Err(EngineError::Other(format!("Could not use the {tool} because {why}")))
@@ -506,11 +508,11 @@ pub struct LiveDab {
     /// The active document with the stroke so far.
     pub doc: std::sync::Arc<Document>,
     cmd: String,
-    ctx: photocraft_paint::BrushContext,
-    generator: photocraft_paint::dynamics::DabGenerator,
+    ctx: patronusphoto_paint::BrushContext,
+    generator: patronusphoto_paint::dynamics::DabGenerator,
     /// Only the current batch is retained; sequential effects don't use accumulated coverage.
-    pending: Vec<photocraft_paint::Dab>,
-    dual_pending: Vec<photocraft_paint::Dab>,
+    pending: Vec<patronusphoto_paint::Dab>,
+    dual_pending: Vec<patronusphoto_paint::Dab>,
     done: usize,
     effect: DabEffect,
     neighborhood: DabNeighborhood,
@@ -536,7 +538,7 @@ pub struct LiveDab {
     tool: Option<(DabTool, Box<BrushSettings>)>,
     /// The document and revision the stroke started on, for strokes started from the session's
     /// active document ([`Self::with_effect`]); `None` for strokes on a prepared copy.
-    base: Option<(photocraft_doc::DocId, u64)>,
+    base: Option<(patronusphoto_doc::DocId, u64)>,
     /// Every point rendered so far, in order.
     points: Vec<StrokePoint>,
 }
@@ -626,8 +628,8 @@ impl LiveDab {
         let effect = effect(&pre_surf);
         // Generate the same dabs as `apply_dab_stroke` (zoom 1), without a StrokeRenderer:
         // its accumulated coverage isn't used here, and each effect rasterizes its own footprint.
-        let ctx = photocraft_paint::BrushContext::new(&stroke.brush);
-        let generator = photocraft_paint::dynamics::DabGenerator::new(&stroke.brush, 1.0);
+        let ctx = patronusphoto_paint::BrushContext::new(&stroke.brush);
+        let generator = patronusphoto_paint::dynamics::DabGenerator::new(&stroke.brush, 1.0);
         let mut live = Self {
             doc: std::sync::Arc::new(doc),
             cmd: cmd.into(),
@@ -705,7 +707,7 @@ impl LiveDab {
     /// Mix the working pixels of `r` back over the original into the shown document.
     fn show(&mut self, r: Rect, work: &Region) -> Result<()> {
         let (surf, _) = crate::channel_cmds::target_surface(std::sync::Arc::make_mut(&mut self.doc), self.id, &self.params)?;
-        photocraft_paint::retouch::mix_back(surf, &Region::read(&self.pre_surf, r), work, r, self.opacity, self.sel.as_ref(), self.lock);
+        patronusphoto_paint::retouch::mix_back(surf, &Region::read(&self.pre_surf, r), work, r, self.opacity, self.sel.as_ref(), self.lock);
         Ok(())
     }
 

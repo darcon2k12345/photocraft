@@ -17,7 +17,7 @@ use craft::ui::canvas::OpacityDigit;
 use craft::ui::runtime::commands::{CommandRef, FirePhase, Fired};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// Prefix of the catalog commands `tools.smoothing.1` … `tools.smoothing.0` (⌥+digit).
@@ -72,7 +72,7 @@ fn has_smoothing(tool: Tool) -> bool {
 
 /// Applies one fired command if it is a number key or a Smoothing key the current tool takes; two digits pair by the
 /// keys' own times (`Fired::time`). Returns whether the command was taken.
-pub(crate) fn fired(app: &mut PhotocraftApp, f: &Fired) -> bool {
+pub(crate) fn fired(app: &mut PatronusPhotoApp, f: &Fired) -> bool {
     if let Some(d) = smoothing_digit(&f.command) {
         if f.phase != FirePhase::Press || !has_smoothing(app.ui.tool) {
             return false;
@@ -92,7 +92,7 @@ pub(crate) fn fired(app: &mut PhotocraftApp, f: &Fired) -> bool {
     true
 }
 
-fn apply(app: &mut PhotocraftApp, percent: f32, shift: bool) {
+fn apply(app: &mut PatronusPhotoApp, percent: f32, shift: bool) {
     let v = percent / 100.0;
     // With airbrush build-up on, the keys swap roles, as in Photoshop: plain digits set Flow, ⇧ digits Opacity.
     // A Pencil- or Block-mode Eraser has no build-up (its options bar disables Flow and the airbrush).
@@ -142,16 +142,16 @@ mod tests {
     use OpacityDigit as D;
     use egui::{Event, Key};
 
-    fn app(tool: Tool) -> Box<PhotocraftApp> {
-        prepared(PhotocraftApp::new(photocraft_engine::Session::new(), Default::default()), tool)
+    fn app(tool: Tool) -> Box<PatronusPhotoApp> {
+        prepared(PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default()), tool)
     }
 
     /// The app on `ctx`, a harness's context that has the framework installed.
-    fn app_on(ctx: egui::Context, tool: Tool) -> Box<PhotocraftApp> {
-        prepared(PhotocraftApp::with_context(ctx, photocraft_engine::Session::new(), Default::default()), tool)
+    fn app_on(ctx: egui::Context, tool: Tool) -> Box<PatronusPhotoApp> {
+        prepared(PatronusPhotoApp::with_context(ctx, patronusphoto_engine::Session::new(), Default::default()), tool)
     }
 
-    fn prepared(mut app: Box<PhotocraftApp>, tool: Tool) -> Box<PhotocraftApp> {
+    fn prepared(mut app: Box<PatronusPhotoApp>, tool: Tool) -> Box<PatronusPhotoApp> {
         app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();
         app.ui.tool = tool;
@@ -159,7 +159,7 @@ mod tests {
     }
 
     /// Fires `command` at `now` seconds.
-    fn fire(app: &mut PhotocraftApp, command: impl Into<CommandRef>, now: f64) -> bool {
+    fn fire(app: &mut PatronusPhotoApp, command: impl Into<CommandRef>, now: f64) -> bool {
         let mut f = test_fired(command.into());
         f.time = now;
         fired(app, &f)
@@ -167,7 +167,7 @@ mod tests {
 
     /// Everything a number key can change: brush opacity, brush flow, layer opacity, layer fill, the Gradient and Paint
     /// Bucket opacity and the Background Eraser tolerance, each as a fraction.
-    fn snap(app: &PhotocraftApp) -> [f32; 6] {
+    fn snap(app: &PatronusPhotoApp) -> [f32; 6] {
         let st = app.session.active().unwrap();
         let l = st.doc.layer(st.active_layer.unwrap()).unwrap();
         let b = &app.session.tools.brush;
@@ -243,7 +243,7 @@ mod tests {
         fire(&mut l, D::OpacitySix, 0.0);
         assert!(l.session.active().unwrap().revision > rev);
         // No document: nothing to set, nothing panics.
-        let mut none = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+        let mut none = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
         none.ui.tool = Tool::Move;
         fire(&mut none, D::OpacityFive, 0.0);
     }
@@ -318,13 +318,13 @@ mod tests {
     fn keys_work_in_the_app() {
         use egui_kittest::Harness;
         let mut h = Harness::builder().with_size(egui::vec2(1200.0, 800.0)).with_max_steps(64).build_eframe(|cc| {
-            PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+            PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
             let mut a = app_on(cc.egui_ctx.clone(), Tool::Brush);
             a.run("tools.setBrush", json!({"brush": {"hardness": 0.5, "opacity": 1.0, "flow": 1.0}})).unwrap();
             a
         });
         h.run_steps(4);
-        let key = |h: &mut Harness<'_, Box<PhotocraftApp>>, k: Key, m: egui::Modifiers| {
+        let key = |h: &mut Harness<'_, Box<PatronusPhotoApp>>, k: Key, m: egui::Modifiers| {
             h.event(Event::Key { key: k, physical_key: Some(k), pressed: true, repeat: false, modifiers: m });
             h.event(Event::Key { key: k, physical_key: Some(k), pressed: false, repeat: false, modifiers: m });
             h.run_steps(2);

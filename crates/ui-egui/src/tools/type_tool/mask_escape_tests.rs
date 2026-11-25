@@ -5,15 +5,15 @@
 //! box yet, #12082.) Keys go through a full app frame, as on the canvas.
 
 use egui::Modifiers;
-use photocraft_raster::Surface;
+use patronusphoto_raster::Surface;
 use serde_json::json;
 
 use super::commit_tests::type_new;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
-fn new_app(tool: Tool, use_esc_to_commit: bool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn new_app(tool: Tool, use_esc_to_commit: bool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 400, "height": 200})).unwrap();
     app.run("prefs.set", json!({"path": "type.useEscToCommit", "value": use_esc_to_commit})).unwrap();
     // Away from the text, so New, Add, Subtract and Intersect each leave a different selection.
@@ -23,12 +23,12 @@ fn new_app(tool: Tool, use_esc_to_commit: bool) -> Box<PhotocraftApp> {
     app
 }
 
-fn press(mut app: Box<PhotocraftApp>, k: egui::Key, modifiers: Modifiers) -> Box<PhotocraftApp> {
+fn press(mut app: Box<PatronusPhotoApp>, k: egui::Key, modifiers: Modifiers) -> Box<PatronusPhotoApp> {
     crate::canvas::testing::key(&mut app, k, modifiers);
     app
 }
 
-pub(super) fn escape(app: Box<PhotocraftApp>) -> Box<PhotocraftApp> {
+pub(super) fn escape(app: Box<PatronusPhotoApp>) -> Box<PatronusPhotoApp> {
     press(app, egui::Key::Escape, Modifiers::NONE)
 }
 
@@ -48,7 +48,7 @@ impl std::fmt::Debug for Snapshot {
     }
 }
 
-fn snapshot(app: &PhotocraftApp) -> Snapshot {
+fn snapshot(app: &PatronusPhotoApp) -> Snapshot {
     let st = app.session.active().unwrap();
     Snapshot { selection: st.doc.selection.clone(), history: st.history.entries(), layers: st.doc.layers.len() }
 }

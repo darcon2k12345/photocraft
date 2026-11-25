@@ -34,7 +34,7 @@ pub(super) struct SmartOut {
     /// Nesting depth of this export (embedded documents are exported recursively).
     pub(super) depth: u32,
     /// The document's preserved global blocks (embedded files and filter caches from PSD import).
-    pub(super) globals: Vec<photocraft_doc::PsdGlobalBlock>,
+    pub(super) globals: Vec<patronusphoto_doc::PsdGlobalBlock>,
     /// uuids of the files in the preserved linked-layer blocks.
     pub(super) known: std::collections::HashSet<String>,
     /// uuids the layers reference.
@@ -51,17 +51,17 @@ pub(super) struct SmartOut {
     /// Each placed layer has its own id, even when it duplicates an imported layer.
     pub(super) placed_used: std::collections::HashSet<String>,
     /// Original instances reserve their imported placement regardless of layer order.
-    pub(super) placed_owners: std::collections::HashMap<String, photocraft_doc::LayerId>,
+    pub(super) placed_owners: std::collections::HashMap<String, patronusphoto_doc::LayerId>,
     /// Legacy records without a placed id stay unchanged for the original instance.
-    pub(super) unplaced_owners: std::collections::HashMap<SmartContentsId, photocraft_doc::LayerId>,
+    pub(super) unplaced_owners: std::collections::HashMap<SmartContentsId, patronusphoto_doc::LayerId>,
     /// The imported identity that keeps each original linked UUID.
     pub(super) linked_contents: std::collections::HashMap<String, SmartContentsId>,
     /// Independent copies of preserved linked items, including unavailable external sources.
-    pub(super) linked_copies: std::collections::BTreeMap<(String, SmartContentsId), photocraft_doc::PsdGlobalBlock>,
+    pub(super) linked_copies: std::collections::BTreeMap<(String, SmartContentsId), patronusphoto_doc::PsdGlobalBlock>,
     /// Embedded documents decoded while converting them, by uuid (for the filter caches).
     pub(super) docs: std::collections::HashMap<String, Document>,
     /// Source composites (document pixel format, source space) by uuid; `None` = unreadable.
-    pub(super) composites: std::collections::HashMap<String, Option<(std::sync::Arc<Surface>, photocraft_geom::Rect)>>,
+    pub(super) composites: std::collections::HashMap<String, Option<(std::sync::Arc<Surface>, patronusphoto_geom::Rect)>>,
     /// Preserved `FEid` items (by placed id).
     pub(super) old_fx: Vec<craft_psd::filter_effects::FilterEffectsItem>,
     /// Placed ids whose preserved `FEid` item stays.
@@ -70,13 +70,13 @@ pub(super) struct SmartOut {
     pub(super) new_fx: Vec<craft_psd::filter_effects::FilterEffectsItem>,
     /// The unfiltered pixels of each smart object whose filter mask shows: its layer record holds
     /// the filtered pixels without the mask, as Photoshop's do (`compose::filter_mask`).
-    pub(super) unfiltered: std::collections::HashMap<photocraft_doc::LayerId, Surface>,
+    pub(super) unfiltered: std::collections::HashMap<patronusphoto_doc::LayerId, Surface>,
     /// Source-bound previews shared by private blocks and smart-filter source documents.
     pub(super) vector_previews: crate::vector_preview::ExportCache,
 }
 
 /// Whether a smart object's filter mask shows: enabled over at least one visible, enabled filter.
-pub(super) fn masked(sm: &photocraft_doc::SmartObject) -> bool {
+pub(super) fn masked(sm: &patronusphoto_doc::SmartObject) -> bool {
     sm.filter_mask.as_ref().is_some_and(|m| m.enabled) && sm.filters_enabled && sm.smart_filters.iter().any(|f| f.visible)
 }
 
@@ -110,7 +110,7 @@ impl SmartOut {
         layers.sort_by_key(|(_, _, layer)| (layer.psd_id.is_none(), layer.id));
         for (_, _, layer) in layers {
             if let LayerContent::Smart(sm) = &layer.content
-                && let photocraft_doc::SmartSource::Linked { path } = &sm.source
+                && let patronusphoto_doc::SmartSource::Linked { path } = &sm.source
                 && let Some(placed) = sm.psd_raw.as_ref().and_then(|d| crate::smart_map::parse_sold(d))
                 && placed.idnt == *path
             {
@@ -127,11 +127,11 @@ impl SmartOut {
 
     /// The validated native preview of `sm`, checked against its embedded bytes or the preserved
     /// embedded file it links to (never a disk path).
-    pub(super) fn vector_preview(&mut self, sm: &photocraft_doc::SmartObject) -> Option<std::sync::Arc<crate::vector_preview::Exported>> {
+    pub(super) fn vector_preview(&mut self, sm: &patronusphoto_doc::SmartObject) -> Option<std::sync::Arc<crate::vector_preview::Exported>> {
         let preview = sm.vector_preview.as_ref()?;
         let (owner, source) = match &sm.source {
-            photocraft_doc::SmartSource::Embedded { bytes, .. } => (bytes, bytes.as_slice()),
-            photocraft_doc::SmartSource::Linked { path } => self
+            patronusphoto_doc::SmartSource::Embedded { bytes, .. } => (bytes, bytes.as_slice()),
+            patronusphoto_doc::SmartSource::Linked { path } => self
                 .globals
                 .iter()
                 .find_map(|(_, key, data)| crate::linked::embedded_payload_in_blocks([(key, data.as_slice())], path).map(|(_, bytes)| (data, bytes)))?,
@@ -142,7 +142,7 @@ impl SmartOut {
     /// The document's global blocks with the linked-layer files and filter caches brought up to
     /// date: unreferenced files dropped (when every reference is known), new files appended,
     /// filter caches kept or regenerated per smart object. Unchanged blocks stay byte-identical.
-    pub(super) fn finish(&self, blocks: Vec<photocraft_doc::PsdGlobalBlock>) -> Vec<photocraft_doc::PsdGlobalBlock> {
+    pub(super) fn finish(&self, blocks: Vec<patronusphoto_doc::PsdGlobalBlock>) -> Vec<patronusphoto_doc::PsdGlobalBlock> {
         use std::sync::Arc;
         let keep = |u: &str| !self.prune_ok || self.used.contains(u);
         let mut out = Vec::with_capacity(blocks.len() + 2);
@@ -203,7 +203,7 @@ impl SmartOut {
 
 /// The source size of a smart object whose file we can't decode: its rendered bounds taken back
 /// through the inverse transform (the source's top-left is the origin).
-pub(super) fn size_from_layer(sm: &photocraft_doc::SmartObject) -> (f64, f64) {
+pub(super) fn size_from_layer(sm: &patronusphoto_doc::SmartObject) -> (f64, f64) {
     let r = sm.cache.as_ref().map(Surface::content_bounds).filter(|r| !r.is_empty());
     let (Some(r), Some(inv)) = (r, sm.transform.inverse()) else { return (1.0, 1.0) };
     let [a, b, c, d, e, f] = inv.m;

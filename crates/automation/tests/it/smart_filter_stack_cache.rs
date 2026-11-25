@@ -1,7 +1,7 @@
 //! One integration-test process keeps the global smart filter stage cache isolated from the
 //! parallel tests in `tests/it`, so a denied render can be shown to have cached nothing.
-use photocraft_automation::workspace::authorize_desktop_engine_step;
-use photocraft_engine::{Session, smart_cmds};
+use patronusphoto_automation::workspace::authorize_desktop_engine_step;
+use patronusphoto_engine::{Session, smart_cmds};
 use serde_json::json;
 
 use crate::smart_filter_fixture as fixture;

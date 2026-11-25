@@ -2,7 +2,7 @@
 //! Log, the Ruler tool (with protractor and Straighten Layer), the Count tool and Place Scale
 //! Marker.
 //!
-//! The scale, count groups and ruler line are document data ([`photocraft_doc::Measurement`],
+//! The scale, count groups and ruler line are document data ([`patronusphoto_doc::Measurement`],
 //! saved in `.pcraft`; the scale also as PSD resource 1074). The Measurement Log and the data
 //! point choices are session-wide, as in Photoshop.
 //!
@@ -21,9 +21,9 @@
 
 use std::sync::Arc;
 
-use photocraft_color::{Color, SampleType};
-use photocraft_doc::{CountGroup, Document, Layer, MeasurementScale, Ruler};
-use photocraft_geom::Rect;
+use patronusphoto_color::{Color, SampleType};
+use patronusphoto_doc::{CountGroup, Document, Layer, MeasurementScale, Ruler};
+use patronusphoto_geom::Rect;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
@@ -655,7 +655,7 @@ fn selection_mask(d: &Document, r: Rect, n: usize) -> Vec<bool> {
 }
 
 fn gray_image(d: &Document, r: Rect) -> Vec<f32> {
-    let buf = photocraft_compose::render(d, r);
+    let buf = patronusphoto_compose::render(d, r);
     buf.px.par_iter().map(|p| 0.30 * p[0] + 0.59 * p[1] + 0.11 * p[2]).collect()
 }
 
@@ -782,7 +782,7 @@ pub fn straighten_angle(r: &Ruler) -> f64 {
 }
 
 /// Is `sel` a plain rectangle: the pixels inside its bounds all fully selected?
-fn plain_rectangle(sel: &photocraft_raster::Surface) -> bool {
+fn plain_rectangle(sel: &patronusphoto_raster::Surface) -> bool {
     let bounds = sel.content_bounds();
     // Row by row: a sparse selection over a big area is refused at its first gap, and only one row
     // is ever read. Full coverage means exactly 1.0 (a partly selected edge pixel is not a plain
@@ -1327,7 +1327,7 @@ fn place_scale_marker(s: &mut Session, p: &Value) -> Result<Value> {
         let bar_id = s.edit("Place Scale Marker", |doc, active| {
             let mut l = Layer::raster("Scale Bar", fmt);
             if let Some(surf) = l.surface_mut() {
-                surf.fill_rect(bar, &photocraft_raster::from_rgba(&fmt, [rgb[0], rgb[1], rgb[2], 1.0]));
+                surf.fill_rect(bar, &patronusphoto_raster::from_rgba(&fmt, [rgb[0], rgb[1], rgb[2], 1.0]));
             }
             let id = l.id;
             doc.layers.push(Layer::group("Measurement Scale Marker", vec![l]));

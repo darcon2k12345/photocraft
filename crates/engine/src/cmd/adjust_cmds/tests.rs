@@ -18,7 +18,7 @@ fn paint(s: &mut Session, f: impl Fn(i32, i32) -> [f32; 4]) {
         let mut data = Vec::new();
         for y in b.y0..b.y1 {
             for x in b.x0..b.x1 {
-                data.extend(photocraft_raster::from_rgba(&fmt, f(x, y)));
+                data.extend(patronusphoto_raster::from_rgba(&fmt, f(x, y)));
             }
         }
         surf.write_region(b, &data);
@@ -79,7 +79,7 @@ fn destructive_adjustments_respect_selection() {
     let mut s = session(8, "rgb");
     s.execute("select.all", json!({})).ok();
     s.edit("sel", |doc, _| {
-        let mut sel = Surface::new(photocraft_color::PixelFormat::GRAY8);
+        let mut sel = Surface::new(patronusphoto_color::PixelFormat::GRAY8);
         sel.write_region(Rect::new(0, 0, 10, 32), &vec![1.0; 320]);
         doc.selection = Some(sel);
         Ok(())
@@ -149,7 +149,7 @@ fn selective_color_layer_and_destructive() {
     }
     let mut s = session(8, "rgb");
     let r = s.execute("layer.newAdjustmentLayer.selectiveColor", json!({"colors": "blues", "yellow": 40})).unwrap();
-    let id = photocraft_doc::LayerId(r["layer"].as_u64().unwrap());
+    let id = patronusphoto_doc::LayerId(r["layer"].as_u64().unwrap());
     let get = |s: &Session| match &doc(s).layer(id).unwrap().content {
         LayerContent::Adjustment(Adjustment::SelectiveColor { relative, adjustments }) => (*relative, *adjustments),
         other => panic!("{other:?}"),
@@ -170,8 +170,8 @@ fn selective_color_layer_and_destructive() {
 fn color_lookup_builtin_data_and_errors() {
     let mut s = session(8, "rgb");
     let r = s.execute("layer.newAdjustmentLayer.colorLookup", json!({"lut": "dayForNight"})).unwrap();
-    let id = photocraft_doc::LayerId(r["layer"].as_u64().unwrap());
-    let px = photocraft_compose::render(doc(&s), Rect::from_xywh(40, 30, 1, 1)).px[0];
+    let id = patronusphoto_doc::LayerId(r["layer"].as_u64().unwrap());
+    let px = patronusphoto_compose::render(doc(&s), Rect::from_xywh(40, 30, 1, 1)).px[0];
     assert!(px[2] > px[0], "night is blue: {px:?}");
     // Switching interpolation keeps the table.
     s.execute("layer.setAdjustment", json!({"layer": id.0, "interpolation": "tetrahedral", "dither": true})).unwrap();
@@ -253,7 +253,7 @@ fn color_lookup_mesh_3dl_honours_the_header() {
 /// The kind's parameters, read back from the model (Color Lookup with its table name and size).
 #[test]
 fn color_lookup_file_round_trips_psd_in_its_own_format() {
-    use photocraft_doc::adjust::{LutFormat, LutSource};
+    use patronusphoto_doc::adjust::{LutFormat, LutSource};
     // #6544: a .3dl / .look file is kept as loaded and embedded unchanged in a PSD.
     let mut threedl = String::from("0 1023\n");
     for r in 0..2 {
@@ -270,7 +270,7 @@ fn color_lookup_file_round_trips_psd_in_its_own_format() {
     {
         let mut s = session(8, "rgb");
         let r = s.execute("layer.newAdjustmentLayer.colorLookup", json!({"data": text, "fileName": file_name})).unwrap();
-        let id = photocraft_doc::LayerId(r["layer"].as_u64().unwrap());
+        let id = patronusphoto_doc::LayerId(r["layer"].as_u64().unwrap());
         let want = LutSource { format, bytes: std::sync::Arc::new(text.as_bytes().to_vec()) };
         let source_of = |s: &Session| match adjustment_of(s, id) {
             Adjustment::ColorLookup { source, .. } => source,
@@ -281,8 +281,8 @@ fn color_lookup_file_round_trips_psd_in_its_own_format() {
         s.execute("layer.setAdjustment", json!({"layer": id.0, "interpolation": "tetrahedral", "dither": true})).unwrap();
         assert_eq!(source_of(&s), Some(want.clone()), "{file_name}");
         // Saved as PSD and reopened: same format tag, same bytes, same name.
-        let psd = photocraft_io::export(doc(&s), "psd", &photocraft_io::ExportOptions::default()).unwrap().bytes;
-        let back = photocraft_io::import("x.psd", &psd).unwrap().document;
+        let psd = patronusphoto_io::export(doc(&s), "psd", &patronusphoto_io::ExportOptions::default()).unwrap().bytes;
+        let back = patronusphoto_io::import("x.psd", &psd).unwrap().document;
         let layer = back.walk().into_iter().map(|(_, _, l)| l).find(|l| matches!(l.content, LayerContent::Adjustment(Adjustment::ColorLookup { .. }))).unwrap();
         let LayerContent::Adjustment(Adjustment::ColorLookup { name, source, .. }) = &layer.content else { panic!("not a Color Lookup") };
         assert_eq!((name.as_str(), source.as_ref()), (file_name, Some(&want)), "{psd_format}");
@@ -293,12 +293,12 @@ fn color_lookup_file_round_trips_psd_in_its_own_format() {
     // "none" drops it as well.
     let mut s = session(8, "rgb");
     let r = s.execute("layer.newAdjustmentLayer.colorLookup", json!({"data": threedl, "fileName": "Invert.3dl"})).unwrap();
-    let id = photocraft_doc::LayerId(r["layer"].as_u64().unwrap());
+    let id = patronusphoto_doc::LayerId(r["layer"].as_u64().unwrap());
     s.execute("layer.setAdjustment", json!({"layer": id.0, "lut": "none"})).unwrap();
     assert!(matches!(adjustment_of(&s, id), Adjustment::ColorLookup { source: None, lut: None, .. }));
 }
 
-fn adjustment_of(s: &Session, id: photocraft_doc::LayerId) -> Adjustment {
+fn adjustment_of(s: &Session, id: patronusphoto_doc::LayerId) -> Adjustment {
     match &doc(s).layer(id).unwrap().content {
         LayerContent::Adjustment(a) => a.clone(),
         other => panic!("{other:?}"),
@@ -354,7 +354,7 @@ fn selective_color_and_color_lookup_reject_wrong_typed_params() {
         ("colorLookup", json!({"lut": "warm", "interpolation": "tetrahedral", "dither": true})),
     ];
     for (kind, p) in made {
-        let id = photocraft_doc::LayerId(s.execute(&format!("layer.newAdjustmentLayer.{kind}"), p).unwrap()["layer"].as_u64().unwrap());
+        let id = patronusphoto_doc::LayerId(s.execute(&format!("layer.newAdjustmentLayer.{kind}"), p).unwrap()["layer"].as_u64().unwrap());
         let before = adjustment_of(&s, id);
         for (k, p, key) in cases.iter().filter(|c| c.0 == kind) {
             let mut p = p.clone();
@@ -384,8 +384,8 @@ fn new_kinds_round_trip_through_psd_and_pcraft() {
     s.execute("layer.newAdjustmentLayer.selectiveColor", json!({"reds": [10, -20, 30, -40], "method": "absolute"})).unwrap();
     s.execute("layer.newAdjustmentLayer.colorLookup", json!({"lut": "warm", "dither": true})).unwrap();
     let d = doc(&s).clone();
-    let bytes = photocraft_io::export(&d, "x.psd", &Default::default()).unwrap().bytes;
-    let back = photocraft_io::import("x.psd", &bytes).unwrap().document;
+    let bytes = patronusphoto_io::export(&d, "x.psd", &Default::default()).unwrap().bytes;
+    let back = patronusphoto_io::import("x.psd", &bytes).unwrap().document;
     let kinds: Vec<&str> = back
         .layers
         .iter()
@@ -395,8 +395,8 @@ fn new_kinds_round_trip_through_psd_and_pcraft() {
         })
         .collect();
     assert_eq!(kinds, ["selectiveColor", "colorLookup"]);
-    let pc = photocraft_format::save_to_bytes(&d, &Default::default()).unwrap();
-    let again = photocraft_format::load_from_bytes(&pc).unwrap();
+    let pc = patronusphoto_format::save_to_bytes(&d, &Default::default()).unwrap();
+    let again = patronusphoto_format::load_from_bytes(&pc).unwrap();
     for (a, b) in d.layers.iter().zip(&again.layers) {
         assert_eq!(a.content, b.content);
     }
@@ -486,14 +486,14 @@ fn smart_session() -> Session {
 }
 
 fn flatten(s: &Session) -> Vec<[f32; 4]> {
-    photocraft_compose::flatten(doc(s)).into_px()
+    patronusphoto_compose::flatten(doc(s)).into_px()
 }
 
 fn max_diff(a: &[[f32; 4]], b: &[[f32; 4]]) -> f32 {
     a.iter().zip(b).flat_map(|(p, q)| (0..4).map(move |c| (p[c] - q[c]).abs())).fold(0.0, f32::max)
 }
 
-fn smart_filters_of(s: &Session) -> Vec<photocraft_doc::SmartFilter> {
+fn smart_filters_of(s: &Session) -> Vec<patronusphoto_doc::SmartFilter> {
     let d = s.active().unwrap();
     match &d.doc.layer(d.active_layer.unwrap()).unwrap().content {
         LayerContent::Smart(sm) => sm.smart_filters.clone(),
@@ -520,7 +520,7 @@ fn adjustments_on_a_smart_object_record_a_smart_filter() {
     let sf = smart_filters_of(&s);
     assert_eq!(sf.len(), 1);
     assert_eq!(sf[0].command, "image.adjustments.invert");
-    assert!(sf[0].visible && sf[0].opacity == 1.0 && sf[0].blend == photocraft_color::BlendMode::Normal);
+    assert!(sf[0].visible && sf[0].opacity == 1.0 && sf[0].blend == patronusphoto_color::BlendMode::Normal);
     assert!(sf[0].params.get("__kind").is_none(), "the engine's private key is not recorded");
     assert_eq!(max_diff(&flatten(&s), &baked), 0.0, "the smart filter renders the destructive result");
     // Hiding the filter shows the original exactly.
@@ -742,7 +742,7 @@ fn replace_color_lab_bounds_are_refused_on_a_smart_object() {
 /// #5335: Curves (⌘M) edits the targeted layer mask, saved channel or Quick Mask at every depth.
 #[test]
 fn curves_apply_to_non_colour_targets_at_every_depth() {
-    let area = photocraft_geom::Rect::from_xywh(0, 0, 48, 32);
+    let area = patronusphoto_geom::Rect::from_xywh(0, 0, 48, 32);
     for depth in DEPTHS {
         for target in ["mask", "alpha", "quickMask"] {
             let mut s = session(depth, "rgb");
@@ -796,7 +796,7 @@ fn curves_apply_to_non_colour_targets_at_every_depth() {
 /// ignores the composite) or an ink-separated result (CMYK curves the inks).
 #[test]
 fn curves_on_grey_targets_ignore_the_document_colour_mode() {
-    let area = photocraft_geom::Rect::from_xywh(0, 0, 48, 32);
+    let area = patronusphoto_geom::Rect::from_xywh(0, 0, 48, 32);
     for mode in ["lab", "cmyk"] {
         for depth in [8u64, 16] {
             for target in ["mask", "alpha", "quickMask"] {
@@ -1227,7 +1227,7 @@ fn black_white_auto_spreads_the_greys() {
     use crate::adjust_params::{BW_DEFAULTS, HUE_RANGES};
     // A red and a blue the default mix turns into the same grey (0.43).
     let (red, blue) = ([0.776, 0.2, 0.2], [0.29, 0.29, 1.0]);
-    let gray = |c: [f32; 3], w: &[f32; 6]| photocraft_compose::adjust::black_white_gray(c, w);
+    let gray = |c: [f32; 3], w: &[f32; 6]| patronusphoto_compose::adjust::black_white_gray(c, w);
     let w = auto_black_white(&[red, blue]);
     let gap = |w: &[f32; 6]| (gray(red, w) - gray(blue, w)).abs();
     assert!(gap(&BW_DEFAULTS) < 0.01);
@@ -1310,9 +1310,9 @@ fn black_white_auto_reads_the_whole_input() {
     let id = s.execute("layer.newAdjustmentLayer.blackWhite", json!({})).unwrap()["layer"].as_u64().unwrap();
     s.edit("mask", |doc, _| {
         let b = doc.bounds();
-        let mut m = photocraft_doc::LayerMask::reveal_all();
+        let mut m = patronusphoto_doc::LayerMask::reveal_all();
         m.surface.write_region(Rect::new(10, 0, b.x1, b.y1), &vec![0.0; 10 * 10]);
-        doc.layer_mut(photocraft_doc::LayerId(id)).unwrap().mask = Some(m);
+        doc.layer_mut(patronusphoto_doc::LayerId(id)).unwrap().mask = Some(m);
         Ok(())
     })
     .unwrap();
@@ -1326,7 +1326,7 @@ fn black_white_auto_reads_the_whole_input() {
     paint(&mut s, |x, _| if x < 10 { red } else { [0.0; 4] });
     let id = s.execute("layer.newAdjustmentLayer.blackWhite", json!({})).unwrap()["layer"].as_u64().unwrap();
     s.execute("layer.createClippingMask", json!({})).unwrap();
-    assert!(s.active().unwrap().doc.layer(photocraft_doc::LayerId(id)).unwrap().clipped);
+    assert!(s.active().unwrap().doc.layer(patronusphoto_doc::LayerId(id)).unwrap().clipped);
     assert_eq!(auto(&mut s, json!({"layer": id})), mix.to_vec());
 
     // A Black & White smart filter: its own result is grey, its input is the colours.

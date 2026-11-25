@@ -12,12 +12,12 @@
 use std::sync::Arc;
 
 use egui::Color32;
-use photocraft_compose::gradient_fill as gf;
-use photocraft_doc::{Document, Fill, Layer, LayerContent, LayerId};
-use photocraft_engine::gradient_fill_cmds as cmds;
+use patronusphoto_compose::gradient_fill as gf;
+use patronusphoto_doc::{Document, Fill, Layer, LayerContent, LayerId};
+use patronusphoto_engine::gradient_fill_cmds as cmds;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 mod bar;
@@ -54,7 +54,7 @@ pub struct LiveGradient {
 }
 
 /// Whether an uncommitted gradient gesture must finish before applying a saved vector.
-pub(crate) fn editing(app: &PhotocraftApp) -> bool {
+pub(crate) fn editing(app: &PatronusPhotoApp) -> bool {
     app.canvas_tools.gradient.from.is_some() || app.gradient.panel.is_some() || app.gradient.preset.is_some()
 }
 
@@ -62,7 +62,7 @@ pub(crate) fn editing(app: &PhotocraftApp) -> bool {
 /// Painting into a layer mask, an alpha channel or the Quick Mask stays classic (pixels), except
 /// that a selected gradient fill layer is always edited live (selecting it targets its mask), even
 /// with Classic gradient chosen ([`fill_layer_active`]).
-pub(crate) fn live_mode(app: &PhotocraftApp) -> bool {
+pub(crate) fn live_mode(app: &PatronusPhotoApp) -> bool {
     if app.ui.tool != Tool::Gradient || (app.ui.tool_options.gradient_classic && !fill_layer_active(app)) {
         return false;
     }
@@ -78,24 +78,24 @@ pub(crate) fn live_mode(app: &PhotocraftApp) -> bool {
 /// gradient choice, and the options bar greys that choice out (#12008). Hidden and locked fill
 /// layers (or ones in a hidden or locked group), and the Quick Mask or an alpha channel as the
 /// target, were not measured and keep the choice.
-pub(crate) fn fill_layer_active(app: &PhotocraftApp) -> bool {
+pub(crate) fn fill_layer_active(app: &PatronusPhotoApp) -> bool {
     let Some((l, ..)) = active_gradient(app) else { return false };
     matches!(crate::canvas::paint_target(app).as_str(), Some("pixels" | "mask"))
         && app.session.active().is_some_and(|st| st.doc.path_of(l.id).is_some_and(|p| st.doc.shown_at(&p) && !st.doc.locks_at(&p).any()))
 }
 
 /// The active layer when it is a gradient fill layer: (layer, its frame, the canvas).
-pub(crate) fn active_gradient(app: &PhotocraftApp) -> Option<(Layer, Rect32, photocraft_geom::Rect)> {
+pub(crate) fn active_gradient(app: &PatronusPhotoApp) -> Option<(Layer, Rect32, patronusphoto_geom::Rect)> {
     let st = app.session.active()?;
     let l = st.doc.layer(st.active_layer?)?;
     if !matches!(l.content, LayerContent::Fill(Fill::Gradient { .. })) || !l.visible {
         return None;
     }
     let canvas = st.doc.bounds();
-    Some((l.clone(), photocraft_compose::fill_frame(l, canvas), canvas))
+    Some((l.clone(), patronusphoto_compose::fill_frame(l, canvas), canvas))
 }
 
-type Rect32 = photocraft_geom::Rect;
+type Rect32 = patronusphoto_geom::Rect;
 
 pub(crate) fn fill_of(l: &Layer) -> Option<&Fill> {
     match &l.content {
@@ -105,7 +105,7 @@ pub(crate) fn fill_of(l: &Layer) -> Option<&Fill> {
 }
 
 /// The fill an in-progress edit shows (`None` when it can't apply, e.g. a stale index).
-fn edited_fill(app: &PhotocraftApp, layer: &Layer, canvas: Rect32, cmd: &str, p: &Value) -> Option<Fill> {
+fn edited_fill(app: &PatronusPhotoApp, layer: &Layer, canvas: Rect32, cmd: &str, p: &Value) -> Option<Fill> {
     let f = fill_of(layer)?;
     let (fg, bg) = (app.session.tools.foreground, app.session.tools.background);
     let edited = match cmd {
@@ -121,7 +121,7 @@ fn edited_fill(app: &PhotocraftApp, layer: &Layer, canvas: Rect32, cmd: &str, p:
 
 /// Options-bar params of a new live gradient. Its fill layer is Normal at 100 %: the options bar's
 /// blend Mode and Opacity belong to the Classic gradient (#12007).
-fn create_params(app: &PhotocraftApp, from: [f32; 2], to: [f32; 2]) -> Value {
+fn create_params(app: &PatronusPhotoApp, from: [f32; 2], to: [f32; 2]) -> Value {
     let o = &app.ui.tool_options;
     json!({"from": from, "to": to, "style": o.gradient_style, "reverse": o.gradient_reverse, "dither": o.gradient_dither})
 }
@@ -131,7 +131,7 @@ fn dist(a: [f32; 2], b: [f32; 2]) -> f32 {
 }
 
 /// Opens the Color Picker on colour stop `i`; OK runs `gradient.fill.stop` (one history step).
-pub(crate) fn edit_stop_color(app: &mut PhotocraftApp, layer: LayerId, i: usize) {
+pub(crate) fn edit_stop_color(app: &mut PatronusPhotoApp, layer: LayerId, i: usize) {
     let Some(st) = app.session.active() else { return };
     let Some(Fill::Gradient { stops, .. }) = st.doc.layer(layer).and_then(fill_of) else { return };
     let mut sorted = stops.clone();
@@ -152,7 +152,7 @@ fn preview_key(revision: u64, what: &str) -> u64 {
 }
 
 /// The cached preview document of `key`, if it is the one kept.
-fn cached_preview(app: &PhotocraftApp, key: u64) -> Option<(Arc<Document>, u64)> {
+fn cached_preview(app: &PatronusPhotoApp, key: u64) -> Option<(Arc<Document>, u64)> {
     match &app.gradient.preview {
         Some((k, d)) if *k == key => Some((d.clone(), key)),
         _ => None,
@@ -160,7 +160,7 @@ fn cached_preview(app: &PhotocraftApp, key: u64) -> Option<(Arc<Document>, u64)>
 }
 
 /// Keeps `shown` as the preview of `key`.
-fn keep_preview(app: &mut PhotocraftApp, key: u64, shown: Document) -> (Arc<Document>, u64) {
+fn keep_preview(app: &mut PatronusPhotoApp, key: u64, shown: Document) -> (Arc<Document>, u64) {
     let shown = Arc::new(shown);
     app.gradient.preview = Some((key, shown.clone()));
     (shown, key)
@@ -170,7 +170,7 @@ fn keep_preview(app: &mut PhotocraftApp, key: u64, shown: Document) -> (Arc<Docu
 /// gradient widget proposes this pass (`live_overlay::show`'s answer, `None` when none does); it comes first, then the
 /// drag drawing a gradient, then an edit from the Properties or Gradient Editor panel. Nothing is kept for the next pass but
 /// the cached document of the last key.
-pub fn display_doc(app: &mut PhotocraftApp, idx: usize, live: Option<&(LayerId, Fill)>) -> Option<(Arc<Document>, u64)> {
+pub fn display_doc(app: &mut PatronusPhotoApp, idx: usize, live: Option<&(LayerId, Fill)>) -> Option<(Arc<Document>, u64)> {
     if app.session.active_index() != Some(idx) {
         return None;
     }
@@ -209,7 +209,7 @@ pub fn display_doc(app: &mut PhotocraftApp, idx: usize, live: Option<&(LayerId, 
         l.id = PREVIEW_LAYER;
         // Where the committed layer will go, so the preview doesn't jump on release.
         let active = app.session.active().and_then(|s| s.active_layer);
-        photocraft_engine::layer_place::insert_new(&mut shown, active, l, photocraft_engine::layer_place::Place::AutoEditable);
+        patronusphoto_engine::layer_place::insert_new(&mut shown, active, l, patronusphoto_engine::layer_place::Place::AutoEditable);
     } else {
         let l = doc.layer(layer)?;
         let f = edited_fill(app, l, doc.bounds(), cmd, &p)?;
@@ -224,7 +224,7 @@ pub fn display_doc(app: &mut PhotocraftApp, idx: usize, live: Option<&(LayerId, 
 pub fn thumbnail_image(f: &Fill, side: u32) -> Option<egui::ColorImage> {
     let Fill::Gradient { .. } = f else { return None };
     let n = side as i32;
-    let square = photocraft_geom::Rect::new(0, 0, n, n);
+    let square = patronusphoto_geom::Rect::new(0, 0, n, n);
     // No dither: it is invisible at this size and would only add noise.
     let mut plain = f.clone();
     if let Fill::Gradient { dither, .. } = &mut plain {
@@ -238,7 +238,7 @@ pub fn thumbnail_image(f: &Fill, side: u32) -> Option<egui::ColorImage> {
 
 /// The selected layer when it is a gradient fill layer. Unlike [`active_gradient`] it does not
 /// require the layer to be visible: the editor edits it either way.
-fn selected_gradient(app: &PhotocraftApp) -> Option<Layer> {
+fn selected_gradient(app: &PatronusPhotoApp) -> Option<Layer> {
     let st = app.session.active()?;
     let l = st.doc.layer(st.active_layer?)?;
     fill_of(l)?;
@@ -248,7 +248,7 @@ fn selected_gradient(app: &PhotocraftApp) -> Option<Layer> {
 /// Live mode: style, reverse and dither changes in the options bar also edit the selected gradient
 /// fill layer (one history step each), as in Photoshop. Its blend mode and opacity are the Layers
 /// panel's: the live bar has no Mode or Opacity (#12007).
-pub fn options_changed(app: &mut PhotocraftApp, before: &crate::state::ToolOptions) {
+pub fn options_changed(app: &mut PatronusPhotoApp, before: &crate::state::ToolOptions) {
     let o = app.ui.tool_options.clone();
     // A gradient fill layer is edited live whatever the stored choice (#12008).
     if app.ui.tool != Tool::Gradient || (o.gradient_classic && !fill_layer_active(app)) {
@@ -272,6 +272,6 @@ pub fn options_changed(app: &mut PhotocraftApp, before: &crate::state::ToolOptio
 }
 
 /// Properties panel for a live gradient. Every change uses the existing gradient commands.
-pub fn properties(app: &mut PhotocraftApp, ui: &mut egui::Ui, layer: &Layer) {
+pub fn properties(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, layer: &Layer) {
     properties_panel::show(app, ui, layer);
 }

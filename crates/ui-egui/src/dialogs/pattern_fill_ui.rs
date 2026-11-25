@@ -10,11 +10,11 @@ use std::sync::Arc;
 
 use craft::draw::ui::pattern::{PatternFillDialog, PatternFillOptions, PatternSwatch};
 use craft::ui::dialog::{DialogId, DialogResult};
-use photocraft_doc::{DocId, Document, Fill, LayerContent, LayerId};
-use photocraft_engine::pattern_fill_cmds as cmds;
+use patronusphoto_doc::{DocId, Document, Fill, LayerContent, LayerId};
+use patronusphoto_engine::pattern_fill_cmds as cmds;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::document_display::CanvasHost;
 
 /// What the engine accepts for a phase coordinate (`pattern_fill_cmds`).
@@ -68,7 +68,7 @@ pub(crate) struct Preview {
 }
 
 /// Opens the dialog over `options` and records its session.
-fn start(app: &mut PhotocraftApp, idx: usize, document: DocId, target: Target, options: PatternFillOptions) -> DialogId {
+fn start(app: &mut PatronusPhotoApp, idx: usize, document: DocId, target: Target, options: PatternFillOptions) -> DialogId {
     app.pattern_fill.opens += 1;
     let serial = app.pattern_fill.opens;
     let ctx = app.ctx().clone();
@@ -89,7 +89,7 @@ fn start(app: &mut PhotocraftApp, idx: usize, document: DocId, target: Target, o
 }
 
 /// Edit the active Pattern Fill layer (its thumbnail, Layer › Layer Content Options…).
-pub(crate) fn open(app: &mut PhotocraftApp) -> Option<DialogId> {
+pub(crate) fn open(app: &mut PatronusPhotoApp) -> Option<DialogId> {
     let idx = app.session.active_index()?;
     let st = app.session.active()?;
     let layer = st.active_layer?;
@@ -105,14 +105,14 @@ pub(crate) fn open(app: &mut PhotocraftApp) -> Option<DialogId> {
 
 /// Layer › New Fill Layer › Pattern…: the dialog in front of creating the layer, starting from
 /// the Patterns panel's pattern at 100 %, 0° and linked, as in Photoshop.
-pub(crate) fn open_new(app: &mut PhotocraftApp) -> Result<DialogId, String> {
-    if let Some(Err(why)) = photocraft_engine::commands::find(cmds::CREATE).map(|c| (c.enabled)(&app.session)) {
+pub(crate) fn open_new(app: &mut PatronusPhotoApp) -> Result<DialogId, String> {
+    if let Some(Err(why)) = patronusphoto_engine::commands::find(cmds::CREATE).map(|c| (c.enabled)(&app.session)) {
         return Err(why);
     }
     let idx = app.session.active_index().ok_or("no document open")?;
     let st = app.session.active().ok_or("no document open")?;
     let (document, insert) = (st.doc.id, st.active_layer);
-    let pattern = photocraft_engine::pattern_cmds::resolve_id(&app.session, "").ok_or("no patterns")?;
+    let pattern = patronusphoto_engine::pattern_cmds::resolve_id(&app.session, "").ok_or("no patterns")?;
     // The command inserts above the active layer. It is frozen here so a later layer change cannot
     // silently move the insertion point.
     Ok(start(app, idx, document, Target::Create { insert }, PatternFillOptions::bitmap(pattern)))
@@ -121,7 +121,7 @@ pub(crate) fn open_new(app: &mut PhotocraftApp) -> Result<DialogId, String> {
 /// The command and its params: the target plus the values. An edit sends only the keys that differ from
 /// the opened ones, so an imported scale or angle outside the dialog's range does not make an unrelated
 /// phase edit fail the strict `SET`; a new layer sends them all.
-fn command(app: &PhotocraftApp, session: &Session, options: &PatternFillOptions) -> Option<(&'static str, Value)> {
+fn command(app: &PatronusPhotoApp, session: &Session, options: &PatternFillOptions) -> Option<(&'static str, Value)> {
     let (cmd, mut params) = match session.target {
         Target::Edit(layer) => (cmds::SET, json!({"layer": layer.0, "document": session.document.0})),
         Target::Create { .. } => (cmds::CREATE, json!({})),
@@ -154,12 +154,12 @@ fn unchanged(session: &Session, options: &PatternFillOptions) -> bool {
 }
 
 /// The document the dialog targets is still the active one.
-fn target_is_active(app: &PhotocraftApp, session: &Session) -> bool {
+fn target_is_active(app: &PatronusPhotoApp, session: &Session) -> bool {
     app.session.active().is_some_and(|st| st.doc.id == session.document)
 }
 
 /// A new fill inserts above the active layer frozen when the dialog opened; an edit has no insertion.
-fn insertion_unchanged(app: &PhotocraftApp, session: &Session) -> bool {
+fn insertion_unchanged(app: &PatronusPhotoApp, session: &Session) -> bool {
     match session.target {
         Target::Edit(_) => true,
         Target::Create { insert } => app.session.active().is_some_and(|st| st.active_layer == insert),
@@ -167,7 +167,7 @@ fn insertion_unchanged(app: &PhotocraftApp, session: &Session) -> bool {
 }
 
 /// The dialog's target document and insertion layer are still the ones it opened on.
-fn context_ok(app: &PhotocraftApp, session: &Session) -> bool {
+fn context_ok(app: &PatronusPhotoApp, session: &Session) -> bool {
     target_is_active(app, session) && insertion_unchanged(app, session)
 }
 
@@ -187,7 +187,7 @@ pub(crate) struct DragTarget {
 /// still exists, is a linked Pattern Fill and is not pixel-locked, directly or through a group. A new
 /// fill may be inserted above a locked layer, as the command allows, but its insertion layer must
 /// still be the one the dialog opened on.
-pub(crate) fn drag_target(app: &PhotocraftApp) -> Option<DragTarget> {
+pub(crate) fn drag_target(app: &PatronusPhotoApp) -> Option<DragTarget> {
     let session = app.pattern_fill.session.as_ref()?;
     let options = app.framework.dialogs.get::<PatternFillDialog>()?.current();
     if !context_ok(app, session) || !options.phase.iter().all(|v| v.is_finite() && v.abs() <= MAX_PHASE) || !options.link {
@@ -219,13 +219,13 @@ pub(crate) struct PhaseDrag {
     last: [f64; 2],
 }
 
-fn dialog_phase(app: &PhotocraftApp) -> Option<[f64; 2]> {
+fn dialog_phase(app: &PatronusPhotoApp) -> Option<[f64; 2]> {
     app.framework.dialogs.get::<PatternFillDialog>().map(|d| d.current().phase)
 }
 
 /// A press at document point `at` starts a drag from the phase the dialog shows; `None` when the dialog
 /// has no draggable target.
-pub(crate) fn press(app: &PhotocraftApp, at: [f64; 2]) -> Option<PhaseDrag> {
+pub(crate) fn press(app: &PatronusPhotoApp, at: [f64; 2]) -> Option<PhaseDrag> {
     if !at.iter().all(|v| v.is_finite()) {
         return None;
     }
@@ -238,7 +238,7 @@ pub(crate) fn press(app: &PhotocraftApp, at: [f64; 2]) -> Option<PhaseDrag> {
 /// nothing is written). A phase the dialog shows other than the one this drag wrote (Snap to Origin, an
 /// automation edit) is kept and the drag continues from it. The phase comes from the dialog and the drag's
 /// own state only, so a second pass in one frame writes the same value again.
-pub(crate) fn drag(app: &mut PhotocraftApp, gesture: &mut PhaseDrag, at: [f64; 2]) -> bool {
+pub(crate) fn drag(app: &mut PatronusPhotoApp, gesture: &mut PhaseDrag, at: [f64; 2]) -> bool {
     if !at.iter().all(|v| v.is_finite()) || drag_target(app).as_ref() != Some(&gesture.target) {
         return false;
     }
@@ -259,12 +259,12 @@ pub(crate) fn drag(app: &mut PhotocraftApp, gesture: &mut PhaseDrag, at: [f64; 2
 }
 
 /// The button came up at `at`: the motion since the last drag applies, then the gesture is over.
-pub(crate) fn release(app: &mut PhotocraftApp, mut gesture: PhaseDrag, at: [f64; 2]) {
+pub(crate) fn release(app: &mut PatronusPhotoApp, mut gesture: PhaseDrag, at: [f64; 2]) {
     drag(app, &mut gesture, at);
 }
 
 /// The host's result of the Pattern Fill dialog: Cancel drops the session, OK commits it.
-pub(crate) fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
+pub(crate) fn take(app: &mut PatronusPhotoApp, _ctx: &egui::Context) {
     let Some(result) = app.framework.dialogs.take::<PatternFillDialog>() else { return };
     let session = app.pattern_fill.session.take();
     if let DialogResult::Ok(options) = result
@@ -277,7 +277,7 @@ pub(crate) fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
 }
 
 /// OK: one engine command. A stale document or insertion layer never receives the edit.
-fn commit(app: &mut PhotocraftApp, session: &Session, options: &PatternFillOptions) -> Result<(), String> {
+fn commit(app: &mut PatronusPhotoApp, session: &Session, options: &PatternFillOptions) -> Result<(), String> {
     if !target_is_active(app, session) {
         return Err("the target document is no longer active".into());
     }
@@ -292,7 +292,7 @@ fn commit(app: &mut PhotocraftApp, session: &Session, options: &PatternFillOptio
 }
 
 /// The canvas preview while the dialog is open: the document as OK would leave it.
-pub(crate) fn display_doc(app: &mut PhotocraftApp, idx: usize) -> Option<(Arc<Document>, u64)> {
+pub(crate) fn display_doc(app: &mut PatronusPhotoApp, idx: usize) -> Option<(Arc<Document>, u64)> {
     let options = app.framework.dialogs.get::<PatternFillDialog>()?.current().clone();
     let session = app.pattern_fill.session.as_ref()?;
     let st = app.session.documents().get(idx)?;
@@ -315,7 +315,7 @@ pub(crate) fn display_doc(app: &mut PhotocraftApp, idx: usize) -> Option<(Arc<Do
     let mut hash = std::collections::hash_map::DefaultHasher::new();
     (document.0, revision, serial, params.to_string()).hash(&mut hash);
     let key = (1 << 47) | (hash.finish() & ((1 << 36) - 1));
-    let shown = Arc::new(photocraft_engine::mode_cmds::display_document(&doc).unwrap_or(doc));
+    let shown = Arc::new(patronusphoto_engine::mode_cmds::display_document(&doc).unwrap_or(doc));
     app.pattern_fill.session.as_mut()?.preview = Some(Preview { document, revision, serial, params, shown: shown.clone(), key });
     Some((shown, key))
 }

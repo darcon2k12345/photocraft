@@ -8,13 +8,13 @@
 //! conversions flatten (Indexed, Bitmap) and require a grayscale source (Bitmap, Duotone).
 
 use craft_cms::{ColorSpace, TransformOptions};
-use photocraft_algo::quantize::{self, BitmapMethod, Dither, Forced, HalftoneShape, PaletteKind};
-use photocraft_algo::transform::{Homography, Interp};
-use photocraft_color::{ColorMode, PixelFormat, SampleType};
-use photocraft_doc::adjust::CurvePoint;
-use photocraft_doc::{ColorIndices, ColorTable, Document, Duotone, DuotoneInk, Layer, LayerContent, LayerId, Size};
-use photocraft_geom::{Affine, Rect};
-use photocraft_raster::Surface;
+use patronusphoto_algo::quantize::{self, BitmapMethod, Dither, Forced, HalftoneShape, PaletteKind};
+use patronusphoto_algo::transform::{Homography, Interp};
+use patronusphoto_color::{ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::adjust::CurvePoint;
+use patronusphoto_doc::{ColorIndices, ColorTable, Document, Duotone, DuotoneInk, Layer, LayerContent, LayerId, Size};
+use patronusphoto_geom::{Affine, Rect};
+use patronusphoto_raster::Surface;
 use serde_json::{Value, json};
 
 use crate::commands::CommandSpec;
@@ -163,15 +163,15 @@ pub(crate) fn rotate_arbitrary_with(s: &mut Session, p: &Value, image_rotation: 
         let dpi = doc.resolution_dpi;
         let background_id = doc.background().map(|l| l.id);
         // Type in a font that isn't installed turns its own pixels, as it can't re-render (#8860).
-        crate::canvas_geom::map_missing_font_type(&mut doc.layers, &mut |c| photocraft_algo::transform::warp_surface(c, c.content_bounds(), &h, interp))?;
+        crate::canvas_geom::map_missing_font_type(&mut doc.layers, &mut |c| patronusphoto_algo::transform::warp_surface(c, c.content_bounds(), &h, interp))?;
         for l in doc.layers.iter_mut() {
             let background = Some(l.id) == background_id;
             if background && let Some(surf) = l.surface_mut() {
                 // The Background stays a Background: rotated pixels over the background colour.
                 let src = surf.content_bounds();
-                let rotated = photocraft_algo::transform::warp_surface(surf, src, &h, interp)?;
+                let rotated = patronusphoto_algo::transform::warp_surface(surf, src, &h, interp)?;
                 let mut base = Surface::new(fmt);
-                let fill = photocraft_raster::from_rgba(&fmt, bg);
+                let fill = patronusphoto_raster::from_rgba(&fmt, bg);
                 // One shared tile per full tile, not a canvas-sized float buffer.
                 base.fill_rect(canvas, &fill);
                 crate::transform_cmds::composite_over(&mut base, &rotated);
@@ -182,7 +182,7 @@ pub(crate) fn rotate_arbitrary_with(s: &mut Session, p: &Value, image_rotation: 
                 }
             } else {
                 // Rotating the whole image moves locked layers too, including inside groups.
-                with_released_movement_locks(l, |l| crate::transform_cmds::transform_layer(None, photocraft_doc::Locks::default(), l, &h, Some(a), interp))?;
+                with_released_movement_locks(l, |l| crate::transform_cmds::transform_layer(None, patronusphoto_doc::Locks::default(), l, &h, Some(a), interp))?;
                 // Free Transform moves only linked masks; the whole image turns them all (#9201).
                 warp_unlinked_masks(l, &h, interp)?;
             }
@@ -277,7 +277,7 @@ fn with_released_movement_locks<R>(l: &mut Layer, f: impl FnOnce(&mut Layer) -> 
 
 /// The flattened image as straight RGBA (over white when `opaque`).
 fn composite(doc: &Document, opaque: bool) -> Vec<[f32; 4]> {
-    let buf = photocraft_compose::flatten(doc);
+    let buf = patronusphoto_compose::flatten(doc);
     if opaque { buf.over_background([1.0, 1.0, 1.0]).into_px() } else { buf.into_px() }
 }
 
@@ -288,7 +288,7 @@ fn single_layer(doc: &mut Document, active: &mut Option<LayerId>, mode: ColorMod
     let mut pixel = vec![0.0; fmt.channels()];
     let mut data = Vec::new();
     for q in px {
-        photocraft_raster::from_rgba_into(&fmt, *q, &mut pixel);
+        patronusphoto_raster::from_rgba_into(&fmt, *q, &mut pixel);
         data.extend_from_slice(&pixel);
     }
     let mut surf = Surface::new(fmt);
@@ -562,7 +562,7 @@ fn color_table(s: &mut Session, p: &Value) -> Result<Value> {
             let indices = known.as_ref().and_then(|k| k.known(id, surf, r)).unwrap_or_default();
             let mut written = vec![0u8; if record == Some(id) { data.len() / n } else { 0 }];
             for (k, q) in data.chunks_exact_mut(n).enumerate() {
-                let c = photocraft_raster::to_rgba(&fmt, q);
+                let c = patronusphoto_raster::to_rgba(&fmt, q);
                 let rgb = [c[0], c[1], c[2]];
                 let i = if c[3] <= 0.0 {
                     let Some(i) = old.transparent.map(usize::from) else { continue };
@@ -588,7 +588,7 @@ fn color_table(s: &mut Session, p: &Value) -> Result<Value> {
                 // An index past a shrunk table has no colour: black, as in Photoshop (#14342).
                 let nc = table.rgb(i);
                 let mut enc = [0.0f32; 8];
-                let m = photocraft_raster::from_rgba_into(&fmt, [nc[0], nc[1], nc[2], alpha], &mut enc);
+                let m = patronusphoto_raster::from_rgba_into(&fmt, [nc[0], nc[1], nc[2], alpha], &mut enc);
                 q.copy_from_slice(&enc[..m]);
             }
             surf.write_region(r, &data);
@@ -640,7 +640,7 @@ pub(crate) fn keep_in_color_table(table: &ColorTable, pre: &Surface, surf: &mut 
         for (i, (q, b)) in data.chunks_exact(n).zip(before.chunks_exact(n)).enumerate() {
             if q != b {
                 changed.push(i);
-                px.push(photocraft_raster::to_rgba(&fmt, q));
+                px.push(patronusphoto_raster::to_rgba(&fmt, q));
             }
         }
         if px.is_empty() {
@@ -651,7 +651,7 @@ pub(crate) fn keep_in_color_table(table: &ColorTable, pre: &Surface, surf: &mut 
         let mut mapped = changed.into_iter().zip(px).peekable();
         for (i, q) in data.chunks_exact_mut(n).enumerate() {
             if let Some((_, c)) = mapped.next_if(|(j, _)| *j == i) {
-                photocraft_raster::from_rgba_into(&fmt, c, &mut enc);
+                patronusphoto_raster::from_rgba_into(&fmt, c, &mut enc);
                 q.iter_mut().zip(enc).for_each(|(d, v)| *d = v);
             }
         }
@@ -665,7 +665,7 @@ pub(crate) fn keep_in_color_table(table: &ColorTable, pre: &Surface, surf: &mut 
 const BITMAP_RESOLUTION: std::ops::RangeInclusive<f64> = 1.0..=crate::document_preset_cmds::MAX_RESOLUTION;
 
 /// Bytes per pixel the Bitmap conversion holds besides the document: its 8-bit gray + alpha
-/// result. The composite is converted in bands of [`photocraft_compose::BAND_PIXELS`] (#8477).
+/// result. The composite is converted in bands of [`patronusphoto_compose::BAND_PIXELS`] (#8477).
 const BITMAP_WORK_BYTES_PER_PX: u64 = 2;
 
 /// Bitmap's Custom Pattern: a pattern's threshold map (see
@@ -685,10 +685,10 @@ fn custom_pattern_map(s: &Session, cmd: &str, p: &Value) -> Result<(Vec<f32>, us
     let mut lightness = Vec::new();
     lightness.try_reserve_exact(count).map_err(|_| bad(cmd, "not enough memory for the pattern's lightness map"))?;
     let mut band = Vec::new();
-    for top in (0..pat.height).step_by(photocraft_doc::pattern::BAND_ROWS as usize) {
-        photocraft_compose::pattern::pattern_rgba_rows(&pat, ColorMode::Grayscale, top, top + photocraft_doc::pattern::BAND_ROWS, &mut band)
+    for top in (0..pat.height).step_by(patronusphoto_doc::pattern::BAND_ROWS as usize) {
+        patronusphoto_compose::pattern::pattern_rgba_rows(&pat, ColorMode::Grayscale, top, top + patronusphoto_doc::pattern::BAND_ROWS, &mut band)
             .ok_or_else(|| bad(cmd, "not enough memory for the pattern's pixel rows"))?;
-        lightness.extend(band.iter().map(|q| photocraft_color::convert::rgb_to_gray([q[0], q[1], q[2]]) * q[3] + (1.0 - q[3])));
+        lightness.extend(band.iter().map(|q| patronusphoto_color::convert::rgb_to_gray([q[0], q[1], q[2]]) * q[3] + (1.0 - q[3])));
     }
     // Rank the complete pattern once: band-local ranks would change its thresholds.
     drop(band);
@@ -758,11 +758,11 @@ fn bitmap_in_bands(s: &mut Session, p: &Value, band_rows: i32) -> Result<Value> 
     if (nw, nh) != (ow, oh) {
         // Color Sampler points scale with the pixels, as in Image Size.
         let (sx, sy) = (f64::from(nw) / f64::from(ow.max(1)), f64::from(nh) / f64::from(oh.max(1)));
-        s.set_sampler_map(photocraft_geom::Affine { m: [sx, 0.0, 0.0, sy, 0.0, 0.0] });
+        s.set_sampler_map(patronusphoto_geom::Affine { m: [sx, 0.0, 0.0, sy, 0.0, 0.0] });
     }
     s.edit("Bitmap", |doc, active| {
         if (nw, nh) != (doc.size.width, doc.size.height) {
-            crate::image_cmds::resample_doc(doc, CMD, nw, nh, photocraft_algo::resample::Resample::Bicubic)?;
+            crate::image_cmds::resample_doc(doc, CMD, nw, nh, patronusphoto_algo::resample::Resample::Bicubic)?;
         }
         doc.resolution_dpi = dpi;
         let w = doc.size.width as usize;
@@ -776,17 +776,17 @@ fn bitmap_in_bands(s: &mut Session, p: &Value, band_rows: i32) -> Result<Value> 
         let n = fmt.channels();
         let mut out = Surface::new(fmt);
         let (mut gray, mut data) = (Vec::new(), Vec::new());
-        let _ = photocraft_compose::render_bands(doc, doc.bounds(), band_rows, |band| -> std::result::Result<(), std::convert::Infallible> {
+        let _ = patronusphoto_compose::render_bands(doc, doc.bounds(), band_rows, |band| -> std::result::Result<(), std::convert::Infallible> {
             gray.clear();
             gray.extend(band.px.iter().map(|q| {
                 // Over white, as the flattened image.
                 let a = q[3];
-                photocraft_color::convert::rgb_to_gray([q[0] * a + (1.0 - a), q[1] * a + (1.0 - a), q[2] * a + (1.0 - a)])
+                patronusphoto_color::convert::rgb_to_gray([q[0] * a + (1.0 - a), q[1] * a + (1.0 - a), q[2] * a + (1.0 - a)])
             }));
             strips.convert(&mut gray);
             data.resize(gray.len() * n, 0.0);
             for (g, px) in gray.iter().zip(data.chunks_exact_mut(n)) {
-                photocraft_raster::from_rgba_into(&fmt, [*g, *g, *g, 1.0], px);
+                patronusphoto_raster::from_rgba_into(&fmt, [*g, *g, *g, 1.0], px);
             }
             out.write_region(band.rect, &data);
             Ok(())

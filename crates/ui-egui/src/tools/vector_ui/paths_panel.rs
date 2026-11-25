@@ -3,7 +3,7 @@ use craft::behavior::kurbo;
 use craft::draw::ui::paths::{PathKind, PathRow as FwRow, PathsCommands, PathsEvent, PathsFooterButton, PathsPanel};
 
 use super::shapes::hex;
-use super::{Document, LayerContent, Path, PhotocraftApp, Value, json};
+use super::{Document, LayerContent, Path, PatronusPhotoApp, Value, json};
 use crate::direct_select::PathRef;
 use crate::theme::Tokens;
 
@@ -31,7 +31,7 @@ pub struct PathEntry {
 
 /// The Paths panel's rows, top to bottom: saved paths, the work path, then the selected layer's
 /// shape path ("<Layer> Shape Path") or vector mask ("<Layer> Vector Mask"), like Photoshop.
-pub fn path_rows(doc: &Document, active: Option<photocraft_doc::LayerId>) -> Vec<PathEntry> {
+pub fn path_rows(doc: &Document, active: Option<patronusphoto_doc::LayerId>) -> Vec<PathEntry> {
     let mut rows: Vec<_> =
         doc.paths.iter().map(|p| PathEntry { name: p.name.clone(), path: p.path.clone(), kind: PathRow::Saved, vector_mask: false }).collect();
     if let Some(wp) = &doc.work_path {
@@ -64,7 +64,7 @@ fn free_path_name(doc: &Document) -> String {
 
 /// The rows with their keys: the one place a row's `PathRef` is assigned. A saved path is keyed by its
 /// position in `doc.paths`, which is also its position among the rows.
-fn keyed_rows(doc: &Document, active: Option<photocraft_doc::LayerId>) -> Vec<(PathRef, PathEntry)> {
+fn keyed_rows(doc: &Document, active: Option<patronusphoto_doc::LayerId>) -> Vec<(PathRef, PathEntry)> {
     let mut saved = 0;
     path_rows(doc, active)
         .into_iter()
@@ -102,7 +102,7 @@ fn outline(path: &Path) -> kurbo::BezPath {
     let mut out = kurbo::BezPath::new();
     for sub in &path.subpaths {
         let Some(first) = sub.knots.first() else { continue };
-        let pt = |p: photocraft_geom::Point| kurbo::Point::new(p.x, p.y);
+        let pt = |p: patronusphoto_geom::Point| kurbo::Point::new(p.x, p.y);
         out.move_to(pt(first.anchor));
         for [_, c1, c2, p1] in sub.segments() {
             out.curve_to(pt(c1), pt(c2), pt(p1));
@@ -125,7 +125,7 @@ fn name_of(doc: &Document, key: &PathRef) -> Option<String> {
 }
 
 /// The row an engine name stands for.
-fn key_of_name(doc: &Document, name: &str, active: Option<photocraft_doc::LayerId>) -> Option<PathRef> {
+fn key_of_name(doc: &Document, name: &str, active: Option<patronusphoto_doc::LayerId>) -> Option<PathRef> {
     match name {
         "work" => Some(PathRef::Work),
         "layer" => active.map(|id| PathRef::Layer(id.0)),
@@ -134,7 +134,7 @@ fn key_of_name(doc: &Document, name: &str, active: Option<photocraft_doc::LayerI
 }
 
 /// Runs an engine command; an error goes to the status line.
-fn run(app: &mut PhotocraftApp, command: &str, params: Value) -> Option<Value> {
+fn run(app: &mut PatronusPhotoApp, command: &str, params: Value) -> Option<Value> {
     match app.run(command, params) {
         Ok(v) => Some(v),
         Err(e) => {
@@ -147,7 +147,7 @@ fn run(app: &mut PhotocraftApp, command: &str, params: Value) -> Option<Value> {
 
 /// The command that deletes a row. A shape layer's path is the shape: the context menu's Delete Path
 /// deletes the layer (#6552, `shape_deletes_layer`), the footer's Delete runs `path.delete` on it.
-fn delete_command(app: &PhotocraftApp, key: &PathRef, shape_deletes_layer: bool) -> Option<(&'static str, Value)> {
+fn delete_command(app: &PatronusPhotoApp, key: &PathRef, shape_deletes_layer: bool) -> Option<(&'static str, Value)> {
     let st = app.session.active()?;
     let entry = keyed_rows(&st.doc, st.active_layer).into_iter().find(|(k, _)| k == key).map(|(_, e)| e)?;
     let layer = match key {
@@ -165,7 +165,7 @@ fn delete_command(app: &PhotocraftApp, key: &PathRef, shape_deletes_layer: bool)
 
 /// The engine command a row command of the panel runs on `path`. Stroke Path is the engine command here; `apply`
 /// asks for its tool first. Rename Path has no command: the panel opens its in-place field itself.
-pub(crate) fn command_params(app: &PhotocraftApp, command: PathsCommands, path: &PathRef) -> Option<(&'static str, Value)> {
+pub(crate) fn command_params(app: &PatronusPhotoApp, command: PathsCommands, path: &PathRef) -> Option<(&'static str, Value)> {
     let st = app.session.active()?;
     let name = name_of(&st.doc, path)?;
     match command {
@@ -186,7 +186,7 @@ pub(crate) fn command_params(app: &PhotocraftApp, command: PathsCommands, path: 
                 }
             }
             let copy = format!("{} copy {n}", entry.name);
-            Some(("path.set", json!({"name": copy, "path": photocraft_engine::vector_cmds::path_json(&entry.path)})))
+            Some(("path.set", json!({"name": copy, "path": patronusphoto_engine::vector_cmds::path_json(&entry.path)})))
         }
         PathsCommands::DeletePath => delete_command(app, path, true),
         _ => None,
@@ -195,7 +195,7 @@ pub(crate) fn command_params(app: &PhotocraftApp, command: PathsCommands, path: 
 
 /// The one mapping from the panel's events to commands. A row command takes its row from the event, and the selected
 /// row when the event has none.
-pub(crate) fn apply(app: &mut PhotocraftApp, event: PathsEvent<PathRef>) {
+pub(crate) fn apply(app: &mut PatronusPhotoApp, event: PathsEvent<PathRef>) {
     let Some(st) = app.session.active() else { return };
     let (doc, active) = (st.doc.clone(), st.active_layer);
     match event {
@@ -291,14 +291,14 @@ pub(crate) fn apply(app: &mut PhotocraftApp, event: PathsEvent<PathRef>) {
 
 /// Deletes `rows`. Every row becomes a command by name (or layer id) before the first runs: a saved path's key is its
 /// position, which the first deletion shifts.
-fn delete_rows(app: &mut PhotocraftApp, rows: &[PathRef]) {
+fn delete_rows(app: &mut PatronusPhotoApp, rows: &[PathRef]) {
     let commands: Vec<_> = rows.iter().filter_map(|k| delete_command(app, k, false)).collect();
     for (cmd, params) in commands {
         run(app, cmd, params);
     }
 }
 
-pub fn paths_panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn paths_panel(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let Some(st) = app.session.active() else {
         let t = Tokens::get(ui.ctx());
         ui.label(egui::RichText::new(tl!("No document")).color(t.text_faint));

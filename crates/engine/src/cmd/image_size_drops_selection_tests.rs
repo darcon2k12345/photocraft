@@ -2,7 +2,7 @@
 //! size, as the reference application does; undo brings back the old size and selection in one
 //! step. A Fit Image that changes nothing and a resolution-only Image Size keep the selection.
 
-use photocraft_geom::Rect;
+use patronusphoto_geom::Rect;
 use serde_json::{Value, json};
 
 use crate::Session;

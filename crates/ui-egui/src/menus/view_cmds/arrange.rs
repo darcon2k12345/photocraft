@@ -1,8 +1,8 @@
 use craft::behavior::canvas::ZoomLadder;
 use craft::ui::docking::{ArrangeCommands, ArrangeSpace, Arranged, arrange as run_arrange};
-use photocraft_doc::DocId;
+use patronusphoto_doc::DocId;
 
-use super::{PhotocraftApp, Value, json};
+use super::{PatronusPhotoApp, Value, json};
 
 /// Window › Arrange ids (`window.arrange.<name>`) and the framework command each runs: the one table that says which
 /// ids exist.
@@ -37,7 +37,7 @@ pub(super) fn command(k: &str) -> Option<ArrangeCommands> {
 }
 
 /// The check mark of an n-up entry: whether the document area shows that layout. `None` for the other entries.
-pub(super) fn layout_checked(app: &PhotocraftApp, k: &str) -> Option<bool> {
+pub(super) fn layout_checked(app: &PatronusPhotoApp, k: &str) -> Option<bool> {
     let arrangement = command(k)?.arrangement();
     N_UP.contains(&k).then(|| app.ui.document_windows.arrangement == Some(arrangement))
 }
@@ -52,7 +52,7 @@ fn screen_position(v: &Value) -> Option<[f32; 2]> {
 
 /// The area and sizes the framework's arrangements work in. New windows take half the document area; a window that
 /// follows its document's size is resized by `DocumentWindow` afterwards.
-fn space(app: &PhotocraftApp) -> ArrangeSpace<DocId> {
+fn space(app: &PatronusPhotoApp) -> ArrangeSpace<DocId> {
     let area = app.ctx().content_rect();
     let step = craft::ui::style::StyleCx::with_root(app.ctx(), |cx| cx.tokens.size.window.cascade);
     ArrangeSpace::new(area, area.size() * 0.5, step, app.session.active().map(|st| st.doc.id))
@@ -60,7 +60,7 @@ fn space(app: &PhotocraftApp) -> ArrangeSpace<DocId> {
 
 /// The Window › Arrange items: the framework's layouts and window commands over `app.ui.document_windows`, and the
 /// Match commands over the document views.
-pub(super) fn arrange(app: &mut PhotocraftApp, k: &str, p: &Value) -> Result<Value, String> {
+pub(super) fn arrange(app: &mut PatronusPhotoApp, k: &str, p: &Value) -> Result<Value, String> {
     let command = command(k).ok_or_else(|| format!("unknown arrangement {k}"))?;
     let given = |key: &str| p.get(key).is_some_and(|v| !v.is_null());
     if matches!(command, ArrangeCommands::FloatInWindow) && (given("document") || given("position")) {
@@ -80,7 +80,7 @@ pub(super) fn arrange(app: &mut PhotocraftApp, k: &str, p: &Value) -> Result<Val
 
 /// Gives the window New Window for Document just opened its own copy of its document's view, so the two scroll and
 /// zoom apart.
-fn keep_own_view(app: &mut PhotocraftApp) {
+fn keep_own_view(app: &mut PatronusPhotoApp) {
     let Some((group, _)) = app.ui.document_windows.floating.last() else { return };
     let Some(view) = group.documents.first().and_then(|doc| crate::canvas::tabs::document_index(app, *doc)).and_then(|doc| app.ui.views.get(doc)).cloned()
     else {
@@ -91,7 +91,7 @@ fn keep_own_view(app: &mut PhotocraftApp) {
 
 /// Float in Window for a given document (default the active one) and screen position (`[x, y]` in points, default the
 /// next cascade slot): dragging a tab off the tab strip uses both. A document alone in a floating window keeps it.
-fn float_in_window(app: &mut PhotocraftApp, p: &Value) -> Result<Value, String> {
+fn float_in_window(app: &mut PatronusPhotoApp, p: &Value) -> Result<Value, String> {
     let doc = match p.get("document") {
         None | Some(Value::Null) => app.session.active().ok_or("no document")?.doc.id,
 
@@ -123,7 +123,7 @@ fn float_in_window(app: &mut PhotocraftApp, p: &Value) -> Result<Value, String> 
 
 /// Match Zoom, Location and Rotation: every view takes the active view's values, each zoom within its own
 /// document's range.
-fn match_views(app: &mut PhotocraftApp, zoom: bool, loc: bool, rot: bool) -> Result<Value, String> {
+fn match_views(app: &mut PatronusPhotoApp, zoom: bool, loc: bool, rot: bool) -> Result<Value, String> {
     let i = app.session.active_index().ok_or("no document")?;
     let src = app.ui.views.get(i).cloned().ok_or("no document")?;
     let animated_zoom = app.session.prefs().general.animated_zoom;
@@ -168,6 +168,6 @@ fn match_views(app: &mut PhotocraftApp, zoom: bool, loc: bool, rot: bool) -> Res
 }
 
 /// Whether `doc` shows in a floating window.
-pub(crate) fn document_is_floating(app: &PhotocraftApp, doc: DocId) -> bool {
+pub(crate) fn document_is_floating(app: &PatronusPhotoApp, doc: DocId) -> bool {
     app.ui.document_windows.floating.iter().any(|(group, _)| group.documents.contains(&doc))
 }

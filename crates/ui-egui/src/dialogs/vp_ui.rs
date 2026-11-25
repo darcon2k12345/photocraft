@@ -1,7 +1,7 @@
 //! Filter › Vanishing Point on the hosted workspace.
 //!
 //! The editor, its history and its bar are the framework's [`VanishingPointWorkspace`]. This module is the app's side
-//! of it: the perspective scene over `photocraft_algo::vanishing` ([`PcVanishingScene`]), the pictures the workspace
+//! of it: the perspective scene over `patronusphoto_algo::vanishing` ([`PcVanishingScene`]), the pictures the workspace
 //! shows ([`PcVanishingSource`]), the clone strokes painted onto a copy of the layer ([`Preview`]), and the answer to
 //! OK, which runs `filter.vanishingPoint` with the workspace's command so the whole session is one history step.
 
@@ -23,14 +23,14 @@ use craft::ui::dialog::{DialogId, HostedWorkspace};
 use craft::ui::primitives::Revision;
 use craft::ui::runtime::pending::Job;
 use egui::{Color32, ColorImage};
-use photocraft_algo::vanishing::{Edge, PlaneCheck as AlgoCheck, Scene, VpPlane, clone_dabs_from, clone_source};
-use photocraft_doc::{DocId, Document, Layer, LayerContent, LayerId};
-use photocraft_engine::vp_cmds::{MAX_CLONE_DABS, MAX_CLONE_STROKES, VP, copy_changed, over, paste_onto, visible_image};
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use patronusphoto_algo::vanishing::{Edge, PlaneCheck as AlgoCheck, Scene, VpPlane, clone_dabs_from, clone_source};
+use patronusphoto_doc::{DocId, Document, Layer, LayerContent, LayerId};
+use patronusphoto_engine::vp_cmds::{MAX_CLONE_DABS, MAX_CLONE_STROKES, VP, copy_changed, over, paste_onto, visible_image};
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::Surface;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::distort_ui::surface_image;
 
 #[cfg(test)]
@@ -392,7 +392,7 @@ impl VanishingPointSource for PcVanishingSource {
     }
 }
 
-/// The perspective geometry of `photocraft_algo::vanishing`, for the framework's editor.
+/// The perspective geometry of `patronusphoto_algo::vanishing`, for the framework's editor.
 #[derive(Clone, Copy)]
 pub(crate) struct PcVanishingScene {
     center: [f64; 2],
@@ -443,7 +443,7 @@ impl PcVanishingScene {
     }
 
     /// Plane `i`'s frame in the algo scene, when its metric sides are usable.
-    fn algo_frame(sc: &Scene, i: usize) -> Option<(photocraft_algo::transform::Homography, f64, f64)> {
+    fn algo_frame(sc: &Scene, i: usize) -> Option<(patronusphoto_algo::transform::Homography, f64, f64)> {
         if i >= sc.planes.len() {
             return None;
         }
@@ -517,7 +517,7 @@ impl VanishingScene for PcVanishingScene {
 }
 
 /// Starts Vanishing Point on the active pixel layer.
-pub fn begin(app: &mut PhotocraftApp, _ctx: &egui::Context) -> Result<(), String> {
+pub fn begin(app: &mut PatronusPhotoApp, _ctx: &egui::Context) -> Result<(), String> {
     if app.ui.transform.is_some() {
         return Err("finish Free Transform first".into());
     }
@@ -558,7 +558,7 @@ fn in_flight<T>(event: &EditEvent<T>) -> bool {
 
 /// Runs OK's command: `filter.vanishingPoint` with the planes, the paste and the strokes, on the layer the workspace
 /// opened on. With nothing to paste or clone there is nothing to run.
-fn apply(app: &mut PhotocraftApp, layer: LayerId, command: &VanishingPointCommand) -> Result<(), String> {
+fn apply(app: &mut PatronusPhotoApp, layer: LayerId, command: &VanishingPointCommand) -> Result<(), String> {
     if command.paste.is_empty() && command.clone.is_empty() {
         return Ok(());
     }
@@ -575,7 +575,7 @@ fn apply(app: &mut PhotocraftApp, layer: LayerId, command: &VanishingPointComman
 
 /// The workspace's pump (a `TAKERS` row): paints the strokes the workspace reported, shows its refusals, answers a held
 /// OK, and drops the app's side once the workspace closed.
-pub(crate) fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
+pub(crate) fn take(app: &mut PatronusPhotoApp, _ctx: &egui::Context) {
     let Some(vp) = app.vanishing.as_ref() else { return };
     let (id, layer, source) = (vp.dialog, vp.layer, vp.source.clone());
     let Some(hosted) = app.framework.dialogs.get_mut_by_id::<Hosted>(id) else {
@@ -621,7 +621,7 @@ pub(crate) fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
 }
 
 /// The open workspace's command fields for the automation surface, with the document and layer it works on.
-pub(crate) fn describe(app: &PhotocraftApp) -> Option<Value> {
+pub(crate) fn describe(app: &PatronusPhotoApp) -> Option<Value> {
     let vp = app.vanishing.as_ref()?;
     let hosted = app.framework.dialogs.get_by_id::<Hosted>(vp.dialog)?;
     let mut fields: Value = serde_json::to_value(hosted.workspace().command(vp.source.has_paste())).ok()?;

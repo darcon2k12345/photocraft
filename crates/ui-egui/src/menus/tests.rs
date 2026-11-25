@@ -4,7 +4,7 @@ use craft::menu::{THEME_COMMAND, ThemeChoice};
 
 #[test]
 fn live_lookup_finds_engine_and_shell_commands() {
-    for command in photocraft_engine::commands::command_specs() {
+    for command in patronusphoto_engine::commands::command_specs() {
         assert!(is_live(command.id), "{}", command.id);
     }
     for &(id, ..) in UI_COMMANDS {
@@ -16,15 +16,15 @@ fn live_lookup_finds_engine_and_shell_commands() {
 }
 
 /// The Appearance menu's current choice. `ThemeMenu` keeps it private; its `Debug` text names it.
-fn current_choice(app: &PhotocraftApp) -> String {
+fn current_choice(app: &PatronusPhotoApp) -> String {
     let text = format!("{:?}", crate::prefs_ui::theme_menu(app));
     text.split("current: ").nth(1).unwrap_or_default().to_string()
 }
 
 #[test]
 fn sync_with_system_menu_keeps_saved_slots_and_its_checkmark() {
-    use photocraft_engine::prefs::AppearanceMode;
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    use patronusphoto_engine::prefs::AppearanceMode;
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     let ctx = app.ctx().clone();
     app.run("prefs.set", json!({"values": {"interface.darkTheme": "studio", "interface.lightTheme": "classic"}})).unwrap();
     invoke(&mut app, &ctx, THEME_COMMAND, json!({"mode": "system"})).unwrap();
@@ -53,16 +53,16 @@ impl Want {
     const NONE: Want = Want { id: "", path: None, checked: None, enabled: None, after: None };
 }
 
-fn new_doc(app: &mut PhotocraftApp) {
+fn new_doc(app: &mut PatronusPhotoApp) {
     app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
 }
 
-fn with_selection(app: &mut PhotocraftApp) {
+fn with_selection(app: &mut PatronusPhotoApp) {
     new_doc(app);
     app.run("select.rect", json!({"x": 2, "y": 2, "width": 8, "height": 8})).unwrap();
 }
 
-fn proofed(app: &mut PhotocraftApp) {
+fn proofed(app: &mut PatronusPhotoApp) {
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 8, "height": 8})).unwrap();
     app.sync_views();
@@ -76,30 +76,30 @@ fn proofed(app: &mut PhotocraftApp) {
     // Custom… opens the generated Proof Setup dialog with a profile choice.
     assert!(invoke(app, &ctx, "view.proofSetup.custom", Value::Null).unwrap()["dialog"].is_string());
     use craft::ui::patterns::form_dialogs::{Param, ParamKind};
-    let spec = photocraft_engine::commands::find("edit.convertToProfile").unwrap();
+    let spec = patronusphoto_engine::commands::find("edit.convertToProfile").unwrap();
     let params = Param::parse_list(spec.params);
     assert!(matches!(&params[0].kind, ParamKind::Choice { options, .. } if options[0].0 == "srgb" && !options.iter().any(|(v, _)| v.contains('/'))));
 }
 
-fn painted_layer(app: &mut PhotocraftApp) {
+fn painted_layer(app: &mut PatronusPhotoApp) {
     app.session.execute("file.new", json!({"width": 64, "height": 64})).unwrap();
     app.sync_views();
     app.session.execute("layer.new.layer", json!({})).unwrap();
     app.session
         .edit("paint", |doc, a| {
-            doc.layer_mut(a.unwrap()).unwrap().surface_mut().unwrap().fill_rect(photocraft_geom::Rect::new(8, 8, 32, 32), &[1.0, 0.0, 0.0, 1.0]);
+            doc.layer_mut(a.unwrap()).unwrap().surface_mut().unwrap().fill_rect(patronusphoto_geom::Rect::new(8, 8, 32, 32), &[1.0, 0.0, 0.0, 1.0]);
             Ok(())
         })
         .unwrap();
 }
 
-fn warp_box_open(app: &mut PhotocraftApp) {
+fn warp_box_open(app: &mut PatronusPhotoApp) {
     painted_layer(app);
     let ctx = app.ctx().clone();
     crate::transform_tool::begin_warp(app, &ctx).unwrap();
 }
 
-fn stored_warp(app: &mut PhotocraftApp) {
+fn stored_warp(app: &mut PatronusPhotoApp) {
     painted_layer(app);
     app.run("layer.smartObjects.convertToSmartObject", json!({})).unwrap();
     app.run("layer.smartObjects.warp", json!({"style": "cylinder", "values": [8, 32, 32, 8, 0.5, 0.5, 0.85], "rect": [8, 8, 32, 32]})).unwrap();
@@ -108,7 +108,7 @@ fn stored_warp(app: &mut PhotocraftApp) {
 /// Rows sit where Photoshop puts them and show their state after the setup: path, checkmark, enablement, order.
 #[test]
 fn menu_rows_sit_where_photoshop_puts_them_and_show_their_state() {
-    type Setup = fn(&mut PhotocraftApp);
+    type Setup = fn(&mut PatronusPhotoApp);
     let cases: &[(&str, Setup, &[Want])] = &[
         (
             "select",
@@ -144,7 +144,7 @@ fn menu_rows_sit_where_photoshop_puts_them_and_show_their_state() {
         ("Warp stored on a smart object (#9798)", stored_warp, &[Want { id: "edit.transform.warp", checked: Some(true), ..Want::NONE }]),
     ];
     for (name, setup, wants) in cases {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         setup(&mut app);
         let rows = menu_rows(&app);
         for want in *wants {
@@ -166,7 +166,7 @@ fn menu_rows_sit_where_photoshop_puts_them_and_show_their_state() {
     }
 
     // The context menus' Select actions all live under Select; Make Work Path is a Paths panel action.
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     with_selection(&mut app);
     let rows = menu_rows(&app);
     let menus = crate::canvas_tool_menu::SELECTION_MENU.iter().chain(crate::canvas_tool_menu::NO_SELECTION_MENU).flatten();
@@ -177,7 +177,7 @@ fn menu_rows_sit_where_photoshop_puts_them_and_show_their_state() {
 
 #[test]
 fn window_panel_and_workspace_ids_drive_the_shell() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     // Essentials keeps History as an icon: its Window id opens the icon's flyout, which checks its row.
     assert!(!crate::panel_docking::is_checked(&app, "history"));
@@ -203,12 +203,12 @@ fn window_panel_and_workspace_ids_drive_the_shell() {
 /// Layer › Copy CSS puts the layer's CSS on the clipboard, as Photoshop's does (#9372).
 #[test]
 fn copy_css_puts_the_layers_css_on_the_clipboard() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.session.execute("file.new", json!({"width": 400, "height": 300})).unwrap();
     app.session.execute("layer.new.layer", json!({"name": "Box"})).unwrap();
     app.session
         .edit("paint", |doc, active| {
-            doc.layer_mut(active.unwrap()).unwrap().surface_mut().unwrap().fill_rect(photocraft_geom::Rect::new(100, 80, 300, 220), &[0.2, 0.4, 0.8, 1.0]);
+            doc.layer_mut(active.unwrap()).unwrap().surface_mut().unwrap().fill_rect(patronusphoto_geom::Rect::new(100, 80, 300, 220), &[0.2, 0.4, 0.8, 1.0]);
             Ok(())
         })
         .unwrap();

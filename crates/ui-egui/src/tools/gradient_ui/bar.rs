@@ -10,11 +10,11 @@ use craft::ui::patterns::blend_keys::{BlendKeyEntry, blend_entries};
 use craft::ui::pickers::Select;
 use craft::ui::runtime::env::{Env, Label};
 use craft::ui::text::NumberField;
-use photocraft_doc::BlendMode;
+use patronusphoto_doc::BlendMode;
 
 use super::{fill_layer_active, options_changed, stops};
 use crate::state::Tool;
-use crate::{PhotocraftApp, panel_docking};
+use crate::{PatronusPhotoApp, panel_docking};
 
 /// The blend modes the Classic gradient lists, with a rule above each group.
 fn blend_modes() -> Vec<Entry<BlendMode>> {
@@ -37,7 +37,7 @@ fn labelled(ui: &mut egui::Ui, label: &str, mut add: impl FnMut(&mut egui::Ui)) 
 
 /// The Gradient options cells over the tool options. Every change that also edits a selected gradient fill layer
 /// (style, Reverse, Dither) goes through [`options_changed`], once, after the cells.
-pub(crate) fn bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub(crate) fn bar(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let before = app.ui.tool_options.clone();
     // A selected gradient fill layer is edited live whatever the stored choice: the Mode cell reads Gradient and is greyed.
     let locked_live = fill_layer_active(app);

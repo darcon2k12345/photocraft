@@ -1,5 +1,5 @@
 use super::*;
-use photocraft_geom::Rect;
+use patronusphoto_geom::Rect;
 
 /// The example Invert plug-in, built from `examples/plugins/invert-rs`.
 const INVERT: &[u8] = include_bytes!("../../../../plugins/tests/fixtures/invert.wasm");
@@ -17,7 +17,7 @@ fn plugin_base64_keeps_standard_urlsafe_and_mixed_alphabets() {
 }
 
 fn b64(b: &[u8]) -> String {
-    photocraft_paint::tile::b64_encode(b)
+    patronusphoto_paint::tile::b64_encode(b)
 }
 
 /// A WAT plug-in with its own `id` whose `pc_filter` body is `filter`.
@@ -75,7 +75,7 @@ fn pixels(s: &Session) -> Vec<f32> {
 
 fn select_partial(s: &mut Session) {
     s.edit("sel", |doc, _| {
-        let mut sel = Surface::new(photocraft_color::PixelFormat::GRAY8);
+        let mut sel = Surface::new(patronusphoto_color::PixelFormat::GRAY8);
         sel.fill_rect(Rect::new(4, 4, 30, 20), &[1.0]);
         sel.fill_rect(Rect::new(4, 4, 30, 9), &[0.4]);
         doc.selection = Some(sel);

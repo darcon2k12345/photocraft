@@ -2,7 +2,7 @@ use super::*;
 use craft::ui::fonts::{FontRef, I18nScripts, SystemFonts, UiFonts};
 use egui::epaint::text::{FontInsert, FontPriority, InsertFontFamily};
 use egui::{FontData, FontFamily, FontId};
-use photocraft_text::scripts;
+use patronusphoto_text::scripts;
 
 /// Runs frames showing `text` until fonts settle; returns whether every glyph is covered.
 fn render(ctx: &egui::Context, text: &str) -> bool {
@@ -32,12 +32,12 @@ fn first_han_face(ctx: &egui::Context) -> Option<String> {
 fn add_late_face(ctx: &egui::Context, name: &str) {
     let families =
         [FontFamily::Proportional, FontFamily::Monospace].into_iter().map(|family| InsertFontFamily { family, priority: FontPriority::Lowest }).collect();
-    ctx.add_font(FontInsert::new(name, FontData::from_static(photocraft_text::fonts::INTER_REGULAR.as_slice()), families));
+    ctx.add_font(FontInsert::new(name, FontData::from_static(patronusphoto_text::fonts::INTER_REGULAR.as_slice()), families));
 }
 
 #[test]
 fn lazy_fallbacks_follow_ui_font_size_and_survive_size_changes() {
-    use photocraft_engine::prefs::UiFontSize;
+    use patronusphoto_engine::prefs::UiFontSize;
     let ctx = egui::Context::default();
     crate::theme::install_fonts(&ctx);
     ctx.run_ui(Default::default(), |_| {}).textures_delta.clear();
@@ -231,7 +231,7 @@ fn craft_face_coverage_matches_the_face_craft_insert_installs() {
 
     let ctx = egui::Context::default();
     UiFonts::new(&I18nScripts)
-        .app_face("inter", FontData::from_static(photocraft_text::fonts::INTER_REGULAR.as_slice()), &[FontRef::proportional(), FontRef::monospace()])
+        .app_face("inter", FontData::from_static(patronusphoto_text::fonts::INTER_REGULAR.as_slice()), &[FontRef::proportional(), FontRef::monospace()])
         .craft_faces(&listed)
         .ui_language("zh-hans")
         .system_fonts(SystemFonts::Off)
@@ -401,7 +401,7 @@ fn ui_works_without_craft_fonts() {
 /// machine has no font for it, e.g. CI Linux without Noto CJK).
 #[test]
 fn system_fonts_cover_cjk_samples() {
-    use photocraft_text::cjk::{self, CjkScript};
+    use patronusphoto_text::cjk::{self, CjkScript};
     #[cfg(target_os = "linux")]
     assert!(wait_for_fontconfig_cjk_scan(), "Fontconfig CJK lookup did not finish within 10 seconds");
     let available = |s: CjkScript| cjk::font_files(s).iter().any(|f| f.path.is_file());

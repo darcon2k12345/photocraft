@@ -5,16 +5,16 @@ use craft::behavior::PixelSize;
 use craft::imaging::ui::fill::{FillCommand, FillEvent, FillLimits, FillOpen, FillStrokeEvent};
 use craft::ui::dialog::{DialogId, dialog_id};
 use craft::ui::runtime::env::Label;
-use photocraft_engine::edit_menu_cmds::{MAX_CAF_EDITS, MAX_CAF_POINTS};
-use photocraft_geom::Rect;
+use patronusphoto_engine::edit_menu_cmds::{MAX_CAF_EDITS, MAX_CAF_POINTS};
+use patronusphoto_geom::Rect;
 use serde_json::{Value, json};
 
 use super::preview::{Base, compute_base, plan_params};
-use super::{CMD, CafApp, Hosted, PROXY_SIDE, PhotocraftApp, REMEMBERED};
+use super::{CMD, CafApp, Hosted, PROXY_SIDE, PatronusPhotoApp, REMEMBERED};
 use crate::dialogs::shared_picture::SharedPicture;
 
 /// Opens the workspace on the active layer and its selection.
-pub fn open(app: &mut PhotocraftApp) -> Result<DialogId, String> {
+pub fn open(app: &mut PatronusPhotoApp) -> Result<DialogId, String> {
     if !app.session.is_enabled(CMD) {
         return Err("Content-Aware Fill needs a selection on a pixel layer".into());
     }
@@ -31,7 +31,7 @@ pub fn open(app: &mut PhotocraftApp) -> Result<DialogId, String> {
     let open = FillOpen::new([canvas.width(), canvas.height()], name, FillLimits::new(MAX_CAF_EDITS, MAX_CAF_POINTS));
     let mut workspace = craft::imaging::ui::fill::ContentAwareFillWorkspace::new(open).remember(REMEMBERED);
     let base = compute_base(&doc, layer, &workspace.command())?;
-    workspace.set_brush(photocraft_algo::content_aware::default_brush_size(bounds(&base)));
+    workspace.set_brush(patronusphoto_algo::content_aware::default_brush_size(bounds(&base)));
 
     let picture_size = PixelSize::new(canvas.width(), canvas.height());
     let mut caf = CafApp {
@@ -72,9 +72,9 @@ pub fn open(app: &mut PhotocraftApp) -> Result<DialogId, String> {
 }
 
 /// The visible layers composited at the proxy size, as the canvas shows them (so an Apply to a new layer shows).
-fn composite(app: &PhotocraftApp, pw: usize, ph: usize) -> Option<egui::ColorImage> {
+fn composite(app: &PatronusPhotoApp, pw: usize, ph: usize) -> Option<egui::ColorImage> {
     let st = app.session.active()?;
-    let buf = photocraft_compose::render_reduced(&st.doc, pw as u32, ph as u32);
+    let buf = patronusphoto_compose::render_reduced(&st.doc, pw as u32, ph as u32);
     let (display, _) = crate::canvas::canvas_display(app, &st.doc, None);
     Some(crate::canvas::display_image(display.as_deref(), &buf))
 }
@@ -90,7 +90,7 @@ pub(super) fn bounds(b: &Base) -> Rect {
 
 /// The workspace's facts for the automation surface: the app's (the plan's window and areas, the preview, the last
 /// error) with the workspace's own fields.
-pub(crate) fn describe(app: &PhotocraftApp) -> Option<Value> {
+pub(crate) fn describe(app: &PatronusPhotoApp) -> Option<Value> {
     let c = app.caf.as_ref()?;
     let host = app.framework.dialogs.get_by_id::<Hosted>(c.id)?;
     let workspace = host.workspace();
@@ -120,7 +120,7 @@ pub(crate) fn describe(app: &PhotocraftApp) -> Option<Value> {
 }
 
 /// An Apply or OK that failed: the error in the panel (the caller answers the workspace) and the status bar.
-fn report(app: &mut PhotocraftApp, e: &str) {
+fn report(app: &mut PatronusPhotoApp, e: &str) {
     if let Some(c) = app.caf.as_mut() {
         c.error = Some(e.to_string());
     }
@@ -129,7 +129,7 @@ fn report(app: &mut PhotocraftApp, e: &str) {
 }
 
 /// Fills with `command` (one history step); the workspace stays as it is. A refusal is reported.
-pub(super) fn apply(app: &mut PhotocraftApp, command: &FillCommand) -> Result<(), String> {
+pub(super) fn apply(app: &mut PatronusPhotoApp, command: &FillCommand) -> Result<(), String> {
     let layer = app.caf.as_ref().ok_or("Content-Aware Fill is not open")?.layer;
     match app.run(CMD, plan_params(command, layer)) {
         Ok(_) => Ok(()),
@@ -140,14 +140,14 @@ pub(super) fn apply(app: &mut PhotocraftApp, command: &FillCommand) -> Result<()
     }
 }
 
-fn host(app: &mut PhotocraftApp, id: DialogId) -> Option<&mut Hosted> {
+fn host(app: &mut PatronusPhotoApp, id: DialogId) -> Option<&mut Hosted> {
     app.framework.dialogs.get_mut_by_id::<Hosted>(id)
 }
 
 /// Acts on what the workspace reported since the last call: the host's answer to OK, the events of its passes and
 /// the colour the picker child returned. Every pass may call it: what it drains is gone for the next call, so a
 /// second pass in one frame finds nothing to apply twice.
-pub(crate) fn take(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(crate) fn take(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     let Some(id) = app.caf.as_ref().map(|c| c.id) else { return };
     let Some(hosted) = host(app, id) else {
         // Finished (OK answered, Cancel, or cancelled from outside): the workspace remembered its settings.
@@ -245,7 +245,7 @@ pub(crate) fn take(app: &mut PhotocraftApp, ctx: &egui::Context) {
 
 /// The document changed under the open workspace (an Apply): a new composite and document. `true` when it did, for
 /// a new plan.
-fn sync_document(app: &mut PhotocraftApp) -> bool {
+fn sync_document(app: &mut PatronusPhotoApp) -> bool {
     let Some(c) = app.caf.as_ref() else { return false };
     let Some(st) = app.session.active() else { return false };
     if st.doc.id != c.document || st.revision == c.revision {
@@ -268,7 +268,7 @@ fn sync_document(app: &mut PhotocraftApp) -> bool {
 /// (and `replan`) plan again. A plan that refuses a lasso edit (an empty fill area) is reported back to the
 /// workspace, which takes the edit out; the refusal stays shown while a plan of the same session over the same inputs
 /// (`rebased` false) follows, as nothing it could answer changed.
-fn reconcile(app: &mut PhotocraftApp, id: DialogId, replan: bool, rebased: bool, committed: bool) {
+fn reconcile(app: &mut PatronusPhotoApp, id: DialogId, replan: bool, rebased: bool, committed: bool) {
     let Some((session, command)) = app.framework.dialogs.get_by_id::<Hosted>(id).map(|h| (h.workspace().session().clone(), h.workspace().command())) else {
         return;
     };

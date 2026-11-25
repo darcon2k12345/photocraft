@@ -2,7 +2,7 @@
 //! One undo brings it back. The Crop tool's straighten turn and the Ruler's Straighten still warp
 //! the selection (`rotate_arbitrary_with(.., false)`, not measured).
 
-use photocraft_geom::Rect;
+use patronusphoto_geom::Rect;
 
 use super::*;
 

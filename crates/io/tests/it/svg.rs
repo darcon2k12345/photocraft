@@ -1,10 +1,10 @@
 //! SVG import: shapes, groups, transforms, curves, text, gradients, rasterised fallbacks, the
 //! size limit, sniffing and malformed input.
 
-use photocraft_color::blend::BlendMode;
-use photocraft_doc::vector::{FillRule, LineCap, LineJoin};
-use photocraft_doc::{Fill, LayerContent};
-use photocraft_io::*;
+use patronusphoto_color::blend::BlendMode;
+use patronusphoto_doc::vector::{FillRule, LineCap, LineJoin};
+use patronusphoto_doc::{Fill, LayerContent};
+use patronusphoto_io::*;
 
 const NS: &str = "xmlns=\"http://www.w3.org/2000/svg\"";
 
@@ -61,8 +61,8 @@ fn failed_svg_import_keeps_the_error_and_fixture_context() {
     assert!(message.starts_with(&format!("{error}\n")), "{message}");
     assert!(message.contains(&svg_input_diagnostic(source)), "{message}");
 }
-fn px(doc: &photocraft_doc::Document, x: i32, y: i32) -> [f32; 4] {
-    photocraft_compose::flatten(doc).get(x, y)
+fn px(doc: &patronusphoto_doc::Document, x: i32, y: i32) -> [f32; 4] {
+    patronusphoto_compose::flatten(doc).get(x, y)
 }
 
 fn close(a: [f32; 4], b: [f32; 4]) -> bool {
@@ -83,7 +83,7 @@ fn basic_shapes_become_shape_layers_with_their_fills_and_strokes() {
     assert_eq!(d.layers[0].name, "box");
     assert_eq!(d.layers[1].name, "Shape 1", "unnamed shapes are numbered");
     let LayerContent::Shape(sh) = &d.layers[0].content else { panic!("not a shape") };
-    assert_eq!(sh.fill, Some(Fill::Solid(photocraft_color::Color::rgba(1.0, 0.0, 0.0, 1.0))));
+    assert_eq!(sh.fill, Some(Fill::Solid(patronusphoto_color::Color::rgba(1.0, 0.0, 0.0, 1.0))));
     assert!(sh.stroke.is_none());
     assert_eq!(sh.path.subpaths.len(), 1);
     assert!(sh.path.subpaths[0].closed);
@@ -91,7 +91,7 @@ fn basic_shapes_become_shape_layers_with_their_fills_and_strokes() {
     let st = c.stroke.as_ref().expect("stroke");
     assert!((st.width - 4.0).abs() < 1e-3);
     assert_eq!((st.cap, st.join), (LineCap::Round, LineJoin::Bevel));
-    assert_eq!(st.paint, Fill::Solid(photocraft_color::Color::rgba(0.0, 0.0, 0.0, 1.0)));
+    assert_eq!(st.paint, Fill::Solid(patronusphoto_color::Color::rgba(0.0, 0.0, 0.0, 1.0)));
     // The composite: red inside the box, blue inside the circle, black on its edge, nothing else.
     assert!(close(px(d, 20, 20), [1.0, 0.0, 0.0, 1.0]), "{:?}", px(d, 20, 20));
     assert!(close(px(d, 70, 30), [0.0, 0.0, 1.0, 1.0]), "{:?}", px(d, 70, 30));
@@ -221,8 +221,9 @@ fn clip_paths_masks_filters_patterns_and_images_are_rasterised() {
 
 /// A 2×2 PNG (red, green / blue, white) as a data URL, for `<image>`.
 fn png_data_url() -> String {
-    let img = photocraft_codecs::Image::from_u8(2, 2, photocraft_codecs::ChannelLayout::Rgb, vec![255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255]).unwrap();
-    let bytes = photocraft_codecs::encode(&img, photocraft_codecs::Format::Png, &Default::default()).unwrap();
+    let img =
+        patronusphoto_codecs::Image::from_u8(2, 2, patronusphoto_codecs::ChannelLayout::Rgb, vec![255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255]).unwrap();
+    let bytes = patronusphoto_codecs::encode(&img, patronusphoto_codecs::Format::Png, &Default::default()).unwrap();
     const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::from("data:image/png;base64,");
     for chunk in bytes.chunks(3) {
@@ -242,8 +243,9 @@ fn png_data_url() -> String {
 /// A small valid PNG whose IHDR claims `w`x`h`, far larger than its actual (tiny) image data.
 /// The header alone must be enough to reject it before any decode is attempted.
 fn png_data_url_with_claimed_size(w: u32, h: u32) -> String {
-    let img = photocraft_codecs::Image::from_u8(2, 2, photocraft_codecs::ChannelLayout::Rgb, vec![255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255]).unwrap();
-    let mut bytes = photocraft_codecs::encode(&img, photocraft_codecs::Format::Png, &Default::default()).unwrap();
+    let img =
+        patronusphoto_codecs::Image::from_u8(2, 2, patronusphoto_codecs::ChannelLayout::Rgb, vec![255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255]).unwrap();
+    let mut bytes = patronusphoto_codecs::encode(&img, patronusphoto_codecs::Format::Png, &Default::default()).unwrap();
     // IHDR starts right after the 8-byte signature and 8-byte chunk length/type: width at 16,
     // height at 20 (big-endian u32 each).
     bytes[16..20].copy_from_slice(&w.to_be_bytes());
@@ -478,7 +480,7 @@ fn retained_deep_svg_groups_lower_render_and_drop_on_a_bounded_worker() {
     // Native document compositing has its own recursive stack requirements. Keep only this
     // independent pixel oracle off the small caller; SVG APIs and native document destruction
     // below must still complete there, with all retained groups intact.
-    let pixel = |doc: &photocraft_doc::Document| {
+    let pixel = |doc: &patronusphoto_doc::Document| {
         std::thread::scope(|scope| {
             std::thread::Builder::new()
                 .name("svg-native-pixel-oracle".into())
@@ -805,8 +807,8 @@ fn image_hrefs_to_local_files_are_never_read() {
     let dir = std::path::Path::new(env!("CARGO_TARGET_TMPDIR")).join("svg-local-image");
     std::fs::create_dir_all(&dir).unwrap();
     let file = dir.join("secret.png");
-    let img = photocraft_codecs::Image::from_u8(2, 2, photocraft_codecs::ChannelLayout::Rgb, vec![255; 12]).unwrap();
-    std::fs::write(&file, photocraft_codecs::encode(&img, photocraft_codecs::Format::Png, &Default::default()).unwrap()).unwrap();
+    let img = patronusphoto_codecs::Image::from_u8(2, 2, patronusphoto_codecs::ChannelLayout::Rgb, vec![255; 12]).unwrap();
+    std::fs::write(&file, patronusphoto_codecs::encode(&img, patronusphoto_codecs::Format::Png, &Default::default()).unwrap()).unwrap();
     let path = file.to_string_lossy().into_owned();
     for href in [path.clone(), format!("file://{path}"), "secret.png".to_string()] {
         let r = open(&format!("<svg {NS} width=\"20\" height=\"20\"><image x=\"0\" y=\"0\" width=\"20\" height=\"20\" href=\"{href}\"/></svg>"));

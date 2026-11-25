@@ -10,12 +10,12 @@ use craft::ui::text::RangeAlert;
 use serde_json::json;
 
 use super::heal::check;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::option_cells::hint;
 use crate::state::ObjectFinderMode;
 
 /// The Select Subject button both selection tools carry; `empty` is the message when nothing is found.
-fn select_subject(ui: &mut egui::Ui, app: &mut PhotocraftApp, empty: &str) {
+fn select_subject(ui: &mut egui::Ui, app: &mut PatronusPhotoApp, empty: &str) {
     if clicked(&Button::new(tl!("Select Subject")).show(ui)) {
         let r = app.run("select.subject", json!({}));
         crate::retouch_ui::report_smart_result(app, r, empty);
@@ -23,7 +23,7 @@ fn select_subject(ui: &mut egui::Ui, app: &mut PhotocraftApp, empty: &str) {
 }
 
 /// Quick Selection's options.
-pub(super) fn quick_selection(ui: &mut egui::Ui, app: &mut PhotocraftApp) -> Option<RangeAlert> {
+pub(super) fn quick_selection(ui: &mut egui::Ui, app: &mut PatronusPhotoApp) -> Option<RangeAlert> {
     let o = &mut app.ui.tool_options;
     check(ui, tl!("Sample All Layers"), &mut o.sample_all.quick_selection, true, None);
     check(ui, tl!("Enhance Edge"), &mut o.enhance_edge, true, None);
@@ -44,7 +44,7 @@ enum GearOption {
 
 /// The Refresh button and the gear menu after the operation segments (#12857): Object Finder,
 /// Object Subtract (stored only) and Object Finder Mode (Auto or Manual Refresh).
-fn finder_buttons(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+fn finder_buttons(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let refresh = IconButton::new(IconId::new("rotate_cw")).label(tl!("Refresh").to_string()).tooltip(tl!("Click to refresh object finder.")).show(ui);
     let label = tl!("Set additional options").to_string();
     let button = IconButton::new(IconId::new("settings")).label(label.clone()).tooltip(tl!("Set additional options")).popup(PopupKind::Menu).show(ui);
@@ -72,7 +72,7 @@ fn finder_buttons(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 
 /// Object Selection's options: the selection operation (#12853), Refresh and the gear menu,
 /// Sample All Layers and Hard Edge.
-pub(super) fn object_selection(ui: &mut egui::Ui, app: &mut PhotocraftApp) -> Option<RangeAlert> {
+pub(super) fn object_selection(ui: &mut egui::Ui, app: &mut PatronusPhotoApp) -> Option<RangeAlert> {
     crate::panels::options_bar::selection::operation_segments(app, ui, true);
     Divider::vertical().show(ui);
     finder_buttons(app, ui);

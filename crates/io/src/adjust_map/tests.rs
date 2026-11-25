@@ -82,7 +82,7 @@ fn ends(a: &Adjustment) -> ([f32; 3], [f32; 3]) {
 
 #[test]
 fn gradient_map_stops_in_every_colour_space() {
-    use photocraft_color::{Color, ColorMode};
+    use patronusphoto_color::{Color, ColorMode};
     let white_rgb = (0, [65535, 65535, 65535, 0]);
     // CMYK, stored inverted: 65535 = no ink. Full K only.
     let k_only = grdm_with((2, [65535, 65535, 65535, 0]), white_rgb);
@@ -323,14 +323,14 @@ fn color_lookup_keeps_a_3dl_or_look_file_as_loaded() {
 fn color_lookup_table_without_matching_file_is_saved_as_cube_named_to_match() {
     let a = parse(b"clrL", &clrl_block("LUTFormat3DL", &inverting_3dl(), "Invert.3DL"), None, Channels::Rgb);
     let Adjustment::ColorLookup { name, size, tetrahedral, dither, source, .. } = a else { panic!("{a:?}") };
-    // The table no longer matches the stored file (changed in PhotoCraft): the bytes are stale.
+    // The table no longer matches the stored file (changed in Patronus Photo): the bytes are stale.
     let id = craft_cms::lutfile::LutFile::identity(2).unwrap().data;
     let edited = Adjustment::ColorLookup { name, lut: Some(std::sync::Arc::new(id.clone())), size, tetrahedral, dither, source };
     let d = written_clrl(&edited);
     assert_eq!(desc_enum(&d, "LUTFormat"), Some(&b"LUTFormatCUBE"[..]));
     assert_eq!(desc_text(&d, "LUT3DFileName").as_deref(), Some("Invert.cube"));
     assert_eq!(craft_cms::lutfile::parse("x.cube", raw(&d, "LUT3DFileData")).unwrap().data, id);
-    // A table made in PhotoCraft (no file) named like another format is also renamed.
+    // A table made in Patronus Photo (no file) named like another format is also renamed.
     let made =
         Adjustment::ColorLookup { name: "Grade.look".into(), lut: Some(std::sync::Arc::new(id)), size: 2, tetrahedral: false, dither: false, source: None };
     let d = written_clrl(&made);
@@ -523,7 +523,7 @@ fn photo_filter_golden_blocks() {
     assert_eq!(color, [1.0, 32768.0 / 65535.0, 0.0]);
     assert_eq!(density, 0.4);
     assert_eq!(write(&a)[0].1, v2, "version 2 RGB is written back byte-exact");
-    // Older PhotoCraft files used only one padding byte (18 bytes); keep importing them,
+    // Older Patronus Photo files used only one padding byte (18 bytes); keep importing them,
     // but never produce that Photoshop-incompatible length again.
     assert_eq!(parse(b"phfl", &v2[..18], None, Channels::Rgb), a);
     for preserve_luminosity in [false, true] {
@@ -725,7 +725,7 @@ fn legacy_brit_without_cged() {
 /// next to the dense baked ones, and a save writes them back (not the baked stops).
 #[test]
 fn gradient_map_keeps_photoshops_stops_midpoints_and_smoothness() {
-    use photocraft_doc::adjust::GradientSource;
+    use patronusphoto_doc::adjust::GradientSource;
     let src =
         GradientSource { stops: vec![(0.0, [0.1, 0.2, 0.6]), (1.0, [1.0, 0.8, 0.2])], midpoints: vec![0.3], smoothness: 0.8, method: "perceptual".into() };
     let block = write_grdm(&src.stops, &src.midpoints, src.smoothness, crate::gradient_bake::Method::Perceptual, false, true);

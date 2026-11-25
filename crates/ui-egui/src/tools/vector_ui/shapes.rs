@@ -5,7 +5,7 @@ use craft::draw::ui::shape_drag::{BoxConstraints, ShapeKind};
 use craft::keymap::Mods;
 
 use super::options::{draws_path, solid_paint};
-use super::{Color32, PhotocraftApp, Tool, Value, json, paint_param};
+use super::{Color32, PatronusPhotoApp, Tool, Value, json, paint_param};
 use crate::state::ToolOptions;
 
 pub fn is_shape_tool(t: Tool) -> bool {
@@ -36,7 +36,7 @@ pub(super) fn hex(c: [f32; 4]) -> String {
     format!("#{:02x}{:02x}{:02x}", c.r(), c.g(), c.b())
 }
 
-pub(super) fn stroke_param(app: &PhotocraftApp) -> Value {
+pub(super) fn stroke_param(app: &PatronusPhotoApp) -> Value {
     let o = &app.ui.tool_options;
     if o.stroke_width <= 0.0 {
         return Value::Null;
@@ -49,7 +49,7 @@ pub(super) fn stroke_param(app: &PhotocraftApp) -> Value {
 
 /// An open Pen shape's stroke: the options bar's stroke when one is set, else a 1 px stroke in the
 /// foreground colour, so the open path stays visible.
-pub(super) fn open_pen_stroke_param(app: &PhotocraftApp) -> Value {
+pub(super) fn open_pen_stroke_param(app: &PatronusPhotoApp) -> Value {
     let stroke = stroke_param(app);
     if !stroke.is_null() {
         return stroke;
@@ -62,18 +62,18 @@ pub(super) fn open_pen_stroke_param(app: &PhotocraftApp) -> Value {
 
 /// The paint the next shape's fill (`stroke` false) or stroke takes: the options bar's gradient,
 /// else the foreground / background colour.
-pub(super) fn tool_paint(app: &PhotocraftApp, stroke: bool) -> photocraft_doc::Fill {
+pub(super) fn tool_paint(app: &PatronusPhotoApp, stroke: bool) -> patronusphoto_doc::Fill {
     let (gradient, color) = tool_paint_source(app, stroke);
     gradient.clone().unwrap_or_else(|| solid_paint(color))
 }
 
 /// [`tool_paint`] as `shape.create` takes it.
-fn tool_paint_param(app: &PhotocraftApp, stroke: bool) -> Value {
+fn tool_paint_param(app: &PatronusPhotoApp, stroke: bool) -> Value {
     let (gradient, color) = tool_paint_source(app, stroke);
     gradient.as_ref().map_or_else(|| json!(color), paint_param)
 }
 
-fn tool_paint_source(app: &PhotocraftApp, stroke: bool) -> (&Option<photocraft_doc::Fill>, [f32; 4]) {
+fn tool_paint_source(app: &PatronusPhotoApp, stroke: bool) -> (&Option<patronusphoto_doc::Fill>, [f32; 4]) {
     let o = &app.ui.tool_options;
     if stroke { (&o.shape_stroke_gradient, app.session.tools.background) } else { (&o.shape_fill_gradient, app.session.tools.foreground) }
 }
@@ -126,7 +126,7 @@ fn whole_box(rect: &Rect, whole: bool) -> Option<Rect> {
 /// Whether a drag of `kind` lands on whole pixels. Align Edges (#13370) is the Triangle tool's
 /// option, and only in Shape mode, where its checkbox is enabled; the other Shape tools, and a
 /// greyed checkbox, still snap.
-pub(super) fn snaps_to_pixels(app: &PhotocraftApp, kind: ShapeKind) -> bool {
+pub(super) fn snaps_to_pixels(app: &PatronusPhotoApp, kind: ShapeKind) -> bool {
     let o = &app.ui.tool_options;
     !(kind == ShapeKind::Triangle && o.shape_mode == super::VectorMode::Shape && !o.align_edges)
 }
@@ -187,7 +187,7 @@ fn box_of(rect: &Rect) -> [f64; 4] {
 
 /// `shape.create` params of `geometry` without fill and stroke: the one builder of the command's
 /// geometry. The arrowheads come from the tool options, which `ShapeGeometry` does not carry.
-fn geometry_params(app: &PhotocraftApp, geometry: &ShapeGeometry, kind: ShapeKind) -> Result<Value, String> {
+fn geometry_params(app: &PatronusPhotoApp, geometry: &ShapeGeometry, kind: ShapeKind) -> Result<Value, String> {
     let o = &app.ui.tool_options;
     Ok(match geometry {
         ShapeGeometry::Rect { rect, radii } if radii.iter().any(|r| *r > 0.0) => json!({"kind": "roundedRect", "rect": box_of(rect), "radii": radii}),
@@ -207,21 +207,21 @@ fn geometry_params(app: &PhotocraftApp, geometry: &ShapeGeometry, kind: ShapeKin
             "arrowWidth": o.arrow_width, "arrowLength": o.arrow_length,
             // Settings saved with the old 0..100 range draw at the nearest value (#13258).
             "arrowConcavity": if o.arrow_concavity.is_finite() { o.arrow_concavity.round().clamp(-50.0, 50.0) } else { 0.0 }}),
-        // PhotoCraft's drag rules keep `radial_polygons` off, so no tool sends a radial polygon and `shape.create` has no kind for it
+        // Patronus Photo's drag rules keep `radial_polygons` off, so no tool sends a radial polygon and `shape.create` has no kind for it
         ShapeGeometry::RadialPolygon { .. } => return Err(tl!("This shape can't be created").into()),
         ShapeGeometry::Custom { .. } => return Err(tl!("A custom shape is placed from its preset").into()),
     })
 }
 
 /// `shape.create` params with the options bar's fill and stroke.
-fn create_params(app: &PhotocraftApp, geometry: &ShapeGeometry, kind: ShapeKind) -> Result<Value, String> {
+fn create_params(app: &PatronusPhotoApp, geometry: &ShapeGeometry, kind: ShapeKind) -> Result<Value, String> {
     let mut p = geometry_params(app, geometry, kind)?;
     p["fill"] = fill_param(app);
     p["stroke"] = stroke_param(app);
     Ok(p)
 }
 
-fn report(app: &mut PhotocraftApp, e: String) {
+fn report(app: &mut PatronusPhotoApp, e: String) {
     app.ui.status = e;
     app.ui.status_error = true;
 }
@@ -229,7 +229,7 @@ fn report(app: &mut PhotocraftApp, e: String) {
 /// Finish a Shape-tool drag with the geometry the framework tool committed (⇧ and ⌥ are already in
 /// it): Path mode adds the outline to the Work Path, Custom Shape places the preset, the others
 /// make a shape layer. A geometry too small to draw changes nothing.
-pub fn finish_drag(app: &mut PhotocraftApp, kind: ShapeKind, geometry: &ShapeGeometry, mods: Mods) {
+pub fn finish_drag(app: &mut PatronusPhotoApp, kind: ShapeKind, geometry: &ShapeGeometry, mods: Mods) {
     let Some(geometry) = snapped(geometry, mods.shift, snaps_to_pixels(app, kind)) else { return };
     if draws_path(&app.ui.tool_options) {
         // Path mode: the outline joins the work path (one more subpath), and no layer is made.
@@ -241,7 +241,7 @@ pub fn finish_drag(app: &mut PhotocraftApp, kind: ShapeKind, geometry: &ShapeGeo
             .session
             .active()
             .and_then(|st| st.doc.work_path.clone())
-            .unwrap_or_else(|| photocraft_doc::vector::Path { fill_rule: outline.fill_rule, ..Default::default() });
+            .unwrap_or_else(|| patronusphoto_doc::vector::Path { fill_rule: outline.fill_rule, ..Default::default() });
         let outline = as_one_component(&outline, path.fill_rule).unwrap_or(outline);
         let first_new = path.subpaths.len();
         path.subpaths.extend(outline.subpaths);
@@ -252,7 +252,7 @@ pub fn finish_drag(app: &mut PhotocraftApp, kind: ShapeKind, geometry: &ShapeGeo
         {
             sp.op = path_op_of(op);
         }
-        let path = photocraft_engine::vector_cmds::path_json(&path);
+        let path = patronusphoto_engine::vector_cmds::path_json(&path);
         match app.run("path.set", json!({"name": "work", "path": path, "historyName": tool_history_name(kind)})) {
             Ok(_) => app.ui.selected_path = Some("work".into()),
             Err(e) => report(app, e),
@@ -276,7 +276,7 @@ pub fn finish_drag(app: &mut PhotocraftApp, kind: ShapeKind, geometry: &ShapeGeo
                     return;
                 }
             };
-            let path = photocraft_engine::vector_cmds::path_json(&outline);
+            let path = patronusphoto_engine::vector_cmds::path_json(&outline);
             if let Err(e) = app.run("shape.create", json!({"kind": "path", "path": path, "addTo": id.0, "op": op})) {
                 report(app, e);
             }
@@ -307,12 +307,12 @@ pub fn finish_drag(app: &mut PhotocraftApp, kind: ShapeKind, geometry: &ShapeGeo
 
 /// The operation the next Shape-tool drag is added with (the options bar's Path operations);
 /// None for a new shape layer. The one place press modifiers can override it (#13227).
-fn drag_path_op(app: &PhotocraftApp) -> Option<&'static str> {
+fn drag_path_op(app: &PatronusPhotoApp) -> Option<&'static str> {
     super::pen::shape_path_op(&app.ui.tool_options)
 }
 
-fn path_op_of(op: &str) -> photocraft_doc::vector::PathOp {
-    use photocraft_doc::vector::PathOp;
+fn path_op_of(op: &str) -> patronusphoto_doc::vector::PathOp {
+    use patronusphoto_doc::vector::PathOp;
     match op {
         "subtract" => PathOp::Subtract,
         "intersect" => PathOp::Intersect,
@@ -331,14 +331,14 @@ pub(crate) fn tool_history_name(kind: ShapeKind) -> Option<&'static str> {
     }
 }
 
-pub(super) fn fill_param(app: &PhotocraftApp) -> Value {
+pub(super) fn fill_param(app: &PatronusPhotoApp) -> Value {
     if app.ui.tool_options.shape_fill { tool_paint_param(app, false) } else { Value::Null }
 }
 
 /// Create a shape layer from `geometry` with the options bar's fill and stroke, as one History
 /// step named `history` (the commands' own name without one): the Create Rectangle / Ellipse / …
 /// dialogs' OK (`shape_dialog`). The geometry is used as given, with no pixel rounding.
-pub fn create_geometry(app: &mut PhotocraftApp, geometry: &ShapeGeometry, kind: ShapeKind, history: Option<&str>) -> Result<Value, String> {
+pub fn create_geometry(app: &mut PatronusPhotoApp, geometry: &ShapeGeometry, kind: ShapeKind, history: Option<&str>) -> Result<Value, String> {
     let mut p = create_params(app, geometry, kind)?;
     if let Some(name) = history {
         p["historyName"] = json!(name);
@@ -351,11 +351,11 @@ pub fn create_geometry(app: &mut PhotocraftApp, geometry: &ShapeGeometry, kind: 
 /// the shape only and not the work path under it. `None` for a single subpath, and when joined
 /// it would cover a different area (an intersect or exclude subpath, or a cut reaching past
 /// the shape, like the Crescent Moon's).
-fn as_one_component(outline: &photocraft_doc::vector::Path, rule: photocraft_doc::vector::FillRule) -> Option<photocraft_doc::vector::Path> {
-    use photocraft_doc::vector::{Path, PathOp, Subpath};
+fn as_one_component(outline: &patronusphoto_doc::vector::Path, rule: patronusphoto_doc::vector::FillRule) -> Option<patronusphoto_doc::vector::Path> {
+    use patronusphoto_doc::vector::{Path, PathOp, Subpath};
     // Clockwise on screen (y down) or not, from the flattened outline's signed area.
     let clockwise = |s: &Subpath| {
-        let pts = photocraft_vector::flatten_subpath(s, 0.25).pts;
+        let pts = patronusphoto_vector::flatten_subpath(s, 0.25).pts;
         let twice_area: f64 = pts.iter().zip(pts.iter().cycle().skip(1)).map(|(p, q)| p.0 * q.1 - q.0 * p.1).sum();
         twice_area > 0.0
     };
@@ -382,35 +382,35 @@ fn as_one_component(outline: &photocraft_doc::vector::Path, rule: photocraft_doc
     }
     // Compare the two areas at a small fixed size.
     const SIDE: f64 = 128.0;
-    let rect = photocraft_geom::Rect::from_xywh(0, 0, SIDE as u32, SIDE as u32);
-    let cover = |p: &Path| photocraft_vector::path_coverage(&photocraft_engine::presets::shapes::fit(p, [0.0, 0.0, SIDE, SIDE], true), rect);
+    let rect = patronusphoto_geom::Rect::from_xywh(0, 0, SIDE as u32, SIDE as u32);
+    let cover = |p: &Path| patronusphoto_vector::path_coverage(&patronusphoto_engine::presets::shapes::fit(p, [0.0, 0.0, SIDE, SIDE], true), rect);
     let same = cover(outline).iter().zip(cover(&joined)).all(|(a, b)| (a - b).abs() <= 0.5);
     same.then_some(joined)
 }
 
 /// The outline of an already snapped geometry, as a path (a custom shape fitted to its box).
-fn outline_of(app: &PhotocraftApp, kind: ShapeKind, geometry: &ShapeGeometry) -> Option<photocraft_doc::vector::Path> {
+fn outline_of(app: &PatronusPhotoApp, kind: ShapeKind, geometry: &ShapeGeometry) -> Option<patronusphoto_doc::vector::Path> {
     if let ShapeGeometry::Custom { rect, keep_proportions } = geometry {
-        let groups = photocraft_engine::presets::shapes::all_groups(&app.session);
+        let groups = patronusphoto_engine::presets::shapes::all_groups(&app.session);
         let shape = groups.iter().flat_map(|g| &g.items).find(|s| s.name == app.ui.presets_ui.shape())?;
-        Some(photocraft_engine::presets::shapes::fit(&shape.path, box_of(rect), *keep_proportions))
+        Some(patronusphoto_engine::presets::shapes::fit(&shape.path, box_of(rect), *keep_proportions))
     } else {
-        photocraft_engine::vector_cmds::shape_path(&geometry_params(app, geometry, kind).ok()?).ok()
+        patronusphoto_engine::vector_cmds::shape_path(&geometry_params(app, geometry, kind).ok()?).ok()
     }
 }
 
 /// The outline a Shape-tool drag draws for `geometry`, as the commit makes it.
-fn shape_outline(app: &PhotocraftApp, kind: ShapeKind, geometry: &ShapeGeometry, keep_angle: bool) -> Option<photocraft_doc::vector::Path> {
+fn shape_outline(app: &PatronusPhotoApp, kind: ShapeKind, geometry: &ShapeGeometry, keep_angle: bool) -> Option<patronusphoto_doc::vector::Path> {
     outline_of(app, kind, &snapped(geometry, keep_angle, snaps_to_pixels(app, kind))?)
 }
 
 /// The preview and command both use the full float tool colours, including transparent paint.
 /// In Path mode only the outline shows, as the drag draws no layer.
-fn preview_layer(app: &PhotocraftApp, kind: ShapeKind, geometry: &ShapeGeometry, keep_angle: bool) -> Option<photocraft_doc::ShapeLayer> {
+fn preview_layer(app: &PatronusPhotoApp, kind: ShapeKind, geometry: &ShapeGeometry, keep_angle: bool) -> Option<patronusphoto_doc::ShapeLayer> {
     let o = &app.ui.tool_options;
     let path = shape_outline(app, kind, geometry, keep_angle)?;
     let paint = !draws_path(o);
-    Some(photocraft_doc::ShapeLayer {
+    Some(patronusphoto_doc::ShapeLayer {
         path,
         fill: (paint && o.shape_fill).then(|| tool_paint(app, false)),
         stroke: (paint && o.stroke_width > 0.0).then(|| o.shape_stroke.stroke(o.stroke_width, tool_paint(app, true))),
@@ -420,15 +420,15 @@ fn preview_layer(app: &PhotocraftApp, kind: ShapeKind, geometry: &ShapeGeometry,
 
 #[cfg(test)]
 /// The shape layer the drag of `geometry` would make, for the drag's preview and its tests.
-pub(super) fn shape_preview(app: &PhotocraftApp, kind: ShapeKind, geometry: &ShapeGeometry) -> Option<photocraft_doc::ShapeLayer> {
+pub(super) fn shape_preview(app: &PatronusPhotoApp, kind: ShapeKind, geometry: &ShapeGeometry) -> Option<patronusphoto_doc::ShapeLayer> {
     preview_layer(app, kind, geometry, false)
 }
 
 /// `path` with every point mapped through `view` to screen points.
-fn path_on_screen(path: &photocraft_doc::vector::Path, view: &CanvasView) -> photocraft_doc::vector::Path {
-    let map = |p: &photocraft_geom::Point| {
+fn path_on_screen(path: &patronusphoto_doc::vector::Path, view: &CanvasView) -> patronusphoto_doc::vector::Path {
+    let map = |p: &patronusphoto_geom::Point| {
         let s = view.to_screen(Point::new(p.x, p.y));
-        photocraft_geom::Point::new(f64::from(s.x), f64::from(s.y))
+        patronusphoto_geom::Point::new(f64::from(s.x), f64::from(s.y))
     };
     let mut out = path.clone();
     for k in out.subpaths.iter_mut().flat_map(|s| s.knots.iter_mut()) {
@@ -440,7 +440,7 @@ fn path_on_screen(path: &photocraft_doc::vector::Path, view: &CanvasView) -> pho
 
 /// Paints the fill and stroke of the Shape-tool drag in progress, with the path and the stroke of
 /// the commit. The accent outline over its halo is the framework tool's own paint.
-pub fn show_preview(app: &PhotocraftApp, ui: &egui::Ui, at: egui::Rect, view: &CanvasView) {
+pub fn show_preview(app: &PatronusPhotoApp, ui: &egui::Ui, at: egui::Rect, view: &CanvasView) {
     let Some((kind, geometry)) = super::host::shape_preview(app) else { return };
     let shift = craft::ui::runtime::pointer::frame(ui.ctx()).mods.shift;
     let Some(mut shape) = preview_layer(app, kind, geometry, shift) else { return };
@@ -455,7 +455,7 @@ pub fn show_preview(app: &PhotocraftApp, ui: &egui::Ui, at: egui::Rect, view: &C
 }
 
 /// A click of a Shape tool: the Create Shape dialog for the clicked kind, none in Path mode.
-pub fn click(app: &mut PhotocraftApp, kind: ShapeKind, at: [f64; 2]) -> Option<craft::ui::dialog::DialogId> {
+pub fn click(app: &mut PatronusPhotoApp, kind: ShapeKind, at: [f64; 2]) -> Option<craft::ui::dialog::DialogId> {
     // A Rectangle click inside the active live rectangle leaves it alone (#13340).
     if draws_path(&app.ui.tool_options) || crate::dialogs::shape_dialog::click_inside_active_rectangle(app, kind, at) {
         return None;
@@ -468,8 +468,8 @@ mod triangle_history_ui_tests {
     use super::*;
     use crate::canvas::testing;
 
-    fn app() -> Box<PhotocraftApp> {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    fn app() -> Box<PatronusPhotoApp> {
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
         app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
         app.ui.tool = Tool::Triangle;
         app

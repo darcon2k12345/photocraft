@@ -95,7 +95,7 @@ fn the_factory_outer_glow_paints_the_measured_edge() {
     let mut s = test_document();
     s.execute("layer.layerStyle.outerGlow", json!({})).unwrap();
     let d = s.active().unwrap();
-    let px = photocraft_compose::render(&d.doc, d.doc.bounds()).into_px();
+    let px = patronusphoto_compose::render(&d.doc, d.doc.bounds()).into_px();
     let level = |x: usize, y: usize| (px[y * 400 + x][0] * 255.0).round() as i32;
     for (y, want) in [(74, 121), (73, 104), (72, 91), (71, 80), (70, 72), (69, 66), (68, 64)] {
         let got = level(200, y);

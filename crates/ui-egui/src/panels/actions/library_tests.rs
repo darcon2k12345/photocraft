@@ -9,23 +9,23 @@ use serde_json::{Value, json};
 
 use super::files_tests::action_set_bytes;
 use super::library;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
-fn new_app() -> Box<PhotocraftApp> {
-    PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default())
+fn new_app() -> Box<PatronusPhotoApp> {
+    PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default())
 }
 
-fn sets(app: &PhotocraftApp) -> Vec<&str> {
+fn sets(app: &PatronusPhotoApp) -> Vec<&str> {
     app.session.actions.list.sets()
 }
 
 /// The panel menu's `event`, then the question it opened.
-fn ask(app: &mut PhotocraftApp, event: ActionsEvent) -> DialogId {
+fn ask(app: &mut PatronusPhotoApp, event: ActionsEvent) -> DialogId {
     super::apply_actions_events(app, vec![event]);
     question(app)
 }
 
-fn question(app: &PhotocraftApp) -> DialogId {
+fn question(app: &PatronusPhotoApp) -> DialogId {
     app.framework.dialogs.get::<StandardPrompt>().map(StackDialog::id).expect("the library question is open")
 }
 
@@ -70,10 +70,10 @@ fn reset_appends_or_replaces_the_list() {
     let id = ask(&mut app, ActionsEvent::Reset);
     app.framework.dialogs.set_json_field(&ctx, id, "choice", json!("alternate")).unwrap();
     crate::dialogs::confirm(&mut app, &ctx, id).unwrap();
-    assert!(sets(&app).contains(&"Mine") && sets(&app).contains(&photocraft_engine::actions_edit_cmds::BASICS_SET), "{:?}", sets(&app));
+    assert!(sets(&app).contains(&"Mine") && sets(&app).contains(&patronusphoto_engine::actions_edit_cmds::BASICS_SET), "{:?}", sets(&app));
     let id = ask(&mut app, ActionsEvent::Reset);
     crate::dialogs::confirm(&mut app, &ctx, id).unwrap();
-    assert_eq!(sets(&app), [photocraft_engine::actions_edit_cmds::BASICS_SET]);
+    assert_eq!(sets(&app), [patronusphoto_engine::actions_edit_cmds::BASICS_SET]);
 }
 
 /// Replace reads and counts the chosen file before asking; the list stays until OK, which
@@ -112,7 +112,7 @@ fn replace_checks_the_chosen_source_and_again_on_ok() {
         if p.get("data").is_some() && policy.get() { Ok(()) } else { Err("payload denied by policy".into()) }
     });
     let services = crate::Services { files: Some(files), automation_command: Some(automation_command), ..Default::default() };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     let ctx = app.ctx().clone();
     app.run("actions.newSet", json!({"name": "Keep"})).unwrap();
     for attempt in 0..2 {

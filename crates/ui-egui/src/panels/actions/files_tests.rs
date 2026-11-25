@@ -5,7 +5,7 @@ use serde_json::json;
 
 use super::ActionSelection;
 use super::files;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// A small valid Photoshop set, generated without external action files.
 pub(super) fn action_set_bytes(set: &str, action: &str) -> Vec<u8> {
@@ -24,11 +24,11 @@ pub(super) fn action_set_bytes(set: &str, action: &str) -> Vec<u8> {
 }
 
 /// Delivers the answer of the pick the last call asked for.
-fn settle(app: &mut PhotocraftApp) {
+fn settle(app: &mut PatronusPhotoApp) {
     app.poll_file_dialog();
 }
 
-fn names(app: &PhotocraftApp) -> Vec<&str> {
+fn names(app: &PatronusPhotoApp) -> Vec<&str> {
     app.session.actions.list.actions().iter().map(|a| a.name.as_str()).collect()
 }
 
@@ -38,7 +38,7 @@ fn suggested(files: &ScriptedFiles) -> Vec<String> {
 }
 
 /// An app with no actions and one empty set New Set made, whose Save dialog the fake cancels.
-pub(super) fn empty_set_app(set: &str) -> (Box<PhotocraftApp>, Arc<ScriptedFiles>) {
+pub(super) fn empty_set_app(set: &str) -> (Box<PatronusPhotoApp>, Arc<ScriptedFiles>) {
     let files = Arc::new(ScriptedFiles::answering([Picked::Cancelled]));
     let mut app = super::runner_tests::disk_app(files.clone());
     app.run("file.new", json!({"width": 8, "height": 8})).unwrap();
@@ -56,7 +56,7 @@ fn save_suggestions(set: &str) -> Vec<String> {
 }
 
 /// Load `files` (name, bytes) in one Load Actions… selection; the app and the status bar text.
-fn bulk_load_status(files: Vec<(String, Vec<u8>)>) -> (Box<PhotocraftApp>, String) {
+fn bulk_load_status(files: Vec<(String, Vec<u8>)>) -> (Box<PatronusPhotoApp>, String) {
     let fake = Arc::new(ScriptedFiles::answering([Picked::Contents(files)]));
     let mut app = super::runner_tests::disk_app(fake);
     files::load_dialog(&mut app).unwrap();
@@ -105,7 +105,7 @@ fn bulk_load_keeps_selection_order_and_earlier_warnings_and_errors() {
     {
         assert!(app.ui.status.contains(part), "{part}: {}", app.ui.status);
     }
-    assert!(!app.ui.status.contains("PhotoCraft equivalent"), "{}", app.ui.status);
+    assert!(!app.ui.status.contains("Patronus Photo equivalent"), "{}", app.ui.status);
 }
 
 #[test]
@@ -239,7 +239,7 @@ fn bulk_load_summary_counts_unsupported_steps_of_surviving_sets() {
     a.actions[0].items[0].event = craft_psd::atn::AtnEvent::Code(*b"Xxxx");
     let chosen = vec![("a.atn".into(), craft_psd::atn::write(&a).unwrap()), ("b.atn".into(), action_set_bytes("Set B", "B"))];
     let (app, status) = bulk_load_status(chosen);
-    assert!(status.contains("1 step has no PhotoCraft equivalent yet"), "{status}");
+    assert!(status.contains("1 step has no Patronus Photo equivalent yet"), "{status}");
     assert!(!app.ui.status_error, "{status}");
     // Both sets stay loaded: the unsupported step is counted for one that is in the panel.
     assert_eq!(names(&app), ["A", "B"]);

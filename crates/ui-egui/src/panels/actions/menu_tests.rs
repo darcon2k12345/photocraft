@@ -5,16 +5,16 @@ use craft::ui::dialog::DialogId;
 use craft::ui::menu::PanelRow;
 use craft::ui::patterns::form_dialogs::HostedParamDialog;
 use craft::ui::runtime::commands::{CommandRef, CommandSet as _, CommandState};
-use photocraft_engine::actions_cmds::ActionStep;
+use patronusphoto_engine::actions_cmds::ActionStep;
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 8, "height": 8})).unwrap();
     app
 }
 
 /// The commands of the menu's rows, `None` for a separator.
-fn rows(app: &PhotocraftApp) -> Vec<Option<C>> {
+fn rows(app: &PatronusPhotoApp) -> Vec<Option<C>> {
     menu::panel_rows(app)
         .into_iter()
         .map(|row| match row {
@@ -25,22 +25,22 @@ fn rows(app: &PhotocraftApp) -> Vec<Option<C>> {
 }
 
 /// The state the menu gives `command`.
-fn state(app: &PhotocraftApp, command: C) -> CommandState {
+fn state(app: &PatronusPhotoApp, command: C) -> CommandState {
     menu::states(app).into_iter().find(|(row, _)| C::from_ref(row) == Some(command)).map(|(_, state)| state).expect("the command has a row")
 }
 
-fn enabled(app: &PhotocraftApp, command: C) -> bool {
+fn enabled(app: &PatronusPhotoApp, command: C) -> bool {
     state(app, command) == CommandState::new().enabled(true)
 }
 
 /// Fires the row of `command` as the menu does.
-fn fire(app: &mut PhotocraftApp, command: C) {
+fn fire(app: &mut PatronusPhotoApp, command: C) {
     let app_ctx = app.ctx().clone();
     assert!(menu::run_fired(app, &app_ctx, &CommandRef::from(command)));
 }
 
 /// One control request through the app's public channel.
-fn control(app: &mut PhotocraftApp, method: &str, params: Value) -> Value {
+fn control(app: &mut PatronusPhotoApp, method: &str, params: Value) -> Value {
     let (request, _reply) = crate::control::ControlRequest::new(method, params);
     let app_ctx = app.ctx().clone();
     match crate::control::handle(app, &app_ctx, &request) {
@@ -50,17 +50,17 @@ fn control(app: &mut PhotocraftApp, method: &str, params: Value) -> Value {
 }
 
 /// The dialog the last fired row opened.
-fn top_dialog(app: &PhotocraftApp) -> DialogId {
+fn top_dialog(app: &PatronusPhotoApp) -> DialogId {
     app.framework.dialogs.stack().top().expect("a dialog is open")
 }
 
 /// Sets one field of the hosted dialog `id`.
-fn set(app: &mut PhotocraftApp, id: DialogId, field: &str, value: Value) {
+fn set(app: &mut PatronusPhotoApp, id: DialogId, field: &str, value: Value) {
     let reply = control(app, "ui.dialog.set", json!({"dialog": id, "field": field, "value": value}));
     assert_eq!(reply["ok"], true, "{field}: {reply}");
 }
 
-fn ok(app: &mut PhotocraftApp, id: DialogId) {
+fn ok(app: &mut PatronusPhotoApp, id: DialogId) {
     let app_ctx = app.ctx().clone();
     crate::dialogs::confirm(app, &app_ctx, id).unwrap();
 }
@@ -184,7 +184,7 @@ fn insert_stop_adds_a_stop_after_the_selected_step() {
     set(&mut app, id, "allowContinue", json!(true));
     ok(&mut app, id);
     let action = app.session.actions.list.action(0).unwrap();
-    assert_eq!(action.steps[1], ActionStep::new(photocraft_engine::atn_cmds::STOP_MESSAGE, json!({"message": "Check the mask", "allowContinue": true})));
+    assert_eq!(action.steps[1], ActionStep::new(patronusphoto_engine::atn_cmds::STOP_MESSAGE, json!({"message": "Check the mask", "allowContinue": true})));
     assert!(action.dialogs.contains(&1), "an inserted Stop has its dialog toggle on");
     assert_eq!(app.ui.actions.panel.selected, Some(ActionSelection::Step(0, 1)));
     assert!(app.ui.actions.panel.expanded.contains("A"));

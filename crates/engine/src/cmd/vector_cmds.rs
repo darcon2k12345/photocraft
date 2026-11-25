@@ -10,20 +10,20 @@
 //! ```
 //!
 //! A knot given as `[x, y]` is a corner with retracted handles; `in`/`out` default to the
-//! anchor. The serde form of `photocraft_doc::Path` is accepted too. Colours are `"#rrggbb"`,
+//! anchor. The serde form of `patronusphoto_doc::Path` is accepted too. Colours are `"#rrggbb"`,
 //! `"#rrggbbaa"` or `[r,g,b,a]` (0..1); opacities are percentages (0..100).
 //!
-//! Every edit re-renders the shape layer's cache with `photocraft-vector` in one undoable step.
-//! PSD blocks stay byte-identical while they still decode to the model (see `photocraft-io`).
+//! Every edit re-renders the shape layer's cache with `patronusphoto-vector` in one undoable step.
+//! PSD blocks stay byte-identical while they still decode to the model (see `patronusphoto-io`).
 
-use photocraft_algo::selection::{self as sel, SelectionMode};
-use photocraft_color::{BlendMode, Color};
-use photocraft_doc::{
+use patronusphoto_algo::selection::{self as sel, SelectionMode};
+use patronusphoto_color::{BlendMode, Color};
+use patronusphoto_doc::{
     ClippingPath, Document, Fill, FillRule, GradientStyle, Knot, Layer, LayerContent, LayerId, LineCap, LineJoin, LiveShape, NamedPath, Path, PathOp,
     ShapeLayer, ShapeStroke, StrokeAlign, Subpath, VectorMask,
 };
-use photocraft_geom::{Affine, Point, Rect};
-use photocraft_vector as vector;
+use patronusphoto_geom::{Affine, Point, Rect};
+use patronusphoto_vector as vector;
 use serde_json::{Value, json};
 
 use crate::commands::{CommandSpec, parse_blend};

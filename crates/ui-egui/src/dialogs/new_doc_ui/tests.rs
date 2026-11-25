@@ -17,7 +17,7 @@ fn color_profile_menu_lists_the_profiles_of_the_modes_space() {
     let lists = profiles(&app);
     let of = |mode: DialogMode| lists.iter().find(|p| p.mode == mode).unwrap_or_else(|| panic!("{mode:?} has a list"));
     let rgb = of(DialogMode::Rgb);
-    assert_eq!(rgb.working, app.session.color.working(photocraft_color::ColorMode::Rgb).description);
+    assert_eq!(rgb.working, app.session.color.working(patronusphoto_color::ColorMode::Rgb).description);
     assert!(rgb.others.contains(&Builtin::AdobeRgbCompat.id().to_string()));
     assert!(!rgb.others.contains(&Builtin::CoatedCmyk.id().to_string()));
     let cmyk = of(DialogMode::Cmyk);
@@ -26,7 +26,7 @@ fn color_profile_menu_lists_the_profiles_of_the_modes_space() {
     for list in &lists {
         let mode = create_params(&options(|o| o.color_mode = list.mode))["mode"].clone();
         for profile in list.others.iter().filter(|p| !p.ends_with(".icc")) {
-            let mut s = photocraft_engine::Session::new();
+            let mut s = patronusphoto_engine::Session::new();
             s.execute("file.new", json!({"width": 2, "height": 2, "mode": mode, "profile": profile})).unwrap_or_else(|e| panic!("{mode} {profile}: {e}"));
         }
     }
@@ -79,7 +79,7 @@ fn preset_sets_size_resolution_and_create_params_drop_ui_keys() {
     for (settings, expected) in table {
         let params = create_params(&settings);
         assert_eq!(params, expected);
-        let mut s = photocraft_engine::Session::new();
+        let mut s = patronusphoto_engine::Session::new();
         s.execute("file.new", params).unwrap_or_else(|e| panic!("{expected}: {e}"));
         let d = &s.active().unwrap().doc;
         assert_eq!((d.size.width, d.size.height, d.resolution_dpi), (settings.size.width, settings.size.height, settings.pixels_per_inch as f32));
@@ -124,7 +124,7 @@ fn a_custom_background_color_is_picked_and_used() {
     assert!(matches!(crate::new_doc_remember_tests::options(h.state(), id).background, BackgroundContents::Custom(_)), "{}", fields(h.state(), id));
     assert!(press_create(&mut h, id));
     let doc = &h.state().session.active().unwrap().doc;
-    let px = photocraft_compose::flatten(doc).px[0];
+    let px = patronusphoto_compose::flatten(doc).px[0];
     assert!((px[0] * 255.0 - 51.0).abs() < 1.0 && (px[1] * 255.0 - 102.0).abs() < 1.0 && (px[2] * 255.0 - 153.0).abs() < 1.0, "{px:?}");
 }
 
@@ -147,9 +147,9 @@ fn save_restart_select_create_and_delete_through_the_dialog() {
     assert_eq!(size, (1920, 1080), "the dialog's settings are stored");
 
     // A restart: the preset comes back from the preferences into the next dialog's library.
-    let mut restarted = photocraft_engine::Session::new();
+    let mut restarted = patronusphoto_engine::Session::new();
     restarted.load_prefs_json(&h.state().session.prefs_to_json()).unwrap();
-    let mut h2 = harness(PhotocraftApp::new(restarted, crate::Services::default()));
+    let mut h2 = harness(PatronusPhotoApp::new(restarted, crate::Services::default()));
     let id2 = open(&mut h2);
     let library = h2
         .state()

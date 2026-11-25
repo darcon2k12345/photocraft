@@ -7,17 +7,17 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
-fn harness() -> Harness<'static, Box<PhotocraftApp>> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn harness() -> Harness<'static, Box<PatronusPhotoApp>> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
     app.run("tools.setBrush", json!({"brush": {"size": 20, "hardness": 0.0, "angle": 0.0, "roundness": 1.0}})).unwrap();
     app.ui.tool = Tool::Brush;
     app.sync_views();
     let mut h = Harness::builder().with_size(vec2(1200.0, 800.0)).with_step_dt(1.0 / 60.0).with_context(app.ctx().clone()).build_app(
-        |ui, app: &mut PhotocraftApp| {
+        |ui, app: &mut PatronusPhotoApp| {
             if !ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 return;
             }
@@ -26,7 +26,7 @@ fn harness() -> Harness<'static, Box<PhotocraftApp>> {
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     h.run_steps(4);
     let c = h.state().last_canvas_rect.center();
     crate::brush_picker::open(h.state_mut(), [c.x, c.y]);
@@ -35,7 +35,7 @@ fn harness() -> Harness<'static, Box<PhotocraftApp>> {
 }
 
 /// Type `text` into the picker's `n`th spin field (0 Size, 1 Hardness), then Tab.
-fn type_into(h: &mut Harness<'static, Box<PhotocraftApp>>, n: usize, text: &str) {
+fn type_into(h: &mut Harness<'static, Box<PatronusPhotoApp>>, n: usize, text: &str) {
     h.get_all_by_role(egui::accesskit::Role::SpinButton).nth(n).expect("the field").click();
     h.run_steps(1);
     h.key_press_modifiers(Modifiers::COMMAND, egui::Key::A);
@@ -45,12 +45,12 @@ fn type_into(h: &mut Harness<'static, Box<PhotocraftApp>>, n: usize, text: &str)
     h.run_steps(2);
 }
 
-fn brush(h: &Harness<'static, Box<PhotocraftApp>>) -> (f32, f32, f32) {
+fn brush(h: &Harness<'static, Box<PatronusPhotoApp>>) -> (f32, f32, f32) {
     let b = &h.state().session.tools.brush;
     (b.size, b.hardness, b.angle)
 }
 
-fn journal_ids(h: &Harness<'static, Box<PhotocraftApp>>, from: usize) -> Vec<String> {
+fn journal_ids(h: &Harness<'static, Box<PatronusPhotoApp>>, from: usize) -> Vec<String> {
     h.state().session.journal[from..].iter().map(|(id, _)| id.clone()).collect()
 }
 

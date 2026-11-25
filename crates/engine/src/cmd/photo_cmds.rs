@@ -1,23 +1,23 @@
 //! Computational-photography automation: File › Automate › Photomerge, Merge to HDR Pro and
 //! Crop and Straighten Photos. The registration and blending code
-//! ([`photocraft_algo::panorama`]) is shared with Edit › Auto-Align / Auto-Blend Layers
+//! ([`patronusphoto_algo::panorama`]) is shared with Edit › Auto-Align / Auto-Blend Layers
 //! (`align_cmds`).
 //!
 //! Inputs are files (`"paths"`: an array or a folder) or, with `"useOpenDocuments": true`, the
 //! open documents (Photoshop's *Add Open Files*). Each command creates new documents; the
 //! sources are untouched.
 
-use photocraft_algo::exif;
-use photocraft_algo::hdr::{self, MergeOptions, ToneMethod};
-use photocraft_algo::panorama::{self, AlignOptions, Alignment, Layout, Placement, RoiImage};
-use photocraft_algo::scancrop;
-use photocraft_algo::tone::HdrToning;
-use photocraft_algo::transform::{Homography, Interp, warp_surface};
-use photocraft_algo::warp::warp_mesh_surface;
-use photocraft_color::{ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{Document, Layer, LayerContent, LayerMask, Size};
-use photocraft_geom::{Rect, TILE_SIZE};
-use photocraft_raster::{Surface, to_rgba};
+use patronusphoto_algo::exif;
+use patronusphoto_algo::hdr::{self, MergeOptions, ToneMethod};
+use patronusphoto_algo::panorama::{self, AlignOptions, Alignment, Layout, Placement, RoiImage};
+use patronusphoto_algo::scancrop;
+use patronusphoto_algo::tone::HdrToning;
+use patronusphoto_algo::transform::{Homography, Interp, warp_surface};
+use patronusphoto_algo::warp::warp_mesh_surface;
+use patronusphoto_color::{ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::{Document, Layer, LayerContent, LayerMask, Size};
+use patronusphoto_geom::{Rect, TILE_SIZE};
+use patronusphoto_raster::{Surface, to_rgba};
 use serde_json::{Value, json};
 
 use crate::commands::CommandSpec;
@@ -201,8 +201,8 @@ impl SourceLoad {
     /// The importer options that lower this import to what is left after the retained sources
     /// and the encoded buffer: the importer's own PSD/TIFF preflight, or a flat decode limit.
     /// The decoded document and the flatten are still charged by [`Self::admit`].
-    fn import_options(&self, s: &Session, name: &str, bytes: &[u8], available: usize, cmd: &str) -> Result<photocraft_io::ImportOptions> {
-        use photocraft_io::ImportPreflight;
+    fn import_options(&self, s: &Session, name: &str, bytes: &[u8], available: usize, cmd: &str) -> Result<patronusphoto_io::ImportOptions> {
+        use patronusphoto_io::ImportPreflight;
         let mut opts = crate::jobs::import_options(s.prefs());
         if available == 0 {
             return Err(crate::allocation::error(
@@ -211,7 +211,7 @@ impl SourceLoad {
             ));
         }
         let limit = u64::try_from(available).unwrap_or(u64::MAX);
-        match photocraft_io::import_preflight(name, bytes) {
+        match patronusphoto_io::import_preflight(name, bytes) {
             ImportPreflight::Psd => opts.psd_max_pixel_bytes = limit,
             ImportPreflight::Tiff => {
                 self.admit_tiff_header(name, bytes, available, cmd)?;
@@ -244,7 +244,7 @@ impl SourceLoad {
     /// Refuses a TIFF whose default page alone would not fit in `available`; a layered TIFF is
     /// also bounded by the importer's own PSD-style preflight.
     fn admit_tiff_header(&self, name: &str, bytes: &[u8], available: usize, cmd: &str) -> Result<()> {
-        let info = photocraft_codecs::tiff_info(bytes).map_err(|e| bad(cmd, format!("{name}: {e}")))?;
+        let info = patronusphoto_codecs::tiff_info(bytes).map_err(|e| bad(cmd, format!("{name}: {e}")))?;
         let page = info.default_page().and_then(|i| info.pages.get(i)).ok_or_else(|| bad(cmd, format!("{name}: the TIFF has no readable page")))?;
         let bpp = u64::from(page.samples_per_pixel).saturating_mul(u64::from(page.bits_per_sample).div_ceil(8));
         let needed = u64::from(page.width).saturating_mul(u64::from(page.height)).saturating_mul(bpp);
@@ -390,15 +390,15 @@ const DIRECT_MIN_CORRELATION: f64 = 0.5;
 pub(crate) const NO_DETAIL: &str = "Auto-Align couldn't find enough matching detail between the layers";
 
 /// Registers `images` (surface, content area, all of one size) by intensity
-/// ([`photocraft_algo::direct`]), for layers that nearly coincide (a focus or exposure bracket,
+/// ([`patronusphoto_algo::direct`]), for layers that nearly coincide (a focus or exposure bracket,
 /// a burst): outward from the reference, each layer to the previous one aligned, starting from
 /// its pose. The luminance planes are built at the search scale (≤ [`DIRECT_SIDE`] across), so
 /// nothing full-resolution is held or warped. A layer whose best pose overlaps its neighbour
 /// too little or explains too little of it is no fit, and fails with [`NO_DETAIL`]. Planar
 /// layouts only; Auto means a similarity (Collage).
 pub(crate) fn register_direct(images: &[(&Surface, Rect)], layout: Layout, reference: usize) -> std::result::Result<Alignment, String> {
-    use photocraft_algo::direct::{self, Plane, Pose};
-    use photocraft_algo::transform::Homography;
+    use patronusphoto_algo::direct::{self, Plane, Pose};
+    use patronusphoto_algo::transform::Homography;
     let (motion, layout) = match layout {
         Layout::Reposition => (panorama::Motion::Translation, Layout::Reposition),
         Layout::Auto | Layout::Collage => (panorama::Motion::Similarity, Layout::Collage),
@@ -488,9 +488,9 @@ pub(crate) fn plane_matrix(pl: &Placement, origin: (f64, f64)) -> Option<Homogra
 }
 
 /// Photomerge's working-memory budget in bytes, from [`budget_from`]: the `memoryBudget` param,
-/// else `PHOTOCRAFT_PHOTOMERGE_BUDGET_MB`, else half of the machine's physical memory.
+/// else `PATRONUSPHOTO_PHOTOMERGE_BUDGET_MB`, else half of the machine's physical memory.
 fn photomerge_memory_budget(p: &Value) -> usize {
-    let env_mb = std::env::var("PHOTOCRAFT_PHOTOMERGE_BUDGET_MB").ok();
+    let env_mb = std::env::var("PATRONUSPHOTO_PHOTOMERGE_BUDGET_MB").ok();
     budget_from(p.get("memoryBudget").and_then(Value::as_u64), env_mb.as_deref(), crate::memory::physical_memory())
 }
 
@@ -1020,7 +1020,7 @@ fn photomerge(s: &mut Session, p: &Value) -> Result<Value> {
 /// Fills the transparent areas of a composite (inside its bounding rectangle) with
 /// content-aware fill, at a reduced scale for large panoramas.
 fn content_aware_fill(comp: &Surface, canvas: Rect) -> Surface {
-    use photocraft_algo::content_aware::{FillOptions, fill};
+    use patronusphoto_algo::content_aware::{FillOptions, fill};
     let fmt = comp.format();
     let n = fmt.channels();
     let (w, h) = (canvas.width() as usize, canvas.height() as usize);
@@ -1214,7 +1214,7 @@ fn merge_to_hdr(s: &mut Session, p: &Value) -> Result<Value> {
     let n = fmt.channels();
     let mut data = vec![0.0f32; w * h * n];
     for (q, o) in px.iter().zip(data.chunks_exact_mut(n)) {
-        photocraft_raster::from_rgba_into(&fmt, *q, o);
+        patronusphoto_raster::from_rgba_into(&fmt, *q, o);
     }
     let mut surf = Surface::new(fmt);
     surf.write_region(area, &data);

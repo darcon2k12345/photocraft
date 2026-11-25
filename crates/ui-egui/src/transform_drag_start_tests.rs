@@ -4,17 +4,17 @@
 //! `PreviewTextures`).
 
 use egui::Modifiers;
-use photocraft_doc::LayerId;
+use patronusphoto_doc::LayerId;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing;
 use crate::state::Tool;
 
 /// An 800 × 600 document with a red block (x 100..300, y 100..300) on layer "Paint" and Free
 /// Transform open on it.
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 800, "height": 600, "background": "white"})).unwrap();
     app.sync_views();
     app.ui.extras.rulers = false;
@@ -32,11 +32,11 @@ fn app() -> Box<PhotocraftApp> {
     app
 }
 
-fn quad(app: &PhotocraftApp) -> [[f64; 2]; 4] {
+fn quad(app: &PatronusPhotoApp) -> [[f64; 2]; 4] {
     app.ui.transform.as_ref().expect("the box is open").quad_array()
 }
 
-fn steps(app: &PhotocraftApp) -> usize {
+fn steps(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.past_len()
 }
 
@@ -53,7 +53,7 @@ fn a_click_on_the_box_moves_nothing_and_keeps_it_open() {
 #[test]
 fn a_jittery_click_outside_the_box_on_the_image_leaves_it_as_it_was() {
     let mut app = app();
-    let pivot = |app: &PhotocraftApp| app.ui.transform.as_ref().map(|t| t.session.pivot());
+    let pivot = |app: &PatronusPhotoApp| app.ui.transform.as_ref().map(|t| t.session.pivot());
     let (start, at) = (quad(&app), pivot(&app));
     // Only the Background has pixels here (#11100): the box stays open.
     testing::press(&mut app, [600.0, 450.0], Modifiers::NONE);

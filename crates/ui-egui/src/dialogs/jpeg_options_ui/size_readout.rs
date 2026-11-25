@@ -13,10 +13,10 @@ use std::collections::VecDeque;
 
 use std::sync::{Arc, Mutex, PoisonError};
 
-use photocraft_codecs::JpegFormat;
-use photocraft_doc::{DocId, Document};
+use patronusphoto_codecs::JpegFormat;
+use patronusphoto_doc::{DocId, Document};
 
-use crate::{ExportSettings, PhotocraftApp};
+use crate::{ExportSettings, PatronusPhotoApp};
 
 /// The largest document, in pixels, whose size is worked out. Flattening and encoding 40 MP takes
 /// a second or two on a worker and about 160 MB at 8 bits, as Export As's exact size does (#6595).
@@ -27,14 +27,14 @@ const MAX_PX: u64 = 40_000_000;
 const MAX_PX: u64 = 4_000_000;
 
 /// Whether a document of `size` gets a size readout (see [`MAX_PX`]).
-pub(super) fn estimable(size: photocraft_doc::Size) -> bool {
+pub(super) fn estimable(size: patronusphoto_doc::Size) -> bool {
     size.area() <= MAX_PX
 }
 
 /// The bytes `doc` takes written as a JPEG with `settings`, as the save writes it; `None` when it
 /// can't be encoded.
 pub(super) fn encoded_size(doc: &Document, settings: &ExportSettings) -> Option<u64> {
-    let bytes = photocraft_io::export(doc, "size.jpg", &settings.io_options()).ok()?.bytes;
+    let bytes = patronusphoto_io::export(doc, "size.jpg", &settings.io_options()).ok()?.bytes;
     u64::try_from(bytes.len()).ok()
 }
 
@@ -133,7 +133,7 @@ pub(super) struct Source {
 impl Source {
     /// For the parked JPEG save, if any, as its document is now; `None` when the document is
     /// gone.
-    pub(super) fn of(app: &mut PhotocraftApp) -> Option<Self> {
+    pub(super) fn of(app: &mut PatronusPhotoApp) -> Option<Self> {
         // Out of the app while its settings are read, which activates the document for a moment.
         let save = app.parked_save.take()?;
         let source = Self::from_save(app, &save);
@@ -141,7 +141,7 @@ impl Source {
         source
     }
 
-    fn from_save(app: &mut PhotocraftApp, save: &crate::format_prompts::ParkedSave) -> Option<Self> {
+    fn from_save(app: &mut PatronusPhotoApp, save: &crate::format_prompts::ParkedSave) -> Option<Self> {
         let crate::format_prompts::ParkedFormat::Jpeg(parked) = &save.format else { return None };
         let st = app.session.documents().iter().find(|st| st.doc.id == save.doc)?;
         let (doc, revision) = (Arc::clone(&st.doc), st.revision);
@@ -168,7 +168,7 @@ impl Source {
     /// on its step, as `confirm` keeps it.
     fn encoder_quality(&self, quality: u8) -> u8 {
         let own = self.own_quality.filter(|&q| super::quality_from_percent(u32::from(q)) == quality);
-        own.unwrap_or_else(|| photocraft_engine::file_cmds::jpeg_quality(f64::from(quality)))
+        own.unwrap_or_else(|| patronusphoto_engine::file_cmds::jpeg_quality(f64::from(quality)))
     }
 
     /// The settings OK writes with for `quality` (0–12) and `format`.

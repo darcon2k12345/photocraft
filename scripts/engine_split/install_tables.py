@@ -114,7 +114,7 @@ def main():
     print("\n".join(report) or "nothing to do")
     if any(r.startswith("added") for r in report):
         print(
-            "next: run the test `install::order_tests` with PHOTOCRAFT_WRITE_COMMAND_IDS=1 to regenerate "
+            "next: run the test `install::order_tests` with PATRONUSPHOTO_WRITE_COMMAND_IDS=1 to regenerate "
             "install/command_ids.txt, and review its diff"
         )
     return 1 if any(r.startswith("UNPLACED") for r in report) else 0

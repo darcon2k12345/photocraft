@@ -1,30 +1,30 @@
-//! Frame times of a freehand Lasso drag on a large document (#1773): the real `PhotocraftApp` in
+//! Frame times of a freehand Lasso drag on a large document (#1773): the real `PatronusPhotoApp` in
 //! an offscreen egui_kittest harness on wgpu, a 6336×7920 RGB document, the view at 125 %, then a
 //! spiral drag of many pointer moves, one per frame, and the release (the `select.lasso` commit)
 //! and the frame after it (the canvas refresh the new selection causes).
 //!
 //! ```sh
-//! cargo run --release -p photocraft-ui-egui --example lasso_bench -- [--size 6336x7920] [--moves 600]
+//! cargo run --release -p patronusphoto-ui-egui --example lasso_bench -- [--size 6336x7920] [--moves 600]
 //!     [--layers 4] [--full 3] [--selection] [--zoom 1.25] [--render]
 //! ```
 //!
 //! `--layers` layers, the first `--full` of them canvas-sized (the rest 1024×1024 patches);
 //! `--selection` starts from an elliptical selection; `--render` also tessellates and paints
 //! each frame on the GPU (with a readback, about 7 ms here), otherwise only the app's logic runs.
-//! `PHOTOCRAFT_GPU_SYNC=1` makes a canvas refresh wait for the GPU.
+//! `PATRONUSPHOTO_GPU_SYNC=1` makes a canvas refresh wait for the GPU.
 
 use std::time::Instant;
 
 use egui::{Event, Modifiers, PointerButton, Pos2};
-use photocraft_color::{ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{Document, Layer};
-use photocraft_geom::{Rect, Size};
-use photocraft_ui_egui::state::Tool;
-use photocraft_ui_egui::{PhotocraftApp, Services};
+use patronusphoto_color::{ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::{Document, Layer};
+use patronusphoto_geom::{Rect, Size};
+use patronusphoto_ui_egui::state::Tool;
+use patronusphoto_ui_egui::{PatronusPhotoApp, Services};
 use rayon::prelude::*;
 use serde_json::json;
 
-type H = egui_kittest::Harness<'static, Box<PhotocraftApp>>;
+type H = egui_kittest::Harness<'static, Box<PatronusPhotoApp>>;
 
 fn arg(args: &[String], name: &str) -> Option<String> {
     args.iter().position(|a| a == name).and_then(|i| args.get(i + 1).cloned())
@@ -70,7 +70,7 @@ fn hash(x: i32, y: i32) -> u8 {
 }
 
 fn screen(h: &H, x: f64, y: f64) -> Pos2 {
-    let view = photocraft_ui_egui::canvas::active_view(h.state()).expect("an active document view");
+    let view = patronusphoto_ui_egui::canvas::active_view(h.state()).expect("an active document view");
     view.to_screen(craft::behavior::kurbo::Point::new(x, y))
 }
 
@@ -126,9 +126,9 @@ fn main() {
     println!("built {w}×{hh}, {layers} layers in {:.0} ms", ms(t));
 
     let builder = egui_kittest::Harness::builder().with_size(egui::vec2(1600.0, 1000.0));
-    let mut h: H = builder.wgpu_setup(photocraft_ui_egui::gpu_canvas::wgpu_setup()).build_eframe(move |cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), Services::default());
+    let mut h: H = builder.wgpu_setup(patronusphoto_ui_egui::gpu_canvas::wgpu_setup()).build_eframe(move |cc| {
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), Services::default());
         if let Some(rs) = cc.wgpu_render_state.as_ref() {
             app.set_wgpu(rs.clone());
         }

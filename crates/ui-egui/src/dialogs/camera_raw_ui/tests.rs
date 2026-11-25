@@ -4,50 +4,50 @@ use craft::host::{PickKind, Picked, ScriptedFiles};
 use craft::imaging::raw::RawDevelopSettings as CameraRaw;
 use craft::imaging::ui::raw_develop::RawDevelopWorkspace;
 use craft::ui::dialog::HostedWorkspace;
-use photocraft_geom::Rect;
+use patronusphoto_geom::Rect;
 use serde_json::{Value, json};
 
 use super::convert::open_pixels;
 use super::open::{Coverage, Target, document_index, open_raw};
 use super::sidecar::{existing_sidecar_is_ours, read_bounded};
 use super::*;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The first raw waiting for the open-time dialog, taken off its filmstrip.
-fn take_queued(app: &mut PhotocraftApp) -> Option<RawOpen> {
+fn take_queued(app: &mut PatronusPhotoApp) -> Option<RawOpen> {
     (!app.raw_shelf.is_empty()).then(|| app.raw_shelf.remove(0).raw)
 }
 
 /// One frame of the app, whose hosted dialogs show the workspace and `take` what it reports. The framework's job
 /// runtime delivers a develop only inside the app's frame.
-fn frame(app: &mut PhotocraftApp) {
+fn frame(app: &mut PatronusPhotoApp) {
     crate::canvas::testing::frame(app);
 }
 
 /// The settings the open RAW Develop workspace holds. The workspace's session is `CameraRaw`
 /// itself, so there is no conversion.
-fn shown(app: &PhotocraftApp) -> CameraRaw {
+fn shown(app: &PatronusPhotoApp) -> CameraRaw {
     app.framework.dialogs.get::<HostedWorkspace<RawDevelopWorkspace>>().expect("RAW Develop is open").workspace().session().clone()
 }
 
 /// The app's state beside the hosted workspace.
-fn session(app: &PhotocraftApp) -> &RawSession {
+fn session(app: &PatronusPhotoApp) -> &RawSession {
     app.raw.as_ref().expect("RAW Develop is open")
 }
 
 /// The proxy pixels of the last develop that landed.
-fn processed(app: &PhotocraftApp) -> Vec<[f32; 4]> {
+fn processed(app: &PatronusPhotoApp) -> Vec<[f32; 4]> {
     session(app).source.developed().expect("a develop has landed").processed.clone()
 }
 
 /// Whether the open-time dialog knows how the raw was developed (its camera tone curve).
-fn knows_raw_curve(app: &PhotocraftApp) -> bool {
+fn knows_raw_curve(app: &PatronusPhotoApp) -> bool {
     session(app).source.has_raw_curve()
 }
 
 /// Runs frames until the develop of the settings in force has landed. The first pass after a
 /// change starts its develop; later passes wait for the runtime's job to deliver.
-fn settle(app: &mut PhotocraftApp) {
+fn settle(app: &mut PatronusPhotoApp) {
     if app.raw.is_none() {
         return;
     }
@@ -79,7 +79,7 @@ fn settle(app: &mut PhotocraftApp) {
 
 /// Done on the open raw: the request queues it and the workspace's next pass answers it, so the reply is the one the
 /// result pump of that frame left.
-fn done(app: &mut PhotocraftApp, ctx: &egui::Context) -> Result<Value, String> {
+fn done(app: &mut PatronusPhotoApp, ctx: &egui::Context) -> Result<Value, String> {
     menu(app, ctx, "filter.cameraRaw", &json!({"ui": {"done": true}})).unwrap()?;
     // The workspace reports the request on a pass of its own, and the pump answers it in the frame after.
     for _ in 0..50 {
@@ -94,7 +94,7 @@ fn done(app: &mut PhotocraftApp, ctx: &egui::Context) -> Result<Value, String> {
 
 /// A `menu` request followed by the develop it asks for. The reply describes the open dialog
 /// once its preview has landed; a request that closed the dialog answers with its own reply.
-fn develop(app: &mut PhotocraftApp, ctx: &egui::Context, params: Value) -> Value {
+fn develop(app: &mut PatronusPhotoApp, ctx: &egui::Context, params: Value) -> Value {
     let reply = menu(app, ctx, "filter.cameraRaw", &params).unwrap().unwrap();
     if app.raw.is_none() {
         return reply;
@@ -105,21 +105,22 @@ fn develop(app: &mut PhotocraftApp, ctx: &egui::Context, params: Value) -> Value
 
 #[test]
 fn preview_texture_uses_linear_document_display_encoding() {
-    let mut doc = photocraft_doc::Document::new("test", photocraft_geom::Size::new(1, 1), photocraft_doc::ColorMode::Rgb, photocraft_doc::SampleType::F32);
+    let mut doc =
+        patronusphoto_doc::Document::new("test", patronusphoto_geom::Size::new(1, 1), patronusphoto_doc::ColorMode::Rgb, patronusphoto_doc::SampleType::F32);
     doc.icc_profile = Some(craft::cms::Builtin::LinearSrgb.profile().to_bytes());
-    let mut color = photocraft_engine::color_cmds::ColorState::default();
+    let mut color = patronusphoto_engine::color_cmds::ColorState::default();
     color.settings.monitor_profile = "srgb".into();
     let display = color.canvas_display(&doc).unwrap();
     let px = [[0.25, 0.25, 0.25, 1.0]];
     let preview = image(&px, 1, 1, &display);
-    let expected = display.to_rgba8(&photocraft_compose::Buffer::filled(Rect::new(0, 0, 1, 1), px[0]));
+    let expected = display.to_rgba8(&patronusphoto_compose::Buffer::filled(Rect::new(0, 0, 1, 1), px[0]));
     assert_eq!(preview.pixels[0].to_array(), expected.pixels[..4]);
     assert_ne!(preview.pixels[0].r(), 64, "linear light must be encoded before display");
 }
 
 #[test]
 fn histogram_follows_preview_and_view_changes_do_not_render_or_edit() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
@@ -145,8 +146,8 @@ fn histogram_follows_preview_and_view_changes_do_not_render_or_edit() {
 }
 
 /// A layer with tonal variation, a selection over part of it and the dialog open on it.
-fn worker_app() -> (Box<PhotocraftApp>, egui::Context) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn worker_app() -> (Box<PatronusPhotoApp>, egui::Context) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
@@ -220,7 +221,7 @@ impl Drop for HeldPreview {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn hold_old_preview(app: &PhotocraftApp) -> (HeldPreview, std::sync::mpsc::Receiver<u64>) {
+fn hold_old_preview(app: &PatronusPhotoApp) -> (HeldPreview, std::sync::mpsc::Receiver<u64>) {
     let release = Arc::new((std::sync::Mutex::new(false), std::sync::Condvar::new()));
     let timed_out = Arc::new(std::sync::atomic::AtomicBool::new(false));
     let (arrived, waiting) = std::sync::mpsc::channel();
@@ -243,7 +244,7 @@ fn hold_old_preview(app: &PhotocraftApp) -> (HeldPreview, std::sync::mpsc::Recei
 
 /// Observe only the newer publication: `settle` deliberately waits for the older held job too.
 #[cfg(not(target_arch = "wasm32"))]
-fn wait_for_newer_preview(app: &mut PhotocraftApp, order: u64) {
+fn wait_for_newer_preview(app: &mut PatronusPhotoApp, order: u64) {
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
     loop {
         frame(app);
@@ -316,7 +317,7 @@ fn a_stale_worker_never_replaces_a_newer_synchronous_render() {
 
 #[test]
 fn smart_filter_double_click_edits_the_stored_camera_raw_filter_in_its_own_dialog() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
@@ -327,8 +328,8 @@ fn smart_filter_double_click_edits_the_stored_camera_raw_filter_in_its_own_dialo
     app.run("filter.cameraRaw", json!({"exposure": 1.0, "contrast": 20})).unwrap();
     app.run("layer.smartFilter.setParams", json!({"index": 0, "params": {"pointCurve": legacy}})).unwrap();
     let layer = app.session.active().unwrap().active_layer.unwrap();
-    let smart = |app: &PhotocraftApp| match &app.session.active().unwrap().doc.layer(layer).unwrap().content {
-        photocraft_doc::LayerContent::Smart(sm) => sm.clone(),
+    let smart = |app: &PatronusPhotoApp| match &app.session.active().unwrap().doc.layer(layer).unwrap().content {
+        patronusphoto_doc::LayerContent::Smart(sm) => sm.clone(),
         _ => panic!("not a smart object"),
     };
     let steps = app.session.active().unwrap().history.past_len();
@@ -366,12 +367,12 @@ fn smart_filter_double_click_edits_the_stored_camera_raw_filter_in_its_own_dialo
 
 #[test]
 fn distant_sparse_pixels_cannot_trigger_an_unbounded_proxy_scan() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width":64,"height":48})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     let layer = app.session.active().unwrap().active_layer.unwrap();
-    let mut source = photocraft_raster::Surface::new(photocraft_color::PixelFormat::RGBA8);
+    let mut source = patronusphoto_raster::Surface::new(patronusphoto_color::PixelFormat::RGBA8);
     source.write_region(Rect::new(30_000, 30_000, 30_001, 30_001), &[0.5, 0.5, 0.5, 1.0]);
     let result = open_pixels(&mut app, &ctx, layer, source, CameraRaw::default(), Coverage::None, Target::NewFilter);
     assert!(result.unwrap_err().contains("bounds are too large"));
@@ -380,7 +381,7 @@ fn distant_sparse_pixels_cannot_trigger_an_unbounded_proxy_scan() {
 
 #[test]
 fn dialog_drives_the_engine() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
@@ -409,12 +410,12 @@ std::thread_local! {
 
 /// An app whose importer is the real one, opening a synthetic DNG.
 ///
-/// Raw opens keep their decode in one process-wide list of two (`photocraft_io::raw`), so tests
+/// Raw opens keep their decode in one process-wide list of two (`patronusphoto_io::raw`), so tests
 /// that open raws take turns: a parallel test's open would otherwise evict the decode another
 /// test is about to take. The turn is held until the test's thread ends (nextest runs each test
 /// in its own process, where this costs nothing).
-fn raw_app() -> (Box<PhotocraftApp>, Vec<u8>) {
-    use photocraft_raw::testgen::{DngSpec, mosaic, scene};
+fn raw_app() -> (Box<PatronusPhotoApp>, Vec<u8>) {
+    use patronusphoto_raw::testgen::{DngSpec, mosaic, scene};
     static TURN: std::sync::Mutex<()> = std::sync::Mutex::new(());
     RAW_OPEN_TURN.with(|held| {
         let mut held = held.borrow_mut();
@@ -423,22 +424,22 @@ fn raw_app() -> (Box<PhotocraftApp>, Vec<u8>) {
         }
     });
     let services = crate::Services {
-        import: Some(Box::new(|name: &str, b: &[u8], opts: &photocraft_io::ImportOptions| {
-            photocraft_io::import_with_options(name, b, opts).map(|r| (r.document, r.warnings)).map_err(|e| e.to_string())
+        import: Some(Box::new(|name: &str, b: &[u8], opts: &patronusphoto_io::ImportOptions| {
+            patronusphoto_io::import_with_options(name, b, opts).map(|r| (r.document, r.warnings)).map_err(|e| e.to_string())
         })),
         ..Default::default()
     };
     let (w, h) = (48, 32);
     let mut spec = DngSpec::cfa(w, h, mosaic(&scene(w, h), w, [0, 1, 1, 2], 0, 30000));
     spec.as_shot_neutral = Some([0.5, 1.0, 0.7]);
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     // The pixel comparisons below read the developed ProPhoto values: no conversion on open
     // (Camera Raw Defaults › Color space is Adobe RGB otherwise).
     app.run("prefs.set", json!({"path": "rawDefaults.colorSpace", "value": "proPhoto"})).unwrap();
     (app, spec.build())
 }
 
-fn mean_red(app: &PhotocraftApp) -> f32 {
+fn mean_red(app: &PatronusPhotoApp) -> f32 {
     let st = app.session.active().unwrap();
     let s = st.doc.layer(st.active_layer.unwrap()).unwrap().surface().unwrap();
     (0..8).map(|i| s.rgba(4 + i * 4, 16)[0]).sum::<f32>() / 8.0
@@ -449,7 +450,7 @@ fn raw_opens_in_camera_raw_and_open_redevelops() {
     let (mut app, dng) = raw_app();
     let ctx = app.ctx().clone();
     let warnings = app.open_bytes("IMG_0001.dng", &dng).unwrap();
-    assert!(warnings.iter().any(|w| w.contains(photocraft_io::raw::DEVELOPED_NOTE)), "{warnings:?}");
+    assert!(warnings.iter().any(|w| w.contains(patronusphoto_io::raw::DEVELOPED_NOTE)), "{warnings:?}");
     // A raw has no embedded profile (ProPhoto RGB is the space it is developed into), so Ask
     // When Opening (on by default) has nothing to ask about.
     assert!(!app.dialog_open(), "no profile prompt for a raw");
@@ -466,11 +467,11 @@ fn raw_opens_in_camera_raw_and_open_redevelops() {
     assert_eq!(app.session.documents().len(), 1);
     let st = app.session.active().unwrap();
     assert_eq!(st.saved_revision, st.revision, "Open leaves the document unmodified");
-    assert_eq!(st.doc.depth, photocraft_color::SampleType::U16);
+    assert_eq!(st.doc.depth, patronusphoto_color::SampleType::U16);
     assert!(mean_red(&app) > before + 0.05, "{before} → {}", mean_red(&app));
 }
 
-fn pixels(app: &PhotocraftApp) -> Vec<f32> {
+fn pixels(app: &PatronusPhotoApp) -> Vec<f32> {
     let st = app.session.active().unwrap();
     let s = st.doc.layer(st.active_layer.unwrap()).unwrap().surface().unwrap();
     (0..32).flat_map(|y| (0..48).map(move |x| (x, y))).flat_map(|(x, y)| s.rgba(x, y)).collect()
@@ -481,7 +482,7 @@ fn pixels(app: &PhotocraftApp) -> Vec<f32> {
 /// the sensor data when the dialog closes.
 #[test]
 fn a_raw_open_decodes_the_file_once_and_frees_it_with_the_dialog() {
-    use photocraft_io::raw::decodes_on_this_thread;
+    use patronusphoto_io::raw::decodes_on_this_thread;
     let ctx = egui::Context::default();
     let develop = |reuse: bool, commit: bool| {
         let (mut app, mut dng) = raw_app();
@@ -552,7 +553,7 @@ fn the_demosaic_method_is_chosen_at_open() {
     let document = app.session.active().unwrap().doc.id;
     queue_open_dialog(&mut app, document, "IMG_0004.dng", None, Some(&std::sync::Arc::new(dng.clone())), &warnings).unwrap();
     let raw = take_queued(&mut app).unwrap();
-    use photocraft_io::raw::Demosaic;
+    use patronusphoto_io::raw::Demosaic;
     assert_eq!((raw.developed_with, raw.demosaic), (Demosaic::Bilinear, Demosaic::Bilinear));
 }
 
@@ -627,7 +628,7 @@ fn background_redevelop_keeps_the_tab_position_and_view() {
     assert_eq!(docs.len(), 3);
     assert_eq!((docs[0].doc.size.width, docs[2].doc.size.width), (10, 12), "the other tabs keep their places");
     assert_ne!(docs[1].doc.id, old_id, "re-developed");
-    assert_eq!(docs[1].doc.depth, photocraft_color::SampleType::U16);
+    assert_eq!(docs[1].doc.depth, patronusphoto_color::SampleType::U16);
     assert_eq!(docs[1].saved_revision, docs[1].revision, "Open leaves the document unmodified");
     assert_eq!(app.session.active_index(), Some(1));
     assert_eq!(app.ui.views[1].zoom, 3.0, "the view carries over to the re-developed document");
@@ -808,7 +809,7 @@ fn a_raw_whose_background_develop_fails_comes_back_to_the_filmstrip() {
 /// it the same settings either way: a fine pattern that a sparse sample misreads shows it.
 #[test]
 fn auto_tone_of_a_never_shown_raw_matches_the_dialogs() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     let ctx = app.ctx().clone();
     app.run("prefs.set", json!({"path": "rawDefaults.applyAutoTone", "value": true})).unwrap();
     app.run("file.new", json!({"width": 1800, "height": 1200})).unwrap();
@@ -817,17 +818,17 @@ fn auto_tone_of_a_never_shown_raw_matches_the_dialogs() {
     let id = st.doc.layers.iter().find(|l| l.surface().is_some()).unwrap().id;
     st.set_active_layer(Some(id));
     let document = st.doc.id;
-    let Some(photocraft_doc::LayerContent::Raster(s)) = std::sync::Arc::make_mut(st.doc_mut()).layer_mut(id).map(|l| &mut l.content) else {
+    let Some(patronusphoto_doc::LayerContent::Raster(s)) = std::sync::Arc::make_mut(st.doc_mut()).layer_mut(id).map(|l| &mut l.content) else {
         panic!("a pixel layer")
     };
     let format = s.format();
-    let (dark, light) = (photocraft_raster::from_rgba(&format, [0.1, 0.1, 0.1, 1.0]), photocraft_raster::from_rgba(&format, [0.9, 0.9, 0.9, 1.0]));
+    let (dark, light) = (patronusphoto_raster::from_rgba(&format, [0.1, 0.1, 0.1, 1.0]), patronusphoto_raster::from_rgba(&format, [0.9, 0.9, 0.9, 1.0]));
     for y in 0..1200 {
         for x in 0..1800 {
             s.write_pixel(x, y, if (x + y) % 2 == 0 { &dark } else { &light });
         }
     }
-    let method = photocraft_io::raw::Demosaic::Ahd;
+    let method = patronusphoto_io::raw::Demosaic::Ahd;
     let raw = RawOpen { document, name: "pattern.dng".into(), path: None, bytes: None, decoded: None, developed_with: method, demosaic: method, crop: None };
     let (unshown, _) = filmstrip::first_settings(&app, &raw);
     open_raw(&mut app, &ctx, raw).unwrap();
@@ -863,7 +864,7 @@ fn cancel_closes_the_raw_and_the_preference_skips_the_dialog() {
             &mut app,
             &ctx,
             RawOpen {
-                document: photocraft_doc::DocId(u64::MAX),
+                document: patronusphoto_doc::DocId(u64::MAX),
                 name: "x".into(),
                 path: None,
                 bytes: None,
@@ -891,10 +892,10 @@ fn calibration_changes_the_preview_and_round_trips_through_xmp() {
         processed(&app).iter().zip(&before).any(|(a, b)| (a[0] - b[0]).abs() > 0.01 || (a[1] - b[1]).abs() > 0.01),
         "the Calibration panel changes the preview"
     );
-    let xmp = photocraft_io::camera_raw_xmp::save(&shown(&app));
+    let xmp = patronusphoto_io::camera_raw_xmp::save(&shown(&app));
     assert!(xmp.contains("crs:ShadowTint=\"+100\"") && xmp.contains("crs:RedHue=\"+100\"") && xmp.contains("crs:BlueSaturation=\"-100\""), "{xmp}");
     let mut back = CameraRaw::default();
-    photocraft_io::camera_raw_xmp::load(&mut back, xmp.as_bytes()).unwrap();
+    patronusphoto_io::camera_raw_xmp::load(&mut back, xmp.as_bytes()).unwrap();
     assert_eq!((back.shadow_tint, back.calibration_hue, back.calibration_sat), (100.0, [100.0, 0.0, 0.0], [0.0, 0.0, -100.0]));
     assert!(menu(&mut app, &ctx, "filter.cameraRaw", &json!({"ui": {"auto": "yes"}})).unwrap().is_err(), "auto must be a boolean");
 }
@@ -923,7 +924,7 @@ fn auto_sets_the_light_sliders_from_the_image() {
 fn a_sidecar_fills_the_dialog_and_open_writes_it_back() {
     use std::sync::{Arc, Mutex};
     let (mut app, dng) = raw_app();
-    let dir = std::env::temp_dir().join(format!("photocraft-sidecar-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("patronusphoto-sidecar-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let raw_path = dir.join("IMG_0008.cr2").to_string_lossy().into_owned();
@@ -932,7 +933,7 @@ fn a_sidecar_fills_the_dialog_and_open_writes_it_back() {
     assert_eq!(sidecar_path("/a/b.c/noext"), "/a/b.c/noext.xmp");
     std::fs::write(
         sidecar_path(&raw_path),
-        "<x:xmpmeta xmlns:x=\"adobe:ns:meta/\" x:xmptk=\"PhotoCraft\"><rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"><rdf:Description xmlns:crs=\"http://ns.adobe.com/camera-raw-settings/1.0/\" crs:Exposure2012=\"+1.50\" crs:ShadowTint=\"20\" crs:Temperature=\"5500\"/></rdf:RDF></x:xmpmeta>",
+        "<x:xmpmeta xmlns:x=\"adobe:ns:meta/\" x:xmptk=\"Patronus Photo\"><rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"><rdf:Description xmlns:crs=\"http://ns.adobe.com/camera-raw-settings/1.0/\" crs:Exposure2012=\"+1.50\" crs:ShadowTint=\"20\" crs:Temperature=\"5500\"/></rdf:RDF></x:xmpmeta>",
     )
     .unwrap();
     type Written = Arc<Mutex<Vec<(String, Vec<u8>)>>>;
@@ -997,12 +998,12 @@ fn camera_raw_defaults_apply_when_a_raw_opens() {
     app.open_bytes("IMG_0010.dng", &dng).unwrap();
     assert!(app.raw_shelf.is_empty());
     let st = app.session.active().unwrap();
-    assert_eq!(st.doc.depth, photocraft_color::SampleType::U8, "Bit depth 8");
+    assert_eq!(st.doc.depth, patronusphoto_color::SampleType::U8, "Bit depth 8");
     assert_eq!(st.doc.resolution_dpi, 240.0, "Resolution");
     let profile = st.doc.icc_profile.as_deref().and_then(|p| craft::cms::Profile::parse(p).ok()).map(|p| p.description).unwrap_or_default();
     assert!(profile.to_lowercase().contains("srgb"), "Color space: {profile}");
     let layer = st.doc.layer(st.active_layer.unwrap()).unwrap();
-    assert!(matches!(layer.content, photocraft_doc::LayerContent::Smart(_)), "Open as Smart Object");
+    assert!(matches!(layer.content, patronusphoto_doc::LayerContent::Smart(_)), "Open as Smart Object");
     assert_eq!(st.saved_revision, st.revision, "the defaults are part of opening: unmodified");
     // The dialog's Open applies them too, and reports what it applied.
     app.run("prefs.set", json!({"values": {"rawDefaults.openInCameraRaw": true, "rawDefaults.openAsSmartObject": false, "rawDefaults.bitDepth": "16"}}))
@@ -1015,7 +1016,7 @@ fn camera_raw_defaults_apply_when_a_raw_opens() {
     assert_eq!(r["defaults"], json!(["sharpenFor", "colorSpace"]), "{r}");
     assert!(r.get("filter").is_some(), "Sharpen For is a RAW Develop step: {r}");
     let st = app.session.active().unwrap();
-    assert_eq!(st.doc.depth, photocraft_color::SampleType::U16);
+    assert_eq!(st.doc.depth, patronusphoto_color::SampleType::U16);
     assert_eq!(st.saved_revision, st.revision);
 }
 
@@ -1043,9 +1044,9 @@ const LIGHTROOM_SIDECAR: &str = r#"<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="
 /// `raw_app` whose `write` service records what it is asked to write, and a raw file in a fresh
 /// folder with `sidecar` beside it when given. Returns the app, the raw's bytes, the folder,
 /// the raw's path and the recorded writes.
-fn raw_with_sidecar(tag: &str, sidecar: Option<&str>) -> (Box<PhotocraftApp>, Vec<u8>, std::path::PathBuf, String, Written) {
+fn raw_with_sidecar(tag: &str, sidecar: Option<&str>) -> (Box<PatronusPhotoApp>, Vec<u8>, std::path::PathBuf, String, Written) {
     let (mut app, dng) = raw_app();
-    let dir = std::env::temp_dir().join(format!("photocraft-sidecar-{tag}-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("patronusphoto-sidecar-{tag}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let raw_path = dir.join("IMG_0100.cr2").to_string_lossy().into_owned();
@@ -1063,7 +1064,7 @@ fn raw_with_sidecar(tag: &str, sidecar: Option<&str>) -> (Box<PhotocraftApp>, Ve
 }
 
 /// Opens the raw at `raw_path` in the open-time dialog, as File › Open does.
-fn open_dialog_at(app: &mut PhotocraftApp, ctx: &egui::Context, dng: &[u8], raw_path: &str) {
+fn open_dialog_at(app: &mut PatronusPhotoApp, ctx: &egui::Context, dng: &[u8], raw_path: &str) {
     app.open_bytes("IMG_0100.cr2", dng).unwrap();
     let mut raw = take_queued(app).unwrap();
     raw.path = Some(raw_path.to_string());
@@ -1071,11 +1072,11 @@ fn open_dialog_at(app: &mut PhotocraftApp, ctx: &egui::Context, dng: &[u8], raw_
 }
 
 /// The notices about the sidecar (the open's own import notes aside).
-fn notice_titles(app: &PhotocraftApp) -> Vec<String> {
+fn notice_titles(app: &PatronusPhotoApp) -> Vec<String> {
     app.ui.notices.iter().map(|n| n.title.clone()).filter(|t| t.contains(".xmp")).collect()
 }
 
-/// A Lightroom or Bridge sidecar holds settings PhotoCraft can't keep (crop, masks, rating,
+/// A Lightroom or Bridge sidecar holds settings Patronus Photo can't keep (crop, masks, rating,
 /// keywords): Open uses its develop settings but never writes over it, and says so.
 #[test]
 fn a_foreign_sidecar_is_never_overwritten() {
@@ -1092,7 +1093,7 @@ fn a_foreign_sidecar_is_never_overwritten() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-/// Bridge writes a sidecar with only a rating (no Camera Raw settings): it is not PhotoCraft's
+/// Bridge writes a sidecar with only a rating (no Camera Raw settings): it is not Patronus Photo's
 /// to replace, with or without a change in the dialog.
 #[test]
 fn a_rating_only_sidecar_is_left_alone() {
@@ -1112,13 +1113,13 @@ fn a_rating_only_sidecar_is_left_alone() {
 
 /// #9985: the crop of a Lightroom sidecar crops the opened raw (with the dialog's Open and
 /// without the dialog), and neither its edges nor the raw's file name are named as unsupported.
-/// A straightened crop isn't applied and is named. PhotoCraft's own sidecar keeps the crop.
+/// A straightened crop isn't applied and is named. Patronus Photo's own sidecar keeps the crop.
 #[test]
 fn a_sidecar_crop_crops_the_opened_raw() {
     let lightroom = r#"<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="Adobe XMP Core 7.0"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"><rdf:Description rdf:about="" xmlns:crs="http://ns.adobe.com/camera-raw-settings/1.0/" crs:RawFileName="IMG_0100.cr2" crs:HasCrop="True" crs:CropTop="0.25" crs:CropLeft="0.125" crs:CropBottom="0.75" crs:CropRight="0.625" crs:CropAngle="0"/></rdf:RDF></x:xmpmeta>"#;
     let (mut app, dng, dir, raw_path, written) = raw_with_sidecar("crop", Some(lightroom));
     let ctx = app.ctx().clone();
-    let size = |app: &PhotocraftApp| app.session.active().map(|st| (st.doc.size.width, st.doc.size.height));
+    let size = |app: &PatronusPhotoApp| app.session.active().map(|st| (st.doc.size.width, st.doc.size.height));
     open_dialog_at(&mut app, &ctx, &dng, &raw_path);
     assert!(app.ui.status.contains("IMG_0100.xmp") && !app.ui.status.contains("not supported"), "{}", app.ui.status);
     assert_eq!(size(&app), Some((48, 32)), "the dialog previews the whole frame");
@@ -1137,16 +1138,16 @@ fn a_sidecar_crop_crops_the_opened_raw() {
     assert!(app.ui.status.contains("CropAngle") && !app.ui.status.contains("RawFileName"), "{}", app.ui.status);
     menu(&mut app, &ctx, "filter.cameraRaw", &json!({"ui": {"commit": true}})).unwrap().unwrap();
     assert_eq!(size(&app), Some((48, 32)));
-    // PhotoCraft's own sidecar: a changed setting rewrites it, with the crop it was opened with.
-    let crop = photocraft_io::camera_raw_xmp::Crop { top: 0.25, left: 0.125, bottom: 0.75, right: 0.625 };
-    std::fs::write(sidecar_path(&raw_path), photocraft_io::camera_raw_xmp::save_with_crop(&CameraRaw::default(), Some(crop))).unwrap();
+    // Patronus Photo's own sidecar: a changed setting rewrites it, with the crop it was opened with.
+    let crop = patronusphoto_io::camera_raw_xmp::Crop { top: 0.25, left: 0.125, bottom: 0.75, right: 0.625 };
+    std::fs::write(sidecar_path(&raw_path), patronusphoto_io::camera_raw_xmp::save_with_crop(&CameraRaw::default(), Some(crop))).unwrap();
     open_dialog_at(&mut app, &ctx, &dng, &raw_path);
     menu(&mut app, &ctx, "filter.cameraRaw", &json!({"ui": {"set": {"contrast": 15}, "commit": true}})).unwrap().unwrap();
     assert_eq!(size(&app), Some((24, 16)));
     let w = written.lock().unwrap().clone();
     assert_eq!(w.len(), 1);
     let mut back = CameraRaw::default();
-    let r = photocraft_io::camera_raw_xmp::load(&mut back, &w[0].1).unwrap();
+    let r = patronusphoto_io::camera_raw_xmp::load(&mut back, &w[0].1).unwrap();
     assert_eq!((back.contrast, r.crop), (15.0, Some(crop)));
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -1197,7 +1198,7 @@ fn opening_without_the_dialog_does_not_rewrite_the_sidecar() {
 /// develops the raw but writes no sidecar. The same Open from the dialog does.
 #[test]
 fn a_control_request_never_writes_the_sidecar() {
-    fn allow(_: &str, _: &Value) -> photocraft_engine::Result<()> {
+    fn allow(_: &str, _: &Value) -> patronusphoto_engine::Result<()> {
         Ok(())
     }
     let (mut app, dng, dir, raw_path, written) = raw_with_sidecar("control", None);
@@ -1230,14 +1231,14 @@ fn a_sidecar_write_error_stays_reported() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-fn open_with_settings(app: &mut PhotocraftApp, ctx: &egui::Context, dng: &[u8], name: &str) {
+fn open_with_settings(app: &mut PatronusPhotoApp, ctx: &egui::Context, dng: &[u8], name: &str) {
     app.open_bytes(name, dng).unwrap();
     let raw = take_queued(app).unwrap();
     open_raw(app, ctx, raw).unwrap();
     menu(app, ctx, "filter.cameraRaw", &json!({"ui": {"set": {"exposure": 0.5, "contrast": 60, "saturation": 40, "vibrance": 30}}})).unwrap().unwrap();
 }
 
-fn profile_name(app: &PhotocraftApp) -> String {
+fn profile_name(app: &PatronusPhotoApp) -> String {
     let st = app.session.active().unwrap();
     st.doc.icc_profile.as_deref().and_then(|p| craft::cms::Profile::parse(p).ok()).map(|p| p.description).unwrap_or_default()
 }
@@ -1318,10 +1319,10 @@ fn two_raws_opened_back_to_back_both_finish_their_open() {
 /// one byte larger, is not read (a pipe or device named like one would never end).
 #[test]
 fn sidecars_are_read_from_small_regular_files_only() {
-    let dir = std::env::temp_dir().join(format!("photocraft-sidecar-bounded-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("patronusphoto-sidecar-bounded-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(dir.join("folder.xmp")).unwrap();
-    let cap = photocraft_io::camera_raw_xmp::MAX_XMP_BYTES;
+    let cap = patronusphoto_io::camera_raw_xmp::MAX_XMP_BYTES;
     let (fits, larger) = (dir.join("fits.xmp"), dir.join("larger.xmp"));
     std::fs::write(&fits, vec![b' '; cap]).unwrap();
     std::fs::write(&larger, vec![b' '; cap + 1]).unwrap();
@@ -1357,11 +1358,11 @@ fn save_and_load_settings_round_trip_through_xmp_files() {
         files: Some(files.clone()),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     let ctx = app.ctx().clone();
     // The frames that deliver the pick: the workspace reports the event, `take` asks for the file,
     // and the app's poll hands the answer back.
-    let deliver = |app: &mut PhotocraftApp| {
+    let deliver = |app: &mut PatronusPhotoApp| {
         frame(app);
         app.poll_file_dialog();
         frame(app);
@@ -1424,7 +1425,7 @@ fn done_saves_the_sidecar_and_opens_nothing() {
     let w = written.lock().unwrap().clone();
     assert_eq!(w.len(), 1);
     let mut back = CameraRaw::default();
-    photocraft_io::camera_raw_xmp::load(&mut back, &w[0].1).unwrap();
+    patronusphoto_io::camera_raw_xmp::load(&mut back, &w[0].1).unwrap();
     assert_eq!((back.contrast, back.clarity), (20.0, 15.0));
     // Done is only for raws being opened, and refused per key: the other keys of the request
     // still apply.

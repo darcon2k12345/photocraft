@@ -17,7 +17,7 @@
 //! The `impl Session` blocks of `prefs.rs` (e.g. `apply_prefs`) are engine code, not the model,
 //! so they are scanned like any other source, as the scorecard's prefs audit does.
 
-use photocraft_engine::prefs::{HIDDEN_UNTIL_IMPLEMENTED, Preferences};
+use patronusphoto_engine::prefs::{HIDDEN_UNTIL_IMPLEMENTED, Preferences};
 use std::path::{Path, PathBuf};
 
 fn snake(camel: &str) -> String {
@@ -115,7 +115,7 @@ fn inherent_impls(src: &str, name: &str) -> String {
 
 /// Agent settings the framework's `AgentSettings` reads itself (the control link binds
 /// `control_port`; `read_folder()` supplies the read root; the shared live client picks the
-/// closed-app choice from `when_app_closed`), so no PhotoCraft source names the field.
+/// closed-app choice from `when_app_closed`), so no Patronus Photo source names the field.
 const READ_BY_THE_FRAMEWORK: &[&str] = &["integrations.controlPort", "integrations.readRoot", "integrations.whenAppClosed"];
 
 #[test]

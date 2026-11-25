@@ -5,10 +5,10 @@ use egui_kittest::kittest::Queryable;
 // `frame` would have no caller once the other tests are gone.
 
 /// A harness that draws the toolbar in a window tall enough for every slot. The first pass installs the theme and fonts.
-fn toolbar_harness(app: Box<PhotocraftApp>) -> egui_kittest::Harness<'static, Box<PhotocraftApp>> {
+fn toolbar_harness(app: Box<PatronusPhotoApp>) -> egui_kittest::Harness<'static, Box<PatronusPhotoApp>> {
     let mut ready = false;
     let mut harness = egui_kittest::Harness::builder().with_context(app.ctx().clone()).with_size(vec2(400.0, 1800.0)).build_ui_state(
-        move |ui, app: &mut Box<PhotocraftApp>| {
+        move |ui, app: &mut Box<PatronusPhotoApp>| {
             if !ready {
                 egui_extras::install_image_loaders(ui.ctx());
                 theme::install_fonts(ui.ctx());
@@ -28,7 +28,7 @@ fn toolbar_harness(app: Box<PhotocraftApp>) -> egui_kittest::Harness<'static, Bo
 /// a click picks that tool, not the slot's first.
 #[test]
 fn slots_come_back_on_their_last_tool_after_a_restart() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.prefs.edit(|p| p.group_tools = json!(["PolygonLasso", "PaintBucket", "Pencil", "Sharpen", "SingleRowMarquee"]));
     crate::tool_memory::restore(&mut app);
     let mut harness = toolbar_harness(app);

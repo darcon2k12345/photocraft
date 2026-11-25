@@ -1,5 +1,5 @@
 //! Affinity documents (`.af`, `.afdesign`, `.afphoto`, `.afpub`): the native layers, curves,
-//! shapes, artboards, text, images and masks `craft-affinity` reads, mapped to PhotoCraft
+//! shapes, artboards, text, images and masks `craft-affinity` reads, mapped to Patronus Photo
 //! layers (groups, shape layers, type layers, embedded smart objects, pixel layers, layer and
 //! vector masks). What could not be mapped is listed in the warnings. A file whose native data
 //! can't be read opens as its embedded preview, with a warning saying why.
@@ -8,14 +8,14 @@ use std::sync::Arc;
 
 use craft_affinity::model::{self as af, Align, Blend, Kind, Pixels};
 use craft_affinity::paint::{self as ap, Cap, GradientKind, Join};
-use photocraft_color::{BlendMode, Color, ColorMode, PixelFormat, SampleType};
-use photocraft_doc::text::{CharStyle, ParagraphRun, ParagraphStyle, TextAlign, TextRun, TextShape};
-use photocraft_doc::vector::{Knot, LineCap, LineJoin, Path, ShapeLayer, ShapeStroke, StrokeAlign, Subpath, VectorMask};
-use photocraft_doc::{
+use patronusphoto_color::{BlendMode, Color, ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::text::{CharStyle, ParagraphRun, ParagraphStyle, TextAlign, TextRun, TextShape};
+use patronusphoto_doc::vector::{Knot, LineCap, LineJoin, Path, ShapeLayer, ShapeStroke, StrokeAlign, Subpath, VectorMask};
+use patronusphoto_doc::{
     Artboard, ArtboardBackground, Document, Fill, GradientStyle, Group, Layer, LayerContent, LayerMask, Locks, SmartObject, SmartSource, TextLayer,
 };
-use photocraft_geom::{Affine, Point, Rect, Size};
-use photocraft_raster::Surface;
+use patronusphoto_geom::{Affine, Point, Rect, Size};
+use patronusphoto_raster::Surface;
 
 use crate::{ImportResult, IoError};
 
@@ -42,7 +42,7 @@ pub fn has_extension(name: &str) -> bool {
     name.rsplit(['/', '\\']).next().and_then(|n| n.rsplit_once('.')).is_some_and(|(_, ext)| EXTENSIONS.iter().any(|e| ext.eq_ignore_ascii_case(e)))
 }
 
-pub(crate) fn import(name: &str, bytes: &[u8], ctl: &photocraft_raster::Interrupt) -> Result<ImportResult, IoError> {
+pub(crate) fn import(name: &str, bytes: &[u8], ctl: &patronusphoto_raster::Interrupt) -> Result<ImportResult, IoError> {
     match craft_affinity::read(bytes, craft_affinity::Limits::default()) {
         Ok(d) => {
             let mut b = Builder::new(name, &d)?;
@@ -72,11 +72,11 @@ pub(crate) fn import(name: &str, bytes: &[u8], ctl: &photocraft_raster::Interrup
 /// The embedded preview, for files whose native document can't be read.
 fn preview(name: &str, bytes: &[u8], native: &craft_affinity::Error) -> Result<ImportResult, IoError> {
     let p = craft_affinity::preview(bytes).map_err(|e| IoError::Unsupported(format!("{native}; its embedded preview can't be read either ({e})")))?;
-    let opts = photocraft_codecs::DecodeOptions {
-        limits: photocraft_codecs::Limits { max_width: 4096, max_height: 4096, max_pixels: 4096 * 4096, max_alloc: 128 << 20 },
+    let opts = patronusphoto_codecs::DecodeOptions {
+        limits: patronusphoto_codecs::Limits { max_width: 4096, max_height: 4096, max_pixels: 4096 * 4096, max_alloc: 128 << 20 },
         ..Default::default()
     };
-    let img = photocraft_codecs::decode_with(p.png, &opts)?;
+    let img = patronusphoto_codecs::decode_with(p.png, &opts)?;
     let mut r = crate::flat::image_to_document(name, &img)?;
     if let Some(layer) = r.document.layers.first_mut() {
         layer.name = "Affinity preview".into();
@@ -107,7 +107,7 @@ struct Builder<'a> {
     /// Shapes that went without a cache because `cache_budget` ran out.
     uncached_shapes: usize,
     /// Checked per layer: a cancelled import stops building.
-    ctl: photocraft_raster::Interrupt<'a>,
+    ctl: patronusphoto_raster::Interrupt<'a>,
 }
 
 /// Deduct `cost` bytes from a decoded-pixel budget; `false` (leaving the budget alone) when it
@@ -154,7 +154,7 @@ impl Builder<'_> {
             pixel_budget: MAX_PIXEL_BYTES,
             cache_budget: MAX_CACHE_BYTES,
             uncached_shapes: 0,
-            ctl: photocraft_raster::Interrupt::NONE,
+            ctl: patronusphoto_raster::Interrupt::NONE,
         })
     }
 
@@ -327,7 +327,7 @@ impl Builder<'_> {
                         gr.artboard = Some(Artboard { rect: r, background: bg, preset: String::new() });
                     }
                 } else {
-                    // PhotoCraft artboards are top-level groups: a nested one clips by a vector mask.
+                    // Patronus Photo artboards are top-level groups: a nested one clips by a vector mask.
                     let p = Path::new(vec![Subpath::polygon(&[
                         (f64::from(r.x0), f64::from(r.y0)),
                         (f64::from(r.x1), f64::from(r.y0)),
@@ -404,9 +404,9 @@ impl Builder<'_> {
         let mut path = Path::new(subpaths);
         if even_odd {
             // One component filled even-odd, so inner subpaths cut holes as in Affinity.
-            path.fill_rule = photocraft_doc::vector::FillRule::EvenOdd;
+            path.fill_rule = patronusphoto_doc::vector::FillRule::EvenOdd;
             for s in path.subpaths.iter_mut().skip(1) {
-                s.op = photocraft_doc::vector::PathOp::Join;
+                s.op = patronusphoto_doc::vector::PathOp::Join;
             }
         }
         path
@@ -429,7 +429,7 @@ impl Builder<'_> {
                     self.warn("elliptical gradients import as circular ones");
                 }
                 let (angle, scale, offset) =
-                    photocraft_compose::gradient_fill::from_handles(style, [o.x as f32, o.y as f32], [e.x as f32, e.y as f32], frame, 0.0);
+                    patronusphoto_compose::gradient_fill::from_handles(style, [o.x as f32, o.y as f32], [e.x as f32, e.y as f32], frame, 0.0);
                 let stops = g.stops.iter().map(|s| (s.offset as f32, Color { alpha: 1.0, ..color(s.color) })).collect();
                 let opacity_stops = g.stops.iter().map(|s| (s.offset as f32, s.color.alpha() as f32)).collect();
                 let midpoints = g.stops.iter().take(g.stops.len().saturating_sub(1)).map(|s| s.half_point() as f32).collect();
@@ -493,7 +493,7 @@ impl Builder<'_> {
         // The compiled bounds are what `render` covers, an acute miter reaching past the stroke width included.
         #[cfg(test)]
         COMPILED_SHAPES.with(|n| n.set(n.get() + 1));
-        let compiled = photocraft_vector::CompiledShape::new(&sh, photocraft_vector::DEFAULT_TOLERANCE, self.canvas);
+        let compiled = patronusphoto_vector::CompiledShape::new(&sh, patronusphoto_vector::DEFAULT_TOLERANCE, self.canvas);
         let area = compiled.bounds().map_or(Rect::default(), |b| b.intersect(&self.canvas));
         // Whole tiles: even a 2x2 px shape keeps one, which 50 000 small shapes add up to gigabytes.
         let cost = crate::text_import::cache_bytes(area, self.format.bytes_per_pixel());
@@ -564,11 +564,11 @@ impl Builder<'_> {
             Pixels::Rgba8(v) => Some((img.width, img.height, v.clone())),
             Pixels::Cmyka8(v) => Some((img.width, img.height, Pixels::cmyka8_to_rgba8(v))),
             Pixels::Encoded(bytes) => {
-                let opts = photocraft_codecs::DecodeOptions {
-                    limits: photocraft_codecs::Limits { max_width: 65_535, max_height: 65_535, max_pixels: MAX_PIXELS, max_alloc: 512 << 20 },
+                let opts = patronusphoto_codecs::DecodeOptions {
+                    limits: patronusphoto_codecs::Limits { max_width: 65_535, max_height: 65_535, max_pixels: MAX_PIXELS, max_alloc: 512 << 20 },
                     ..Default::default()
                 };
-                match photocraft_codecs::decode_with(bytes, &opts) {
+                match patronusphoto_codecs::decode_with(bytes, &opts) {
                     Ok(d) => {
                         let (w, h) = d.dimensions();
                         if !charge(&mut self.pixel_budget, u64::from(w).saturating_mul(u64::from(h)).saturating_mul(4)) {
@@ -630,7 +630,7 @@ impl Builder<'_> {
         let inv = m.inverse()?;
         let (rw, rh) = (r.width() as usize, r.height() as usize);
         // The surface keeps whole tiles: a narrow image stores up to 256 times its pixels.
-        if !charge(&mut self.pixel_budget, photocraft_raster::tile_storage_bytes(r, &format)) {
+        if !charge(&mut self.pixel_budget, patronusphoto_raster::tile_storage_bytes(r, &format)) {
             self.warn("the document's images need more pixel memory than the import allows; the rest were left out");
             return None;
         }
@@ -772,8 +772,8 @@ mod tests {
     fn embedded_images_past_the_pixel_budget_are_not_decoded_into_it() {
         // An 8×8 embedded PNG costs 256 bytes decoded and 256 more resampled.
         let png = {
-            let img = photocraft_codecs::Image::from_u8(8, 8, photocraft_codecs::ChannelLayout::Rgba, vec![0; 8 * 8 * 4]).unwrap();
-            photocraft_codecs::encode(&img, photocraft_codecs::Format::Png, &photocraft_codecs::EncodeOptions::default()).unwrap()
+            let img = patronusphoto_codecs::Image::from_u8(8, 8, patronusphoto_codecs::ChannelLayout::Rgba, vec![0; 8 * 8 * 4]).unwrap();
+            patronusphoto_codecs::encode(&img, patronusphoto_codecs::Format::Png, &patronusphoto_codecs::EncodeOptions::default()).unwrap()
         };
         let d = affinity_document(vec![(8, 8, Pixels::Encoded(png))]);
         let mut b = Builder::new("budget", &d).unwrap();
@@ -904,7 +904,7 @@ mod tests {
         let d = page((0..10).map(tiny_shape).collect());
         let mut b = Builder::new("cancel", &d).unwrap();
         let cancel = || true;
-        b.ctl = photocraft_raster::Interrupt::cancel_only(&cancel);
+        b.ctl = patronusphoto_raster::Interrupt::cancel_only(&cancel);
         b.document(&d).unwrap();
         assert!(b.doc.layers.is_empty(), "no layer is built once cancelled");
         let mut doc = Document::new("t", Size::new(8, 8), ColorMode::Rgb, SampleType::U8);
@@ -928,11 +928,11 @@ mod tests {
         let mut probe = u64::MAX;
         let mut one = doc.clone();
         one.layers.truncate(1);
-        crate::text_import::prepare_within(&mut one, None, &mut probe, &photocraft_raster::Interrupt::NONE).unwrap();
+        crate::text_import::prepare_within(&mut one, None, &mut probe, &patronusphoto_raster::Interrupt::NONE).unwrap();
         let cost = u64::MAX - probe;
         assert!(cost > 0);
         let mut budget = cost * 5 / 2;
-        let skipped = crate::text_import::prepare_within(&mut doc, None, &mut budget, &photocraft_raster::Interrupt::NONE).unwrap();
+        let skipped = crate::text_import::prepare_within(&mut doc, None, &mut budget, &patronusphoto_raster::Interrupt::NONE).unwrap();
         let drawn = doc.layers.iter().filter(|l| matches!(&l.content, LayerContent::Text(t) if t.cache.as_ref().is_some_and(|c| c.tile_count() > 0))).count();
         assert_eq!((drawn, skipped), (2, 18));
         assert!(drawn + skipped == 20, "drawn {drawn} skipped {skipped}");

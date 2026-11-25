@@ -3,18 +3,18 @@
 //! [`crate::Services`], applying the interface theme, autosave and crash recovery, and the
 //! history log.
 //!
-//! The values live in the engine ([`photocraft_engine::prefs::Preferences`], so agents read and
+//! The values live in the engine ([`patronusphoto_engine::prefs::Preferences`], so agents read and
 //! change them with `prefs.get` / `prefs.set`); this module only edits a working copy in a dialog
 //! and commits it with those commands on Apply or OK.
 
 use std::collections::VecDeque;
 
 use egui::Color32;
-use photocraft_engine::jobs::{JobEvent, JobId, JobOutcome, Started};
-use photocraft_engine::prefs::{self, AppearanceMode};
+use patronusphoto_engine::jobs::{JobEvent, JobId, JobOutcome, Started};
+use patronusphoto_engine::prefs::{self, AppearanceMode};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// Shell runtime state for preferences, autosave and snapping (not serialised).
 #[derive(Default)]

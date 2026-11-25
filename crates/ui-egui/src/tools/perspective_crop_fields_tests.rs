@@ -5,15 +5,15 @@ use serde_json::{Value, json};
 use super::*;
 
 /// A 200 × 150 document with the Perspective Crop tool.
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
     app.sync_views();
     app.ui.tool = Tool::PerspectiveCrop;
     app
 }
 
-fn crop(app: &mut PhotocraftApp, resolution: f64) -> Result<Value, String> {
+fn crop(app: &mut PatronusPhotoApp, resolution: f64) -> Result<Value, String> {
     let corners = [[10.0, 10.0], [190.0, 10.0], [190.0, 140.0], [10.0, 140.0]];
     app.run("image.perspectiveCrop", json!({"corners": corners, "resolution": resolution})).map_err(|e| e.to_string())
 }

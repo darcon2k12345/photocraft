@@ -1,29 +1,29 @@
-use photocraft_doc::Effect;
+use patronusphoto_doc::Effect;
 use serde_json::json;
 
 use super::tests::{
     ColorStop, DialogId, EffectId, EffectKind, GradientStops, LayerStyleDraft, Srgba, StyleValue, app_with_layer, draft, edit, first_of, ok, param,
 };
 use super::*;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
-fn app() -> Box<PhotocraftApp> {
+fn app() -> Box<PatronusPhotoApp> {
     app_with_layer(32)
 }
 
-fn effect(app: &PhotocraftApp) -> &Effect {
+fn effect(app: &PatronusPhotoApp) -> &Effect {
     let state = app.session.active().unwrap();
     &state.doc.layer(state.active_layer.unwrap()).unwrap().effects.items[0]
 }
 
 /// Opens the dialog on Gradient Overlay and returns it with the overlay's id.
-fn open_gradient(app: &mut PhotocraftApp) -> (DialogId, EffectId) {
+fn open_gradient(app: &mut PatronusPhotoApp) -> (DialogId, EffectId) {
     let id = open(app, Some(EffectKind::GradientOverlay.key())).unwrap();
     let overlay = first_of(app, id, EffectKind::GradientOverlay);
     (id, overlay)
 }
 
-fn method(app: &PhotocraftApp, id: DialogId, overlay: EffectId) -> Option<String> {
+fn method(app: &PatronusPhotoApp, id: DialogId, overlay: EffectId) -> Option<String> {
     match param(&draft(app, id).style, overlay, "method") {
         Some(StyleValue::Text(t)) => Some(t),
         _ => None,
@@ -57,8 +57,8 @@ fn method_picker_is_pending_until_confirm_and_survives_reopening() {
 
 #[test]
 fn baked_overlay_is_unchanged_until_method_selection_then_edits_the_whole_curve() {
-    use photocraft_color::Color;
-    use photocraft_io::{GradientMethod, bake_gradient};
+    use patronusphoto_color::Color;
+    use patronusphoto_io::{GradientMethod, bake_gradient};
 
     let mut app = app();
     app.run("layer.layerStyle.gradientOverlay", json!({})).unwrap();

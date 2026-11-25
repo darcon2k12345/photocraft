@@ -8,13 +8,13 @@ use egui::Modifiers;
 use egui_kittest::Harness;
 
 use super::vertical_cursor::rings;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::guide_cursor_tests::{harness, hover};
 use crate::state::Tool;
 
 /// The cursor `tool` asked for with the pointer over an empty part of the page.
 fn cursor_of(tool: Tool) -> Option<Cursor> {
-    let mut h: Harness<'static, Box<PhotocraftApp>> = harness(tool);
+    let mut h: Harness<'static, Box<PatronusPhotoApp>> = harness(tool);
     hover(&mut h, 100.0, 100.0, Modifiers::NONE);
     h.state().canvas_tools.last_response.as_ref().and_then(|r| r.cursor.clone())
 }

@@ -20,7 +20,7 @@ use craft::ui::value_drag::Slider;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// Timeline panel view state: the playback clock. Whether the panel is open is the workspace's.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -46,7 +46,7 @@ impl TimelineUi {
 
 /// Stops playback with the playhead at the frame the active document shows. For a stop that comes from outside
 /// the body (the panel closing), where no frame time is at hand.
-pub(crate) fn stop(app: &mut PhotocraftApp) {
+pub(crate) fn stop(app: &mut PatronusPhotoApp) {
     let at = app.session.active().and_then(|d| d.doc.timeline.as_ref()).map_or(Tick(0), |tl| FrameRate::from_f64(f64::from(tl.fps)).tick_of(tl.current as i64));
     app.ui.timeline.clock.halt(at);
 }
@@ -57,7 +57,7 @@ fn buttons() -> [TransportButton; 4] {
 }
 
 /// The `timeline` panel body.
-pub(crate) fn body(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub(crate) fn body(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let now = ui.ctx().input(|i| i.time);
     if app.session.active().is_none() {
         app.ui.timeline.clock.stop(now);
@@ -170,12 +170,12 @@ mod tests {
     use egui::vec2;
     use egui_kittest::{Harness, kittest::Queryable};
 
-    fn frame(h: &Harness<'static, Box<PhotocraftApp>>) -> u64 {
+    fn frame(h: &Harness<'static, Box<PatronusPhotoApp>>) -> u64 {
         h.state().session.active().unwrap().doc.timeline.as_ref().unwrap().current as u64
     }
 
     /// Starts playback with the Play button, so the clock starts from the playhead's frame.
-    fn play(h: &mut Harness<'static, Box<PhotocraftApp>>) {
+    fn play(h: &mut Harness<'static, Box<PatronusPhotoApp>>) {
         h.get_by_label(TransportWords::default().play_stop.as_str()).click();
         h.run_steps(2);
         assert!(h.state().ui.timeline.playing());
@@ -183,7 +183,7 @@ mod tests {
 
     #[test]
     fn stop_step_and_scrub_pause_playback_and_second_stop_rewinds() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 100, "height": 80})).unwrap();
         app.run("timeline.create", json!({"duration": 10, "fps": 30.0})).unwrap();
         let mut h =

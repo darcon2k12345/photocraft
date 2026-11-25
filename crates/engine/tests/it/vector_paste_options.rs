@@ -1,6 +1,6 @@
 //! Explicit Paste modes preserve source kind instead of silently using the ordinary raster route.
 
-use photocraft_engine::Session;
+use patronusphoto_engine::Session;
 use serde_json::json;
 
 /// This uses only the original public command API, so the pre-fix failure is executable.
@@ -22,14 +22,14 @@ use craft_psd::{
     atn::{self, AtnAction, AtnEvent, AtnFile, AtnItem},
     descriptor::{Class, Descriptor, Id, UnicodeString, Value as D},
 };
-use photocraft_color::{ColorMode, SampleType};
-use photocraft_doc::{Fill, Layer, LayerContent, Path, Subpath};
-use photocraft_engine::{
+use patronusphoto_color::{ColorMode, SampleType};
+use patronusphoto_doc::{Fill, Layer, LayerContent, Path, Subpath};
+use patronusphoto_engine::{
     actions_cmds::{Action, ActionList, ActionStep, ActionsFile},
     atn_cmds,
     edit_cmds::Clip,
 };
-use photocraft_geom::{Point, Size};
+use patronusphoto_geom::{Point, Size};
 use serde_json::Value;
 
 const SVG: &[u8] = br##"<svg xmlns="http://www.w3.org/2000/svg" width="10" height="8"><path d="M1 1 C2 0 8 0 9 1 L9 7 L1 7 Z" fill="#ff0000" stroke="#0000ff" stroke-width="1"/></svg>"##;
@@ -240,9 +240,9 @@ fn source_and_destination_work_limits_refuse_before_editing() {
     assert!(rejected(&mut s, json!({"as":"path"})).contains("4096"));
     // The original position covers 36MP in this destination; the final position covers zero.
     let oversized = br##"<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><path d="M0 0H6000V6000H0Z"/></svg>"##;
-    let prepared = photocraft_io::svg::import_svg_bounded("control.svg", oversized, 24_000_000).unwrap();
+    let prepared = patronusphoto_io::svg::import_svg_bounded("control.svg", oversized, 24_000_000).unwrap();
     assert!(prepared.document.walk().iter().any(|(_, _, l)| matches!(l.content, LayerContent::Shape(_))), "the cache fixture must retain actual geometry");
-    let mut doc = photocraft_doc::Document::new("Sparse destination", Size::new(7000, 7000), ColorMode::Rgb, SampleType::U8);
+    let mut doc = patronusphoto_doc::Document::new("Sparse destination", Size::new(7000, 7000), ColorMode::Rgb, SampleType::U8);
     doc.layers.push(Layer::raster("Pixels", doc.pixel_format()));
     let mut large = Session::new();
     large.add_document(doc, None);
@@ -270,12 +270,12 @@ fn recorded(d: Descriptor) -> Vec<u8> {
 }
 
 fn load(s: &mut Session, bytes: &[u8]) -> Value {
-    s.execute("actions.load", json!({"data":photocraft_engine::paint::tile::b64_encode(bytes)})).unwrap()
+    s.execute("actions.load", json!({"data":patronusphoto_engine::paint::tile::b64_encode(bytes)})).unwrap()
 }
 fn save(s: &mut Session) -> Vec<u8> {
     let v = s.execute("actions.save", json!({"set":"Vector"})).unwrap();
     assert_eq!(v["skipped"], json!([]));
-    photocraft_engine::paint::tile::b64_decode(v["data"].as_str().unwrap()).unwrap()
+    patronusphoto_engine::paint::tile::b64_decode(v["data"].as_str().unwrap()).unwrap()
 }
 
 /// Raw classes survive save/reimport and drive actual source-backed document output.

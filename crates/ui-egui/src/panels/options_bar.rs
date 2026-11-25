@@ -14,9 +14,9 @@ use craft::ui::form::Field;
 use craft::ui::menu::Menu;
 use craft::ui::runtime::env::{Env, Label, WheelScope, with_env};
 use craft::ui::text::NumberField;
-use photocraft_paint::BrushSettings;
+use patronusphoto_paint::BrushSettings;
 
-use super::{PhotocraftApp, Tool, Value, icons, json};
+use super::{PatronusPhotoApp, Tool, Value, icons, json};
 use paint::PaintMode;
 
 pub(crate) mod fill;
@@ -71,7 +71,7 @@ fn is_type_tool(tool: Tool) -> bool {
 }
 
 /// The edit the bar's commit and cancel buttons belong to, if one is waiting. A bar carries at most one pair.
-fn ending(app: &PhotocraftApp, tool: Tool) -> Option<Ending> {
+fn ending(app: &PatronusPhotoApp, tool: Tool) -> Option<Ending> {
     if app.ui.transform.is_some() {
         return None;
     }
@@ -90,7 +90,7 @@ fn ending(app: &PhotocraftApp, tool: Tool) -> Option<Ending> {
 /// The options bar of the active tool. It is the same arrangement in every theme.
 ///
 /// Each pass applies the commit or cancel its own bar took; a second pass of a frame applies none of the first pass's.
-pub fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn options_bar(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let tool = app.ui.tool;
     let ending = ending(app, tool);
     let mut bar = Bar::new(tl!("Options").to_owned(), BarKind::Options);
@@ -105,7 +105,7 @@ pub fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 }
 
 /// Runs the ending the bar's commit or cancel button asked for.
-fn answer(app: &mut PhotocraftApp, ui: &egui::Ui, tool: Tool, end: End, out: &BarOutput) {
+fn answer(app: &mut PatronusPhotoApp, ui: &egui::Ui, tool: Tool, end: End, out: &BarOutput) {
     match end {
         End::Symmetry => {
             if out.committed {
@@ -133,7 +133,7 @@ fn answer(app: &mut PhotocraftApp, ui: &egui::Ui, tool: Tool, end: End, out: &Ba
 }
 
 /// The bar's members in order: Home, the tool icon, then the active tool's options.
-fn body(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+fn body(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     lead(app, ui);
     if app.ui.transform.is_some() {
         crate::transform_tool::options_bar(app, ui);
@@ -182,7 +182,7 @@ fn body(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 }
 
 /// The Home button and the tool's icon with its Reset Tool and Reset All Tools menu.
-fn lead(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+fn lead(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let documents = app.session.documents().len();
     let auto = app.session.prefs().general.auto_show_home_screen;
     let on = app.ui.chrome.shows_home(documents, auto);
@@ -205,11 +205,11 @@ fn lead(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 
 /// The Mode, Opacity and Flow of the stamp tools, Healing and Art History: the tool's own brush's, kept per tool like its
 /// size. Art History has no Mode (the engine paints Normal) and no Flow.
-fn stamp_members(app: &mut PhotocraftApp, ui: &mut egui::Ui, tool: Tool) {
+fn stamp_members(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, tool: Tool) {
     let brush = app.session.tools.brush.clone();
     // An Indexed Color document names the Clone Stamp's and the Pattern Stamp's Normal "Threshold"
     // (#12613, #12887); the other entries weren't measured there.
-    let indexed = app.session.active().is_some_and(|st| st.doc.mode == photocraft_doc::ColorMode::Indexed);
+    let indexed = app.session.active().is_some_and(|st| st.doc.mode == patronusphoto_doc::ColorMode::Indexed);
     let threshold = crate::retouch_ui::clone_stamp_indexed(app) || (tool == Tool::PatternStamp && indexed);
     // Pattern Stamp's list has Behind, greyed on the Background.
     let entries = fill::mode_entries(tool, crate::brush_mode_menu::enabled(app, crate::brush_mode_menu::Item::Behind), threshold);
@@ -272,7 +272,7 @@ fn stamp_members(app: &mut PhotocraftApp, ui: &mut egui::Ui, tool: Tool) {
 
 /// Sends each event of a brush field to the engine, a scrub as one history step (`history_keys::coalesce`). The value
 /// each event carries goes onto the brush as it is now, so events of one pass apply in order.
-fn edit_brush(app: &mut PhotocraftApp, events: &EditEvents<f32>, set: impl Fn(&mut BrushSettings, f32)) {
+fn edit_brush(app: &mut PatronusPhotoApp, events: &EditEvents<f32>, set: impl Fn(&mut BrushSettings, f32)) {
     for event in events.iter() {
         let Some(value) = event.landed() else { continue };
         let before = app.session.tools.brush.clone();

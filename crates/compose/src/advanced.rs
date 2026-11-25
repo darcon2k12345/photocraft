@@ -29,8 +29,8 @@
 
 use std::borrow::Cow;
 
-use photocraft_doc::{Knockout, Layer, LayerContent};
-use photocraft_geom::Rect;
+use patronusphoto_doc::{Knockout, Layer, LayerContent};
+use patronusphoto_geom::Rect;
 
 use crate::content::render_content_with;
 use crate::extents::recycle_mask;
@@ -95,7 +95,7 @@ pub fn shapeless(layer: &Layer) -> bool {
 }
 
 /// Whether `l`, the bottom layer of a stack, is the Background: identified by its locks and kind,
-/// never by its (localized) name ([`photocraft_doc::Document::background`]).
+/// never by its (localized) name ([`patronusphoto_doc::Document::background`]).
 pub fn is_background(l: &Layer) -> bool {
     l.has_background_traits()
 }
@@ -301,7 +301,7 @@ pub(crate) fn hiding_mask(layer: &Layer, rect: Rect, cx: &Ctx) -> Option<Vec<f32
         return None;
     }
     let a = &layer.advanced;
-    let mut only = Layer::new(layer.name.clone(), LayerContent::Raster(photocraft_raster::Surface::new(photocraft_color::PixelFormat::RGBA32F)));
+    let mut only = Layer::new(layer.name.clone(), LayerContent::Raster(patronusphoto_raster::Surface::new(patronusphoto_color::PixelFormat::RGBA32F)));
     only.id = layer.id;
     only.mask = layer.mask.clone().filter(|_| a.layer_mask_hides_effects);
     only.vector_mask = layer.vector_mask.clone().filter(|_| a.vector_mask_hides_effects);

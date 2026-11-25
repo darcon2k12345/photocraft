@@ -1,12 +1,12 @@
 //! The global mask cache is isolated from parallel unit tests; the tests that count it take turns.
 use std::sync::Arc;
 
-use photocraft_color::{ColorMode, PixelFormat, SampleType};
-use photocraft_compose::masks;
-use photocraft_doc::{Layer, LayerMask};
-use photocraft_engine::Session;
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use patronusphoto_color::{ColorMode, PixelFormat, SampleType};
+use patronusphoto_compose::masks;
+use patronusphoto_doc::{Layer, LayerMask};
+use patronusphoto_engine::Session;
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::Surface;
 use serde_json::json;
 
 #[test]

@@ -1,6 +1,6 @@
 # Architecture overview
 
-PhotoCraft separates the document engine from presentation and transport. The desktop UI, CLI, JSON control channel, and MCP server reach editing behavior through the command registry rather than maintaining separate implementations.
+Patronus Photo separates the document engine from presentation and transport. The desktop UI, CLI, JSON control channel, and MCP server reach editing behavior through the command registry rather than maintaining separate implementations.
 
 ```text
 desktop UI       CLI       JSON control       MCP
@@ -22,12 +22,12 @@ The complete design narrative and dependency diagram remain in [`docs/architectu
 
 ## Core properties
 
-- `photocraft-doc` holds the pure-data document model.
-- `photocraft-engine::Session` owns open documents, active state, history, and command dispatch.
-- `photocraft-compose` is the CPU reference compositor; `photocraft-gpu` accelerates supported interactive paths.
-- `photocraft-io` maps between documents and PSD or flat formats.
-- `photocraft-format` reads and writes the native `.pcraft` bundle.
-- `photocraft-ui-egui` is a thin shell over engine commands.
-- `photocraft-automation` exposes the headless engine and the live-GUI bridge.
+- `patronusphoto-doc` holds the pure-data document model.
+- `patronusphoto-engine::Session` owns open documents, active state, history, and command dispatch.
+- `patronusphoto-compose` is the CPU reference compositor; `patronusphoto-gpu` accelerates supported interactive paths.
+- `patronusphoto-io` maps between documents and PSD or flat formats.
+- `patronusphoto-format` reads and writes the native `.pcraft` bundle.
+- `patronusphoto-ui-egui` is a thin shell over engine commands.
+- `patronusphoto-automation` exposes the headless engine and the live-GUI bridge.
 
 See [Crates and dependency layers](crates.md) for the complete workspace map.

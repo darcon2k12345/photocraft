@@ -10,11 +10,11 @@ use std::rc::Rc;
 type Seen = Rc<RefCell<Vec<(f32, f32, f32)>>>;
 
 /// A harness that measures the rail `width` wide on every pass, through `measure` and through a fresh run.
-fn harness(width: Rc<Cell<f32>>, seen: Seen) -> egui_kittest::Harness<'static, Box<PhotocraftApp>> {
+fn harness(width: Rc<Cell<f32>>, seen: Seen) -> egui_kittest::Harness<'static, Box<PatronusPhotoApp>> {
     let mut ready = false;
-    let app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     let mut harness = egui_kittest::Harness::builder().with_context(app.ctx().clone()).with_size(vec2(400.0, 900.0)).build_app(
-        move |ui, app: &mut PhotocraftApp| {
+        move |ui, app: &mut PatronusPhotoApp| {
             if !ready {
                 egui_extras::install_image_loaders(ui.ctx());
                 crate::theme::install_fonts(ui.ctx());

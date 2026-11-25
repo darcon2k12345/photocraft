@@ -1,15 +1,15 @@
 use super::TABLES;
 
-const HINT: &str = "\nadd the id to src/install/command_ids.txt, or run this test with PHOTOCRAFT_WRITE_COMMAND_IDS=1 and review the diff";
+const HINT: &str = "\nadd the id to src/install/command_ids.txt, or run this test with PATRONUSPHOTO_WRITE_COMMAND_IDS=1 and review the diff";
 
 /// Menus, the Command Palette and the automation docs list commands in registry order, so the
 /// order is part of the behaviour. `command_ids.txt` pins it; regenerate the file from main when
-/// rebasing, adding each new command's id after its predecessor. With `PHOTOCRAFT_WRITE_COMMAND_IDS`
+/// rebasing, adding each new command's id after its predecessor. With `PATRONUSPHOTO_WRITE_COMMAND_IDS`
 /// set, the test writes the file from the tables instead; review the diff before committing it.
 #[test]
 fn registered_command_ids_keep_their_order() {
     let ids: Vec<&str> = TABLES.iter().flat_map(|(_, specs)| specs()).map(|c| c.id).collect();
-    if std::env::var_os("PHOTOCRAFT_WRITE_COMMAND_IDS").is_some() {
+    if std::env::var_os("PATRONUSPHOTO_WRITE_COMMAND_IDS").is_some() {
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/src/install/command_ids.txt");
         std::fs::write(path, ids.iter().map(|id| format!("{id}\n")).collect::<String>()).expect("write command_ids.txt");
         return;

@@ -11,14 +11,14 @@ use craft::ui::contract::{Bind, Entry, Props as _, Show as _};
 use craft::ui::display::Divider;
 use craft::ui::pickers::Select;
 use craft::ui::primitives::IconSpec;
-use photocraft_engine::eraser_cmds::{MAGIC_ERASER_BITMAP_ERROR, MAGIC_ERASER_INDEXED_ERROR};
+use patronusphoto_engine::eraser_cmds::{MAGIC_ERASER_BITMAP_ERROR, MAGIC_ERASER_INDEXED_ERROR};
 use serde_json::{Value, json};
 
 use super::option_cells;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
-fn report(app: &mut PhotocraftApp, r: Result<Value, String>) {
+fn report(app: &mut PatronusPhotoApp, r: Result<Value, String>) {
     if let Err(e) = r {
         app.ui.status = e;
         app.ui.status_error = true;
@@ -28,8 +28,8 @@ fn report(app: &mut PhotocraftApp, r: Result<Value, String>) {
 /// The alert this document gets instead of a Magic Eraser click (#12032): `Some(text)` means the
 /// click is refused. The check is the engine's, so the press and `paint.magicEraser` can never
 /// disagree about what is erased.
-fn document_alert(app: &PhotocraftApp) -> Option<&'static str> {
-    app.session.active().and_then(|st| photocraft_engine::eraser_cmds::magic_eraser_refusal(&st.doc))
+fn document_alert(app: &PatronusPhotoApp) -> Option<&'static str> {
+    app.session.active().and_then(|st| patronusphoto_engine::eraser_cmds::magic_eraser_refusal(&st.doc))
 }
 
 /// A `paint.magicEraser` error as the alert it was meant to be (#12032), so a click that reaches
@@ -40,7 +40,7 @@ fn error_alert(error: &str) -> Option<&'static str> {
 
 /// Opens the alert: the message and one OK button, as a refused Move press does
 /// (`move_lock::prompt`).
-fn refuse(app: &mut PhotocraftApp, message: &str) {
+fn refuse(app: &mut PatronusPhotoApp, message: &str) {
     crate::dialogs::alerts::alert(app, alert_text(message));
 }
 
@@ -59,7 +59,7 @@ fn alert_text(message: &str) -> &str {
 }
 
 /// Magic Eraser click at document `(x, y)`. Returns false for other tools.
-pub fn click(app: &mut PhotocraftApp, tool: Tool, x: f64, y: f64) -> bool {
+pub fn click(app: &mut PatronusPhotoApp, tool: Tool, x: f64, y: f64) -> bool {
     if tool != Tool::MagicEraser {
         return false;
     }
@@ -90,7 +90,7 @@ pub fn click(app: &mut PhotocraftApp, tool: Tool, x: f64, y: f64) -> bool {
 }
 
 /// Finishes a Background Eraser stroke. Returns false for other tools.
-pub fn finish_stroke(app: &mut PhotocraftApp, tool: Tool, points: &[[f64; 3]], line: bool) -> bool {
+pub fn finish_stroke(app: &mut PatronusPhotoApp, tool: Tool, points: &[[f64; 3]], line: bool) -> bool {
     if tool != Tool::BackgroundEraser {
         return false;
     }
@@ -103,7 +103,7 @@ pub fn finish_stroke(app: &mut PhotocraftApp, tool: Tool, points: &[[f64; 3]], l
 
 /// `paint.backgroundEraser` params for a stroke along `points`: shared by the live preview and
 /// the commit, with the jitter seed from the first point (`retouch_ui::stroke_seed`).
-pub(crate) fn background_eraser_params(app: &PhotocraftApp, points: &[[f64; 3]]) -> Value {
+pub(crate) fn background_eraser_params(app: &PatronusPhotoApp, points: &[[f64; 3]]) -> Value {
     let o = &app.ui.tool_options;
     json!({
         "points": points,
@@ -117,26 +117,26 @@ pub(crate) fn background_eraser_params(app: &PhotocraftApp, points: &[[f64; 3]])
 
 /// The tool a drag with `tool` runs as: the History Brush for an Eraser that erases to history. ⌥
 /// at the press reverses the option for that stroke, as in Photoshop.
-pub fn drag_tool(app: &PhotocraftApp, tool: Tool, alt: bool) -> Tool {
+pub fn drag_tool(app: &PatronusPhotoApp, tool: Tool, alt: bool) -> Tool {
     if tool == Tool::Eraser && app.ui.tool_options.erase_to_history != alt { Tool::HistoryBrush } else { tool }
 }
 
 /// Whether `tool` is the Eraser in Pencil mode: it erases hard, aliased pixels through
 /// `paint.pencil` (`"erase": true`) and shows the Pencil's pixel-grid cursor (#2662).
-pub fn pencil_mode(app: &PhotocraftApp, tool: Tool) -> bool {
+pub fn pencil_mode(app: &PatronusPhotoApp, tool: Tool) -> bool {
     tool == Tool::Eraser && app.ui.tool_options.eraser_mode == "pencil"
 }
 
 /// Whether `tool` is the Eraser in Block mode: it erases a hard square of 16 screen pixels
 /// (`16 / zoom` document pixels) through `paint.pencil` (`"block": true`); Size, Hardness,
 /// Opacity and Flow don't apply (#2770).
-pub fn block_mode(app: &PhotocraftApp, tool: Tool) -> bool {
+pub fn block_mode(app: &PatronusPhotoApp, tool: Tool) -> bool {
     tool == Tool::Eraser && app.ui.tool_options.eraser_mode == "block"
 }
 
 /// The Block's edge in document pixels at the current zoom (what the engine erases).
-pub fn block_size(app: &PhotocraftApp) -> f32 {
-    photocraft_engine::brush_cmds::block_size(f64::from(app.point_zoom()))
+pub fn block_size(app: &PatronusPhotoApp) -> f32 {
+    patronusphoto_engine::brush_cmds::block_size(f64::from(app.point_zoom()))
 }
 
 /// A Tolerance as the field stores it: a whole number in 1..=100, the default 50 for a value
@@ -157,7 +157,7 @@ fn check(ui: &mut egui::Ui, label: &str, value: &mut bool, tip: Option<&str>) {
 
 /// The members of the Eraser group's options bars, added to the host's `Bar` body. Returns false
 /// for other tools. The Eraser's own Mode is `PaintBar::eraser_mode`, not a member here.
-pub fn options_bar(ui: &mut egui::Ui, app: &mut PhotocraftApp, tool: Tool) -> bool {
+pub fn options_bar(ui: &mut egui::Ui, app: &mut PatronusPhotoApp, tool: Tool) -> bool {
     match tool {
         Tool::MagicEraser => magic_eraser_members(ui, app),
         Tool::BackgroundEraser => background_eraser_members(ui, app),
@@ -166,7 +166,7 @@ pub fn options_bar(ui: &mut egui::Ui, app: &mut PhotocraftApp, tool: Tool) -> bo
     true
 }
 
-fn magic_eraser_members(ui: &mut egui::Ui, app: &mut PhotocraftApp) {
+fn magic_eraser_members(ui: &mut egui::Ui, app: &mut PatronusPhotoApp) {
     let o = &mut app.ui.tool_options;
     // The field clamps without an alert, as the reference's Magic Eraser Tolerance does.
     let _ = option_cells::number(tl!("Tolerance:"), &mut o.tolerance, 0.0..=255.0).show(ui);
@@ -177,7 +177,7 @@ fn magic_eraser_members(ui: &mut egui::Ui, app: &mut PhotocraftApp) {
     let _ = option_cells::number(tl!("Opacity:"), &mut o.magic_eraser_opacity, 1.0..=100.0).unit("%").show(ui);
 }
 
-fn background_eraser_members(ui: &mut egui::Ui, app: &mut PhotocraftApp) {
+fn background_eraser_members(ui: &mut egui::Ui, app: &mut PatronusPhotoApp) {
     let mut alerts = Vec::new();
     {
         let o = &mut app.ui.tool_options;
@@ -259,7 +259,7 @@ fn background_eraser_members(ui: &mut egui::Ui, app: &mut PhotocraftApp) {
 mod tests {
     use super::super::brush_refusal::brush_refusal_alert_tests::alerts;
     use super::*;
-    use photocraft_doc::{Color, ColorMode, Document, SampleType, Size};
+    use patronusphoto_doc::{Color, ColorMode, Document, SampleType, Size};
 
     /// #12032: the literal translation keys are the engine's alert texts, so an English UI shows
     /// exactly what `paint.magicEraser` answers and the catalogs translate the right string.
@@ -274,10 +274,10 @@ mod tests {
 
     /// The app with a white 64x48 document in `mode` open and the Magic Eraser picked: a click on
     /// it would wipe the flat canvas out.
-    fn app_in(mode: ColorMode) -> Box<PhotocraftApp> {
-        let mut s = photocraft_engine::Session::new();
+    fn app_in(mode: ColorMode) -> Box<PatronusPhotoApp> {
+        let mut s = patronusphoto_engine::Session::new();
         s.add_document(Document::with_background("p", Size::new(64, 48), mode, SampleType::U8, Color::WHITE), None);
-        let mut app = PhotocraftApp::new(s, crate::Services::default());
+        let mut app = PatronusPhotoApp::new(s, crate::Services::default());
         app.ui.tool = Tool::MagicEraser;
         app
     }

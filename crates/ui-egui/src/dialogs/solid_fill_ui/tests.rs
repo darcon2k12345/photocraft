@@ -2,23 +2,23 @@ use craft::color_ui::ui::{ColorPickerDialog, PickedColor};
 use craft::theme::Srgba;
 use egui::vec2;
 use egui_kittest::Harness;
-use photocraft_color::{Color, ColorMode};
-use photocraft_doc::{Fill, LayerContent, LayerId};
+use patronusphoto_color::{Color, ColorMode};
+use patronusphoto_doc::{Fill, LayerContent, LayerId};
 use serde_json::json;
 
 use super::*;
 use crate::color_picker_ui::testing;
 
-fn harness(ppp: f32) -> (Harness<'static, Box<PhotocraftApp>>, LayerId) {
-    let mut s = photocraft_engine::Session::new();
+fn harness(ppp: f32) -> (Harness<'static, Box<PatronusPhotoApp>>, LayerId) {
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 64, "height": 48, "depth": 16})).unwrap();
     let id = LayerId(s.execute("layer.newFillLayer.solidColor", json!({"color": "#33669980"})).unwrap()["layer"].as_u64().unwrap());
     s.execute("layer.layerMask.revealAll", json!({})).unwrap();
     s.execute("layer.new.layer", json!({"name": "Other"})).unwrap();
     let mut h =
         Harness::builder().with_size(vec2(1440.0, 900.0)).with_pixels_per_point(ppp).with_step_dt(1.0 / 60.0).with_max_steps(64).build_eframe(move |cc| {
-            PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-            PhotocraftApp::with_context(cc.egui_ctx.clone(), s, crate::Services::default())
+            PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+            PatronusPhotoApp::with_context(cc.egui_ctx.clone(), s, crate::Services::default())
         });
     let ctx = h.ctx.clone();
     let (r, _) = crate::control::ControlRequest::new("ui.set", json!({"dock": {"collapsed": ["color", "properties", "history", "navigator"]}}));
@@ -28,15 +28,15 @@ fn harness(ppp: f32) -> (Harness<'static, Box<PhotocraftApp>>, LayerId) {
 }
 
 /// A CMYK document with no fill layer yet.
-fn cmyk_app() -> Box<PhotocraftApp> {
-    let mut s = photocraft_engine::Session::new();
+fn cmyk_app() -> Box<PatronusPhotoApp> {
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 8, "height": 8})).unwrap();
     s.execute("image.mode.cmyk", json!({})).unwrap();
-    PhotocraftApp::new(s, crate::Services::default())
+    PatronusPhotoApp::new(s, crate::Services::default())
 }
 
 /// OK on picker `dialog`, and the error its commit reported: a refused commit leaves the error in the status line.
-fn ok(app: &mut PhotocraftApp, dialog: DialogId) -> Result<(), String> {
+fn ok(app: &mut PatronusPhotoApp, dialog: DialogId) -> Result<(), String> {
     app.ui.status = Default::default();
     app.ui.status_error = false;
     crate::dialogs::testing::confirm(app, dialog).unwrap();
@@ -45,15 +45,15 @@ fn ok(app: &mut PhotocraftApp, dialog: DialogId) -> Result<(), String> {
 
 /// Types CMYK `inks` (0..1) into picker `id`: the colour they convert to, as the picker's 8-bit hex shows it, with the
 /// inks kept as typed.
-fn type_inks(app: &mut PhotocraftApp, id: DialogId, inks: [f32; 4]) {
-    let rgb = photocraft_color::convert::cmyk_to_rgb(inks).map(|c| (c.clamp(0.0, 1.0) * 255.0).round() / 255.0);
+fn type_inks(app: &mut PatronusPhotoApp, id: DialogId, inks: [f32; 4]) {
+    let rgb = patronusphoto_color::convert::cmyk_to_rgb(inks).map(|c| (c.clamp(0.0, 1.0) * 255.0).round() / 255.0);
     let picker = app.framework.dialogs.get_mut_by_id::<ColorPickerDialog>(id).expect("the picker is open");
     // The picker's CMYK fields are percent.
     picker.set_color(PickedColor::cmyk(Srgba::from_rgb_array(rgb), inks.map(|v| v * 100.0)));
 }
 
 /// The solid fill of the active layer.
-fn active_fill(app: &PhotocraftApp) -> Color {
+fn active_fill(app: &PatronusPhotoApp) -> Color {
     let st = app.session.active().unwrap();
     match st.doc.layer(st.active_layer.unwrap()).unwrap().content {
         LayerContent::Fill(Fill::Solid(c)) => c,
@@ -166,12 +166,12 @@ fn picker_previews_without_editing_cancel_discards_and_ok_is_one_step() {
     assert_eq!(app.session.active().unwrap().history.entries().len(), steps + 1);
     assert_eq!(app.session.tools.foreground, tools, "editing a fill doesn't change the tool colour");
     assert_eq!(app.session.active().unwrap().doc.layer(id).unwrap().content, LayerContent::Fill(Fill::Solid(color)));
-    let bytes = photocraft_format::save_to_bytes(&app.session.active().unwrap().doc, &Default::default()).unwrap();
-    let loaded = photocraft_format::load_from_bytes(&bytes).unwrap();
+    let bytes = patronusphoto_format::save_to_bytes(&app.session.active().unwrap().doc, &Default::default()).unwrap();
+    let loaded = patronusphoto_format::load_from_bytes(&bytes).unwrap();
     assert_eq!(loaded.layer(id).unwrap().content, LayerContent::Fill(Fill::Solid(color)));
     assert_eq!(loaded.layer(id).unwrap().mask, before.layer(id).unwrap().mask);
-    let bytes = photocraft_io::export(&app.session.active().unwrap().doc, "fill.psd", &Default::default()).unwrap().bytes;
-    let loaded = photocraft_io::import("fill.psd", &bytes).unwrap().document;
+    let bytes = patronusphoto_io::export(&app.session.active().unwrap().doc, "fill.psd", &Default::default()).unwrap().bytes;
+    let loaded = patronusphoto_io::import("fill.psd", &bytes).unwrap().document;
     let fill = loaded.walk().into_iter().find(|(_, _, l)| matches!(l.content, LayerContent::Fill(Fill::Solid(_)))).unwrap().2;
     let LayerContent::Fill(Fill::Solid(saved)) = fill.content else { panic!() };
     // PSD's existing SoCo descriptor stores the fill's colour components, not Color.alpha.
@@ -325,7 +325,7 @@ fn inks_given_to_a_non_cmyk_fill_in_a_cmyk_document_are_an_edit() {
 fn a_new_fills_picker_is_seeded_with_the_foregrounds_inks() {
     let mut app = cmyk_app();
     let hex = |inks: [f32; 4]| {
-        let [r, g, b] = photocraft_color::convert::cmyk_to_rgb(inks).map(|c| (c.clamp(0.0, 1.0) * 255.0).round() as u8);
+        let [r, g, b] = patronusphoto_color::convert::cmyk_to_rgb(inks).map(|c| (c.clamp(0.0, 1.0) * 255.0).round() as u8);
         format!("#{r:02x}{g:02x}{b:02x}")
     };
     let rich = [0.5, 0.5, 0.5, 1.0];

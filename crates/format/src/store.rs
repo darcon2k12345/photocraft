@@ -13,9 +13,9 @@ use std::sync::{Arc, Weak};
 #[cfg(all(test, windows))]
 use std::time::SystemTime;
 
-use photocraft_color::{PixelFormat, SampleType};
-use photocraft_doc::Document;
-use photocraft_raster::{Rgba8Image, Tile};
+use patronusphoto_color::{PixelFormat, SampleType};
+use patronusphoto_doc::Document;
+use patronusphoto_raster::{Rgba8Image, Tile};
 
 use crate::convert::{self, Fetch, Loader, Sink, swap_to_le};
 use crate::manifest::{ContentM, FORMAT_VERSION, Hash, LayerM, Manifest};
@@ -78,10 +78,10 @@ fn png_tagged(img: &Rgba8Image, icc: Option<&[u8]>) -> Result<Vec<u8>> {
     let mut pixels = Vec::new();
     pixels.try_reserve_exact(img.pixels.len()).map_err(|_| FormatError::LimitExceeded("not enough memory for PNG pixels".into()))?;
     pixels.extend_from_slice(&img.pixels);
-    let image = photocraft_codecs::Image::from_u8(img.width, img.height, photocraft_codecs::ChannelLayout::Rgba, pixels)
+    let image = patronusphoto_codecs::Image::from_u8(img.width, img.height, patronusphoto_codecs::ChannelLayout::Rgba, pixels)
         .map_err(|e| FormatError::Unsupported(format!("preview: {e}")))?
         .with_icc(icc.map(<[u8]>::to_vec));
-    photocraft_codecs::encode(&image, photocraft_codecs::Format::Png, &Default::default()).map_err(|e| FormatError::Unsupported(format!("preview: {e}")))
+    patronusphoto_codecs::encode(&image, patronusphoto_codecs::Format::Png, &Default::default()).map_err(|e| FormatError::Unsupported(format!("preview: {e}")))
 }
 
 fn previews(opts: &SaveOptions) -> Result<Vec<(&'static str, Vec<u8>)>> {
@@ -418,7 +418,7 @@ impl Fetch for LoadFetch<'_> {
 }
 
 /// Refuses a declared canvas outside `opts`' budget before anything is decoded for it (#2935).
-fn admit_canvas(size: photocraft_geom::Size, opts: &LoadOptions) -> Result<()> {
+fn admit_canvas(size: patronusphoto_geom::Size, opts: &LoadOptions) -> Result<()> {
     let (w, h) = (size.width, size.height);
     if w == 0 || h == 0 {
         return Err(FormatError::corrupt(format!("canvas size {w}x{h} is empty")));
@@ -530,7 +530,7 @@ impl Sink for Collect<'_> {
 /// A tile's bytes in little-endian order: the tile itself (kept in memory while this lives), or
 /// a byte-swapped copy on big-endian machines.
 enum LeBytes<'a> {
-    Native(photocraft_raster::TileBytes<'a>),
+    Native(patronusphoto_raster::TileBytes<'a>),
     Swapped(Vec<u8>),
     Borrowed(&'a [u8]),
 }
@@ -679,7 +679,7 @@ struct Prepared {
 /// Other documents' scratch failures do not block this save.
 fn scratch_ok(doc: &Document, generation: u64) -> Result<()> {
     doc.scratch_health().map_err(FormatError::corrupt)?;
-    photocraft_raster::spill::check_since(generation).map_err(FormatError::corrupt)
+    patronusphoto_raster::spill::check_since(generation).map_err(FormatError::corrupt)
 }
 
 impl Prepared {
@@ -1109,9 +1109,9 @@ impl PcraftWriter {
     /// while pruning expired hash-cache entries. Preview encoding is scheduled separately by the save path.
     fn prepare(&mut self, doc: &Document, opts: &SaveOptions) -> Result<Prepared> {
         doc.scratch_health().map_err(FormatError::corrupt)?;
-        let generation = photocraft_raster::spill::read_error_generation();
+        let generation = patronusphoto_raster::spill::read_error_generation();
         let prepared = self.prepare_inner(doc, opts);
-        if let Err(error) = photocraft_raster::spill::check_since(generation) {
+        if let Err(error) = patronusphoto_raster::spill::check_since(generation) {
             // Failed reads may have hashed display placeholders. Never reuse those hashes
             // when the original backing becomes readable and the same writer retries.
             self.hash_cache.clear();
@@ -1126,7 +1126,7 @@ impl PcraftWriter {
         convert::check_nesting(&doc.layers)?;
         let mut c = Collect { hash_cache: Some(&mut self.hash_cache), blob_hash_cache: Some(&mut self.blob_hash_cache), ..Default::default() };
         let document = convert::doc_m(doc, &mut c)?;
-        let mut model = Manifest::new(format!("photocraft-format {}", env!("CARGO_PKG_VERSION")), document);
+        let mut model = Manifest::new(format!("patronusphoto-format {}", env!("CARGO_PKG_VERSION")), document);
         model.thumbnail = opts.thumbnail.as_ref().map(|_| THUMB.to_owned());
         model.composite = opts.composite.as_ref().map(|_| COMPOSITE.to_owned());
         let full_composite = opts.full_composite.is_some();
@@ -1152,7 +1152,7 @@ impl PcraftWriter {
     /// [`Self::save_zip`] with `limit` (bytes, entries) in place of [`ZIP_LIMIT`]: an archive that
     /// the full-size composite would take past either is saved without that composite.
     fn save_zip_within(&mut self, doc: &Document, opts: &SaveOptions, limit: (u64, usize)) -> Result<(Vec<u8>, SaveStats)> {
-        let generation = photocraft_raster::spill::read_error_generation();
+        let generation = patronusphoto_raster::spill::read_error_generation();
         // Another thread encodes the previews while the document is collected and its new
         // objects are compressed on all cores (zstd dominates a full save).
         let (previews, prepared) = beside(
@@ -1230,7 +1230,7 @@ impl PcraftWriter {
     /// atomically and removes unreferenced objects. The whole save holds the bundle's
     /// `save.lock`, so saves of one bundle from other writers or processes wait their turn.
     pub fn save_dir(&mut self, doc: &Document, dir: &Path, opts: &SaveOptions) -> Result<SaveStats> {
-        let generation = photocraft_raster::spill::read_error_generation();
+        let generation = patronusphoto_raster::spill::read_error_generation();
         let mut prepared = self.prepare(doc, opts)?;
         let previews = previews(opts)?;
         prepared.match_previews(&previews)?;
@@ -1278,7 +1278,7 @@ impl PcraftWriter {
     /// The same save path with an injectable publication barrier, for failure/GC ordering tests.
     #[cfg(all(test, windows))]
     fn save_dir_with(&mut self, doc: &Document, dir: &Path, opts: &SaveOptions, fs: &dyn crate::atomic::AtomicFs) -> Result<SaveStats> {
-        let scratch_generation = photocraft_raster::spill::read_error_generation();
+        let scratch_generation = patronusphoto_raster::spill::read_error_generation();
         let canonical_dir = bundle_root(dir)?;
         let dir = canonical_dir.as_path();
         // Held until the end of the save: listing, writing, publishing and cleanup (#4957).
@@ -1444,12 +1444,12 @@ impl PcraftWriter {
 #[test]
 fn tile_hash_cache_keeps_sample_byte_order_in_its_identity() {
     let mut cache = HashMap::new();
-    let mut surface = photocraft_raster::Surface::new(PixelFormat::RGBA8);
+    let mut surface = patronusphoto_raster::Surface::new(PixelFormat::RGBA8);
     surface.write_pixel(0, 0, &[0.1, 0.2, 0.3, 1.0]);
-    let tile = surface.tile(photocraft_geom::TileCoord::new(0, 0)).unwrap();
+    let tile = surface.tile(patronusphoto_geom::TileCoord::new(0, 0)).unwrap();
     let mut collect = Collect { hash_cache: Some(&mut cache), ..Default::default() };
     for sample in [SampleType::U8, SampleType::U16] {
-        let format = if sample == SampleType::U8 { PixelFormat::RGBA8 } else { PixelFormat::new(photocraft_color::ColorMode::Grayscale, sample, true) };
+        let format = if sample == SampleType::U8 { PixelFormat::RGBA8 } else { PixelFormat::new(patronusphoto_color::ColorMode::Grayscale, sample, true) };
         assert_eq!(collect.tile(format, tile), hash_bytes(&tile_le(tile, sample)));
     }
     drop(collect);
@@ -1478,11 +1478,11 @@ fn blob_hash_cache_tracks_arc_identity_without_retaining_payloads() {
 #[cfg(test)]
 #[test]
 fn compressed_cache_budget_limits_retained_capacity_without_changing_bytes() {
-    use photocraft_doc::{Layer, LayerContent};
-    use photocraft_geom::Size;
-    use photocraft_raster::Surface;
+    use patronusphoto_doc::{Layer, LayerContent};
+    use patronusphoto_geom::Size;
+    use patronusphoto_raster::Surface;
 
-    let mut doc = Document::new("cache", Size::new(257, 1), photocraft_color::ColorMode::Rgb, SampleType::U8);
+    let mut doc = Document::new("cache", Size::new(257, 1), patronusphoto_color::ColorMode::Rgb, SampleType::U8);
     let mut surface = Surface::new(doc.pixel_format());
     surface.write_pixel(0, 0, &[0.2, 0.4, 0.6, 1.0]);
     surface.write_pixel(256, 0, &[0.6, 0.4, 0.2, 1.0]);
@@ -1514,11 +1514,11 @@ fn compressed_cache_budget_limits_retained_capacity_without_changing_bytes() {
 #[cfg(test)]
 #[test]
 fn previews_follow_the_manifest_with_the_bytes_of_a_serial_encode() {
-    use photocraft_doc::{Layer, LayerContent};
-    use photocraft_geom::Size;
-    use photocraft_raster::Surface;
+    use patronusphoto_doc::{Layer, LayerContent};
+    use patronusphoto_geom::Size;
+    use patronusphoto_raster::Surface;
 
-    let mut doc = Document::new("previews", Size::new(600, 3), photocraft_color::ColorMode::Rgb, SampleType::U8);
+    let mut doc = Document::new("previews", Size::new(600, 3), patronusphoto_color::ColorMode::Rgb, SampleType::U8);
     let mut surface = Surface::new(doc.pixel_format());
     for x in 0..600 {
         surface.write_pixel(x, 1, &[x as f32 / 600.0, 0.5, 0.25, 1.0]);
@@ -1590,8 +1590,8 @@ fn previews_follow_the_manifest_with_the_bytes_of_a_serial_encode() {
 #[cfg(test)]
 #[test]
 fn parallel_previews_preserve_conversion_blobs_and_propagate_report_limits() {
-    use photocraft_doc::import_conversion::{ImportConversion, MAX_CONVERSION_ATTACHMENTS};
-    let mut doc = Document::new("Report with previews", photocraft_geom::Size::new(3, 2), photocraft_color::ColorMode::Rgb, SampleType::U16);
+    use patronusphoto_doc::import_conversion::{ImportConversion, MAX_CONVERSION_ATTACHMENTS};
+    let mut doc = Document::new("Report with previews", patronusphoto_geom::Size::new(3, 2), patronusphoto_color::ColorMode::Rgb, SampleType::U16);
     let record = Arc::new(b"future inert report".to_vec());
     let attachment = Arc::new(vec![7, 19, 31]);
     let report = Arc::new(ImportConversion::Opaque { schema_version: 2, record: record.clone(), attachments: vec![attachment.clone()] });
@@ -1617,11 +1617,11 @@ fn parallel_previews_preserve_conversion_blobs_and_propagate_report_limits() {
 #[cfg(test)]
 #[test]
 fn zip_save_leaves_the_full_composite_out_past_the_zip_limit() {
-    use photocraft_doc::{Layer, LayerContent};
-    use photocraft_geom::Size;
-    use photocraft_raster::Surface;
+    use patronusphoto_doc::{Layer, LayerContent};
+    use patronusphoto_geom::Size;
+    use patronusphoto_raster::Surface;
 
-    let mut doc = Document::new("limit", Size::new(300, 200), photocraft_color::ColorMode::Rgb, SampleType::U8);
+    let mut doc = Document::new("limit", Size::new(300, 200), patronusphoto_color::ColorMode::Rgb, SampleType::U8);
     let mut surface = Surface::new(doc.pixel_format());
     surface.write_pixel(7, 9, &[0.2, 0.4, 0.6, 1.0]);
     doc.layers.push(Layer::new("pixels", LayerContent::Raster(surface)));

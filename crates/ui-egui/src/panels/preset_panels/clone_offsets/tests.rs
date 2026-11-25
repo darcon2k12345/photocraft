@@ -1,10 +1,10 @@
 use super::*;
 use crate::canvas::testing::{self, ToolEvent, tool_event};
-use photocraft_engine::Session;
+use patronusphoto_engine::Session;
 
 /// Create two distinguishable source colours and an empty layer for real mouse strokes.
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(Session::new(), Default::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(Session::new(), Default::default());
     app.run("file.new", json!({"width": 64, "height": 64})).unwrap();
     app.run("paint.pencil", json!({"points": [[16,16]], "size": 4, "color": "#ff0000"})).unwrap();
     app.run("paint.pencil", json!({"points": [[20,16]], "size": 4, "color": "#0000ff"})).unwrap();
@@ -17,7 +17,7 @@ fn app() -> Box<PhotocraftApp> {
 }
 
 /// Exercise the same Down/Up path used by canvas interaction.
-fn stamp(app: &mut PhotocraftApp, at: [f64; 2]) {
+fn stamp(app: &mut PatronusPhotoApp, at: [f64; 2]) {
     remember_clone_cursor(app, at);
     tool_event(app, ToolEvent::Down { x: at[0], y: at[1], pressure: 1.0 }, egui::Modifiers::NONE);
     tool_event(app, ToolEvent::Up { x: at[0], y: at[1] }, egui::Modifiers::NONE);
@@ -164,7 +164,7 @@ fn clone_offset_readout_is_in_document_pixels_at_different_canvas_zooms() {
 /// first anchor, then the slot's stored anchor.
 #[test]
 fn clone_marker_follows_the_engine_slot() {
-    let mut app = PhotocraftApp::new(Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(Session::new(), Default::default());
     app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
     app.sync_views();
     assert_eq!(clone_sample_point(&app, Some([5.0, 5.0])), None);

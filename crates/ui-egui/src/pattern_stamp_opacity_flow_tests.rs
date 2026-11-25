@@ -12,19 +12,19 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::{ToolEvent, display_doc, tool_event};
 use crate::state::Tool;
 
 /// The options bar of a new document with `tool`, and the dialog host for its alerts.
-fn bar(tool: Tool) -> Harness<'static, Box<PhotocraftApp>> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn bar(tool: Tool) -> Harness<'static, Box<PatronusPhotoApp>> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 80, "height": 80})).unwrap();
     app.ui.tool = tool;
     crate::theme::install_fonts(app.ctx());
     crate::theme::apply(app.ctx(), &crate::theme::AppTheme::pro());
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(vec2(1800.0, 300.0)).with_step_dt(1.0 / 60.0).build_ui_state(
-        move |ui, app: &mut Box<PhotocraftApp>| {
+        move |ui, app: &mut Box<PatronusPhotoApp>| {
             crate::panels::options_bar(app, ui);
             crate::dialogs::run(app, ui);
         },
@@ -35,14 +35,14 @@ fn bar(tool: Tool) -> Harness<'static, Box<PhotocraftApp>> {
 }
 
 /// The field named `label` ("Opacity", "Flow"), with or without its caption's colon.
-fn field<'a>(h: &'a Harness<'static, Box<PhotocraftApp>>, label: &str) -> egui_kittest::Node<'a> {
+fn field<'a>(h: &'a Harness<'static, Box<PatronusPhotoApp>>, label: &str) -> egui_kittest::Node<'a> {
     h.query_all_by_role(Role::SpinButton)
         .find(|n| n.accesskit_node().label().is_some_and(|l| l.trim_end_matches(':') == label))
         .unwrap_or_else(|| panic!("the {label} field"))
 }
 
 /// Types `text` over the field named `label` and presses Enter.
-fn type_into(h: &mut Harness<'static, Box<PhotocraftApp>>, label: &str, text: &str) {
+fn type_into(h: &mut Harness<'static, Box<PatronusPhotoApp>>, label: &str, text: &str) {
     let at = field(h, label).rect().center();
     h.hover_at(at);
     h.run_steps(1);
@@ -58,12 +58,12 @@ fn type_into(h: &mut Harness<'static, Box<PhotocraftApp>>, label: &str, text: &s
 }
 
 /// The messages of the open alerts.
-fn alerts(h: &Harness<'static, Box<PhotocraftApp>>) -> Vec<String> {
+fn alerts(h: &Harness<'static, Box<PatronusPhotoApp>>) -> Vec<String> {
     h.state().framework.dialogs.open_dialogs().iter().filter_map(|d| d.fields.as_ref()?.get("message")?.as_str().map(str::to_string)).collect()
 }
 
 /// The live brush's Opacity and Flow in percent.
-fn opacity_flow(app: &PhotocraftApp) -> (f32, f32) {
+fn opacity_flow(app: &PatronusPhotoApp) -> (f32, f32) {
     let b = &app.session.tools.brush;
     ((b.opacity * 100.0).round(), (b.flow * 100.0).round())
 }
@@ -98,8 +98,8 @@ fn reset_tool_puts_opacity_and_flow_back_to_100() {
 /// The issue's test document: 800 × 600 RGB 8 bit, white with its right half green (40,160,60),
 /// a 20 × 20 pattern of 10 px quadrants (red, green / blue, white) and the Pattern Stamp with a
 /// 40 px hard tip, Aligned on, at `opacity` and `flow` (fractions).
-fn document(opacity: f32, flow: f32) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn document(opacity: f32, flow: f32) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 20, "height": 20})).unwrap();
     for (x, y, color) in [(0, 0, "#ff0000"), (10, 0, "#00ff00"), (0, 10, "#0000ff"), (10, 10, "#ffffff")] {
         app.run("select.rect", json!({"x": x, "y": y, "width": 10, "height": 10})).unwrap();
@@ -121,7 +121,7 @@ fn document(opacity: f32, flow: f32) -> Box<PhotocraftApp> {
 }
 
 /// The distinct 8-bit colours inside the tip of a click at (600, 300), in `doc`.
-fn colours(doc: &photocraft_doc::Document, app: &PhotocraftApp) -> BTreeSet<[u8; 3]> {
+fn colours(doc: &patronusphoto_doc::Document, app: &PatronusPhotoApp) -> BTreeSet<[u8; 3]> {
     let surf = doc.layer(app.session.active().unwrap().active_layer.unwrap()).unwrap().surface().unwrap();
     let inside = Rect::from_center_size(egui::pos2(600.0, 300.0), egui::vec2(24.0, 24.0));
     let (x0, y0, x1, y1) = (inside.left() as i32, inside.top() as i32, inside.right() as i32, inside.bottom() as i32);
@@ -130,7 +130,7 @@ fn colours(doc: &photocraft_doc::Document, app: &PhotocraftApp) -> BTreeSet<[u8;
 
 /// One click at (600, 300) on the green half: what the canvas showed before the release, and what
 /// the release committed.
-fn click(app: &mut PhotocraftApp) -> (BTreeSet<[u8; 3]>, BTreeSet<[u8; 3]>) {
+fn click(app: &mut PatronusPhotoApp) -> (BTreeSet<[u8; 3]>, BTreeSet<[u8; 3]>) {
     tool_event(app, ToolEvent::Down { x: 600.0, y: 300.0, pressure: 1.0 }, Modifiers::NONE);
     assert!(app.live_stroke.is_some(), "the stroke draws live");
     // The canvas shows the second document; the first holds the pattern.

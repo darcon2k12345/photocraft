@@ -5,7 +5,7 @@
 //! the canvas's tool events, keys through a full app frame.
 
 use egui::Modifiers;
-use photocraft_doc::LayerId;
+use patronusphoto_doc::LayerId;
 use serde_json::json;
 
 use super::super::commit;
@@ -14,7 +14,7 @@ use super::super::current_text;
 use super::super::host::type_text;
 use super::super::layout::{hit_layer, offset_at};
 use super::super::mask_replace_selection_tests::{click, new_app, selection};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::dialogs::alerts::alerts;
 use crate::state::Tool;
 
@@ -22,7 +22,7 @@ const MASKS: [Tool; 2] = [Tool::HorizontalTypeMask, Tool::VerticalTypeMask];
 
 /// A committed type layer made with `type_tool` and, active above it, an empty layer, with no
 /// selection and `tool` in hand.
-fn typed(type_tool: Tool, tool: Tool) -> (Box<PhotocraftApp>, LayerId) {
+fn typed(type_tool: Tool, tool: Tool) -> (Box<PatronusPhotoApp>, LayerId) {
     let mut app = new_app();
     app.run("select.deselect", json!({})).unwrap();
     app.ui.tool = type_tool;
@@ -36,7 +36,7 @@ fn typed(type_tool: Tool, tool: Tool) -> (Box<PhotocraftApp>, LayerId) {
 }
 
 /// [`typed`] horizontal text, and the point on its glyphs between "T" and "X".
-fn txt(tool: Tool) -> (Box<PhotocraftApp>, LayerId, (f64, f64)) {
+fn txt(tool: Tool) -> (Box<PatronusPhotoApp>, LayerId, (f64, f64)) {
     let (mut app, id) = typed(Tool::Type, tool);
     let y = 185.0;
     let x = (100..200)
@@ -46,15 +46,15 @@ fn txt(tool: Tool) -> (Box<PhotocraftApp>, LayerId, (f64, f64)) {
     (app, id, (x, y))
 }
 
-fn active_layer(app: &PhotocraftApp) -> Option<LayerId> {
+fn active_layer(app: &PatronusPhotoApp) -> Option<LayerId> {
     app.session.active().and_then(|st| st.active_layer)
 }
 
-fn history(app: &PhotocraftApp) -> Vec<String> {
+fn history(app: &PatronusPhotoApp) -> Vec<String> {
     app.session.active().unwrap().history.entries()
 }
 
-fn layers(app: &PhotocraftApp) -> usize {
+fn layers(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().doc.layers.len()
 }
 

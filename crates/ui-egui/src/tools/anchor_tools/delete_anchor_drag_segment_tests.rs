@@ -5,13 +5,13 @@ use egui::Modifiers;
 use serde_json::{Value, json};
 
 use super::delete_anchor_targeted_path_tests::{setup, steps};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing;
 use crate::state::Tool;
 
 /// The item's test document: a saved path "Path 1", selected in the Paths panel, with a closed
 /// corner square, an open straight line and an open S-curve.
-fn document(tool: Tool) -> Box<PhotocraftApp> {
+fn document(tool: Tool) -> Box<PatronusPhotoApp> {
     let (mut app, _) = setup(tool);
     let path = json!({"subpaths": [
         {"closed": true, "knots": [[100, 300], [300, 300], [300, 500], [100, 500]]},
@@ -23,17 +23,17 @@ fn document(tool: Tool) -> Box<PhotocraftApp> {
     app
 }
 
-fn knots(app: &mut PhotocraftApp) -> Vec<Value> {
+fn knots(app: &mut PatronusPhotoApp) -> Vec<Value> {
     app.run("path.info", json!({"name": "Path 1"})).unwrap()["path"]["subpaths"][0]["knots"].as_array().unwrap().clone()
 }
 
-fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2]) {
+fn drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2]) {
     testing::press(app, from, Modifiers::NONE);
     testing::move_to(app, to, Modifiers::NONE);
     testing::release(app, to, Modifiers::NONE);
 }
 
-fn anchors(app: &mut PhotocraftApp) -> Vec<[f64; 2]> {
+fn anchors(app: &mut PatronusPhotoApp) -> Vec<[f64; 2]> {
     let anchor = |k: &Value| {
         let a = k.get("anchor").unwrap_or(k);
         [a[0].as_f64().unwrap(), a[1].as_f64().unwrap()]

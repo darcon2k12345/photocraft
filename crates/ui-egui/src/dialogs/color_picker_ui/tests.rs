@@ -8,16 +8,16 @@ use serde_json::json;
 use super::*;
 
 /// The colour picker `id` shows, as `"#rrggbb"`.
-fn dialog_color(app: &PhotocraftApp, id: DialogId) -> String {
+fn dialog_color(app: &PatronusPhotoApp, id: DialogId) -> String {
     rgb_hex(testing::current(app, id).expect("the picker is open").color)
 }
 
 /// A harness running the app's dialog pass on the app's own context, so a key or a click reaches the hosted picker.
-fn harness(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
+fn harness(app: Box<PatronusPhotoApp>) -> Harness<'static, Box<PatronusPhotoApp>> {
     Harness::builder()
         .with_context(app.ctx().clone())
         .with_size(vec2(760.0, 480.0))
-        .build_ui_state(|ui, app: &mut Box<PhotocraftApp>| crate::dialogs::run(app, ui), app)
+        .build_ui_state(|ui, app: &mut Box<PatronusPhotoApp>| crate::dialogs::run(app, ui), app)
 }
 
 /// The one place a picker's result reaches the app is `take` → `commit`: OK and Enter set only the colour the picker
@@ -26,7 +26,7 @@ fn harness(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
 fn side_buttons_and_keyboard_confirm_or_cancel_without_changing_the_other_color() {
     for target in ["foreground", "background"] {
         for action in ["OK", "Cancel", "Enter", "Escape"] {
-            let mut h = harness(PhotocraftApp::new(photocraft_engine::Session::new(), Default::default()));
+            let mut h = harness(PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default()));
             let original_fg = h.state().session.tools.foreground;
             let original_bg = h.state().session.tools.background;
             let id = open(h.state_mut(), target);
@@ -75,10 +75,10 @@ fn parse_hex_rejects_signs() {
 /// reopening the picker shows them again.
 #[test]
 fn cmyk_values_survive_ok_and_a_reopen() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     let cyan = [1.0, 0.0, 0.0, 0.0];
     let id = open(&mut app, "foreground");
-    let rgb = Srgba::from_rgb_array(photocraft_color::convert::cmyk_to_rgb(cyan).map(|c| c.clamp(0.0, 1.0)));
+    let rgb = Srgba::from_rgb_array(patronusphoto_color::convert::cmyk_to_rgb(cyan).map(|c| c.clamp(0.0, 1.0)));
     // The picker's CMYK fields are percent.
     app.framework.dialogs.get_mut_by_id::<ColorPickerDialog>(id).expect("the picker is open").set_color(PickedColor::cmyk(rgb, cyan.map(|v| v * 100.0)));
     crate::dialogs::testing::confirm(&mut app, id).unwrap();
@@ -90,7 +90,7 @@ fn cmyk_values_survive_ok_and_a_reopen() {
 }
 
 /// A frame of the canvas and the dialogs, as the app runs them, so queued pointer input is delivered.
-fn frames(app: &mut PhotocraftApp) {
+fn frames(app: &mut PatronusPhotoApp) {
     for _ in 0..3 {
         crate::canvas::testing::frame(app);
     }
@@ -98,7 +98,7 @@ fn frames(app: &mut PhotocraftApp) {
 
 /// A press on the canvas at document point `(x, y). The dialog opens centred over the canvas and takes the presses
 /// that land on it, so the view first shows a point the press can reach.
-fn sample_at(app: &mut PhotocraftApp, x: f64, y: f64) {
+fn sample_at(app: &mut PatronusPhotoApp, x: f64, y: f64) {
     if x.abs() < 1e6 && y.abs() < 1e6 {
         crate::canvas::testing::clear_of_dialogs(app, [x, y]);
     }
@@ -110,7 +110,7 @@ fn sample_at(app: &mut PhotocraftApp, x: f64, y: f64) {
 /// input.
 #[test]
 fn the_top_picker_samples_the_image() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 40, "height": 20, "background": "transparent"})).unwrap();
     app.run("shape.create", json!({"kind": "rect", "rect": [0, 0, 20, 20], "fill": "#ff0000"})).unwrap();
     app.run("shape.create", json!({"kind": "rect", "rect": [20, 0, 10, 20], "fill": "#00ff00"})).unwrap();

@@ -3,12 +3,12 @@
 use craft::automation::ui::actions::{ActionsMenuAction, ActionsMenuFacts, ActionsPanelCommands};
 use craft::ui::menu::PanelRow;
 use craft::ui::runtime::commands::{CommandRef, CommandSet as _, CommandState};
-use photocraft_engine::actions_edit_cmds;
+use patronusphoto_engine::actions_edit_cmds;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// What the app knows that the menu's states depend on.
-fn facts(app: &PhotocraftApp) -> ActionsMenuFacts {
+fn facts(app: &PatronusPhotoApp) -> ActionsMenuFacts {
     let path_selected = app.ui.selected_path.as_deref().is_some_and(|name| actions_edit_cmds::selected_recording_path(&app.session, name).is_ok());
     ActionsMenuFacts::new()
         .recording(app.session.actions.recording.is_some())
@@ -23,13 +23,13 @@ fn offered(command: ActionsPanelCommands) -> bool {
 }
 
 /// The rows of the panel menu, in the framework's groups.
-pub(crate) fn panel_rows(app: &PhotocraftApp) -> Vec<PanelRow> {
+pub(crate) fn panel_rows(app: &PatronusPhotoApp) -> Vec<PanelRow> {
     craft::automation::ui::actions::panel_rows(facts(app), &offered)
 }
 
 /// The state of every command the rows name; they come from the same list, so a state never exists for a row the
 /// menu does not show.
-pub(crate) fn states(app: &PhotocraftApp) -> Vec<(CommandRef, CommandState)> {
+pub(crate) fn states(app: &PatronusPhotoApp) -> Vec<(CommandRef, CommandState)> {
     let facts = facts(app);
     let (panel, list) = (&app.ui.actions.panel, &app.session.actions.list);
     // Load Actions… is the one library row the framework leaves always on. The app's own
@@ -54,7 +54,7 @@ pub(crate) fn states(app: &PhotocraftApp) -> Vec<(CommandRef, CommandState)> {
 
 /// Runs a fired command of the Actions panel; `false` for a command of another set. Its event goes through the one
 /// mapping that every Actions event takes.
-pub(crate) fn run_fired(app: &mut PhotocraftApp, _ctx: &egui::Context, command: &CommandRef) -> bool {
+pub(crate) fn run_fired(app: &mut PatronusPhotoApp, _ctx: &egui::Context, command: &CommandRef) -> bool {
     let Some(command) = ActionsPanelCommands::from_ref(command) else { return false };
     // A command the app does not offer (Button Mode answers `SettingsChanged`) has nothing to run.
     if !offered(command) {

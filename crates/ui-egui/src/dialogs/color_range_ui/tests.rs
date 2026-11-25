@@ -4,31 +4,31 @@ use craft::keymap::Mods;
 use egui::Modifiers;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use photocraft_doc::{Color, ColorMode, SampleType, Size};
-use photocraft_geom::Rect as GRect;
+use patronusphoto_doc::{Color, ColorMode, SampleType, Size};
+use patronusphoto_geom::Rect as GRect;
 
 /// 40 × 30: red block (0..20, 0..15), blue block (20..40, 0..15), black and white below.
-fn session_with_doc() -> photocraft_engine::Session {
+fn session_with_doc() -> patronusphoto_engine::Session {
     let mut doc = Document::with_background("cr", Size::new(40, 30), ColorMode::Rgb, SampleType::U8, Color::WHITE);
     let bg = doc.layers[0].surface_mut().unwrap();
     bg.fill_rect(GRect::new(0, 0, 20, 15), &[1.0, 0.0, 0.0, 1.0]);
     bg.fill_rect(GRect::new(20, 0, 40, 15), &[0.0, 0.0, 1.0, 1.0]);
     bg.fill_rect(GRect::new(0, 15, 20, 30), &[0.0, 0.0, 0.0, 1.0]);
-    let mut s = photocraft_engine::Session::new();
+    let mut s = patronusphoto_engine::Session::new();
     s.add_document(doc, None);
     s
 }
 
-fn app_with_doc() -> Box<PhotocraftApp> {
-    PhotocraftApp::new(session_with_doc(), crate::Services::default())
+fn app_with_doc() -> Box<PatronusPhotoApp> {
+    PatronusPhotoApp::new(session_with_doc(), crate::Services::default())
 }
 
-fn coverage(app: &PhotocraftApp, x: i32, y: i32) -> f32 {
+fn coverage(app: &PatronusPhotoApp, x: i32, y: i32) -> f32 {
     app.session.active().unwrap().doc.selection.as_ref().map_or(0.0, |s| s.sample_channel(x, y, 0))
 }
 
 /// The app's UI on its own context: the menu bar and the dialog host, as a frame orders them.
-fn harness(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
+fn harness(app: Box<PatronusPhotoApp>) -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut h = Harness::builder().with_size(egui::vec2(1200.0, 900.0)).with_context(app.ctx().clone()).build_ui_state(
         |ui, app| {
             crate::menus::menu_bar(app, ui);
@@ -36,39 +36,39 @@ fn harness(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     h.run_steps(2);
     h
 }
 
-fn hosted(app: &PhotocraftApp) -> &HostedColorRange {
+fn hosted(app: &PatronusPhotoApp) -> &HostedColorRange {
     app.framework.dialogs.get::<HostedColorRange>().expect("Color Range dialog open")
 }
 
-fn dialog_id(app: &PhotocraftApp) -> DialogId {
+fn dialog_id(app: &PatronusPhotoApp) -> DialogId {
     app.framework.dialogs.stack().top().expect("Color Range dialog open")
 }
 
 /// Sets the dialog's field `key` through the host, as a script or a click on its control does.
-fn set_field(app: &mut PhotocraftApp, key: &str, v: Value) {
+fn set_field(app: &mut PatronusPhotoApp, key: &str, v: Value) {
     let id = dialog_id(app);
     let ctx = app.ctx().clone();
     app.framework.dialogs.set_json_field(&ctx, id, key, v).unwrap_or_else(|e| panic!("the dialog takes `{key}`: {e}"));
 }
 
-fn set(h: &mut Harness<'static, Box<PhotocraftApp>>, key: &str, v: Value) {
+fn set(h: &mut Harness<'static, Box<PatronusPhotoApp>>, key: &str, v: Value) {
     set_field(h.state_mut(), key, v);
     h.run_steps(3);
 }
 
 /// OK through the host, then the frames in which the dialog's answer is taken.
-fn ok(h: &mut Harness<'static, Box<PhotocraftApp>>) {
+fn ok(h: &mut Harness<'static, Box<PatronusPhotoApp>>) {
     let id = dialog_id(h.state());
     let _ = crate::dialogs::testing::confirm(h.state_mut(), id);
     h.run_steps(3);
 }
 
-fn press_release(app: &mut PhotocraftApp, at: [f64; 2], mods: Modifiers) {
+fn press_release(app: &mut PatronusPhotoApp, at: [f64; 2], mods: Modifiers) {
     // The dialog opens centred over the canvas and refits the view; the press needs a point it neither covers nor moves.
     crate::canvas::testing::clear_of_dialogs(app, at);
     crate::canvas::testing::press(app, at, mods);
@@ -139,7 +139,7 @@ fn eyedropper_hover_reuses_preview_textures_without_sampling() {
     crate::canvas::testing::move_to(&mut app, [4.5, 15.5], Modifiers::NONE);
     set_field(&mut app, "selectionPreview", json!(PreviewMode::QuickMask.id()));
     crate::canvas::testing::move_to(&mut app, [4.5, 15.5], Modifiers::NONE);
-    let cached = |app: &mut PhotocraftApp| {
+    let cached = |app: &mut PatronusPhotoApp| {
         let revision = selection_preview(app, &ctx).expect("Quick Mask shows a preview").mask.revision();
         let p = app.color_range.as_ref().unwrap();
         (p.mask_key, Arc::as_ptr(p.mask.as_ref().unwrap()) as *const () as usize, Arc::as_ptr(&p.proxy) as usize, revision)
@@ -210,9 +210,9 @@ fn reduced_preview_matches_the_original_eyedropper_sample() {
     let surface = doc.layers[0].surface_mut().unwrap();
     surface.fill_rect(GRect::new(200, 0, 400, 4), &[0.0, 0.0, 1.0, 1.0]);
     surface.fill_rect(GRect::new(101, 0, 102, 4), &[0.0, 0.0, 1.0, 1.0]);
-    let mut session = photocraft_engine::Session::new();
+    let mut session = patronusphoto_engine::Session::new();
     session.add_document(doc, None);
-    let mut app = PhotocraftApp::new(session, crate::Services::default());
+    let mut app = PatronusPhotoApp::new(session, crate::Services::default());
     open(&mut app).unwrap();
     press_release(&mut app, [101.5, 1.5], Modifiers::NONE);
     set_field(&mut app, "fuzziness", json!(0.0));
@@ -224,7 +224,7 @@ fn reduced_preview_matches_the_original_eyedropper_sample() {
     assert_eq!(value.samples.add, vec![[101.0, 1.0]]);
     let original = app.session.active().unwrap().doc.clone();
     let proxy = crate::proxy::proxy_document(&original, k);
-    let mut old = photocraft_engine::Session::new();
+    let mut old = patronusphoto_engine::Session::new();
     old.add_document(proxy.clone(), None);
     old.execute(COMMAND, json!({"points": [[50, 0]], "fuzziness": 0})).unwrap();
     assert_eq!(
@@ -244,7 +244,7 @@ fn reduced_preview_matches_the_original_eyedropper_sample() {
 fn preview_honours_sample_all_layers_like_ok() {
     let mut app = app_with_doc();
     let doc = app.session.active().unwrap().doc.clone();
-    let mut top = photocraft_doc::Layer::new("blue cover", photocraft_doc::LayerContent::Raster(doc.layers[0].surface().unwrap().clone()));
+    let mut top = patronusphoto_doc::Layer::new("blue cover", patronusphoto_doc::LayerContent::Raster(doc.layers[0].surface().unwrap().clone()));
     top.surface_mut().unwrap().fill_rect(GRect::new(0, 0, 40, 30), &[0.0, 0.0, 1.0, 1.0]);
     app.session
         .edit("layers", |doc, _| {
@@ -317,9 +317,9 @@ fn params_send_only_what_the_mode_uses() {
 #[test]
 fn opens_and_previews_in_the_full_app_without_a_gpu() {
     let mut h = Harness::builder().with_size(egui::vec2(1024.0, 600.0)).build_eframe(|cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
         assert!(cc.wgpu_render_state.is_none(), "this test covers the no-GPU path");
-        PhotocraftApp::with_context(cc.egui_ctx.clone(), session_with_doc(), crate::Services::default())
+        PatronusPhotoApp::with_context(cc.egui_ctx.clone(), session_with_doc(), crate::Services::default())
     });
     h.run_steps(6);
     assert!(h.state().gpu.is_none(), "the CPU canvas");

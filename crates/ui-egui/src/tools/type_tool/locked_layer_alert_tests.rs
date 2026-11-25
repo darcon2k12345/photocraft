@@ -16,8 +16,8 @@ const OFF_TEXT: (f64, f64) = (300.0, 40.0);
 
 /// A committed type layer reading "Locked text" at `ON_TEXT`, and an empty layer above it that
 /// is active, so the click's activation shows.
-fn locked_text(lock: serde_json::Value) -> (Box<PhotocraftApp>, LayerId) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn locked_text(lock: serde_json::Value) -> (Box<PatronusPhotoApp>, LayerId) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 400, "height": 200})).unwrap();
     app.sync_views();
     app.ui.tool = crate::state::Tool::Type;
@@ -32,16 +32,16 @@ fn locked_text(lock: serde_json::Value) -> (Box<PhotocraftApp>, LayerId) {
     (app, id)
 }
 
-fn active_layer(app: &PhotocraftApp) -> Option<LayerId> {
+fn active_layer(app: &PatronusPhotoApp) -> Option<LayerId> {
     app.session.active().and_then(|st| st.active_layer)
 }
 
-fn history_len(app: &PhotocraftApp) -> usize {
+fn history_len(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.past_len()
 }
 
 /// A press and release of the primary button at `at` through the canvas's tool events.
-fn click(app: &mut PhotocraftApp, (x, y): (f64, f64)) {
+fn click(app: &mut PatronusPhotoApp, (x, y): (f64, f64)) {
     tool_click(app, x, y, egui::Modifiers::NONE);
 }
 

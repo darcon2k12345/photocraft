@@ -12,10 +12,10 @@ use craft::ui::pickers::Select;
 use craft::ui::runtime::env::{LengthUnits, UnitKind};
 use craft::ui::sections::Section;
 use craft::ui::text::{LinkedFields, NumberField};
-use photocraft_doc::{ColorMode, Document, Layer, LayerId, SampleType};
+use patronusphoto_doc::{ColorMode, Document, Layer, LayerId, SampleType};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The most a canvas side can be, in pixels.
 const MAX_SIDE: f64 = 300_000.0;
@@ -152,7 +152,7 @@ fn canvas_section(ui: &mut egui::Ui, run: &mut Vec<(String, Value)>, f: &Facts, 
 
 /// The Properties panel for the document itself (no layer selected): the Canvas section (size,
 /// orientation, resolution, mode, depth, fill), then Rulers & Grids and Guides. Edits run as engine commands.
-pub fn properties(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn properties(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let Some(st) = app.session.active() else { return };
     let facts = Facts {
         width: st.doc.size.width,
@@ -209,15 +209,15 @@ mod tests {
     #[test]
     fn tiny_document_in_inches_is_not_resized_by_showing_it() {
         use egui_kittest::Harness;
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 1, "height": 1, "resolution": 300, "background": "white"})).unwrap();
-        app.session.prefs.edit(|p| p.units_and_rulers.rulers = photocraft_engine::prefs::Unit::Inches);
+        app.session.prefs.edit(|p| p.units_and_rulers.rulers = patronusphoto_engine::prefs::Unit::Inches);
         let undo = app.session.active().unwrap().history.entries().len();
         let mut h = Harness::builder()
             .with_context(app.ctx().clone())
             .with_size(vec2(320.0, 600.0))
-            .build_ui_state(|ui, app: &mut Box<PhotocraftApp>| properties(app, ui), app);
-        PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+            .build_ui_state(|ui, app: &mut Box<PatronusPhotoApp>| properties(app, ui), app);
+        PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
         h.run_steps(3);
         let st = h.state().session.active().unwrap();
         assert_eq!((st.doc.size.width, st.doc.size.height), (1, 1));
@@ -227,7 +227,7 @@ mod tests {
     #[test]
     fn document_dropdowns_map_to_live_mode_commands() {
         for id in MODES.iter().map(|m| m.2).chain(DEPTHS.iter().map(|d| d.2)) {
-            assert!(photocraft_engine::commands::find(id).is_some(), "{id} is not an engine command");
+            assert!(patronusphoto_engine::commands::find(id).is_some(), "{id} is not an engine command");
         }
     }
 }

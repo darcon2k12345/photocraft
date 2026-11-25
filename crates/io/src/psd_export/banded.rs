@@ -17,7 +17,7 @@ use std::io::Write as _;
 
 use craft_psd::compression::{PlaneLayout, encode_planes, predict};
 use craft_psd::{ChannelData, Compression, PsdError};
-use photocraft_raster::Surface;
+use patronusphoto_raster::Surface;
 
 use super::Ex;
 use super::stage::Parts;
@@ -64,7 +64,7 @@ struct Channel {
 
 impl Ex<'_> {
     /// The channels of `s` over `r` (non-empty), alpha first, encoded band by band.
-    pub(super) fn banded_channels(&self, s: &Surface, r: photocraft_geom::Rect) -> Vec<ChannelData> {
+    pub(super) fn banded_channels(&self, s: &Surface, r: patronusphoto_geom::Rect) -> Vec<ChannelData> {
         // RLE fails only on a row too long for its count (not within PSD/PSB limits); then the
         // layer is written raw, as a channel encoded whole falls back to.
         match self.banded_pass(s, r, self.compression()) {
@@ -76,7 +76,7 @@ impl Ex<'_> {
         }
     }
 
-    fn banded_pass(&self, s: &Surface, r: photocraft_geom::Rect, compression: Compression) -> craft_psd::Result<Vec<ChannelData>> {
+    fn banded_pass(&self, s: &Surface, r: patronusphoto_geom::Rect, compression: Compression) -> craft_psd::Result<Vec<ChannelData>> {
         let (w, h) = (r.width() as usize, r.height() as usize);
         let bpp = s.format().bytes_per_pixel();
         let band_rows = (band_bytes() / (w * bpp).max(1)).max(1);
@@ -100,13 +100,13 @@ impl Ex<'_> {
             let rows = band_rows.min(h - y);
             let top = r.y0 + y as i32;
             let pieces = crate::pixels::par_map(crate::pixels::bands(rows), |b| {
-                s.to_interleaved(photocraft_geom::Rect::new(r.x0, top + b.start as i32, r.x1, top + b.end as i32))
+                s.to_interleaved(patronusphoto_geom::Rect::new(r.x0, top + b.start as i32, r.x1, top + b.end as i32))
             });
             let mut bytes = Vec::with_capacity(w * rows * bpp);
             for piece in pieces {
                 bytes.extend_from_slice(&piece);
             }
-            if self.fmt.mode == photocraft_color::ColorMode::Lab && self.fmt.sample == photocraft_color::SampleType::U16 {
+            if self.fmt.mode == patronusphoto_color::ColorMode::Lab && self.fmt.sample == patronusphoto_color::SampleType::U16 {
                 crate::pixels::lab16_chroma(&mut bytes, self.cc + 1, false);
             }
             let mut planes: Vec<Option<Vec<u8>>> = deinterleave(&bytes, self.cc + 1, self.fmt.sample, &invert).into_iter().map(Some).collect();

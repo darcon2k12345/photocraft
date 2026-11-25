@@ -2,7 +2,7 @@
 //! place, pin and Hide setting.
 
 use super::{Target, report, select, selected, visible};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 use craft::behavior::kurbo::Point;
 use craft::ui::buttons::Button;
@@ -12,7 +12,7 @@ use serde_json::json;
 
 /// Shows the bar under the selected frame inside `at` (the canvas rect), while the Frame tool is active and no
 /// frame drag, transform or dialog is running.
-pub(crate) fn show(ui: &mut egui::Ui, app: &mut PhotocraftApp, at: egui::Rect) {
+pub(crate) fn show(ui: &mut egui::Ui, app: &mut PatronusPhotoApp, at: egui::Rect) {
     if app.ui.tool != Tool::Frame || crate::canvas::tools::in_gesture(app) || app.ui.transform.is_some() || app.dialog_open() || !app.ui.panels.context_task_bar
     {
         return;

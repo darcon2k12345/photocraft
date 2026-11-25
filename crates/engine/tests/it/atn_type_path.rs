@@ -3,8 +3,8 @@ use craft_psd::{
     atn::{self, AtnAction, AtnEvent, AtnFile, AtnItem},
     descriptor::{Class, Descriptor, Id, ReferenceItem, UnicodeString, Value as D},
 };
-use photocraft_doc::{LayerContent, LayerId};
-use photocraft_engine::{
+use patronusphoto_doc::{LayerContent, LayerId};
+use patronusphoto_engine::{
     Session,
     actions_cmds::{Action, ActionList, ActionStep, ActionsFile},
     atn_cmds::{export, import},
@@ -30,7 +30,7 @@ fn item(d: Descriptor) -> AtnItem {
 }
 
 /// Exercise the public byte importer rather than invoking the converter directly.
-fn load(item: AtnItem) -> photocraft_engine::atn_cmds::Imported {
+fn load(item: AtnItem) -> patronusphoto_engine::atn_cmds::Imported {
     let bytes = atn::write(&AtnFile {
         name: UnicodeString::new_nul("Paths"),
         actions: vec![AtnAction { name: UnicodeString::new_nul("Path"), items: vec![item], ..Default::default() }],

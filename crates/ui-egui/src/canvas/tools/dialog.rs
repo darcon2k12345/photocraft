@@ -49,7 +49,7 @@ pub(crate) fn dialog_tool<'a>(scope: &'a ToolScope<'a>, state: &'a mut DialogToo
 /// Ends the gesture of a dialog's pick when a pass of its press runs without that pick: a dialog opened above the one
 /// that armed it, or the pick disarmed or changed. Nothing of the gesture resumes when the pick comes back; what it
 /// applied stays (production stops the Pattern Fill drag on a nested dialog).
-pub(crate) fn end_if_disarmed(app: &crate::PhotocraftApp, state: &mut DialogTools, host: CanvasHost) {
+pub(crate) fn end_if_disarmed(app: &crate::PatronusPhotoApp, state: &mut DialogTools, host: CanvasHost) {
     let armed = (app.session.active_index() == Some(host.idx)).then(|| canvas_input::armed(app)).flatten();
     if state.pick.is_some() && armed != state.pick {
         *state = DialogTools::default();

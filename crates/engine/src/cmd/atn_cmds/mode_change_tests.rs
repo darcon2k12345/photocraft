@@ -4,7 +4,7 @@
 
 use super::stylize_tests::{load_items, saved_items};
 use super::*;
-use photocraft_color::ColorMode;
+use patronusphoto_color::ColorMode;
 
 const EVENT: &str = "8cba8cd6-cb66-11d1-bc43-0060b0a13dc4";
 const ID: &str = "file.automate.conditionalModeChange";
@@ -92,11 +92,11 @@ fn every_native_target_loads_and_the_canonical_form_carries_only_the_settings() 
     }
 }
 
-/// A step recorded in PhotoCraft writes the measured descriptor byte for byte: an empty class name,
+/// A step recorded in Patronus Photo writes the measured descriptor byte for byte: an empty class name,
 /// class `cjsp`, then `Msge` TEXT, `SrcM` VlLs of `Cndn` enums and `DstM` Objc of the target's
 /// class without items; the step is enabled and without its dialog.
 #[test]
-fn a_step_recorded_in_photocraft_writes_the_measured_descriptor() {
+fn a_step_recorded_in_patronusphoto_writes_the_measured_descriptor() {
     let item = export_item(ID, &json!({"from": ["rgb"], "to": "gray"}), "S").unwrap();
     assert_eq!((item.enabled, item.with_dialog, &item.event), (true, false, &AtnEvent::name(EVENT)));
     let mut expected = Vec::new();
@@ -266,8 +266,8 @@ fn changed_settings_save_into_the_recorded_descriptor() {
     missing_dst.items.retain(|(k, _)| !k.is("DstM"));
     for damaged in [
         json!("not base64!"),
-        json!(photocraft_paint::tile::b64_encode(b"not a descriptor")),
-        json!(photocraft_paint::tile::b64_encode(&missing_dst.to_bytes())),
+        json!(patronusphoto_paint::tile::b64_encode(b"not a descriptor")),
+        json!(patronusphoto_paint::tile::b64_encode(&missing_dst.to_bytes())),
         json!(7),
         json!(null),
     ] {

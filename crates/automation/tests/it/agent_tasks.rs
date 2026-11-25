@@ -5,7 +5,7 @@
 
 use std::io::Write;
 
-use photocraft_automation::{AuthorizedWorkspace, PhotocraftMcp};
+use patronusphoto_automation::{AuthorizedWorkspace, PatronusPhotoMcp};
 use rmcp::model::{CallToolRequestParams, CallToolResult, ClientConfig};
 use rmcp::service::RunningService;
 use rmcp::{ClientHandler, RoleClient, ServiceExt};
@@ -29,7 +29,7 @@ async fn connect(root: &std::path::Path) -> (Conn, Server) {
     let (s, c) = tokio::io::duplex(1 << 20);
     let workspace = AuthorizedWorkspace::new(Some(root), Some(root)).expect("test workspace");
     let server = tokio::spawn(async move {
-        if let Ok(running) = PhotocraftMcp::headless_with_workspace(workspace).serve(s).await {
+        if let Ok(running) = PatronusPhotoMcp::headless_with_workspace(workspace).serve(s).await {
             let _ = running.waiting().await;
         }
     });
@@ -94,9 +94,12 @@ fn gradient_png(dir: &std::path::Path) -> &'static str {
             px.extend_from_slice(&[(x * 4) as u8, (y * 5) as u8, 128]);
         }
     }
-    let img = photocraft_codecs::Image::from_u8(w, h, photocraft_codecs::ChannelLayout::Rgb, px).unwrap();
+    let img = patronusphoto_codecs::Image::from_u8(w, h, patronusphoto_codecs::ChannelLayout::Rgb, px).unwrap();
     let path = dir.join("gradient.png");
-    std::fs::File::create(&path).unwrap().write_all(&photocraft_codecs::encode(&img, photocraft_codecs::Format::Png, &Default::default()).unwrap()).unwrap();
+    std::fs::File::create(&path)
+        .unwrap()
+        .write_all(&patronusphoto_codecs::encode(&img, patronusphoto_codecs::Format::Png, &Default::default()).unwrap())
+        .unwrap();
     "gradient.png"
 }
 
@@ -121,7 +124,7 @@ async fn agent_completes_ten_scripted_tasks() {
     assert_eq!(t["effects"]["items"][0]["kind"], "Drop Shadow", "task 1: {t}");
     let out = dir.join("card.png");
     tool(&c, "doc_export", json!({"path": "card.png"})).await;
-    let card = photocraft_codecs::decode(&std::fs::read(&out).unwrap()).unwrap();
+    let card = patronusphoto_codecs::decode(&std::fs::read(&out).unwrap()).unwrap();
     assert_eq!(card.dimensions(), (200, 120), "task 1");
     tool(&c, "doc_close", json!({})).await;
 
@@ -278,11 +281,11 @@ async fn agent_edits_text_by_position() {
     std::fs::remove_dir_all(dir).unwrap();
 }
 
-async fn connect_headless(headless: photocraft_automation::Headless) -> (Conn, Server) {
+async fn connect_headless(headless: patronusphoto_automation::Headless) -> (Conn, Server) {
     let (s, c) = tokio::io::duplex(1 << 20);
     let server = tokio::spawn(async move {
-        let backend = photocraft_automation::Backend::Headless(std::sync::Arc::new(std::sync::Mutex::new(headless)));
-        if let Ok(running) = PhotocraftMcp::with_backend(backend).serve(s).await {
+        let backend = patronusphoto_automation::Backend::Headless(std::sync::Arc::new(std::sync::Mutex::new(headless)));
+        if let Ok(running) = PatronusPhotoMcp::with_backend(backend).serve(s).await {
             let _ = running.waiting().await;
         }
     });
@@ -326,13 +329,13 @@ async fn agent_records_and_replays_an_action() {
 async fn agent_play_refuses_a_recorded_file_open() {
     let dir = tmp("actions-auth");
     let workspace = AuthorizedWorkspace::new(Some(&dir), Some(&dir)).expect("test workspace");
-    let mut headless = photocraft_automation::Headless::with_workspace(workspace);
-    use photocraft_engine::actions_cmds::ActionStep;
+    let mut headless = patronusphoto_automation::Headless::with_workspace(workspace);
+    use patronusphoto_engine::actions_cmds::ActionStep;
     headless
         .session
         .actions
         .list
-        .push(photocraft_engine::actions_cmds::Action {
+        .push(patronusphoto_engine::actions_cmds::Action {
             name: "Open".into(),
             steps: vec![ActionStep::new("file.open", json!({"path": "/etc/passwd"})), ActionStep::new("layer.new.layer", json!({}))],
             disabled: Default::default(),

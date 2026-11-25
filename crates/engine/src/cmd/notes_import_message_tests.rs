@@ -2,8 +2,8 @@
 //! "No notes were imported.", no history step and the document unmodified. A file that cannot be
 //! read at all, or one this machine has no memory for, keeps its own error.
 
-use photocraft_color::{ColorMode, SampleType};
-use photocraft_doc::{Document, Note, Size};
+use patronusphoto_color::{ColorMode, SampleType};
+use patronusphoto_doc::{Document, Note, Size};
 use serde_json::json;
 
 use super::{NO_NOTES_IMPORTED, import_notes_from, source_error};
@@ -24,11 +24,11 @@ fn source(notes: usize) -> Document {
 }
 
 fn pcraft(notes: usize) -> Vec<u8> {
-    photocraft_format::save_to_bytes(&source(notes), &Default::default()).unwrap()
+    patronusphoto_format::save_to_bytes(&source(notes), &Default::default()).unwrap()
 }
 
 fn psd(notes: usize) -> Vec<u8> {
-    photocraft_io::export(&source(notes), "x.psd", &photocraft_io::ExportOptions::default()).unwrap().bytes
+    patronusphoto_io::export(&source(notes), "x.psd", &patronusphoto_io::ExportOptions::default()).unwrap().bytes
 }
 
 /// Imports `bytes` as `name` and checks the refusal leaves the document as it was.
@@ -81,14 +81,14 @@ fn a_file_with_notes_still_imports() {
 #[test]
 fn a_memory_refusal_keeps_its_own_message() {
     // A pixel buffer the decoder could not allocate: the file may be fine.
-    let e = source_error("big.psd", photocraft_io::IoError::OutOfMemory("not enough memory to interleave PSD pixels".into())).to_string();
+    let e = source_error("big.psd", patronusphoto_io::IoError::OutOfMemory("not enough memory to interleave PSD pixels".into())).to_string();
     assert_eq!(e, "big.psd: not enough memory: not enough memory to interleave PSD pixels");
-    let e = source_error("big.psd", photocraft_io::IoError::PsdImportBudget { required: 9000, limit: 4000, free_memory: None });
+    let e = source_error("big.psd", patronusphoto_io::IoError::PsdImportBudget { required: 9000, limit: 4000, free_memory: None });
     assert!(matches!(e, EngineError::PsdHardBudget { .. }), "{e:?}");
-    let e = source_error("big.psd", photocraft_io::IoError::PsdApprovalRequired { required: 9000, soft_limit: 2000, hard_limit: 4000, available_ram: None });
+    let e = source_error("big.psd", patronusphoto_io::IoError::PsdApprovalRequired { required: 9000, soft_limit: 2000, hard_limit: 4000, available_ram: None });
     assert!(matches!(e, EngineError::PsdApprovalRequired { .. }), "{e:?}");
     // Not a memory problem: no notes.
-    assert_eq!(source_error("x.txt", photocraft_io::IoError::UnknownFormat("x.txt".into())).to_string(), NO_NOTES_IMPORTED);
+    assert_eq!(source_error("x.txt", patronusphoto_io::IoError::UnknownFormat("x.txt".into())).to_string(), NO_NOTES_IMPORTED);
     // The allocation checkpoint before decoding keeps its message too, and changes nothing.
     let (mut s, bytes) = (session(), pcraft(2));
     let past = s.active().unwrap().history.past_len();

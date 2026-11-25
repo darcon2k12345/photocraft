@@ -4,20 +4,20 @@
 use craft::draw::ui::pattern::PatternFillDialog;
 use craft::ui::dialog::StackDialog;
 use egui::Modifiers;
-use photocraft_doc::{Document, Fill, LayerContent, LayerId, Pattern};
+use patronusphoto_doc::{Document, Fill, LayerContent, LayerId, Pattern};
 use serde_json::json;
 
 use super::document_display::CanvasHost;
 use super::testing::{clear_of_dialogs, ctx, frame, move_to, press, release, view};
 use super::tools::ToolScope;
 use super::tools::dialog::{DialogTools, dialog_tool};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 const NONE: Modifiers = Modifiers::NONE;
 
 /// The phase the hosted dialog shows.
-fn phase(app: &mut PhotocraftApp) -> [f64; 2] {
+fn phase(app: &mut PatronusPhotoApp) -> [f64; 2] {
     app.framework.dialogs.get::<PatternFillDialog>().expect("dialog").current().phase
 }
 
@@ -32,14 +32,14 @@ fn off(p: [f64; 2], d: [f64; 2]) -> [f64; 2] {
 }
 
 /// A document with a Pattern Fill dialog open: editing an existing linked fill, or creating one.
-fn pattern_drag_app(depth: u64, create: bool) -> (Box<PhotocraftApp>, craft::ui::dialog::DialogId, Option<u64>) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn pattern_drag_app(depth: u64, create: bool) -> (Box<PatronusPhotoApp>, craft::ui::dialog::DialogId, Option<u64>) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 40, "height": 30, "depth": depth})).unwrap();
     let layer = if create {
         None
     } else {
         let id = app
-            .run(photocraft_engine::pattern_fill_cmds::CREATE, json!({"pattern": "Checkerboard", "phase": [2.5, -3.25], "scale": 137.5, "angle": 45}))
+            .run(patronusphoto_engine::pattern_fill_cmds::CREATE, json!({"pattern": "Checkerboard", "phase": [2.5, -3.25], "scale": 137.5, "angle": 45}))
             .unwrap()["layer"]
             .as_u64()
             .unwrap();
@@ -52,25 +52,25 @@ fn pattern_drag_app(depth: u64, create: bool) -> (Box<PhotocraftApp>, craft::ui:
 }
 
 /// Ends the dialog with OK on the context the canvas frames run on.
-fn confirm(app: &mut PhotocraftApp, dialog: craft::ui::dialog::DialogId) {
+fn confirm(app: &mut PatronusPhotoApp, dialog: craft::ui::dialog::DialogId) {
     let ctx = ctx(app);
     crate::dialogs::confirm(app, &ctx, dialog).unwrap();
 }
 
 /// Ends the dialog with Cancel on the context the canvas frames run on.
-fn cancel(app: &mut PhotocraftApp, dialog: craft::ui::dialog::DialogId) {
+fn cancel(app: &mut PatronusPhotoApp, dialog: craft::ui::dialog::DialogId) {
     let ctx = ctx(app);
     crate::dialogs::cancel(app, &ctx, dialog).unwrap();
 }
 
 /// Sets the dialog's Link with Layer field as its JSON field setter does.
-fn set_link(app: &mut PhotocraftApp, on: bool) {
+fn set_link(app: &mut PatronusPhotoApp, on: bool) {
     let ctx = ctx(app);
     app.framework.dialogs.get_mut::<PatternFillDialog>().expect("dialog").set_json_field(&ctx, "link", json!(on)).unwrap();
 }
 
 /// One press, moves and release of a drag from `start` by `delta` document units.
-fn drag(app: &mut PhotocraftApp, start: [f64; 2], delta: [f64; 2]) {
+fn drag(app: &mut PatronusPhotoApp, start: [f64; 2], delta: [f64; 2]) {
     move_to(app, start, NONE);
     press(app, start, NONE);
     move_to(app, off(start, delta), NONE);
@@ -231,10 +231,10 @@ fn a_pattern_drag_ends_on_a_nested_dialog_or_unlink_and_pan_wins() {
 
 #[test]
 fn a_pattern_drag_previews_without_editing_masks_selection_or_the_tool() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 40, "height": 30, "depth": 16})).unwrap();
     app.run("select.rect", json!({"x": 2, "y": 2, "width": 20, "height": 10})).unwrap();
-    let id = app.run(photocraft_engine::pattern_fill_cmds::CREATE, json!({"pattern": "Checkerboard"})).unwrap()["layer"].as_u64().unwrap();
+    let id = app.run(patronusphoto_engine::pattern_fill_cmds::CREATE, json!({"pattern": "Checkerboard"})).unwrap()["layer"].as_u64().unwrap();
     // A mask on the non-active Background must not change.
     let background = app.session.active().unwrap().doc.layers[0].id;
     app.run("layer.select", json!({"layer": background.0})).unwrap();
@@ -277,9 +277,9 @@ fn a_pattern_drag_previews_without_editing_masks_selection_or_the_tool() {
 
 #[test]
 fn the_dialog_tool_serves_only_the_active_documents_canvas() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 40, "height": 30})).unwrap();
-    app.run(photocraft_engine::pattern_fill_cmds::CREATE, json!({"pattern": "Checkerboard", "phase": [2.5, -3.25]})).unwrap();
+    app.run(patronusphoto_engine::pattern_fill_cmds::CREATE, json!({"pattern": "Checkerboard", "phase": [2.5, -3.25]})).unwrap();
     let dialog = crate::pattern_fill_ui::open(&mut app).unwrap();
     // A second document in its own cell, the fill's document active.
     app.run("file.new", json!({"width": 30, "height": 20})).unwrap();
@@ -296,20 +296,20 @@ fn the_dialog_tool_serves_only_the_active_documents_canvas() {
 
 #[test]
 fn a_drag_moves_the_visible_pattern_not_only_its_phase() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 8, "height": 2, "depth": 8})).unwrap();
     // Our own 8 × 2 tile: a solid red 2 × 2 left edge, transparent elsewhere.
-    let mut surface = photocraft_raster::Surface::new(photocraft_color::PixelFormat::RGBA8);
-    surface.fill_rect(photocraft_geom::Rect::new(0, 0, 2, 2), &[1.0, 0.0, 0.0, 1.0]);
+    let mut surface = patronusphoto_raster::Surface::new(patronusphoto_color::PixelFormat::RGBA8);
+    surface.fill_rect(patronusphoto_geom::Rect::new(0, 0, 2, 2), &[1.0, 0.0, 0.0, 1.0]);
     let tile = Pattern::new("Shift tile", surface, 8, 2);
     let pattern = tile.id.clone();
     app.session.patterns.items.push(tile);
-    app.run(photocraft_engine::pattern_fill_cmds::CREATE, json!({"pattern": pattern, "phase": [0.0, 0.0], "scale": 100, "angle": 0, "link": true})).unwrap();
+    app.run(patronusphoto_engine::pattern_fill_cmds::CREATE, json!({"pattern": pattern, "phase": [0.0, 0.0], "scale": 100, "angle": 0, "link": true})).unwrap();
     let dialog = crate::pattern_fill_ui::open(&mut app).unwrap();
     frame(&mut app);
     clear_of_dialogs(&mut app, [4.0, 1.0]);
     let band = |doc: &Document| {
-        let buf = photocraft_compose::render(doc, photocraft_geom::Rect::new(0, 0, 8, 1));
+        let buf = patronusphoto_compose::render(doc, patronusphoto_geom::Rect::new(0, 0, 8, 1));
         (0..8).filter(|x| buf.px[*x as usize][0] > 0.5 && buf.px[*x as usize][1] < 0.5).collect::<Vec<i32>>()
     };
     let before = band(&app.session.active().unwrap().doc);

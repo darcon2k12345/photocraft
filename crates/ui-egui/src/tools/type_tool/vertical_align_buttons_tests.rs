@@ -8,17 +8,17 @@ use crate::app::framework::BuildApp;
 use egui::accesskit::Toggled;
 use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
-use photocraft_doc::{LayerContent, LayerId, text::TextAlign};
+use patronusphoto_doc::{LayerContent, LayerId, text::TextAlign};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 pub(super) const HORIZONTAL: [&str; 3] = ["Left align text", "Center text", "Right align text"];
 pub(super) const VERTICAL: [&str; 3] = ["Align text to the top", "Center text vertically", "Align text to the bottom"];
 
-pub(super) fn new_app(tool: Tool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+pub(super) fn new_app(tool: Tool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 800, "height": 400})).unwrap();
     app.sync_views();
     app.ui.tool = tool;
@@ -26,15 +26,15 @@ pub(super) fn new_app(tool: Tool) -> Box<PhotocraftApp> {
 }
 
 /// A text layer with `orientation`, made the active layer (selected, not edited).
-fn text_layer(app: &mut PhotocraftApp, orientation: &str) -> LayerId {
+fn text_layer(app: &mut PatronusPhotoApp, orientation: &str) -> LayerId {
     let made = app.run("type.create", json!({"text": "AB CD", "x": 400, "y": 100, "orientation": orientation})).unwrap();
     LayerId(made["layer"].as_u64().unwrap())
 }
 
-pub(super) fn bar(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
+pub(super) fn bar(app: Box<PatronusPhotoApp>) -> Harness<'static, Box<PatronusPhotoApp>> {
     let ctx = app.ctx().clone();
     let mut h = Harness::builder().with_context(ctx).with_size(egui::vec2(1200.0, 60.0)).build_app(
-        |ui, app: &mut PhotocraftApp| {
+        |ui, app: &mut PatronusPhotoApp| {
             ui.horizontal(|ui| super::options_bar(app, ui));
         },
         app,
@@ -45,10 +45,10 @@ pub(super) fn bar(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp
 
 /// The bar drawn without the app's frame logic: that logic ends a text edit whose document is not the
 /// active one, and the bar's own decision for such an edit is what the caller tests.
-fn bar_without_frame_logic(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
+fn bar_without_frame_logic(app: Box<PatronusPhotoApp>) -> Harness<'static, Box<PatronusPhotoApp>> {
     let ctx = app.ctx().clone();
     let mut h = Harness::builder().with_context(ctx).with_size(egui::vec2(1200.0, 60.0)).build_ui_state(
-        |ui, app: &mut Box<PhotocraftApp>| {
+        |ui, app: &mut Box<PatronusPhotoApp>| {
             ui.horizontal(|ui| super::options_bar(app, ui));
         },
         app,
@@ -58,7 +58,7 @@ fn bar_without_frame_logic(app: Box<PhotocraftApp>) -> Harness<'static, Box<Phot
 }
 
 /// Which of the two button sets the bar shows; panics on a mix or neither.
-pub(super) fn shown(h: &Harness<'static, Box<PhotocraftApp>>) -> [&'static str; 3] {
+pub(super) fn shown(h: &Harness<'static, Box<PatronusPhotoApp>>) -> [&'static str; 3] {
     let has = |label: &str| h.query_by_label(label).is_some();
     match (has(VERTICAL[0]) && has(VERTICAL[2]), has(HORIZONTAL[0]) && has(HORIZONTAL[2])) {
         (true, false) => VERTICAL,
@@ -68,12 +68,12 @@ pub(super) fn shown(h: &Harness<'static, Box<PhotocraftApp>>) -> [&'static str; 
     }
 }
 
-pub(super) fn lit(h: &Harness<'static, Box<PhotocraftApp>>, label: &str) -> bool {
+pub(super) fn lit(h: &Harness<'static, Box<PatronusPhotoApp>>, label: &str) -> bool {
     h.get_by_label(label).accesskit_node().toggled() == Some(Toggled::True)
 }
 
 #[allow(dead_code)] // a fixture for tests of the bar's alignment buttons
-pub(super) fn align_of(app: &PhotocraftApp, id: LayerId) -> TextAlign {
+pub(super) fn align_of(app: &PatronusPhotoApp, id: LayerId) -> TextAlign {
     match &app.session.active().unwrap().doc.layer(id).unwrap().content {
         LayerContent::Text(t) => t.paragraphs[0].style.align,
         other => panic!("{}", other.kind_name()),

@@ -4,8 +4,8 @@
 
 use egui::vec2;
 use egui_kittest::Harness;
-use photocraft_ui_egui::{
-    PhotocraftApp,
+use patronusphoto_ui_egui::{
+    PatronusPhotoApp,
     control::{ControlRequest, Reply, handle},
     dialogs, i18n,
     theme::AppTheme,
@@ -14,23 +14,23 @@ use serde_json::{Value, json};
 
 const COMMAND: &str = "filter.blur.radialBlur";
 
-fn harness() -> Harness<'static, Box<PhotocraftApp>> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn harness() -> Harness<'static, Box<PatronusPhotoApp>> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
     app.run("paint.stroke", json!({"points": [[8, 8, 1]], "size": 4, "color": "#ff8000"})).unwrap();
     let h = Harness::builder().with_context(app.ctx().clone()).with_size(vec2(1000.0, 800.0)).build_ui_state(
-        |ui, app: &mut Box<PhotocraftApp>| {
+        |ui, app: &mut Box<PatronusPhotoApp>| {
             let _language = i18n::language_scope(i18n::Lang::EN);
             dialogs::run(app, ui);
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, AppTheme::pro());
+    PatronusPhotoApp::setup_context(&h.ctx, AppTheme::pro());
     h
 }
 
 /// Sends one control request, requires success and returns its `result`.
-fn control(h: &mut Harness<'_, Box<PhotocraftApp>>, method: &str, params: Value) -> Value {
+fn control(h: &mut Harness<'_, Box<PatronusPhotoApp>>, method: &str, params: Value) -> Value {
     let ctx = h.ctx.clone();
     let (request, _rx) = ControlRequest::new(method, params);
     let Reply::Done(reply) = handle(h.state_mut(), &ctx, &request) else { panic!("{method} did not finish") };
@@ -48,7 +48,7 @@ fn find<'a>(value: &'a Value, key: &str) -> Option<&'a Value> {
     }
 }
 
-fn revision(h: &Harness<'_, Box<PhotocraftApp>>) -> u64 {
+fn revision(h: &Harness<'_, Box<PatronusPhotoApp>>) -> u64 {
     h.state().session.active().unwrap().revision
 }
 
@@ -72,12 +72,12 @@ fn automation_moves_the_centre_and_ok_sends_both_coordinates() {
     assert!(revision(&h) > before, "OK applied the filter");
     let applied = h.state().session.active().unwrap().doc.clone();
     // The command run directly with the same centre gives the same picture: OK sent centerX and centerY.
-    let mut direct = photocraft_engine::Session::new();
+    let mut direct = patronusphoto_engine::Session::new();
     direct.execute("file.new", json!({"width": 32, "height": 32})).unwrap();
     direct.execute("paint.stroke", json!({"points": [[8, 8, 1]], "size": 4, "color": "#ff8000"})).unwrap();
     direct.execute(COMMAND, json!({"method": "zoom", "centerX": 0.12, "centerY": 0.87})).unwrap();
     let expected = direct.active().unwrap().doc.clone();
-    assert_eq!(photocraft_compose::render(&applied, applied.bounds()), photocraft_compose::render(&expected, expected.bounds()));
+    assert_eq!(patronusphoto_compose::render(&applied, applied.bounds()), patronusphoto_compose::render(&expected, expected.bounds()));
 
     // Cancel after an edit leaves the document as it was.
     let opened = control(&mut h, "ui.menu.invoke", json!({"id": COMMAND}));

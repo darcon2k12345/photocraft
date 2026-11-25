@@ -7,17 +7,17 @@
 
 use serde_json::Value;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Panels;
 
 /// What a saved layout holds: the chrome flags and the workspace.
-pub fn snapshot(app: &PhotocraftApp) -> Value {
+pub fn snapshot(app: &PatronusPhotoApp) -> Value {
     crate::panel_docking::snapshot(app)
 }
 
 /// Remembers the layout in the preferences while Remember Workspace Changes is on, when it differs from the one
 /// remembered.
-pub fn persist(app: &mut PhotocraftApp) {
+pub fn persist(app: &mut PatronusPhotoApp) {
     if !app.session.prefs().workspace.remember_workspace_changes {
         return;
     }
@@ -28,7 +28,7 @@ pub fn persist(app: &mut PhotocraftApp) {
 }
 
 /// Restores the remembered layout at launch. Unreadable parts keep their defaults.
-pub fn restore(app: &mut PhotocraftApp) {
+pub fn restore(app: &mut PatronusPhotoApp) {
     if !app.session.prefs().workspace.remember_workspace_changes {
         return;
     }
@@ -40,13 +40,13 @@ pub fn restore(app: &mut PhotocraftApp) {
 }
 
 /// Applies a saved layout (a workspace or `panelLayout`): its workspace, and its chrome flags when they read.
-pub fn apply(app: &mut PhotocraftApp, v: &Value) {
+pub fn apply(app: &mut PatronusPhotoApp, v: &Value) {
     crate::panel_docking::load(app, v);
     apply_panels(app, v);
 }
 
 /// Applies the chrome flags of a saved layout, when they read.
-fn apply_panels(app: &mut PhotocraftApp, v: &Value) {
+fn apply_panels(app: &mut PatronusPhotoApp, v: &Value) {
     if let Some(saved) = v.get("panels")
         && let Ok(mut panels) = serde_json::from_value::<Panels>(saved.clone())
     {

@@ -1,7 +1,7 @@
 //! JPEG Options: the quality and format File › Save, Save As and Save a Copy ask for before writing
 //! a JPEG, as Photoshop's JPEG Options does. Quality is Photoshop's 0–12 scale (Low 0–4, Medium
 //! 5–7, High 8–9, Maximum 10–12), mapped to the encoder's 1–100 by
-//! `photocraft_engine::file_cmds::jpeg_quality`; Format Options are Baseline ("Standard"), Baseline
+//! `patronusphoto_engine::file_cmds::jpeg_quality`; Format Options are Baseline ("Standard"), Baseline
 //! Optimized and Progressive, and the dialog shows the size the file will have. Matte and Scans
 //! aren't offered yet. Re-saving an opened JPEG starts at the file's own quality, as File › Save
 //! keeps it (#4032). Otherwise the dialog starts at the quality and format it was last answered
@@ -17,17 +17,17 @@
 //! file's own quality was kept) and `jpegFormat`, or without the path for a plain `file.save`,
 //! which writes whichever file an action is played on ([`plain_save_step`]). File › Save over a
 //! flat JPEG that still holds the document asks too, as Photoshop does (#2223):
-//! `PhotocraftApp::save_flat_in_place`.
+//! `PatronusPhotoApp::save_flat_in_place`.
 
 use craft::ui::dialog::DialogId;
 use craft::ui::patterns::form_dialogs::{ExportOptionsKind, FormatOptions, HostedFormatOptions, JpegFormat as UiJpegFormat, JpegOptions, SizeEstimate};
 use craft::ui::runtime::memory::{SaveKey, saved_value, set_saved_value};
-use photocraft_codecs::JpegFormat;
+use patronusphoto_codecs::JpegFormat;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::format_prompts::{self, ParkedFormat, ParkedSave};
-use crate::{ExportSettings, PhotocraftApp};
+use crate::{ExportSettings, PatronusPhotoApp};
 
 mod size_readout;
 
@@ -47,7 +47,7 @@ impl JpegChoice {
     /// `settings` writing this choice.
     pub fn apply(self, settings: ExportSettings) -> ExportSettings {
         ExportSettings {
-            jpeg_quality: self.quality.map(|q| photocraft_engine::file_cmds::jpeg_quality(f64::from(q))).or(settings.jpeg_quality),
+            jpeg_quality: self.quality.map(|q| patronusphoto_engine::file_cmds::jpeg_quality(f64::from(q))).or(settings.jpeg_quality),
             jpeg_format: self.format,
             ..settings
         }
@@ -66,7 +66,7 @@ impl JpegChoice {
 /// skip the prompt. Neither given: `None`. A quality that isn't a number from 0 to 12, or a
 /// format other than the three names, is an error.
 pub fn choice_param(params: &Value, cmd: &str) -> Result<Option<JpegChoice>, String> {
-    let format = photocraft_engine::file_cmds::jpeg_format_param(params, cmd).map_err(|e| e.to_string())?;
+    let format = patronusphoto_engine::file_cmds::jpeg_format_param(params, cmd).map_err(|e| e.to_string())?;
     let quality = match params.get("quality") {
         None | Some(Value::Null) => None,
         Some(v) => Some(
@@ -101,7 +101,7 @@ pub fn plain_save_step(choice: Option<JpegChoice>) -> Value {
 /// `quality` to 0–12 and ignores one that isn't a number, so the replay reads it the same way. A
 /// format other than the three names is still an error, as it is for the engine.
 pub fn recorded_choice(params: &Value, cmd: &str) -> Result<Option<JpegChoice>, String> {
-    let format = photocraft_engine::file_cmds::jpeg_format_param(params, cmd).map_err(|e| e.to_string())?;
+    let format = patronusphoto_engine::file_cmds::jpeg_format_param(params, cmd).map_err(|e| e.to_string())?;
     let quality = params.get("quality").and_then(Value::as_f64).filter(|q| q.is_finite()).map(|q| q.clamp(0.0, f64::from(MAX_QUALITY)).round() as u8);
     Ok((quality.is_some() || format.is_some()).then(|| JpegChoice { quality, format: format.unwrap_or_default() }))
 }
@@ -139,7 +139,7 @@ impl Start {
     /// Baseline; and the quality of its opened JPEG (`Document::file_encoding`, which File › Save
     /// keeps, #4032), else the quality last answered, else the Export preferences' JPEG quality
     /// (the one Quick Export uses).
-    pub fn for_active(app: &PhotocraftApp) -> Self {
+    pub fn for_active(app: &PatronusPhotoApp) -> Self {
         let remembered = remembered(app);
         let start = match app.session.active().and_then(|st| st.doc.file_encoding.jpeg_quality) {
             Some(q) => Start::own(q),
@@ -154,7 +154,7 @@ impl Start {
 
 /// The saved value JPEG Options writes its last answer under and starts the next dialog from, as
 /// Photoshop does (it keeps it across restarts).
-pub(crate) const REMEMBER_KEY: SaveKey = SaveKey::new("photocraft.file.jpegOptions");
+pub(crate) const REMEMBER_KEY: SaveKey = SaveKey::new("patronusphoto.file.jpegOptions");
 
 /// The saved record of the last answer. A field that no longer fits is left out on its own when
 /// read (see [`remembered`]), so one bad value doesn't reset the other.
@@ -174,7 +174,7 @@ struct Last {
     format: Option<JpegFormat>,
 }
 
-fn remembered(app: &PhotocraftApp) -> Last {
+fn remembered(app: &PatronusPhotoApp) -> Last {
     let saved: Remembered = saved_value(app.ctx(), &REMEMBER_KEY);
     Last { quality: saved.quality.filter(|&q| q <= MAX_QUALITY), format: saved.jpeg_format.as_deref().and_then(JpegFormat::parse) }
 }
@@ -182,7 +182,7 @@ fn remembered(app: &PhotocraftApp) -> Last {
 /// Records an answered dialog for the next one. A quality left on the opened file's own is not
 /// an answer: the earlier one stays, so saving a series of opened JPEGs doesn't forget what a
 /// new document was last saved at.
-fn remember(app: &PhotocraftApp, choice: JpegChoice) {
+fn remember(app: &PatronusPhotoApp, choice: JpegChoice) {
     let quality = choice.quality.or(remembered(app).quality);
     set_saved_value(app.ctx(), &REMEMBER_KEY, Remembered { quality, jpeg_format: Some(choice.format.name().into()) });
 }
@@ -233,22 +233,22 @@ fn codec_format(format: UiJpegFormat) -> JpegFormat {
 
 /// `true` when `path` names a JPEG (`.jpg`, `.jpeg`, `.jpe`, …).
 pub fn is_jpeg_path(path: &str) -> bool {
-    photocraft_engine::file_cmds::extension(path).and_then(|e| photocraft_formats::from_extension(&e)) == Some(photocraft_formats::Format::Jpeg)
+    patronusphoto_engine::file_cmds::extension(path).and_then(|e| patronusphoto_formats::from_extension(&e)) == Some(patronusphoto_formats::Format::Jpeg)
 }
 
 /// Whether saving the active document to `path` asks for JPEG Options.
-pub fn wants_prompt(app: &PhotocraftApp, path: &str) -> bool {
+pub fn wants_prompt(app: &PatronusPhotoApp, path: &str) -> bool {
     is_jpeg_path(path) && app.session.active().is_some()
 }
 
 /// Parks the save of the active document to `path` behind the prompt, starting at
 /// [`Start::for_active`]. A prompt already waiting is never replaced.
-pub fn park(app: &mut PhotocraftApp, path: String, copy: bool, record: &'static str) -> Result<(), String> {
+pub fn park(app: &mut PatronusPhotoApp, path: String, copy: bool, record: &'static str) -> Result<(), String> {
     park_dialog(app, path, copy, record).map(drop)
 }
 
 /// [`park`], returning the id of the dialog it opened.
-pub fn park_dialog(app: &mut PhotocraftApp, path: String, copy: bool, record: &'static str) -> Result<DialogId, String> {
+pub fn park_dialog(app: &mut PatronusPhotoApp, path: String, copy: bool, record: &'static str) -> Result<DialogId, String> {
     let doc = app.active_doc_id()?;
     let Start { quality, own_quality, format } = Start::for_active(app);
     let mut options = JpegOptions::new(quality.min(MAX_QUALITY));
@@ -260,7 +260,7 @@ pub fn park_dialog(app: &mut PhotocraftApp, path: String, copy: bool, record: &'
 /// Answers the hosted dialog's request for the size of its current settings, once the worker has
 /// it. A pass applies only its own state: a second pass in a frame finds no new request, and the
 /// request still waiting for its encode is answered by whichever pass sees the size, once.
-pub(crate) fn poll_estimate(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(crate) fn poll_estimate(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     if !matches!(&app.parked_save, Some(ParkedSave { format: ParkedFormat::Jpeg(_), .. })) {
         return;
     }
@@ -294,7 +294,7 @@ pub(crate) fn poll_estimate(app: &mut PhotocraftApp, ctx: &egui::Context) {
 }
 
 /// OK: writes the parked save with the dialog's quality and format, and journals it.
-pub(crate) fn finish(app: &mut PhotocraftApp, ctx: &egui::Context, save: ParkedSave, options: JpegOptions) {
+pub(crate) fn finish(app: &mut PatronusPhotoApp, ctx: &egui::Context, save: ParkedSave, options: JpegOptions) {
     let own_quality = match &save.format {
         ParkedFormat::Jpeg(parked) => parked.own_quality,
         _ => None,
@@ -368,7 +368,7 @@ mod tests {
     fn quality_scale() {
         // The prompt's starting quality maps back to the encoder quality it came from, near enough.
         for q in 0..=MAX_QUALITY {
-            assert_eq!(quality_from_percent(u32::from(photocraft_engine::file_cmds::jpeg_quality(f64::from(q)))), q);
+            assert_eq!(quality_from_percent(u32::from(patronusphoto_engine::file_cmds::jpeg_quality(f64::from(q)))), q);
         }
         assert_eq!((quality_from_percent(0), quality_from_percent(85), quality_from_percent(1000)), (0, 10, 12));
     }
@@ -377,16 +377,16 @@ mod tests {
     /// in JPEG Options reaches the encoder there, not just the settings.
     #[test]
     fn the_answer_reaches_the_encoder() {
-        let doc = photocraft_doc::Document::with_background(
+        let doc = patronusphoto_doc::Document::with_background(
             "x",
-            photocraft_doc::Size::new(16, 16),
-            photocraft_doc::ColorMode::Rgb,
-            photocraft_doc::SampleType::U8,
-            photocraft_doc::Color::WHITE,
+            patronusphoto_doc::Size::new(16, 16),
+            patronusphoto_doc::ColorMode::Rgb,
+            patronusphoto_doc::SampleType::U8,
+            patronusphoto_doc::Color::WHITE,
         );
         let write = |format| {
             let settings = JpegChoice { quality: Some(10), format }.apply(ExportSettings::default());
-            photocraft_io::export(&doc, "a.jpg", &settings.io_options()).unwrap().bytes
+            patronusphoto_io::export(&doc, "a.jpg", &settings.io_options()).unwrap().bytes
         };
         // Start of frame: 0xFFC0 baseline, 0xFFC2 progressive. Scan data stuffs its 0xFF bytes, and
         // this small white image's tables and headers hold neither pair, so only the frame marker matches.

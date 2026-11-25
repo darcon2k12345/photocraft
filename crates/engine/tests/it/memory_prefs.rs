@@ -1,4 +1,4 @@
-use photocraft_engine::prefs::{Performance, Preferences};
+use patronusphoto_engine::prefs::{Performance, Preferences};
 use serde_json::json;
 
 #[test]

@@ -9,30 +9,30 @@ use craft::ui::contract::{Bind, Props as _, Show as _};
 use craft::ui::dialog::{Alert, HostedAlert};
 use craft::ui::display::Divider;
 use craft::ui::runtime::env::Env;
-use photocraft_doc::{Fill, LayerContent};
+use patronusphoto_doc::{Fill, LayerContent};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::shape_gradient_ui::{self as shape_gradient, ShapeGradients};
 use crate::shape_paint_ui::{ChipLibrary, PaintChange, decorate_chip, gradient_fill, paint_of, paint_param, rgba, srgba};
 use crate::shape_stroke_ui::StrokeOptions;
 use crate::state::Tool;
 use crate::vector_ui::enabled_stroke_width;
 
-fn solid(color: [f32; 4]) -> photocraft_doc::Fill {
-    photocraft_doc::Fill::Solid(photocraft_doc::Color::rgba(color[0], color[1], color[2], color[3]))
+fn solid(color: [f32; 4]) -> patronusphoto_doc::Fill {
+    patronusphoto_doc::Fill::Solid(patronusphoto_doc::Color::rgba(color[0], color[1], color[2], color[3]))
 }
 
 /// The shape layer the options bar edits.
 struct SelectedShape {
-    doc: photocraft_doc::DocId,
-    layer: photocraft_doc::LayerId,
-    fill: Option<photocraft_doc::Fill>,
-    stroke: Option<photocraft_doc::ShapeStroke>,
-    live: Option<photocraft_doc::LiveShape>,
+    doc: patronusphoto_doc::DocId,
+    layer: patronusphoto_doc::LayerId,
+    fill: Option<patronusphoto_doc::Fill>,
+    stroke: Option<patronusphoto_doc::ShapeStroke>,
+    live: Option<patronusphoto_doc::LiveShape>,
 }
 
-fn selected_shape(session: &photocraft_engine::Session) -> Option<SelectedShape> {
+fn selected_shape(session: &patronusphoto_engine::Session) -> Option<SelectedShape> {
     let st = session.active()?;
     let layer = st.active_layer?;
     match &st.doc.layer(layer)?.content {
@@ -53,8 +53,8 @@ fn kind_of(tool: Tool, target: Option<&SelectedShape>) -> Option<ShapeKind> {
         Tool::Line => ShapeKind::Line,
         Tool::CustomShape => ShapeKind::Custom,
         Tool::PathSelection | Tool::DirectSelection => match target.and_then(|s| s.live.as_ref()) {
-            Some(photocraft_doc::LiveShape::Rect { .. }) => ShapeKind::Rectangle,
-            Some(photocraft_doc::LiveShape::Ellipse { .. }) => ShapeKind::Ellipse,
+            Some(patronusphoto_doc::LiveShape::Rect { .. }) => ShapeKind::Rectangle,
+            Some(patronusphoto_doc::LiveShape::Ellipse { .. }) => ShapeKind::Ellipse,
             _ => ShapeKind::Custom,
         },
         _ => return None,
@@ -113,7 +113,7 @@ fn paint_change(paint: &craft::color_ui::ui::Paint, gradient: &Fill) -> Option<P
 }
 
 /// Applies a paint change to the tool defaults; false when the engine refused it.
-fn apply_tool_paint(app: &mut PhotocraftApp, stroke: bool, change: &PaintChange) -> bool {
+fn apply_tool_paint(app: &mut PatronusPhotoApp, stroke: bool, change: &PaintChange) -> bool {
     match set_tool_paint(app, stroke, change.clone()) {
         Ok(()) => true,
         Err(e) => {
@@ -143,11 +143,11 @@ fn paint_edit(stroke: bool, change: &PaintChange, width: f32) -> Value {
 /// and `ShapeBar` reports an edit only in the pass that read the input, so a second pass in the
 /// same frame sees the stored result and writes nothing.
 /// The bar's number fields: the next shape's, or the selected rectangle's own radius when the bar edits it.
-fn tool_settings(o: &crate::state::ToolOptions, live: Option<&photocraft_doc::LiveShape>, rect_target: bool) -> ShapeToolSettings {
+fn tool_settings(o: &crate::state::ToolOptions, live: Option<&patronusphoto_doc::LiveShape>, rect_target: bool) -> ShapeToolSettings {
     let mut settings = ShapeToolSettings::default();
     settings.fill_on = o.shape_fill;
     settings.corner_radius = match live {
-        Some(photocraft_doc::LiveShape::Rect { radii, .. }) if rect_target => radii[0],
+        Some(patronusphoto_doc::LiveShape::Rect { radii, .. }) if rect_target => radii[0],
         _ => f64::from(o.corner_radius),
     };
     settings.sides = o.polygon_sides;
@@ -175,7 +175,7 @@ fn paint_dialog_target<C>(which: ShapePaint, fg: C, bg: C) -> Option<(crate::sha
     }
 }
 
-pub(crate) fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui, tool: Tool, paint: bool) {
+pub(crate) fn options_bar(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, tool: Tool, paint: bool) {
     // Path mode edits only the next outline: an active shape layer is not the target.
     let target = if paint { selected_shape(&app.session) } else { None };
     let Some(kind) = kind_of(tool, target.as_ref()) else { return };
@@ -195,7 +195,7 @@ pub(crate) fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui, tool: Tool
     // The Rectangle tool's Radius is the next rectangle's (#13338); the active shape is edited only from the
     // selection tools, whose Radius is its own.
     let rect_target = matches!(tool, Tool::PathSelection | Tool::DirectSelection)
-        && matches!(target.as_ref().and_then(|s| s.live.as_ref()), Some(photocraft_doc::LiveShape::Rect { .. }));
+        && matches!(target.as_ref().and_then(|s| s.live.as_ref()), Some(patronusphoto_doc::LiveShape::Rect { .. }));
     let settings = tool_settings(o, target.as_ref().and_then(|s| s.live.as_ref()), rect_target);
     let style = stroke.as_ref().map_or_else(|| o.shape_stroke.clone(), StrokeOptions::from);
     let locked = target.as_ref().is_some_and(|s| {
@@ -352,7 +352,7 @@ pub(crate) fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui, tool: Tool
 }
 
 /// Tool-bar paint changes affect the next shape; Properties edits the selected shape instead.
-pub(crate) fn set_tool_paint(app: &mut PhotocraftApp, stroke: bool, change: PaintChange) -> Result<(), String> {
+pub(crate) fn set_tool_paint(app: &mut PatronusPhotoApp, stroke: bool, change: PaintChange) -> Result<(), String> {
     // A colour takes the place of a gradient; No Color keeps it for when the paint comes back.
     let o = &mut app.ui.tool_options;
     let gradient = if stroke { &mut o.shape_stroke_gradient } else { &mut o.shape_fill_gradient };

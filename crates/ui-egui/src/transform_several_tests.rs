@@ -2,44 +2,44 @@
 //! every one of them, type and pixels alike, in one history step.
 
 use craft::draw::ui::transform::{Interpolation, TransformEdit};
-use photocraft_doc::{LayerContent, LayerId};
-use photocraft_geom::Rect;
+use patronusphoto_doc::{LayerContent, LayerId};
+use patronusphoto_geom::Rect;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The open box's source frame as `[x0, y0, x1, y1]`.
-fn frame_of(app: &PhotocraftApp) -> [f64; 4] {
+fn frame_of(app: &PatronusPhotoApp) -> [f64; 4] {
     let r = app.ui.transform.as_ref().expect("a box is open").session.rect();
     [r.x0, r.y0, r.x1, r.y1]
 }
 
 /// The open box's corners.
-fn quad_of(app: &PhotocraftApp) -> [[f64; 2]; 4] {
+fn quad_of(app: &PatronusPhotoApp) -> [[f64; 2]; 4] {
     app.ui.transform.as_ref().expect("a box is open").session.quad().map(|p| [p.x, p.y])
 }
 
 /// Sets the open box's corners; the reference point stays.
-fn set_quad(app: &mut PhotocraftApp, quad: [[f64; 2]; 4]) {
+fn set_quad(app: &mut PatronusPhotoApp, quad: [[f64; 2]; 4]) {
     app.ui.transform.as_mut().expect("a box is open").edit_box(|b| b.quad = quad.map(|[x, y]| (x, y).into()));
 }
 
 /// Maps each corner of the open box through `f`.
-fn map_quad(app: &mut PhotocraftApp, f: impl Fn([f64; 2]) -> [f64; 2]) {
+fn map_quad(app: &mut PatronusPhotoApp, f: impl Fn([f64; 2]) -> [f64; 2]) {
     let quad = quad_of(app).map(f);
     set_quad(app, quad);
 }
 
 /// Resamples the open box with nearest neighbour so the blocks keep their edges.
-fn nearest(app: &mut PhotocraftApp) {
+fn nearest(app: &mut PatronusPhotoApp) {
     app.ui.transform.as_mut().expect("a box is open").session.apply(TransformEdit::Interpolation(Interpolation::NearestNeighbor), 0.0);
 }
 
 /// A 200 × 200 document: "Paint" with a red block at x 10..50, y 10..30, and a type layer over it.
 /// Both are selected with Paint active, as after ⌘-clicking Paint in the Layers panel (the
 /// reporter's steps).
-fn app() -> (Box<PhotocraftApp>, LayerId, LayerId) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> (Box<PatronusPhotoApp>, LayerId, LayerId) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 200, "background": "white"})).unwrap();
     app.sync_views();
     let paint = LayerId(app.run("layer.new.layer", json!({"name": "Paint"})).unwrap()["layer"].as_u64().unwrap());
@@ -53,12 +53,12 @@ fn app() -> (Box<PhotocraftApp>, LayerId, LayerId) {
     (app, paint, text)
 }
 
-fn bounds(app: &PhotocraftApp, id: LayerId) -> Rect {
+fn bounds(app: &PatronusPhotoApp, id: LayerId) -> Rect {
     let st = app.session.active().unwrap();
-    photocraft_engine::transform_cmds::transform_bounds(&st.doc, st.doc.layer(id).unwrap())
+    patronusphoto_engine::transform_cmds::transform_bounds(&st.doc, st.doc.layer(id).unwrap())
 }
 
-fn free_transform(app: &mut PhotocraftApp) {
+fn free_transform(app: &mut PatronusPhotoApp) {
     let app_ctx = app.ctx().clone();
     crate::menus::invoke(app, &app_ctx, "edit.freeTransform", json!({})).unwrap();
 }
@@ -204,7 +204,7 @@ fn picking_another_layer_applies_the_box_to_all_of_them() {
 }
 
 /// Paint with a 6 px outside stroke, then both layers selected again (Paint active).
-fn stroked() -> (Box<PhotocraftApp>, LayerId, LayerId) {
+fn stroked() -> (Box<PatronusPhotoApp>, LayerId, LayerId) {
     let (mut app, paint, text) = app();
     app.run("layer.select", json!({"layer": paint.0})).unwrap();
     app.run("layer.layerStyle.stroke", json!({"size": 6, "color": "#00ff00", "position": "outside"})).unwrap();
@@ -238,7 +238,7 @@ fn styles_past_the_frame_move_with_the_box() {
 }
 
 /// A texel of the type's glyphs in the moving pixels as the box opened.
-fn glyph_texel(app: &PhotocraftApp, text: LayerId) -> [i32; 2] {
+fn glyph_texel(app: &PatronusPhotoApp, text: LayerId) -> [i32; 2] {
     let b = bounds(app, text);
     (b.y0..b.y1)
         .flat_map(|y| (b.x0..b.x1).map(move |x| [x, y]))
@@ -280,7 +280,7 @@ fn a_style_added_while_the_box_is_open_grows_the_moving_pixels() {
     assert!(stroke.is_some_and(|c| c.a() > 200), "{stroke:?}");
 }
 
-fn group(app: &mut PhotocraftApp, ids: &[LayerId]) -> LayerId {
+fn group(app: &mut PatronusPhotoApp, ids: &[LayerId]) -> LayerId {
     app.run("layer.select", json!({"layer": ids[0].0})).unwrap();
     for id in &ids[1..] {
         app.run("layer.select", json!({"layer": id.0, "mode": "add"})).unwrap();
@@ -296,7 +296,7 @@ fn edits_to_the_children_of_a_moving_group_show_in_the_preview() {
     app.run("layer.select", json!({"layer": text.0, "mode": "add"})).unwrap();
     free_transform(&mut app);
     assert_eq!(app.ui.transform.as_ref().unwrap().layers, [g.0, text.0]);
-    let red = |app: &PhotocraftApp| crate::transform_tool::moving_texel(app, [20, 20]).0.map(|c| c.a());
+    let red = |app: &PatronusPhotoApp| crate::transform_tool::moving_texel(app, [20, 20]).0.map(|c| c.a());
     assert_eq!(red(&app), Some(255), "the group's child is in the moving pixels");
     app.run("layer.setProps", json!({"layer": paint.0, "opacity": 0.5})).unwrap();
     crate::transform_tool::follow_edits(&mut app);

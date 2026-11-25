@@ -374,7 +374,7 @@ mod tests {
         for report in [known, opaque] {
             report.validate().unwrap();
             let mut original =
-                crate::Document::new("Shared report", crate::Size::new(1, 1), photocraft_color::ColorMode::Rgb, photocraft_color::SampleType::U8);
+                crate::Document::new("Shared report", crate::Size::new(1, 1), patronusphoto_color::ColorMode::Rgb, patronusphoto_color::SampleType::U8);
             original.metadata.import_conversion = Some(Arc::new(report));
             let cloned = original.clone();
             let first = original.metadata.import_conversion.as_ref().unwrap();

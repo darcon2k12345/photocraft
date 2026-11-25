@@ -1,12 +1,12 @@
 //! 24 MP frame creation: vector commands versus the previous raster-mask construction.
-//! `cargo run --release -p photocraft-engine --example bench_frame`
+//! `cargo run --release -p patronusphoto-engine --example bench_frame`
 //! The baseline times only the former mask work; command times include history/validation.
 use std::hint::black_box;
 use std::time::Instant;
 
-use photocraft_doc::LayerMask;
-use photocraft_engine::Session;
-use photocraft_geom::Rect;
+use patronusphoto_doc::LayerMask;
+use patronusphoto_engine::Session;
+use patronusphoto_geom::Rect;
 use serde_json::json;
 
 fn raster_mask(rect: Rect, ellipse: bool) -> LayerMask {

@@ -6,8 +6,8 @@ fn turn(s: &mut Session, label: &str, t: crate::canvas_geom::Turn) -> Result<Val
         let a = t.affine(f64::from(d.doc.size.width), f64::from(d.doc.size.height));
         // Sampler points are pixel indices, not pixel edges: map the pixel's centre, so the point
         // lands on the same pixel `Turn::pixel_map` moves the pixels to (`w - 1 - x`).
-        let half = photocraft_geom::Affine::translate(0.5, 0.5);
-        s.set_canvas_map(a, half.then(&a).then(&photocraft_geom::Affine::translate(-0.5, -0.5)));
+        let half = patronusphoto_geom::Affine::translate(0.5, 0.5);
+        s.set_canvas_map(a, half.then(&a).then(&patronusphoto_geom::Affine::translate(-0.5, -0.5)));
     }
     s.edit(label, |doc, _| {
         crate::canvas_geom::keeping_count_points(doc, |doc| crate::canvas_geom::turn_canvas(doc, t));

@@ -14,13 +14,13 @@ use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
 use craft_svg::tree::draw::{self, tiny_skia};
 use craft_svg::tree::usvg;
-use photocraft_color::blend::BlendMode;
-use photocraft_color::{Color, ColorMode, PixelFormat, SampleType};
-use photocraft_doc::effects::GradientStyle;
-use photocraft_doc::vector::{FillRule, Knot, LineCap, LineJoin, Path, PathOp, ShapeLayer, ShapeStroke, StrokeAlign, Subpath, VectorMask};
-use photocraft_doc::{Document, Fill, Group, Layer, LayerContent, MAX_GROUP_DEPTH};
-use photocraft_geom::{Point, Rect, Size};
-use photocraft_raster::Surface;
+use patronusphoto_color::blend::BlendMode;
+use patronusphoto_color::{Color, ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::effects::GradientStyle;
+use patronusphoto_doc::vector::{FillRule, Knot, LineCap, LineJoin, Path, PathOp, ShapeLayer, ShapeStroke, StrokeAlign, Subpath, VectorMask};
+use patronusphoto_doc::{Document, Fill, Group, Layer, LayerContent, MAX_GROUP_DEPTH};
+use patronusphoto_geom::{Point, Rect, Size};
+use patronusphoto_raster::Surface;
 
 use crate::{ImportResult, IoError};
 
@@ -94,13 +94,13 @@ fn fonts() -> Arc<usvg::fontdb::Database> {
     static DB: OnceLock<Arc<usvg::fontdb::Database>> = OnceLock::new();
     DB.get_or_init(|| {
         let mut db = usvg::fontdb::Database::new();
-        for f in photocraft_text::CRAFT_FONTS {
+        for f in patronusphoto_text::CRAFT_FONTS {
             db.load_font_data(f.bytes.to_vec());
         }
         // The same installed files the shaper registers: one scan serves both.
         #[cfg(not(target_arch = "wasm32"))]
         {
-            for path in photocraft_text::fonts::installed_font_files() {
+            for path in patronusphoto_text::fonts::installed_font_files() {
                 let _ = db.load_font_file(path);
             }
         }
@@ -112,9 +112,9 @@ fn fonts() -> Arc<usvg::fontdb::Database> {
 
 /// Installed families that stand in for each generic one, best first: the metric-compatible
 /// Liberation and Croscore fonts, then common Linux defaults, then the bundled craft fonts.
-const SANS_SERIF: &[&str] = &["Liberation Sans", "Arimo", "Helvetica", "DejaVu Sans", "Noto Sans", photocraft_text::fonts::DEFAULT_FAMILY];
+const SANS_SERIF: &[&str] = &["Liberation Sans", "Arimo", "Helvetica", "DejaVu Sans", "Noto Sans", patronusphoto_text::fonts::DEFAULT_FAMILY];
 const SERIF: &[&str] = &["Liberation Serif", "Tinos", "Times", "DejaVu Serif", "Noto Serif"];
-const MONOSPACE: &[&str] = &["Liberation Mono", "Cousine", "Courier", "DejaVu Sans Mono", "Noto Sans Mono", photocraft_text::fonts::MONO_FAMILY];
+const MONOSPACE: &[&str] = &["Liberation Mono", "Cousine", "Courier", "DejaVu Sans Mono", "Noto Sans Mono", patronusphoto_text::fonts::MONO_FAMILY];
 
 /// Points the generic families (`sans-serif`, `serif`, `monospace`, `cursive`, `fantasy`) at
 /// fonts the database holds. fontdb names Windows fonts for them (Arial, Times New Roman,
@@ -338,7 +338,7 @@ fn on_svg_stack<T: Send>(operation: impl FnOnce() -> Result<T, IoError> + Send) 
         }
         std::thread::scope(|scope| {
             let worker = std::thread::Builder::new()
-                .name("photocraft-svg".into())
+                .name("patronusphoto-svg".into())
                 .stack_size(PARSER_STACK_BYTES)
                 .spawn_scoped(scope, move || {
                     SVG_WORKER.with(|active| active.set(true));
@@ -383,7 +383,7 @@ fn parse_at_depth<T: Send>(depth: usize, parse: impl FnOnce() -> Result<T, IoErr
             return parse().map_err(ParseFailure::Decode);
         }
         Err(ParseFailure::Isolation(IoError::Svg(format!(
-            "SVG parsing deeper than {INLINE_XML_DEPTH} levels requires the native app's isolated parser; simplify the drawing or open it in PhotoCraft desktop"
+            "SVG parsing deeper than {INLINE_XML_DEPTH} levels requires the native app's isolated parser; simplify the drawing or open it in Patronus Photo desktop"
         ))))
     }
 }
@@ -427,7 +427,7 @@ fn parse(bytes: &[u8]) -> Result<Parsed, IoError> {
 fn tree_limits(depth: usize, raster_pixels: u64) -> craft_svg::tree::Limits {
     craft_svg::tree::Limits {
         bytes: usize::try_from(MAX_INFLATED_BYTES).unwrap_or(usize::MAX),
-        // PhotoCraft's stack guard counts open tags; the shared SVG preflight counts every
+        // Patronus Photo's stack guard counts open tags; the shared SVG preflight counts every
         // element, including a self-closing leaf. Allow that leaf at the same guarded depth.
         depth: depth.saturating_add(1),
         // Expanded references consume parser stack even when the source XML is
@@ -487,7 +487,7 @@ fn guarded_parse<T>(f: impl FnOnce() -> T) -> Result<T, IoError> {
 
 fn svg_parse_error(error: craft_svg::tree::Error) -> IoError {
     match error {
-        // PhotoCraft's bounded render walk has always reported a refusal in layer terms. The
+        // Patronus Photo's bounded render walk has always reported a refusal in layer terms. The
         // shared parser can now reject expanded reference depth before usvg builds a recursive
         // tree, so retain that user-facing contract at this adapter boundary.
         craft_svg::tree::Error::TooDeep(_) => IoError::Svg("layers are nested too deeply".into()),
@@ -1079,7 +1079,7 @@ fn complete_raster_tree(parsed: Parsed) -> Result<usvg::Tree, IoError> {
 
 /// The whole drawing rendered at `scale` (1 = its own size), as a straight-alpha RGBA buffer at
 /// the origin. Smart objects use it to stay sharp at any placement.
-pub fn rasterize(bytes: &[u8], scale: f32) -> Result<photocraft_compose::Buffer, IoError> {
+pub fn rasterize(bytes: &[u8], scale: f32) -> Result<patronusphoto_compose::Buffer, IoError> {
     on_svg_stack(|| {
         let tree = complete_raster_tree(parse(bytes)?)?;
         rasterize_tree(&tree, scale)
@@ -1087,18 +1087,18 @@ pub fn rasterize(bytes: &[u8], scale: f32) -> Result<photocraft_compose::Buffer,
 }
 
 /// Render untrusted embedded SVG with intrinsic raster-image and aggregate decode budgets.
-pub fn rasterize_bounded(bytes: &[u8], scale: f32, max_decoded_pixels: u64) -> Result<photocraft_compose::Buffer, IoError> {
+pub fn rasterize_bounded(bytes: &[u8], scale: f32, max_decoded_pixels: u64) -> Result<patronusphoto_compose::Buffer, IoError> {
     rasterize_bounded_mode(bytes, scale, max_decoded_pixels, true).map(|(pixels, _)| pixels)
 }
 
 /// Bounded rendering for commands that report omissions to the user. Unlike the warningless
 /// APIs, this preserves the readable drawing and returns a bounded, count-only warning.
 /// Callers must surface the warnings and must not cache these pixels in strict render caches.
-pub fn rasterize_bounded_with_warnings(bytes: &[u8], scale: f32, max_decoded_pixels: u64) -> Result<(photocraft_compose::Buffer, Vec<String>), IoError> {
+pub fn rasterize_bounded_with_warnings(bytes: &[u8], scale: f32, max_decoded_pixels: u64) -> Result<(patronusphoto_compose::Buffer, Vec<String>), IoError> {
     rasterize_bounded_mode(bytes, scale, max_decoded_pixels, false)
 }
 
-fn rasterize_bounded_mode(bytes: &[u8], scale: f32, max_decoded_pixels: u64, strict: bool) -> Result<(photocraft_compose::Buffer, Vec<String>), IoError> {
+fn rasterize_bounded_mode(bytes: &[u8], scale: f32, max_decoded_pixels: u64, strict: bool) -> Result<(patronusphoto_compose::Buffer, Vec<String>), IoError> {
     on_svg_stack(|| {
         let (parsed, chain) = parse_bounded_inner(bytes, max_decoded_pixels)?;
         let warnings = omitted_image_warning(parsed.image_usage).into_iter().collect();
@@ -1117,12 +1117,12 @@ fn rasterize_bounded_mode(bytes: &[u8], scale: f32, max_decoded_pixels: u64, str
 
 /// Render the whole tree at `scale` (clamped to 1/64–64) times its canvas size into a straight-alpha
 /// buffer at the origin; a result over the 24 MP rasterisation limit is an error.
-fn rasterize_tree(tree: &usvg::Tree, scale: f32) -> Result<photocraft_compose::Buffer, IoError> {
+fn rasterize_tree(tree: &usvg::Tree, scale: f32) -> Result<patronusphoto_compose::Buffer, IoError> {
     let cv = canvas(tree, &mut Vec::new());
     let pixmap = render(tree, cv.scale * scale.clamp(1.0 / 64.0, 64.0))?;
     let rect = Rect::new(0, 0, pixmap.width() as i32, pixmap.height() as i32);
     let px = pixmap.pixels().iter().map(|p| rgba(p.demultiply())).collect();
-    Ok(photocraft_compose::Buffer { rect, px })
+    Ok(patronusphoto_compose::Buffer { rect, px })
 }
 
 /// The whole drawing at one pixel per SVG unit, scaled down to fit [`MAX_SIDE`] a side and
@@ -1184,7 +1184,7 @@ fn surface(pixmap: &tiny_skia::Pixmap, rect: Rect, fmt: PixelFormat) -> Surface 
     let n = fmt.channels();
     let mut data = vec![0.0f32; pixmap.pixels().len() * n];
     for (p, out) in pixmap.pixels().iter().zip(data.chunks_exact_mut(n)) {
-        photocraft_raster::from_rgba_into(&fmt, rgba(p.demultiply()), out);
+        patronusphoto_raster::from_rgba_into(&fmt, rgba(p.demultiply()), out);
     }
     let mut s = Surface::new(fmt);
     if !rect.is_empty() {
@@ -1547,11 +1547,11 @@ impl Conv {
         )
         .intersect(&self.canvas);
         // Whole tiles, as the cache stores them: a narrow shape keeps far more than its area.
-        let pixels = area.tile_count() * (photocraft_geom::TILE_SIZE as u64).pow(2);
+        let pixels = area.tile_count() * (patronusphoto_geom::TILE_SIZE as u64).pow(2);
         if self.can_retain_pixels(pixels, pixels) {
-            let cache = photocraft_vector::render_shape(&sh, self.fmt, self.canvas);
+            let cache = patronusphoto_vector::render_shape(&sh, self.fmt, self.canvas);
             // The preflight above assumed every tile of the box; the cache keeps the ones it drew.
-            let bytes = photocraft_raster::stored_tiles_bytes(cache.tile_count() as u64, &self.fmt);
+            let bytes = patronusphoto_raster::stored_tiles_bytes(cache.tile_count() as u64, &self.fmt);
             sh.cache = Some(cache);
             self.pixel_budget = self.pixel_budget.saturating_sub(bytes);
             self.retained_pixel_bytes += bytes;
@@ -1626,7 +1626,7 @@ impl Conv {
         }
         // The layer keeps whole tiles over its box, however narrow the box.
         let logical = pixels;
-        let pixels = Rect::new(x0, y0, x1, y1).tile_count() * (photocraft_geom::TILE_SIZE as u64).pow(2);
+        let pixels = Rect::new(x0, y0, x1, y1).tile_count() * (patronusphoto_geom::TILE_SIZE as u64).pow(2);
         if !self.can_retain_pixels(pixels, logical) {
             return None;
         }
@@ -1668,7 +1668,7 @@ impl Conv {
         }
         let surf = surface(&pixmap, Rect::new(x0, y0, x1, y1), self.fmt);
         // Charge what the layer keeps: surface() prunes transparent tiles.
-        let bytes = photocraft_raster::stored_tiles_bytes(surf.tile_count() as u64, &self.fmt);
+        let bytes = patronusphoto_raster::stored_tiles_bytes(surf.tile_count() as u64, &self.fmt);
         let layer = Layer::new(name, LayerContent::Raster(surf));
         self.pixel_budget -= bytes;
         self.retained_pixel_bytes += bytes;

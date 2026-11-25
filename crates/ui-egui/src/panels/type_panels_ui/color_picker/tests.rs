@@ -2,8 +2,8 @@ use super::*;
 use crate::canvas;
 use craft::color_ui::ui::PickedColor;
 
-fn fixture(kind: Kind, depth: u32) -> (Box<PhotocraftApp>, u32) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn fixture(kind: Kind, depth: u32) -> (Box<PatronusPhotoApp>, u32) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("prefs.set", json!({"path":"interface.language","value":"en"})).unwrap();
     app.run("file.new", json!({"width":320,"height":160,"depth":depth,"background":"transparent"})).unwrap();
     let layer = app.run("type.create", json!({"x":10,"y":55,"text":"Shared color","size":30})).unwrap()["layer"].as_u64().unwrap();
@@ -14,22 +14,22 @@ fn fixture(kind: Kind, depth: u32) -> (Box<PhotocraftApp>, u32) {
 }
 
 /// The colour the picker opened with, as hex.
-fn fields(app: &PhotocraftApp, id: DialogId) -> String {
+fn fields(app: &PatronusPhotoApp, id: DialogId) -> String {
     let opening = app.framework.dialogs.get_by_id::<ColorPickerDialog>(id).unwrap().opening().unwrap();
     color_picker_ui::hex(opening.color.to_rgb_array())
 }
 
-fn set(app: &mut PhotocraftApp, id: DialogId, color: &str) {
+fn set(app: &mut PatronusPhotoApp, id: DialogId, color: &str) {
     let color = Srgba::from_hex(color).unwrap();
     app.framework.dialogs.get_mut_by_id::<ColorPickerDialog>(id).unwrap().set_color(PickedColor::rgb(color));
 }
 
 /// OK, as the dialog's button gives it: the app's taker files the answer with [`answered`].
-fn confirm_picker(app: &mut PhotocraftApp, id: DialogId) {
+fn confirm_picker(app: &mut PatronusPhotoApp, id: DialogId) {
     crate::dialogs::testing::confirm(app, id).expect("OK is enabled");
 }
 
-fn cancel_picker(app: &mut PhotocraftApp, id: DialogId) {
+fn cancel_picker(app: &mut PatronusPhotoApp, id: DialogId) {
     crate::dialogs::testing::cancel(app, id).expect("Cancel is enabled");
 }
 
@@ -40,7 +40,7 @@ fn preview_is_cached_cancel_is_clean_and_ok_is_one_undo_step_at_all_depths() {
             let (mut app, id) = fixture(kind, depth);
             let st = app.session.active().unwrap();
             let (doc, rev, dirty, history) = (st.doc.clone(), st.revision, st.is_dirty(), st.history.past_len());
-            let original_pixels = photocraft_compose::flatten(&doc);
+            let original_pixels = patronusphoto_compose::flatten(&doc);
             let (x, y) =
                 (0..160).flat_map(|y| (0..320).map(move |x| (x, y))).find(|&(x, y)| original_pixels.get(x, y)[3] > 0.1).expect("fixture renders visible text");
             let picker = open(&mut app, kind, id).unwrap();
@@ -49,7 +49,7 @@ fn preview_is_cached_cancel_is_clean_and_ok_is_one_undo_step_at_all_depths() {
             let again = canvas::display_doc(&mut app, 0);
             assert!(Arc::ptr_eq(&shown, &again.0));
             assert_eq!(key, again.1);
-            assert_ne!(photocraft_compose::flatten(&shown).get(x, y), photocraft_compose::flatten(&doc).get(x, y));
+            assert_ne!(patronusphoto_compose::flatten(&shown).get(x, y), patronusphoto_compose::flatten(&doc).get(x, y));
             let st = app.session.active().unwrap();
             assert!(Arc::ptr_eq(&st.doc, &doc));
             assert_eq!((st.revision, st.is_dirty(), st.history.past_len()), (rev, dirty, history));
@@ -65,7 +65,7 @@ fn preview_is_cached_cancel_is_clean_and_ok_is_one_undo_step_at_all_depths() {
             let st = app.session.active().unwrap();
             assert_eq!(st.history.past_len(), history + 1);
             assert_eq!(serde_json::to_value(&st.doc.text_styles).unwrap(), serde_json::to_value(&shown.text_styles).unwrap());
-            assert_eq!(photocraft_compose::flatten(&st.doc).get(x, y), photocraft_compose::flatten(&shown).get(x, y));
+            assert_eq!(patronusphoto_compose::flatten(&st.doc).get(x, y), patronusphoto_compose::flatten(&shown).get(x, y));
             assert!(app.text_style_preview.is_none());
             app.run("edit.undo", json!({})).unwrap();
             assert_eq!(serde_json::to_value(&app.session.active().unwrap().doc.text_styles).unwrap(), serde_json::to_value(&doc.text_styles).unwrap());
@@ -78,7 +78,7 @@ fn preview_is_cached_cancel_is_clean_and_ok_is_one_undo_step_at_all_depths() {
 #[test]
 fn no_op_keeps_precise_imported_color_and_returning_to_original_removes_preview() {
     let (mut app, id) = fixture(Kind::Character, 32);
-    app.run("type.characterStyle.set", json!({"id":id,"attrs":{"color":photocraft_doc::Color::rgba(0.12345,0.67891,0.33333,0.45678)}})).unwrap();
+    app.run("type.characterStyle.set", json!({"id":id,"attrs":{"color":patronusphoto_doc::Color::rgba(0.12345,0.67891,0.33333,0.45678)}})).unwrap();
     let before = app.session.active().unwrap().doc.clone();
     let history = app.session.active().unwrap().history.past_len();
     let picker = open(&mut app, Kind::Character, id).unwrap();

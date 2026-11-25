@@ -3,10 +3,10 @@
 //! `paint_mouse::fresh_brush`, and its first use follows the tool's own rule. Other tools keep
 //! their brushes.
 
-use photocraft_engine::BrushSettings;
+use patronusphoto_engine::BrushSettings;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::control::{ControlRequest, handle};
 use crate::paint_mouse::fresh_brush;
 use crate::state::Tool;
@@ -68,15 +68,15 @@ fn tip(b: &BrushSettings) -> Tip {
     }
 }
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 200})).unwrap();
     app.sync_views();
     app
 }
 
 /// Run a menu command as the control channel does, then the frame's sync.
-fn invoke(app: &mut PhotocraftApp, id: &str, params: serde_json::Value) {
+fn invoke(app: &mut PatronusPhotoApp, id: &str, params: serde_json::Value) {
     let ctx = app.ctx().clone();
     let (req, _rx) = ControlRequest::new("ui.menu.invoke", json!({"id": id, "params": params}));
     handle(app, &ctx, &req);
@@ -84,19 +84,19 @@ fn invoke(app: &mut PhotocraftApp, id: &str, params: serde_json::Value) {
 }
 
 /// Pick `tool`, and swap its brush in as a frame does.
-fn pick(app: &mut PhotocraftApp, tool: Tool) {
+fn pick(app: &mut PatronusPhotoApp, tool: Tool) {
     app.ui.tool = tool;
     crate::paint_mouse::sync_tool_brush(app);
     app.sync_views();
 }
 
 /// Give the live brush a tip that is no tool's starting tip, so a reset has something to undo.
-fn scramble(app: &mut PhotocraftApp) {
+fn scramble(app: &mut PatronusPhotoApp) {
     let b = &mut app.session.tools.brush;
     (b.size, b.hardness, b.spacing, b.angle, b.roundness, b.smoothing.amount, b.pressure_size) = (57.0, 0.4, 0.6, 30.0, 0.5, 0.3, true);
 }
 
-fn live(app: &PhotocraftApp) -> Tip {
+fn live(app: &PatronusPhotoApp) -> Tip {
     tip(&app.session.tools.brush)
 }
 
@@ -106,7 +106,7 @@ fn other(tool: Tool) -> Tool {
 }
 
 /// The tip `tool` starts with, given the live brush.
-fn starting(app: &PhotocraftApp, tool: Tool) -> Tip {
+fn starting(app: &PatronusPhotoApp, tool: Tool) -> Tip {
     tip(&fresh_brush(tool, &app.session.tools.brush))
 }
 

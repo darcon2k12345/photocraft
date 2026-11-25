@@ -19,12 +19,12 @@ use craft::theme::Srgba;
 use craft::ui::dialog::{DialogId, DialogResult};
 use craft::ui::runtime::env::Label;
 use craft::ui::runtime::memory::{SaveKey, saved_value, set_saved_value};
-use photocraft_doc::ColorMode;
-use photocraft_engine::channel_cmds::ToneTarget;
+use patronusphoto_doc::ColorMode;
+use patronusphoto_engine::channel_cmds::ToneTarget;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::adjust_editors::values::{self, ValueCx};
 use crate::adjust_editors::{self, AdjustAsk, AdjustValue, EditorSetup};
 use crate::tone::{self, HistSource};
@@ -90,7 +90,7 @@ pub(crate) struct OpenAdjust {
 }
 
 /// The conversion context of a value in `mode` with the parameters `base` and the isolated plane `isolated`.
-fn value_cx(mode: ColorMode, isolated: Option<photocraft_engine::channel_cmds::IsolatedCurveChannel>, base: Value) -> ValueCx {
+fn value_cx(mode: ColorMode, isolated: Option<patronusphoto_engine::channel_cmds::IsolatedCurveChannel>, base: Value) -> ValueCx {
     let mut cx = ValueCx::new(mode, base);
     cx.isolated = isolated;
     cx
@@ -98,18 +98,18 @@ fn value_cx(mode: ColorMode, isolated: Option<photocraft_engine::channel_cmds::I
 
 /// The command parameters of the open adjustment dialog `id`: its value over the parameters it opened with, or `null`
 /// when `id` is not the open adjustment dialog.
-pub fn command_params(app: &PhotocraftApp, id: DialogId) -> Value {
+pub fn command_params(app: &PatronusPhotoApp, id: DialogId) -> Value {
     open_value(app).filter(|open| open.id == id).and_then(|_| open_params(app)).unwrap_or(Value::Null)
 }
 
 /// The open dialog's context, while the host still holds that dialog.
-pub(crate) fn open_value(app: &PhotocraftApp) -> Option<&OpenAdjust> {
+pub(crate) fn open_value(app: &PatronusPhotoApp) -> Option<&OpenAdjust> {
     let open = app.adjust_open.as_ref()?;
     app.framework.dialogs.get_by_id::<HostedAdjustDialog>(open.id).map(|_| open)
 }
 
 /// The hosted dialog `id` names.
-pub(crate) fn hosted(app: &PhotocraftApp, id: DialogId) -> Option<&HostedAdjustDialog> {
+pub(crate) fn hosted(app: &PatronusPhotoApp, id: DialogId) -> Option<&HostedAdjustDialog> {
     app.framework.dialogs.get_by_id::<HostedAdjustDialog>(id)
 }
 
@@ -118,12 +118,12 @@ pub(crate) fn hosted(app: &PhotocraftApp, id: DialogId) -> Option<&HostedAdjustD
 ///
 /// # Panics
 /// When no adjustment dialog with this id is open.
-pub(crate) fn hosted_mut(app: &mut PhotocraftApp, id: DialogId) -> &mut HostedAdjustDialog {
+pub(crate) fn hosted_mut(app: &mut PatronusPhotoApp, id: DialogId) -> &mut HostedAdjustDialog {
     app.framework.dialogs.get_mut_by_id::<HostedAdjustDialog>(id).expect("the adjustment dialog is open")
 }
 
 /// The open dialog's engine parameters: its value over the parameters it opened with.
-pub(crate) fn open_params(app: &PhotocraftApp) -> Option<Value> {
+pub(crate) fn open_params(app: &PatronusPhotoApp) -> Option<Value> {
     let open = open_value(app)?;
     let dialog = hosted(app, open.id)?;
     Some(dialog.value().params(dialog.edited()))
@@ -136,9 +136,9 @@ pub fn has_dialog(command: &str) -> bool {
 
 /// The Levels/Curves dialog's target from panel state or explicit parameters, including filter masks.
 /// Re-editing a captured Smart Filter always exposes its document-colour controls.
-fn target_context(app: &PhotocraftApp, smart: Option<&(usize, Value)>, params: &Value) -> photocraft_engine::Result<ToneTarget> {
+fn target_context(app: &PatronusPhotoApp, smart: Option<&(usize, Value)>, params: &Value) -> patronusphoto_engine::Result<ToneTarget> {
     if let Some((_, filter)) = smart {
-        let (layer, _) = crate::smart_filter_dialog::validate_target(app, filter).map_err(photocraft_engine::EngineError::Other)?;
+        let (layer, _) = crate::smart_filter_dialog::validate_target(app, filter).map_err(patronusphoto_engine::EngineError::Other)?;
         return Ok(ToneTarget { layer: Some(layer), channel: None });
     }
     let mut params = params.clone();
@@ -148,17 +148,17 @@ fn target_context(app: &PhotocraftApp, smart: Option<&(usize, Value)>, params: &
     {
         object.insert("target".into(), json!("filterMask"));
     }
-    photocraft_engine::channel_cmds::resolve_tone_target(&app.session, app.layer_mask_targeted(), &params)
+    patronusphoto_engine::channel_cmds::resolve_tone_target(&app.session, app.layer_mask_targeted(), &params)
 }
 
 /// The colour mode the Levels/Curves dialog seeds and parses in (see [`OpenAdjust::mode`]).
-fn curve_mode(app: &PhotocraftApp, kind: &str, target: &ToneTarget) -> ColorMode {
+fn curve_mode(app: &PatronusPhotoApp, kind: &str, target: &ToneTarget) -> ColorMode {
     let mode = app.session.active().map_or(ColorMode::Rgb, |s| s.doc.mode);
     if matches!(kind, "levels" | "curves") && target.channel.as_ref().is_some_and(|c| c.gray.is_some()) { ColorMode::Grayscale } else { mode }
 }
 
 /// Whether the armed `picker` can sample for the open dialog now: a resolved target in a mode the picker works in.
-pub(crate) fn picker_applies(app: &PhotocraftApp, open: &OpenAdjust, picker: TonePicker) -> bool {
+pub(crate) fn picker_applies(app: &PatronusPhotoApp, open: &OpenAdjust, picker: TonePicker) -> bool {
     matches!(open.kind.as_str(), "levels" | "curves")
         && app.session.active().is_some()
         && hosted(app, open.id).is_some_and(|dialog| target_context(app, open.smart_filter.as_ref(), &dialog.value().cx.base).is_ok())
@@ -166,8 +166,8 @@ pub(crate) fn picker_applies(app: &PhotocraftApp, open: &OpenAdjust, picker: Ton
 }
 
 /// The Curves eyedropper of the engine for a tone picker.
-fn eyedropper_of(picker: TonePicker) -> Option<(photocraft_engine::adjust_params::CurvesEyedropper, &'static str)> {
-    use photocraft_engine::adjust_params::CurvesEyedropper;
+fn eyedropper_of(picker: TonePicker) -> Option<(patronusphoto_engine::adjust_params::CurvesEyedropper, &'static str)> {
+    use patronusphoto_engine::adjust_params::CurvesEyedropper;
     match picker {
         TonePicker::Black => Some((CurvesEyedropper::Black, "black")),
         TonePicker::Gray => Some((CurvesEyedropper::NeutralGray, "gray")),
@@ -179,13 +179,13 @@ fn eyedropper_of(picker: TonePicker) -> Option<(photocraft_engine::adjust_params
 /// Edits the open dialog from engine parameters (automation's sets, a picker's sample, Auto): the addressing keys
 /// (`target`, `layer`, `document`) retarget it, the rest become its value. An unresolved dialog that is retargeted seeds
 /// again from the new address when it resolves. Refused parameters leave the value as it is.
-pub fn apply_params(app: &mut PhotocraftApp, id: DialogId, params: &Value) -> bool {
+pub fn apply_params(app: &mut PatronusPhotoApp, id: DialogId, params: &Value) -> bool {
     set_params(app, id, params, Change::Edit)
 }
 
 /// Seeds the open dialog from engine parameters as [`apply_params`] sets them, without counting as an edit: the
 /// settings an opening restores.
-fn seed_params(app: &mut PhotocraftApp, id: DialogId, params: &Value) -> bool {
+fn seed_params(app: &mut PatronusPhotoApp, id: DialogId, params: &Value) -> bool {
     set_params(app, id, params, Change::Seed)
 }
 
@@ -196,7 +196,7 @@ enum Change {
     Seed,
 }
 
-fn set_params(app: &mut PhotocraftApp, id: DialogId, params: &Value, change: Change) -> bool {
+fn set_params(app: &mut PatronusPhotoApp, id: DialogId, params: &Value, change: Change) -> bool {
     let Some(open) = app.adjust_open.as_mut().filter(|open| open.id == id) else { return false };
     let Some(dialog) = app.framework.dialogs.get_mut_by_id::<HostedAdjustDialog>(id) else { return false };
     let mut shown = dialog.value().clone();
@@ -237,7 +237,7 @@ fn addressing(params: &Value) -> Map<String, Value> {
 ///
 /// The sample replaces the picker's own previous one: it is laid over the parameters from before that sample while
 /// they are still the dialog's latest edit, so a second click with one picker moves its point instead of adding one.
-pub(crate) fn pick(app: &mut PhotocraftApp, at: [f64; 2]) -> bool {
+pub(crate) fn pick(app: &mut PatronusPhotoApp, at: [f64; 2]) -> bool {
     let Some(open) = open_value(app) else { return false };
     let id = open.id;
     let Some(picker) = hosted(app, id).and_then(|dialog| dialog.picker()) else { return false };
@@ -268,11 +268,11 @@ pub(crate) fn pick(app: &mut PhotocraftApp, at: [f64; 2]) -> bool {
             return true;
         };
         object.insert("eyedropper".into(), json!({"point": point, "at": at, "size": app.ui.tool_options.eyedropper.size.pixels()}));
-        photocraft_engine::adjust_params::destructive_eyedropper(&app.session, &kind, &params)
-            .and_then(|a| a.ok_or_else(|| photocraft_engine::EngineError::Other("missing eyedropper adjustment".into())))
+        patronusphoto_engine::adjust_params::destructive_eyedropper(&app.session, &kind, &params)
+            .and_then(|a| a.ok_or_else(|| patronusphoto_engine::EngineError::Other("missing eyedropper adjustment".into())))
     } else {
         let Some(sample) = crate::canvas::composite_color(app, at[0], at[1]) else { return true };
-        photocraft_engine::adjust_params::adjustment_eyedropper(&kind, &base, eyedropper, sample, mode)
+        patronusphoto_engine::adjust_params::adjustment_eyedropper(&kind, &base, eyedropper, sample, mode)
     };
     let adjustment = match adjustment {
         Ok(adjustment) => adjustment,
@@ -284,7 +284,7 @@ pub(crate) fn pick(app: &mut PhotocraftApp, at: [f64; 2]) -> bool {
     // Scalar samples retain their native precision. The colour picker keeps its existing hundredth-level
     // curve-point convention, independently of source sample depth.
     let mut params =
-        if gray { photocraft_engine::adjust_params::to_dialog_params(&adjustment) } else { photocraft_engine::adjust_params::to_params(&adjustment) };
+        if gray { patronusphoto_engine::adjust_params::to_dialog_params(&adjustment) } else { patronusphoto_engine::adjust_params::to_params(&adjustment) };
     if let (Value::Object(object), Some(dialog)) = (&mut params, hosted(app, id)) {
         object.extend(addressing(&dialog.value().cx.base));
     }
@@ -302,8 +302,8 @@ pub(crate) fn pick(app: &mut PhotocraftApp, at: [f64; 2]) -> bool {
 /// The curve's output at each whole input level 0..=255, in levels, through the engine's interpolation of `points`
 /// (levels): the sampler `CurvesPanel` draws and inserts points with.
 fn curve_levels(points: &[[f32; 2]]) -> Vec<f32> {
-    let curve: Vec<_> = points.iter().map(|q| photocraft_doc::adjust::CurvePoint { input: q[0] / 255.0, output: q[1] / 255.0 }).collect();
-    let lut = photocraft_compose::adjust::curve_lut(&curve);
+    let curve: Vec<_> = points.iter().map(|q| patronusphoto_doc::adjust::CurvePoint { input: q[0] / 255.0, output: q[1] / 255.0 }).collect();
+    let lut = patronusphoto_compose::adjust::curve_lut(&curve);
     let last = lut.len().saturating_sub(1) as f32;
     (0..256).map(|level| lut.get((level as f32 / 255.0 * last).round() as usize).map_or(level as f32, |output| (output * 255.0).round())).collect()
 }
@@ -314,7 +314,7 @@ fn curve_levels(points: &[[f32; 2]]) -> Vec<f32> {
 /// each colour channel instead, at that channel's value. The pixel comes from the same merged composite as the
 /// eyedroppers. Returns true when Curves is open: the click is the dialog's even when nothing is added (pencil curve,
 /// Lab or CMYK, a mask or saved channel target, outside the image, a full curve).
-pub(crate) fn add_point(app: &mut PhotocraftApp, at: [f64; 2], every_channel: bool) -> bool {
+pub(crate) fn add_point(app: &mut PatronusPhotoApp, at: [f64; 2], every_channel: bool) -> bool {
     let Some(open) = open_value(app).filter(|open| open.kind == "curves") else { return false };
     let id = open.id;
     let Some(base) = hosted(app, id).map(|dialog| &dialog.value().cx.base) else { return false };
@@ -336,7 +336,7 @@ pub(crate) fn add_point(app: &mut PhotocraftApp, at: [f64; 2], every_channel: bo
     }
     let Some(sample) = crate::canvas::composite_color(app, at[0], at[1]) else { return true };
     let Some(dialog) = app.framework.dialogs.get_mut_by_id::<HostedAdjustDialog>(id) else { return true };
-    let channels = values::tone_channels(photocraft_engine::adjust_params::default_space(mode), adjust_editors::is_gray(mode), isolated.as_ref());
+    let channels = values::tone_channels(patronusphoto_engine::adjust_params::default_space(mode), adjust_editors::is_gray(mode), isolated.as_ref());
     let shown = dialog.channel();
     let mut value = dialog.value().clone();
     let AdjustValue::Curves { curves, .. } = &mut value.value else { return true };
@@ -361,17 +361,17 @@ const KEEPS_LAST: &[(&str, &str)] = &[("photoFilter", "preserveLuminosity")];
 
 /// The saved-tier key of the settings last confirmed in the dialog of `kind`.
 pub fn last_key(kind: &str) -> SaveKey {
-    SaveKey::named(format!("photocraft.adjust.last.{kind}"))
+    SaveKey::named(format!("patronusphoto.adjust.last.{kind}"))
 }
 
 /// The settings last confirmed in the dialog of `kind`, if any.
-fn last_confirmed(app: &PhotocraftApp, kind: &str) -> Option<Value> {
+fn last_confirmed(app: &PatronusPhotoApp, kind: &str) -> Option<Value> {
     saved_value::<Option<Value>>(app.ctx(), &last_key(kind))
 }
 
 /// Opens the dialog for `command` at the kind's neutral settings, except the [`KEEPS_LAST`] ones,
 /// which keep their last confirmed value.
-pub fn open(app: &mut PhotocraftApp, command: &str) -> Result<DialogId, String> {
+pub fn open(app: &mut PatronusPhotoApp, command: &str) -> Result<DialogId, String> {
     let id = open_neutral(app, command).ok_or_else(|| refusal(app, command))?;
     let kind = command.strip_prefix(PREFIX).unwrap_or_default();
     let last = last_confirmed(app, kind);
@@ -390,23 +390,23 @@ pub fn open(app: &mut PhotocraftApp, command: &str) -> Result<DialogId, String> 
 }
 
 /// Why `command` has no dialog to open: no document, or no adjustment of that name.
-fn refusal(app: &PhotocraftApp, command: &str) -> String {
+fn refusal(app: &PatronusPhotoApp, command: &str) -> String {
     if app.session.active().is_none() { "no document".to_string() } else { format!("{command} has no dialog") }
 }
 
 /// Opens a neutral adjustment dialog using the current edit target.
-pub fn open_neutral(app: &mut PhotocraftApp, command: &str) -> Option<DialogId> {
+pub fn open_neutral(app: &mut PatronusPhotoApp, command: &str) -> Option<DialogId> {
     open_with_params(app, command, &json!({}))
 }
 
 /// Seed an Action's dialog only after resolving its recorded target, so document-space
 /// defaults cannot overwrite the target's neutral grayscale values.
-pub(crate) fn open_with_params(app: &mut PhotocraftApp, command: &str, params: &Value) -> Option<DialogId> {
+pub(crate) fn open_with_params(app: &mut PatronusPhotoApp, command: &str, params: &Value) -> Option<DialogId> {
     let params = if params.is_null() { json!({}) } else { Value::Object(params.as_object()?.clone()) };
     let params = complete_params(app, command, &params).unwrap_or(params);
     let mut params = app.with_mask_target(command, params);
     if params.get("target").is_none()
-        && let Some(colors) = photocraft_engine::color_channels::selected(&app.session)
+        && let Some(colors) = patronusphoto_engine::color_channels::selected(&app.session)
         && let Some(object) = params.as_object_mut()
     {
         object.insert("target".into(), colors.params());
@@ -416,7 +416,7 @@ pub(crate) fn open_with_params(app: &mut PhotocraftApp, command: &str, params: &
 
 /// Reopen a captured Smart Filter with document-colour defaults, independent of channel targeting.
 /// Only the caller's validated snapshot may supply the Smart Filter target.
-pub(crate) fn open_smart_filter(app: &mut PhotocraftApp, command: &str, params: &Value, target: Value) -> Option<DialogId> {
+pub(crate) fn open_smart_filter(app: &mut PatronusPhotoApp, command: &str, params: &Value, target: Value) -> Option<DialogId> {
     let completed = complete_params(app, command, params);
     let mut recorded = completed.as_ref().unwrap_or(params).as_object().cloned().unwrap_or_default();
     recorded.retain(|key, _| !key.starts_with("__"));
@@ -439,30 +439,30 @@ struct Seeded {
 /// `colors` row kept. With `normalized` (a Smart Filter edit: the captured parameters) those then replace the parameters
 /// through the engine's own reading of them, so a Lab `lightness` default cannot be read over recorded `points`. An
 /// unresolved Levels/Curves target opens with defaults and seeds again in [`take`] once it resolves.
-fn seed(app: &PhotocraftApp, kind: &str, recorded: &Value, smart: Option<&(usize, Value)>, normalized: Option<&Value>) -> Option<Seeded> {
+fn seed(app: &PatronusPhotoApp, kind: &str, recorded: &Value, smart: Option<&(usize, Value)>, normalized: Option<&Value>) -> Option<Seeded> {
     let resolved = target_context(app, smart, recorded);
     let valid_target = !matches!(kind, "levels" | "curves") || resolved.is_ok();
     let target = resolved.unwrap_or_else(|_| ToneTarget { layer: app.session.active().and_then(|s| s.active_layer), channel: None });
     let mode = curve_mode(app, kind, &target);
-    let defaults = if valid_target { Some(photocraft_engine::adjust_params::default_for(kind, mode).ok()?) } else { None };
+    let defaults = if valid_target { Some(patronusphoto_engine::adjust_params::default_for(kind, mode).ok()?) } else { None };
     let tone_kind = matches!(kind, "levels" | "curves");
     let gray_target = tone_kind && target.channel.as_ref().is_some_and(|c| c.gray.is_some());
     let color_set = if tone_kind { target.channel.as_ref().and_then(|c| c.components) } else { None };
     let supplied = recorded.as_object().cloned().unwrap_or_default();
     let mut supplied = if gray_target {
-        photocraft_engine::adjust_params::gray_tone_params(&Value::Object(supplied)).as_object().cloned().unwrap_or_default()
+        patronusphoto_engine::adjust_params::gray_tone_params(&Value::Object(supplied)).as_object().cloned().unwrap_or_default()
     } else {
         supplied
     };
     if valid_target && tone_kind && supplied.contains_key("gray") {
         let params = Value::Object(supplied.clone());
         let canonical = if let Some(colors) = color_set {
-            photocraft_engine::color_channels::tone_dialog_params(kind, &params, mode, colors)
+            patronusphoto_engine::color_channels::tone_dialog_params(kind, &params, mode, colors)
         } else {
-            photocraft_engine::adjust_params::from_params(kind, &params, None, mode).map(|a| photocraft_engine::adjust_params::to_dialog_params(&a))
+            patronusphoto_engine::adjust_params::from_params(kind, &params, None, mode).map(|a| patronusphoto_engine::adjust_params::to_dialog_params(&a))
         };
         if let Ok(Value::Object(canonical)) = canonical {
-            supplied = photocraft_engine::adjust_params::gray_tone_params(&params).as_object().cloned().unwrap_or_default();
+            supplied = patronusphoto_engine::adjust_params::gray_tone_params(&params).as_object().cloned().unwrap_or_default();
             supplied.remove("gray");
             supplied.remove("smooth"); // Already applied by parsing; never smooth a second time.
             supplied.extend(canonical);
@@ -475,7 +475,7 @@ fn seed(app: &PhotocraftApp, kind: &str, recorded: &Value, smart: Option<&(usize
     let mut params = Map::new();
     let mut defaults_only = Map::new();
     if let Some(defaults) = defaults
-        && let Value::Object(mut p) = photocraft_engine::adjust_params::to_params(&defaults)
+        && let Value::Object(mut p) = patronusphoto_engine::adjust_params::to_params(&defaults)
     {
         defaults_only = p.clone();
         // An invalid gray alias must reach engine validation: seeded identity points would
@@ -487,8 +487,8 @@ fn seed(app: &PhotocraftApp, kind: &str, recorded: &Value, smart: Option<&(usize
     }
     params.extend(supplied);
     if let Some(captured) = normalized
-        && let Ok(adjustment) = photocraft_engine::adjust_params::from_params(kind, captured, None, mode)
-        && let Value::Object(mut settings) = photocraft_engine::adjust_params::to_dialog_params(&adjustment)
+        && let Ok(adjustment) = patronusphoto_engine::adjust_params::from_params(kind, captured, None, mode)
+        && let Value::Object(mut settings) = patronusphoto_engine::adjust_params::to_dialog_params(&adjustment)
     {
         // Selective Color's chosen row is editor state, absent from the normalized adjustment.
         if kind == "selectiveColor"
@@ -512,7 +512,7 @@ fn needs_histogram(kind: &str) -> bool {
 }
 
 /// Whether the dialog shows a gray document or plane.
-fn gray_context(app: &PhotocraftApp, kind: &str, target: &ToneTarget) -> bool {
+fn gray_context(app: &PatronusPhotoApp, kind: &str, target: &ToneTarget) -> bool {
     let plane = matches!(kind, "levels" | "curves") && target.channel.as_ref().is_some_and(|c| c.gray.is_some());
     plane || app.session.active().is_some_and(|s| adjust_editors::is_gray(s.doc.mode))
 }
@@ -520,8 +520,8 @@ fn gray_context(app: &PhotocraftApp, kind: &str, target: &ToneTarget) -> bool {
 /// What the kind's editor reads, built from the app once per opening and again when the target changes: the
 /// histograms of the target's pixels (a mask or saved channel's curve edits that plane's own levels, so its histogram
 /// describes it, not the colour layers beneath, #5335), the tone channels (none for an `unresolved` target), swatches and gradient presets.
-fn build_setup(app: &mut PhotocraftApp, kind: &str, target: &ToneTarget, mode: ColorMode, unresolved: bool) -> EditorSetup {
-    let space = photocraft_engine::adjust_params::default_space(mode);
+fn build_setup(app: &mut PatronusPhotoApp, kind: &str, target: &ToneTarget, mode: ColorMode, unresolved: bool) -> EditorSetup {
+    let space = patronusphoto_engine::adjust_params::default_space(mode);
     let gray_plane = if matches!(kind, "levels" | "curves") { target.channel.as_ref().and_then(|c| c.gray) } else { None };
     let gray = gray_context(app, kind, target);
     let histograms = match target.layer {
@@ -578,8 +578,8 @@ fn shared_editor(
 fn reset_target(kind: String) -> impl Fn(&DialogValue, &DialogValue) -> DialogValue + Send + 'static {
     move |_opening, current| {
         let (mode, isolated) = (current.cx.mode, current.cx.isolated.clone());
-        let Ok(defaults) = photocraft_engine::adjust_params::default_for(&kind, mode) else { return current.clone() };
-        let mut params = photocraft_engine::adjust_params::to_params(&defaults);
+        let Ok(defaults) = patronusphoto_engine::adjust_params::default_for(&kind, mode) else { return current.clone() };
+        let mut params = patronusphoto_engine::adjust_params::to_params(&defaults);
         let cx = value_cx(mode, isolated, params.clone());
         if kind == "colorBalance"
             && let Some(preserve) = values::to_params(&current.value, &cx, true).get("preserveLuminosity").cloned()
@@ -593,9 +593,9 @@ fn reset_target(kind: String) -> impl Fn(&DialogValue, &DialogValue) -> DialogVa
 }
 
 /// Opens the dialog for `command` over `recorded` parameters (and a captured Smart Filter's `smart` index and target).
-fn open_hosted(app: &mut PhotocraftApp, command: &str, recorded: Value, smart: Option<(usize, Value)>, normalized: Option<Value>) -> Option<DialogId> {
+fn open_hosted(app: &mut PatronusPhotoApp, command: &str, recorded: Value, smart: Option<(usize, Value)>, normalized: Option<Value>) -> Option<DialogId> {
     let kind = command.strip_prefix(PREFIX).filter(|k| adjust_editors::has_editor(k))?.to_owned();
-    let spec = photocraft_engine::commands::find(command)?;
+    let spec = patronusphoto_engine::commands::find(command)?;
     let seeded = seed(app, &kind, &recorded, smart.as_ref(), normalized.as_ref())?;
     // A dialog this one replaces on the host ends its Actions step with it.
     if let Some(previous) = app.adjust_open.take()
@@ -609,7 +609,7 @@ fn open_hosted(app: &mut PhotocraftApp, command: &str, recorded: Value, smart: O
     let dynamic = app.session.prefs().interface.dynamic_color_sliders;
     let value = DialogValue { value: seeded.value, cx: seeded.cx };
     let mut dialog = HostedAdjustDialog::new(
-        format!("photocraft.adjust.{kind}"),
+        format!("patronusphoto.adjust.{kind}"),
         super::filter_dialog::title_of(spec.label),
         value,
         shared_editor(kind.clone(), setup.clone()),
@@ -622,7 +622,7 @@ fn open_hosted(app: &mut PhotocraftApp, command: &str, recorded: Value, smart: O
         dialog = dialog.canvas(crate::canvas::document_display::CanvasHost::primary(app, idx).canvas_id());
     }
     if kind == "curves" {
-        dialog = dialog.resizable(true).remember(SaveKey::new("photocraft.adjust.curves"));
+        dialog = dialog.resizable(true).remember(SaveKey::new("patronusphoto.adjust.curves"));
     }
     let id = app.framework.dialogs.open(dialog);
     app.adjust_open = Some(OpenAdjust {
@@ -645,7 +645,7 @@ fn open_hosted(app: &mut PhotocraftApp, command: &str, recorded: Value, smart: O
 /// Opens the dialog for `command` at the settings last confirmed in it (Photoshop's ⌥ plus the
 /// adjustment's shortcut, ⌥⌘L / ⌥⌘M, #8900), or at the neutral ones when there are none or they
 /// don't fit the current colour mode.
-pub fn open_last(app: &mut PhotocraftApp, command: &str) -> Result<DialogId, String> {
+pub fn open_last(app: &mut PatronusPhotoApp, command: &str) -> Result<DialogId, String> {
     let id = open_neutral(app, command).ok_or_else(|| refusal(app, command))?;
     let kind = command.strip_prefix(PREFIX).unwrap_or_default();
     let Some(open) = app.adjust_open.as_ref().filter(|open| open.id == id) else { return Ok(id) };
@@ -656,17 +656,17 @@ pub fn open_last(app: &mut PhotocraftApp, command: &str) -> Result<DialogId, Str
     let Some(mut last) = last_confirmed(app, kind) else { return Ok(id) };
     // Recall settings in the current plane's space, independently of the target they came from.
     if matches!(kind, "levels" | "curves") && mode == ColorMode::Grayscale {
-        last = photocraft_engine::adjust_params::gray_tone_params(&last);
+        last = patronusphoto_engine::adjust_params::gray_tone_params(&last);
     }
-    let Ok(adjustment) = photocraft_engine::adjust_params::from_params(kind, &last, None, mode) else { return Ok(id) };
+    let Ok(adjustment) = patronusphoto_engine::adjust_params::from_params(kind, &last, None, mode) else { return Ok(id) };
     if matches!(
         &adjustment,
-        photocraft_doc::Adjustment::Levels { space, .. } | photocraft_doc::Adjustment::Curves { space, .. }
-            if *space != photocraft_engine::adjust_params::default_space(mode)
+        patronusphoto_doc::Adjustment::Levels { space, .. } | patronusphoto_doc::Adjustment::Curves { space, .. }
+            if *space != patronusphoto_engine::adjust_params::default_space(mode)
     ) {
         return Ok(id);
     }
-    let mut restored = photocraft_engine::adjust_params::to_dialog_params(&adjustment);
+    let mut restored = patronusphoto_engine::adjust_params::to_dialog_params(&adjustment);
     // The target `open` captured, as `remember` reads it: a viewed layer mask wins over the
     // Channels panel's colour set, so its settings are restored as saved.
     let Some(base) = hosted(app, id).map(|dialog| dialog.value().cx.base.clone()) else { return Ok(id) };
@@ -674,9 +674,9 @@ pub fn open_last(app: &mut PhotocraftApp, command: &str) -> Result<DialogId, Str
     if mode == ColorMode::Lab && matches!(kind, "levels" | "curves") && captured_set {
         // The parser validates all records, but ordinary Lab serialization aliases the master
         // to Lightness. A partial set keeps the separately saved combined record.
-        let neutral = photocraft_engine::adjust_params::default_for(kind, ColorMode::Grayscale)
+        let neutral = patronusphoto_engine::adjust_params::default_for(kind, ColorMode::Grayscale)
             .ok()
-            .map(|a| photocraft_engine::adjust_params::to_params(&a))
+            .map(|a| patronusphoto_engine::adjust_params::to_params(&a))
             .unwrap_or(Value::Null);
         let flagged = last.get("__combinedLab").and_then(Value::as_bool) == Some(true);
         let combined = if flagged { &last } else { &neutral };
@@ -700,12 +700,12 @@ pub fn open_last(app: &mut PhotocraftApp, command: &str) -> Result<DialogId, Str
 /// dialog's neutral one. Every recorded value is kept as it was (a round trip through the engine
 /// would rewrite them: float colours as hex, a pencil curve smoothed again). `None` when nothing
 /// needs adding, or for params the engine rejects.
-pub(crate) fn complete_params(app: &PhotocraftApp, command: &str, params: &Value) -> Option<Value> {
+pub(crate) fn complete_params(app: &PatronusPhotoApp, command: &str, params: &Value) -> Option<Value> {
     let kind = command.strip_prefix(PREFIX).filter(|k| *k == "photoFilter")?;
     // A `null` colour reads as none, as the engine reads it.
     let recorded = params.as_object().filter(|p| p.contains_key("filter") && p.get("color").is_none_or(Value::is_null))?;
-    let adjustment = photocraft_engine::adjust_params::from_params(kind, params, None, app.session.active().map_or(ColorMode::Rgb, |s| s.doc.mode)).ok()?;
-    let color = photocraft_engine::adjust_params::to_params(&adjustment).get("color").cloned()?;
+    let adjustment = patronusphoto_engine::adjust_params::from_params(kind, params, None, app.session.active().map_or(ColorMode::Rgb, |s| s.doc.mode)).ok()?;
+    let color = patronusphoto_engine::adjust_params::to_params(&adjustment).get("color").cloned()?;
     let mut done = recorded.clone();
     done.insert("color".into(), color);
     Some(Value::Object(done))
@@ -714,12 +714,12 @@ pub(crate) fn complete_params(app: &PhotocraftApp, command: &str, params: &Value
 /// Whether the dialog's captured target is a set of several Lab components, whose Levels and
 /// Curves settings are kept as a separate combined record.
 fn combined_lab_target(params: &Value) -> bool {
-    photocraft_engine::color_channels::explicit(params, 3).ok().flatten().is_some_and(|c| c.len() > 1)
+    patronusphoto_engine::color_channels::explicit(params, 3).ok().flatten().is_some_and(|c| c.len() > 1)
 }
 
 /// Remember an adjustment dialog's settings after a successful OK, for [`open_last`]: the engine parameters without
 /// the addressing keys, in the saved tier. Editing a smart filter's settings is not a use of the dialog's own.
-fn remember(app: &PhotocraftApp, ctx: &egui::Context, open: &OpenAdjust, cx: &ValueCx, params: &Value) {
+fn remember(app: &PatronusPhotoApp, ctx: &egui::Context, open: &OpenAdjust, cx: &ValueCx, params: &Value) {
     if open.smart_filter.is_some() {
         return;
     }
@@ -740,10 +740,10 @@ fn remember(app: &PhotocraftApp, ctx: &egui::Context, open: &OpenAdjust, cx: &Va
 
 /// Validate tone edits before the Smart Filter renderer uses them for preview or commit: the parameters the edit
 /// sends, or the engine's refusal of them. `edited` is the dialog's [`edited`](FrameworkDialog::edited).
-pub(crate) fn smart_filter_params(app: &PhotocraftApp, open: &OpenAdjust, value: &DialogValue, edited: bool) -> Result<Value, String> {
+pub(crate) fn smart_filter_params(app: &PatronusPhotoApp, open: &OpenAdjust, value: &DialogValue, edited: bool) -> Result<Value, String> {
     let params = value.params(edited);
     if matches!(open.kind.as_str(), "levels" | "curves") {
-        photocraft_engine::adjust_params::from_params(&open.kind, &params, None, curve_mode(app, &open.kind, &open.target))
+        patronusphoto_engine::adjust_params::from_params(&open.kind, &params, None, curve_mode(app, &open.kind, &open.target))
             .map_err(|error| error.to_string())?;
     }
     Ok(params)
@@ -752,7 +752,7 @@ pub(crate) fn smart_filter_params(app: &PhotocraftApp, open: &OpenAdjust, value:
 /// The editor's asks since the last pass, answered in order. Auto reads the layer (or the smart filter's input) the
 /// dialog edits and writes the weights into the value; a colour well opens the Color Picker as the dialog's child; the
 /// colour it answers with goes into the value.
-fn answer_asks(app: &mut PhotocraftApp, id: DialogId) {
+fn answer_asks(app: &mut PatronusPhotoApp, id: DialogId) {
     let Some(asks) = app.framework.dialogs.get_mut_by_id::<HostedAdjustDialog>(id).map(HostedAdjustDialog::take_asks) else { return };
     for ask in asks {
         match ask {
@@ -787,7 +787,7 @@ fn answer_asks(app: &mut PhotocraftApp, id: DialogId) {
 
 /// Follows the target while the dialog is open: seeds the value again once an unresolved target resolves, and rebuilds
 /// what the editor reads (histograms, channels) when the layer or isolated plane changed (automation retargets it).
-fn follow_target(app: &mut PhotocraftApp, id: DialogId) {
+fn follow_target(app: &mut PatronusPhotoApp, id: DialogId) {
     let Some(open) = app.adjust_open.as_ref().filter(|open| open.id == id) else { return };
     let resolved = target_context(app, open.smart_filter.as_ref(), &open.recorded);
     // A Smart Filter dialog whose target another document took the front from, or an Action's dialog whose recorded
@@ -834,7 +834,7 @@ fn follow_target(app: &mut PhotocraftApp, id: DialogId) {
 }
 
 /// Authorizes and runs the confirmed command (one history step), then remembers the settings.
-fn run_confirmed(app: &mut PhotocraftApp, ctx: &egui::Context, open: &OpenAdjust, value: &DialogValue, edited: bool) -> Result<(), String> {
+fn run_confirmed(app: &mut PatronusPhotoApp, ctx: &egui::Context, open: &OpenAdjust, value: &DialogValue, edited: bool) -> Result<(), String> {
     let params = match open.smart_filter {
         Some(_) => smart_filter_params(app, open, value, edited)?,
         None => value.params(edited),
@@ -854,7 +854,7 @@ fn run_confirmed(app: &mut PhotocraftApp, ctx: &egui::Context, open: &OpenAdjust
 
 /// The hooks of a playing Action around a confirmed step dialog: the action continues after the command. A refused
 /// command keeps the dialog open and the step paused: the user can change the values and press OK again, or cancel.
-fn confirm(app: &mut PhotocraftApp, ctx: &egui::Context, open: &OpenAdjust, value: &DialogValue, edited: bool) -> Result<(), String> {
+fn confirm(app: &mut PatronusPhotoApp, ctx: &egui::Context, open: &OpenAdjust, value: &DialogValue, edited: bool) -> Result<(), String> {
     // Taken before the command runs: the step dialog's playback is looked up by the dialog's id.
     let token = crate::actions::token_of(app, open.id);
     run_confirmed(app, ctx, open, value, edited)?;
@@ -866,7 +866,7 @@ fn confirm(app: &mut PhotocraftApp, ctx: &egui::Context, open: &OpenAdjust, valu
 
 /// The held OK of the dialog `id`: runs its command and answers the dialog. A refusal keeps the dialog open, showing
 /// why, with the adjustment still open; an accepted OK ends it, and the dialog closes at its next pass.
-fn answer_held(app: &mut PhotocraftApp, ctx: &egui::Context, id: DialogId) {
+fn answer_held(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: DialogId) {
     let Some(dialog) = app.framework.dialogs.get_mut_by_id::<HostedAdjustDialog>(id) else { return };
     let edited = dialog.edited();
     let Some(value) = dialog.take_ok() else { return };
@@ -884,7 +884,7 @@ fn answer_held(app: &mut PhotocraftApp, ctx: &egui::Context, id: DialogId) {
 /// follows the target, runs the command of a held OK (one history step) and answers the dialog with it, and turns the
 /// host's Cancel into the Actions step abandoned. A Cancel that arrives while the dialog is still open is the one an
 /// opening of the same kind replaced: that step ended when the new dialog opened.
-pub(crate) fn take(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(crate) fn take(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     if let Some(id) = app.adjust_open.as_ref().map(|open| open.id)
         && hosted(app, id).is_some()
     {

@@ -4,7 +4,7 @@ use super::params::{
     BUTTONS, POINTER_MODIFIERS, UI_SET_FIELDS, bool_field, err, f32_field, f32_range, input_choice, input_modifiers, input_number, input_object, merged_object,
     modifiers_from, num_field, ok, uint_field,
 };
-use super::{ControlRequest, PhotocraftApp, Reply, Tool, Value, json, run_waiting};
+use super::{ControlRequest, PatronusPhotoApp, Reply, Tool, Value, json, run_waiting};
 use craft::behavior::dock::Action;
 use craft::behavior::geometry::CropGuide;
 use craft::behavior::geometry::crop::normalized_angle;
@@ -13,17 +13,17 @@ use craft::behavior::{CanvasView, PointerButton, PointerSample};
 use craft::keymap::{CommandRef, Key, Mods};
 use craft::ui::canvas::{ToolHost, ToolInput};
 use craft::ui::runtime::windows::{WindowAction, WindowHost};
-use photocraft_engine::jobs::{CancelReport, JobId};
+use patronusphoto_engine::jobs::{CancelReport, JobId};
 
 /// A domain handler: `Some` when it owns the request's method, `None` to let the next one try.
-type Handler = fn(&mut PhotocraftApp, &egui::Context, &ControlRequest) -> Option<Reply>;
+type Handler = fn(&mut PatronusPhotoApp, &egui::Context, &ControlRequest) -> Option<Reply>;
 
 /// A validated `ui.set` field, applied after every field has parsed.
-type Write = Box<dyn FnOnce(&mut PhotocraftApp)>;
+type Write = Box<dyn FnOnce(&mut PatronusPhotoApp)>;
 
-pub(super) fn dispatch(app: &mut PhotocraftApp, ctx: &egui::Context, req: &ControlRequest) -> Reply {
+pub(super) fn dispatch(app: &mut PatronusPhotoApp, ctx: &egui::Context, req: &ControlRequest) -> Reply {
     const HANDLERS: [Handler; 5] = [engine_methods, shell_methods, dialog_methods, input_methods, app_methods];
-    HANDLERS.iter().find_map(|handler| handler(app, ctx, req)).unwrap_or_else(|| err(photocraft_engine::command_hints::unknown_method(&req.method, METHODS)))
+    HANDLERS.iter().find_map(|handler| handler(app, ctx, req)).unwrap_or_else(|| err(patronusphoto_engine::command_hints::unknown_method(&req.method, METHODS)))
 }
 
 fn str_param<'a>(p: &'a Value, key: &str) -> Option<&'a str> {
@@ -45,7 +45,7 @@ fn parse_like<T: serde::de::DeserializeOwned>(_witness: &T, v: &Value, error: im
 
 // ---- engine commands, menus and jobs ----
 
-fn engine_methods(app: &mut PhotocraftApp, ctx: &egui::Context, req: &ControlRequest) -> Option<Reply> {
+fn engine_methods(app: &mut PatronusPhotoApp, ctx: &egui::Context, req: &ControlRequest) -> Option<Reply> {
     Some(match req.method.as_str() {
         "ui.context.choose" => context_choose(app, ctx, &req.params),
         "engine.execute" | "ui.menu.invoke" => execute_command(app, ctx, req),
@@ -65,7 +65,7 @@ fn engine_methods(app: &mut PhotocraftApp, ctx: &egui::Context, req: &ControlReq
 
 /// The menu rows as `ui.menu.list` reports them: one flat entry per row, its menu path in `path`.
 // The reply is flat (no `children` key): `Row` carries `path`. `color` is the Edit › Menus colour name of a tinted row.
-fn menu_list(app: &PhotocraftApp, rows: &[craft::menu::Row]) -> Value {
+fn menu_list(app: &PatronusPhotoApp, rows: &[craft::menu::Row]) -> Value {
     let colors = &app.session.prefs().menus.colors;
     Value::Array(
         rows.iter()
@@ -89,11 +89,11 @@ fn menu_list(app: &PhotocraftApp, rows: &[craft::menu::Row]) -> Value {
 }
 
 /// The id of the top hosted dialog as `ui.inspect` lists it (a decimal string).
-fn top_dialog(app: &PhotocraftApp) -> Option<String> {
+fn top_dialog(app: &PatronusPhotoApp) -> Option<String> {
     app.framework.dialogs.stack().top().map(|id| id.value().to_string())
 }
 
-fn context_choose(app: &mut PhotocraftApp, ctx: &egui::Context, p: &Value) -> Reply {
+fn context_choose(app: &mut PatronusPhotoApp, ctx: &egui::Context, p: &Value) -> Reply {
     use crate::canvas_tool_menu::MenuKind;
     let Some(id) = str_param(p, "id") else { return err("missing `id`") };
     let Some(menu) = app.ui.canvas_tool_menu.as_ref() else { return err("no canvas context menu is open") };
@@ -115,7 +115,7 @@ fn context_choose(app: &mut PhotocraftApp, ctx: &egui::Context, p: &Value) -> Re
 }
 
 /// A row of the painting tools' Shift+right-click menu, by its English label (`brushModeMenu.choices`).
-fn mode_menu_choose(app: &mut PhotocraftApp, label: &str) -> Reply {
+fn mode_menu_choose(app: &mut PatronusPhotoApp, label: &str) -> Reply {
     let item = match crate::brush_mode_menu::find(app, label) {
         Ok(item) => item,
         Err(e) => return err(e),
@@ -131,11 +131,11 @@ fn mode_menu_choose(app: &mut PhotocraftApp, label: &str) -> Reply {
 }
 
 /// `engine.execute` and `ui.menu.invoke`: run command `command` (or `id`) with `params`, as the menu would or, for `engine.execute`, directly.
-fn execute_command(app: &mut PhotocraftApp, ctx: &egui::Context, req: &ControlRequest) -> Reply {
+fn execute_command(app: &mut PatronusPhotoApp, ctx: &egui::Context, req: &ControlRequest) -> Reply {
     let p = &req.params;
     let Some(id) = str_param(p, "command").or(str_param(p, "id")) else { return err("missing `command`") };
-    if req.method == "engine.execute" && METHODS.contains(&id) && photocraft_engine::commands::find(id).is_none() {
-        return err(photocraft_engine::command_hints::protocol_method_as_command(id));
+    if req.method == "engine.execute" && METHODS.contains(&id) && patronusphoto_engine::commands::find(id).is_none() {
+        return err(patronusphoto_engine::command_hints::protocol_method_as_command(id));
     }
     let params = p.get("params").cloned().unwrap_or(json!({}));
     let wait = wait_param(p);
@@ -159,7 +159,7 @@ fn execute_command(app: &mut PhotocraftApp, ctx: &egui::Context, req: &ControlRe
     // `engine.execute` is programmatic: engine commands run directly with their default
     // params and never open a dialog (an agent would otherwise get a modal instead of a
     // result). `ui.menu.invoke` behaves like a menu click, so it may open the dialog.
-    if req.method == "engine.execute" && photocraft_engine::commands::find(id).is_some() {
+    if req.method == "engine.execute" && patronusphoto_engine::commands::find(id).is_some() {
         return run_waiting(app, wait, |app| {
             // These bypass `menus::invoke`: a Type box drag in progress applies its box first.
             crate::type_box_preview::end_drag(app);
@@ -172,7 +172,7 @@ fn execute_command(app: &mut PhotocraftApp, ctx: &egui::Context, req: &ControlRe
     run_waiting(app, wait, |app| crate::menus::invoke(app, ctx, id, params))
 }
 
-fn jobs_cancel(app: &mut PhotocraftApp, p: &Value) -> Reply {
+fn jobs_cancel(app: &mut PatronusPhotoApp, p: &Value) -> Reply {
     let all = p.get("job").is_none_or(Value::is_null);
     match p.get("job").and_then(Value::as_u64) {
         // Same reply as the engine's `jobs.cancel`: `{cancelled: n}`, plus `notCancelled:
@@ -187,7 +187,7 @@ fn jobs_cancel(app: &mut PhotocraftApp, p: &Value) -> Reply {
     }
 }
 
-fn cancel_each(app: &mut PhotocraftApp, ids: Vec<JobId>) -> CancelReport {
+fn cancel_each(app: &mut PatronusPhotoApp, ids: Vec<JobId>) -> CancelReport {
     let mut report = CancelReport::default();
     for id in ids {
         match crate::jobs_ui::try_cancel(app, id) {
@@ -200,7 +200,7 @@ fn cancel_each(app: &mut PhotocraftApp, ids: Vec<JobId>) -> CancelReport {
 
 // ---- the shell: view state, windows, GPU, focus, screenshots, notices ----
 
-fn shell_methods(app: &mut PhotocraftApp, ctx: &egui::Context, req: &ControlRequest) -> Option<Reply> {
+fn shell_methods(app: &mut PatronusPhotoApp, ctx: &egui::Context, req: &ControlRequest) -> Option<Reply> {
     let p = &req.params;
     Some(match req.method.as_str() {
         "ui.set" => ui_set(app, ctx, p),
@@ -237,7 +237,7 @@ fn shell_methods(app: &mut PhotocraftApp, ctx: &egui::Context, req: &ControlRequ
     })
 }
 
-fn simulate_gpu_loss(app: &mut PhotocraftApp, ctx: &egui::Context, p: &Value) -> Reply {
+fn simulate_gpu_loss(app: &mut PatronusPhotoApp, ctx: &egui::Context, p: &Value) -> Reply {
     if p.get("destroy").and_then(Value::as_bool).unwrap_or(false) {
         let destroyed = app.destroy_window_device();
         ctx.request_repaint();
@@ -245,9 +245,9 @@ fn simulate_gpu_loss(app: &mut PhotocraftApp, ctx: &egui::Context, p: &Value) ->
     }
     let error = p.get("error").and_then(Value::as_bool).unwrap_or(false);
     let fault = if error {
-        photocraft_gpu::Fault::Error("simulated error (ui.gpu.simulateLoss)".into())
+        patronusphoto_gpu::Fault::Error("simulated error (ui.gpu.simulateLoss)".into())
     } else {
-        photocraft_gpu::Fault::Lost("simulated (ui.gpu.simulateLoss)".into())
+        patronusphoto_gpu::Fault::Lost("simulated (ui.gpu.simulateLoss)".into())
     };
     let active = match app.gpu_health() {
         Some(h) => {
@@ -261,7 +261,7 @@ fn simulate_gpu_loss(app: &mut PhotocraftApp, ctx: &egui::Context, p: &Value) ->
     ok(json!({"wasActive": active, "gpuInfo": app.perf.gpu_info}))
 }
 
-fn screenshot(app: &mut PhotocraftApp, ctx: &egui::Context, p: &Value) -> Reply {
+fn screenshot(app: &mut PatronusPhotoApp, ctx: &egui::Context, p: &Value) -> Reply {
     let parsed = input_object(p, None, &["path", "focus", "window"]).and_then(|p| {
         Ok((
             input_choice(&p, "path", "path", &[])?.map(str::to_string),
@@ -285,7 +285,7 @@ fn screenshot(app: &mut PhotocraftApp, ctx: &egui::Context, p: &Value) -> Reply 
     if focus.unwrap_or(true) {
         host.act(viewport, WindowAction::Focus);
     }
-    // The capture itself is admitted by `PhotocraftApp::drain_control` (budget and
+    // The capture itself is admitted by `PatronusPhotoApp::drain_control` (budget and
     // geometry) and issued from a later `App::ui` pass once open/close animations
     // (modals, popups) have settled (craft-automation's screenshot queue).
     let token = app.ui.alloc_id();
@@ -294,7 +294,7 @@ fn screenshot(app: &mut PhotocraftApp, ctx: &egui::Context, p: &Value) -> Reply 
 }
 
 /// `ui.notice.post {title, lines?, tone?}`: shows a notice in the named tone and replies its id.
-fn notice_post(app: &mut PhotocraftApp, p: &Value) -> Reply {
+fn notice_post(app: &mut PatronusPhotoApp, p: &Value) -> Reply {
     const TONES: [&str; 6] = ["neutral", "accent", "info", "good", "warn", "bad"];
     let parsed = input_object(p, None, &["title", "lines", "tone"]).and_then(|p| {
         let title = input_choice(&p, "title", "title", &[])?.ok_or_else(|| "missing `title`".to_string())?.to_string();
@@ -320,7 +320,7 @@ fn notice_post(app: &mut PhotocraftApp, p: &Value) -> Reply {
 
 // ---- ui.set: every field is validated and materialized into a `UiSet` before the first one is applied ----
 
-fn ui_set(app: &mut PhotocraftApp, ctx: &egui::Context, p: &Value) -> Reply {
+fn ui_set(app: &mut PatronusPhotoApp, ctx: &egui::Context, p: &Value) -> Reply {
     if let Some(field) = p.as_object().and_then(|o| o.keys().find(|k| !UI_SET_FIELDS.contains(&k.as_str()))) {
         return err(format!("unknown field `{field}` (fields: {})", UI_SET_FIELDS.join(", ")));
     }
@@ -348,7 +348,7 @@ struct UiSet {
 }
 
 impl UiSet {
-    fn parse(app: &PhotocraftApp, ctx: &egui::Context, p: &Value) -> std::result::Result<Self, String> {
+    fn parse(app: &PatronusPhotoApp, ctx: &egui::Context, p: &Value) -> std::result::Result<Self, String> {
         let tools = ToolSet::parse(app, p)?;
         let crop = CropSet::parse(app, p)?;
         let panels = PanelSet::parse(app, p)?;
@@ -370,7 +370,7 @@ impl UiSet {
     }
 
     /// Apply (nothing but the frame selection and the final `brushSize` command can fail; the workspace list was checked).
-    fn apply(mut self, app: &mut PhotocraftApp, ctx: &egui::Context) -> std::result::Result<Value, String> {
+    fn apply(mut self, app: &mut PatronusPhotoApp, ctx: &egui::Context) -> std::result::Result<Value, String> {
         // All fields are validated and the workspace list is checked. Select the requested frame
         // thumbnail before applying anything else, so a denied selection leaves every field intact.
         self.tools.select_frame_target(app)?;
@@ -388,19 +388,19 @@ impl UiSet {
     }
 }
 
-/// `theme`: a suite theme id, shown in the mode on screen, or a name PhotoCraft took before theme
+/// `theme`: a suite theme id, shown in the mode on screen, or a name Patronus Photo took before theme
 /// ids (`proMedium`, `Pro (Medium Gray)`, `gnome`, ...), shown in its own mode.
-fn theme_param(app: &PhotocraftApp, p: &Value) -> std::result::Result<Option<(craft::theme::ThemeId, bool)>, String> {
+fn theme_param(app: &PatronusPhotoApp, p: &Value) -> std::result::Result<Option<(craft::theme::ThemeId, bool)>, String> {
     let Some(name) = str_param(p, "theme") else { return Ok(None) };
-    let (id, dark) = photocraft_engine::prefs::theme_ids::parse(name).ok_or_else(|| format!("unknown theme `{name}`"))?;
+    let (id, dark) = patronusphoto_engine::prefs::theme_ids::parse(name).ok_or_else(|| format!("unknown theme `{name}`"))?;
     Ok(Some((id, dark.unwrap_or(app.ui.theme.is_dark()))))
 }
 
 // -- tools: stroke, tool, gradient, eyedropper, Content-Aware Move, tile grid, layer filter, marquee --
 
 struct ToolSet {
-    gradient_blend: Option<photocraft_color::BlendMode>,
-    shape_stroke: Option<Option<photocraft_doc::ShapeStroke>>,
+    gradient_blend: Option<patronusphoto_color::BlendMode>,
+    shape_stroke: Option<Option<patronusphoto_doc::ShapeStroke>>,
     frame_shape: Option<String>,
     frame_sides: Option<u32>,
     frame_target: Option<crate::frame_tool::Target>,
@@ -422,7 +422,7 @@ struct ToolSet {
 
 impl ToolSet {
     /// Validate the complete tool patch before applying any field; omitted settings are retained.
-    fn parse(app: &PhotocraftApp, p: &Value) -> std::result::Result<Self, String> {
+    fn parse(app: &PatronusPhotoApp, p: &Value) -> std::result::Result<Self, String> {
         let (marquee_style, marquee_size) = marquee_params(app, p)?;
         Ok(Self {
             gradient_blend: gradient_blend_param(p)?,
@@ -450,7 +450,7 @@ impl ToolSet {
         })
     }
 
-    fn select_frame_target(&self, app: &mut PhotocraftApp) -> std::result::Result<(), String> {
+    fn select_frame_target(&self, app: &mut PatronusPhotoApp) -> std::result::Result<(), String> {
         let Some(target) = self.frame_target else { return Ok(()) };
         if let Some(id) = crate::frame_tool::selected(app).map(|l| l.id) {
             crate::frame_tool::select_result(app, id, target)?;
@@ -462,7 +462,7 @@ impl ToolSet {
     }
 
     /// Apply a validated patch, selecting the tool before its per-tool settings.
-    fn apply(self, app: &mut PhotocraftApp) {
+    fn apply(self, app: &mut PatronusPhotoApp) {
         if let Some(shape) = &self.frame_shape {
             app.ui.frame_tool.ellipse = shape == "ellipse";
             app.ui.frame_tool.shape.clone_from(shape);
@@ -522,7 +522,7 @@ impl ToolSet {
         }
     }
 
-    fn apply_gradient_and_trace(&self, app: &mut PhotocraftApp) {
+    fn apply_gradient_and_trace(&self, app: &mut PatronusPhotoApp) {
         let gradient_before = app.ui.tool_options.clone();
         if let Some(mode) = self.gradient_blend {
             app.ui.tool_options.gradient_blend_mode = mode;
@@ -587,7 +587,7 @@ fn pen_path_op_param(p: &Value) -> std::result::Result<Option<String>, String> {
 
 /// The marquee's Style (`normal`, `fixedRatio`, `fixedSize`) and its Width and Height, which must fit the range the
 /// style (the new one, else the current one) gives them.
-fn marquee_params(app: &PhotocraftApp, p: &Value) -> std::result::Result<(Option<String>, Option<[f32; 2]>), String> {
+fn marquee_params(app: &PatronusPhotoApp, p: &Value) -> std::result::Result<(Option<String>, Option<[f32; 2]>), String> {
     let style = match p.get("marqueeStyle") {
         None => None,
         Some(v) => match v.as_str() {
@@ -612,16 +612,16 @@ fn marquee_params(app: &PhotocraftApp, p: &Value) -> std::result::Result<(Option
     Ok((style, size))
 }
 
-fn gradient_blend_param(p: &Value) -> std::result::Result<Option<photocraft_color::BlendMode>, String> {
+fn gradient_blend_param(p: &Value) -> std::result::Result<Option<patronusphoto_color::BlendMode>, String> {
     let Some(value) = p.get("gradientBlendMode") else { return Ok(None) };
     let Some(name) = value.as_str() else { return Err("gradientBlendMode must be a blend mode name".into()) };
-    photocraft_engine::commands::parse_blend(name)
-        .filter(|m| photocraft_color::BlendMode::LAYER_MODES.contains(m))
+    patronusphoto_engine::commands::parse_blend(name)
+        .filter(|m| patronusphoto_color::BlendMode::LAYER_MODES.contains(m))
         .map(Some)
         .ok_or_else(|| format!("unknown gradient blend mode `{name}`"))
 }
 
-fn shape_stroke_param(app: &PhotocraftApp, p: &Value) -> std::result::Result<Option<Option<photocraft_doc::ShapeStroke>>, String> {
+fn shape_stroke_param(app: &PatronusPhotoApp, p: &Value) -> std::result::Result<Option<Option<patronusphoto_doc::ShapeStroke>>, String> {
     let Some(v) = p.get("shapeStroke") else { return Ok(None) };
     if let Some(object) = v.as_object() {
         let keys = ["width", "opacity", "align", "cap", "join", "miterLimit", "dashes", "dashOffset"];
@@ -630,8 +630,8 @@ fn shape_stroke_param(app: &PhotocraftApp, p: &Value) -> std::result::Result<Opt
         }
     }
     let o = &app.ui.tool_options;
-    let base = o.shape_stroke.stroke(o.stroke_width, photocraft_doc::Fill::Solid(photocraft_doc::Color::BLACK));
-    Ok(Some(photocraft_engine::vector_cmds::parse_stroke(v, Some(base), photocraft_doc::Color::BLACK)?))
+    let base = o.shape_stroke.stroke(o.stroke_width, patronusphoto_doc::Fill::Solid(patronusphoto_doc::Color::BLACK));
+    Ok(Some(patronusphoto_engine::vector_cmds::parse_stroke(v, Some(base), patronusphoto_doc::Color::BLACK)?))
 }
 
 fn tool_param(p: &Value) -> std::result::Result<Option<Tool>, String> {
@@ -660,15 +660,15 @@ fn stroke_trace_param(p: &Value) -> std::result::Result<Option<&'static str>, St
 fn eyedropper_size_param(p: &Value) -> std::result::Result<Option<craft::color_ui::ui::SampleSize>, String> {
     use craft::color_ui::ui::SampleSize;
     let Some(v) = p.get("eyedropperSampleSize") else { return Ok(None) };
-    let refused = || format!("eyedropperSampleSize must be \"point\" or one of {:?}", photocraft_engine::sample_cmds::SAMPLE_SIZES);
-    let pixels = photocraft_engine::sample_cmds::size_param("ui.set", &json!({"size": v})).map_err(|_| refused())?;
+    let refused = || format!("eyedropperSampleSize must be \"point\" or one of {:?}", patronusphoto_engine::sample_cmds::SAMPLE_SIZES);
+    let pixels = patronusphoto_engine::sample_cmds::size_param("ui.set", &json!({"size": v})).map_err(|_| refused())?;
     SampleSize::from_pixels(pixels).map(Some).ok_or_else(refused)
 }
 
 fn eyedropper_sample_param(p: &Value) -> std::result::Result<Option<craft::color_ui::ui::SampleSource>, String> {
     use craft::color_ui::ui::SampleSource;
     let Some(v) = p.get("eyedropperSample") else { return Ok(None) };
-    let ids: Vec<&str> = photocraft_engine::sample_cmds::SampleLayers::ALL.iter().map(|(_, n)| *n).collect();
+    let ids: Vec<&str> = patronusphoto_engine::sample_cmds::SampleLayers::ALL.iter().map(|(_, n)| *n).collect();
     let refused = || format!("eyedropperSample must be one of {}", ids.join(", "));
     let id = v.as_str().filter(|id| ids.contains(id)).ok_or_else(refused)?;
     SampleSource::from_id(id).map(Some).ok_or_else(refused)
@@ -681,7 +681,7 @@ struct CropSet {
 }
 
 impl CropSet {
-    fn parse(app: &PhotocraftApp, p: &Value) -> std::result::Result<Self, String> {
+    fn parse(app: &PatronusPhotoApp, p: &Value) -> std::result::Result<Self, String> {
         let crop = &app.ui.tool_options.crop;
         let mut writes: Vec<Write> = Vec::new();
         // The Crop tool's overlay menu (#1919).
@@ -720,7 +720,7 @@ impl CropSet {
         Ok(Self { writes })
     }
 
-    fn apply(self, app: &mut PhotocraftApp) {
+    fn apply(self, app: &mut PatronusPhotoApp) {
         for write in self.writes {
             write(app);
         }
@@ -733,7 +733,7 @@ impl CropSet {
 /// current place (so `{"at": [x, y]}` keeps a pin and `{"pinned": true}` keeps a dragged position, #10890), and the
 /// group words of the old panel list (`layers`, `history`, ...), as an object for `panel_docking::legacy_actions`.
 /// A key in neither is refused with its name.
-fn panels_patch(app: &PhotocraftApp, patch: Option<&Value>) -> std::result::Result<(Option<Value>, Option<Value>), String> {
+fn panels_patch(app: &PatronusPhotoApp, patch: Option<&Value>) -> std::result::Result<(Option<Value>, Option<Value>), String> {
     let Some(patch) = patch else { return Ok((None, None)) };
     let Some(object) = patch.as_object() else { return Err("panels must be an object".into()) };
     let own: Vec<String> =
@@ -780,7 +780,7 @@ struct PanelSet {
 }
 
 impl PanelSet {
-    fn parse(app: &PhotocraftApp, p: &Value) -> std::result::Result<Self, String> {
+    fn parse(app: &PatronusPhotoApp, p: &Value) -> std::result::Result<Self, String> {
         let mut writes: Vec<Write> = Vec::new();
         // The Histogram panel: its options, the dragged tonal range ([from, to] levels or
         // null) and Uncached Refresh.
@@ -854,7 +854,7 @@ impl PanelSet {
     }
 
     /// Everything that precedes the theme.
-    fn apply_options(&mut self, app: &mut PhotocraftApp) {
+    fn apply_options(&mut self, app: &mut PatronusPhotoApp) {
         if let Some(v) = self.panels.take() {
             app.ui.panels = v;
         }
@@ -871,7 +871,7 @@ impl PanelSet {
         }
     }
 
-    fn apply_mask_targets(&self, app: &mut PhotocraftApp) {
+    fn apply_mask_targets(&self, app: &mut PatronusPhotoApp) {
         if let Some(m) = self.mask_target {
             app.end_filter_mask_view();
             app.ui.filter_mask_target = None;
@@ -900,7 +900,7 @@ impl PanelSet {
     }
 
     /// Applies the Color panel state.
-    fn apply_color(&mut self, app: &mut PhotocraftApp) {
+    fn apply_color(&mut self, app: &mut PatronusPhotoApp) {
         if let Some(v) = self.color_panel.take() {
             app.ui.color_panel = v;
         }
@@ -908,7 +908,7 @@ impl PanelSet {
 }
 
 /// `presetBrowsers {<panel>: {view, zoom}}`: the preset panels' browser settings, each merged into the panel's own.
-fn preset_browsers_param(app: &PhotocraftApp, p: &Value) -> std::result::Result<Vec<Write>, String> {
+fn preset_browsers_param(app: &PatronusPhotoApp, p: &Value) -> std::result::Result<Vec<Write>, String> {
     let Some(v) = p.get("presetBrowsers") else { return Ok(Vec::new()) };
     let Some(panels) = v.as_object() else { return Err("presetBrowsers must be an object".into()) };
     let mut writes: Vec<Write> = Vec::new();
@@ -940,7 +940,7 @@ fn histogram_range_param(p: &Value) -> std::result::Result<Option<Option<craft::
 }
 
 /// Target the active smart object's filter mask (FILE-215-3): it needs smart filters.
-fn filter_mask_target_param(app: &PhotocraftApp, p: &Value) -> std::result::Result<Option<bool>, String> {
+fn filter_mask_target_param(app: &PatronusPhotoApp, p: &Value) -> std::result::Result<Option<bool>, String> {
     let target = bool_field(p, "filterMaskTarget")?;
     if target == Some(true) {
         check_filter_mask_target(app)?;
@@ -948,11 +948,11 @@ fn filter_mask_target_param(app: &PhotocraftApp, p: &Value) -> std::result::Resu
     Ok(target)
 }
 
-fn check_filter_mask_target(app: &PhotocraftApp) -> std::result::Result<(), String> {
-    use photocraft_engine::channel_cmds::ChannelTarget;
+fn check_filter_mask_target(app: &PatronusPhotoApp) -> std::result::Result<(), String> {
+    use patronusphoto_engine::channel_cmds::ChannelTarget;
     let st = app.session.active().ok_or("filterMaskTarget needs an open document")?;
     let l = st.active_layer.and_then(|id| st.doc.layer(id)).ok_or("filterMaskTarget needs an active layer")?;
-    if !matches!(&l.content, photocraft_doc::LayerContent::Smart(sm) if !sm.smart_filters.is_empty()) {
+    if !matches!(&l.content, patronusphoto_doc::LayerContent::Smart(sm) if !sm.smart_filters.is_empty()) {
         return Err("filterMaskTarget needs an active smart object with smart filters".into());
     }
     let composite = matches!(st.channel_view.target, ChannelTarget::Composite | ChannelTarget::LayerMask | ChannelTarget::VectorMask);
@@ -972,7 +972,7 @@ struct ViewSet {
 }
 
 impl ViewSet {
-    fn parse(app: &PhotocraftApp, p: &Value) -> std::result::Result<Self, String> {
+    fn parse(app: &PatronusPhotoApp, p: &Value) -> std::result::Result<Self, String> {
         let zoom = f32_field(p, "zoom")?;
         let rotation = f32_field(p, "rotation")?;
         if rotation.is_some() && app.session.active_index().is_none() {
@@ -984,7 +984,7 @@ impl ViewSet {
     }
 
     /// Writes the view the canvas binds (`app.ui.views[i]`), which the canvas shows on its next pass.
-    fn apply(&self, app: &mut PhotocraftApp) {
+    fn apply(&self, app: &mut PatronusPhotoApp) {
         let Some(i) = app.session.active_index() else { return };
         if self.zoom.is_some() || self.center.is_some() || self.rotation.is_some() || self.fit {
             app.ui.views[i].zoom_animating = false;
@@ -1038,7 +1038,7 @@ struct BrushSet {
 }
 
 impl BrushSet {
-    fn parse(app: &PhotocraftApp, p: &Value) -> std::result::Result<Self, String> {
+    fn parse(app: &PatronusPhotoApp, p: &Value) -> std::result::Result<Self, String> {
         let section = uint_field(p, "brushSection")?;
         let brushes_view = brushes_view_param(p)?;
         // The three parts of the picker's cards. At least one stays on (a rejected call
@@ -1059,7 +1059,7 @@ impl BrushSet {
         })
     }
 
-    fn apply(&self, app: &mut PhotocraftApp) -> std::result::Result<(), String> {
+    fn apply(&self, app: &mut PatronusPhotoApp) -> std::result::Result<(), String> {
         if let Some(i) = self.section {
             app.ui.brush_section = (i as usize).min(crate::brush_panel::SECTIONS.len() - 1);
         }
@@ -1073,7 +1073,7 @@ impl BrushSet {
         Ok(())
     }
 
-    fn apply_picker(&self, app: &mut PhotocraftApp) {
+    fn apply_picker(&self, app: &mut PatronusPhotoApp) {
         let state = &mut app.ui.brush_picker_state;
         if let Some(v) = self.picker_name {
             state.parts.name = v;
@@ -1100,7 +1100,7 @@ fn brushes_view_param(p: &Value) -> std::result::Result<Option<craft::ui::patter
     serde_json::from_value(v.clone()).map(Some).map_err(|e| format!("brushesView: {e} (list, grid)"))
 }
 
-fn check_picker_parts(app: &PhotocraftApp, parts: [Option<bool>; 3]) -> std::result::Result<(), String> {
+fn check_picker_parts(app: &PatronusPhotoApp, parts: [Option<bool>; 3]) -> std::result::Result<(), String> {
     if parts.iter().all(Option::is_none) {
         return Ok(());
     }
@@ -1135,8 +1135,8 @@ fn picker_param(p: &Value) -> std::result::Result<Option<Option<[f32; 2]>>, Stri
 /// applied; non-numeric values keep the API's historical silent no-op.
 fn brush_size_param(p: &Value) -> std::result::Result<Option<f64>, String> {
     let Some(size) = p.get("brushSize").and_then(Value::as_f64) else { return Ok(None) };
-    if !size.is_finite() || size > f64::from(photocraft_paint::MAX_BRUSH_SIZE) {
-        return Err(format!("brushSize must be finite and at most {} px", photocraft_paint::MAX_BRUSH_SIZE));
+    if !size.is_finite() || size > f64::from(patronusphoto_paint::MAX_BRUSH_SIZE) {
+        return Err(format!("brushSize must be finite and at most {} px", patronusphoto_paint::MAX_BRUSH_SIZE));
     }
     Ok(Some(size))
 }
@@ -1145,7 +1145,7 @@ fn brush_size_param(p: &Value) -> std::result::Result<Option<f64>, String> {
 
 /// Every `ui.dialog.*` method: `control::dialogs::method` resolves the hosted dialog by its id or `"top"`. The
 /// request is automation input, so a Save on a hosted prompt is judged by the automation policy.
-fn dialog_methods(app: &mut PhotocraftApp, ctx: &egui::Context, req: &ControlRequest) -> Option<Reply> {
+fn dialog_methods(app: &mut PatronusPhotoApp, ctx: &egui::Context, req: &ControlRequest) -> Option<Reply> {
     if !req.method.starts_with("ui.dialog.") {
         return None;
     }
@@ -1160,7 +1160,7 @@ fn dialog_methods(app: &mut PhotocraftApp, ctx: &egui::Context, req: &ControlReq
 /// `ui.pointer` queues its events for the canvas's tool host; the window methods go to craft-automation's
 /// synthetic input, which the window host injects pass by pass. Their document points map through the main
 /// canvas's view.
-fn input_methods(app: &mut PhotocraftApp, ctx: &egui::Context, req: &ControlRequest) -> Option<Reply> {
+fn input_methods(app: &mut PatronusPhotoApp, ctx: &egui::Context, req: &ControlRequest) -> Option<Reply> {
     if req.method == "ui.pointer" {
         return Some(pointer(app, ctx, &req.params));
     }
@@ -1208,7 +1208,7 @@ struct ParsedPointer {
 /// pickers, Color Range, the preview locator, context menus, Move transform controls). The host takes the
 /// whole queue on its next pass; a held Space is queued with the events (`hold`, then `let_go`), so it is down for
 /// exactly the events between them.
-fn pointer(app: &mut PhotocraftApp, ctx: &egui::Context, p: &Value) -> Reply {
+fn pointer(app: &mut PatronusPhotoApp, ctx: &egui::Context, p: &Value) -> Reply {
     // Every field and event is validated before the first event is queued, so a rejected call
     // changes nothing (#2449).
     let parsed = match parse_pointer(p) {
@@ -1316,7 +1316,7 @@ fn parse_pointer_event(i: usize, e: &Value) -> std::result::Result<PointerStep, 
 // ---- the application: open, save, quit ----
 
 /// The application-level control methods: open, save and quit.
-fn app_methods(app: &mut PhotocraftApp, ctx: &egui::Context, req: &ControlRequest) -> Option<Reply> {
+fn app_methods(app: &mut PatronusPhotoApp, ctx: &egui::Context, req: &ControlRequest) -> Option<Reply> {
     let p = &req.params;
     Some(match req.method.as_str() {
         "app.open" => match str_param(p, "path") {
@@ -1349,7 +1349,7 @@ fn app_methods(app: &mut PhotocraftApp, ctx: &egui::Context, req: &ControlReques
 
 /// The `app.open` control method: opens a path through the configured automation read
 /// capability, with optional high-memory approval.
-fn app_open(app: &mut PhotocraftApp, path: &str, approved: bool) -> Reply {
+fn app_open(app: &mut PatronusPhotoApp, path: &str, approved: bool) -> Reply {
     if let Some(outcome) = open_pcraft_directory(app, path) {
         return outcome;
     }
@@ -1376,8 +1376,8 @@ fn app_open(app: &mut PhotocraftApp, path: &str, approved: bool) -> Reply {
 /// Directory .pcraft (the native on-disk form) loads through a capability-scoped
 /// source; the single-file (zip) form falls back to the bytes path, as do all
 /// other formats. `None` means "not a directory .pcraft".
-fn open_pcraft_directory(app: &mut PhotocraftApp, path: &str) -> Option<Reply> {
-    if !path.rsplit_once('.').is_some_and(|(_, ext)| ext.eq_ignore_ascii_case(photocraft_format::EXTENSION)) {
+fn open_pcraft_directory(app: &mut PatronusPhotoApp, path: &str) -> Option<Reply> {
+    if !path.rsplit_once('.').is_some_and(|(_, ext)| ext.eq_ignore_ascii_case(patronusphoto_format::EXTENSION)) {
         return None;
     }
     let open = app.services.automation_open_pcraft.as_mut()?;

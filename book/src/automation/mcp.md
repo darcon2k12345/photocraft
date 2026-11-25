@@ -1,35 +1,35 @@
 # MCP
 
-`photocraft-automation` implements an MCP server over stdio with three backends:
+`patronusphoto-automation` implements an MCP server over stdio with three backends:
 
 - **Headless:** an in-process `Headless` session owns the engine and performs file I/O.
-- **Bridge:** `BridgeClient` forwards tools to a desktop application started with `photocraft --control <port>`.
-- **The open window:** plain `photocraft-cli mcp` finds the desktop application through the connection file it publishes while the person lets agents use it (ArtCraft Launcher › Settings › AI agents), before every tool call; while the app is closed it starts it, serves a headless session, or reports an error, as chosen in Preferences › AI Integrations. Without that consent, or with `--headless`, it is the headless session above.
+- **Bridge:** `BridgeClient` forwards tools to a desktop application started with `patronusphoto --control <port>`.
+- **The open window:** plain `patronusphoto-cli mcp` finds the desktop application through the connection file it publishes while the person lets agents use it (ArtCraft Launcher › Settings › AI agents), before every tool call; while the app is closed it starts it, serves a headless session, or reports an error, as chosen in Preferences › AI Integrations. Without that consent, or with `--headless`, it is the headless session above.
 
 The simplest setup needs no terminal: turn on ArtCraft Launcher › Settings › AI agents and click *Add* next to the AI app; that one entry reaches every Craft app. See [`docs/mcp.md`](../../../docs/mcp.md#connecting-the-desktop-app-no-terminal).
 
 For a source checkout, first [install the CLI on PATH and register the server](../../../docs/mcp.md#install-and-register).
 The installed binary survives `cargo clean`; a symlink into `target/release` does not.
 
-Start the headless server with (without `--headless`, `mcp` works in the open PhotoCraft window
+Start the headless server with (without `--headless`, `mcp` works in the open Patronus Photo window
 while the ArtCraft Launcher's agents switch is on):
 
 ```sh
-photocraft-cli mcp --headless --automation-read-root /work/project --automation-write-root /work/project
+patronusphoto-cli mcp --headless --automation-read-root /work/project --automation-write-root /work/project
 ```
 
 Bridge to a running desktop application with the same private token file used by the app:
 
 ```sh
-photocraft-cli mcp --bridge 127.0.0.1:7878 --control-token-file /private/path/control.token
+patronusphoto-cli mcp --bridge 127.0.0.1:7878 --control-token-file /private/path/control.token
 ```
 
 Use absolute root paths in MCP client configurations, since a relative root is resolved from the
 client's launch directory. In bridge mode the roots are configured on the desktop app, and root
-flags on `photocraft-cli mcp --bridge` are rejected. Explicit `--control-token` and
-`--control-token-file` flags require `--bridge` (or `PHOTOCRAFT_CONTROL_PORT`) and are mutually
-exclusive; bridge credentials can also come from `PHOTOCRAFT_CONTROL_TOKEN` or
-`PHOTOCRAFT_CONTROL_TOKEN_FILE`. Each launch option
+flags on `patronusphoto-cli mcp --bridge` are rejected. Explicit `--control-token` and
+`--control-token-file` flags require `--bridge` (or `PATRONUSPHOTO_CONTROL_PORT`) and are mutually
+exclusive; bridge credentials can also come from `PATRONUSPHOTO_CONTROL_TOKEN` or
+`PATRONUSPHOTO_CONTROL_TOKEN_FILE`. Each launch option
 except `--help`/`-h` takes one non-empty value and cannot be repeated. Stray positional arguments,
 missing values and options for the wrong mode are usage errors (exit 2) reported on stderr before
 the server starts.
@@ -38,19 +38,19 @@ Tools cover session/document operations, command discovery and execution, batchi
 
 ## From an installed release
 
-The release packages ship `photocraft-cli` alongside the desktop app, so no build is needed:
+The release packages ship `patronusphoto-cli` alongside the desktop app, so no build is needed:
 
 | Install | CLI |
 |---|---|
-| Windows (MSI) | `%LOCALAPPDATA%\Programs\ArtCraft\PhotoCraft\photocraft-cli.exe` by default (`C:\Program Files\ArtCraft\PhotoCraft\photocraft-cli.exe` for an all-users install, under `Program Files (x86)` instead for the 32-bit build, or wherever you installed it otherwise), not on `PATH` |
-| Linux (deb, rpm) | `/usr/bin/photocraft-cli` |
-| macOS | the separate `photocraft-cli-<version>-macos-<arch>.zip` release asset (the `.app` holds only the desktop app) |
+| Windows (MSI) | `%LOCALAPPDATA%\Programs\ArtCraft\Patronus Photo\patronusphoto-cli.exe` by default (`C:\Program Files\ArtCraft\Patronus Photo\patronusphoto-cli.exe` for an all-users install, under `Program Files (x86)` instead for the 32-bit build, or wherever you installed it otherwise), not on `PATH` |
+| Linux (deb, rpm) | `/usr/bin/patronusphoto-cli` |
+| macOS | the separate `patronusphoto-cli-<version>-macos-<arch>.zip` release asset (the `.app` holds only the desktop app) |
 
 ```sh
 # Windows (PowerShell), default install folder
-claude mcp add photocraft -- "$env:LOCALAPPDATA\Programs\ArtCraft\PhotoCraft\photocraft-cli.exe" mcp --automation-read-root <dir> --automation-write-root <dir>
+claude mcp add patronusphoto -- "$env:LOCALAPPDATA\Programs\ArtCraft\Patronus Photo\patronusphoto-cli.exe" mcp --automation-read-root <dir> --automation-write-root <dir>
 # Linux, or macOS with the CLI unzipped onto PATH
-claude mcp add photocraft -- photocraft-cli mcp --automation-read-root <dir> --automation-write-root <dir>
+claude mcp add patronusphoto -- patronusphoto-cli mcp --automation-read-root <dir> --automation-write-root <dir>
 ```
 
 ## Security notes
@@ -64,7 +64,7 @@ The launcher's switch (off by default) opens the same loopback, token-authentica
 listener as `--control`, with a token the app keeps in its settings folder (`agent-control.token`,
 user-only on Unix; delete it for a new one). The folders chosen in Preferences › AI Integrations
 are the desktop process's roots, and the roots of a `mcp` headless session only when agents may
-use the app and *When PhotoCraft is closed* is set to work without a window.
+use the app and *When Patronus Photo is closed* is set to work without a window.
 
 The current server does not issue scoped sessions or distinguish trusted tools from high-impact tools. Authentication proves possession of the token; it does not restrict an authenticated client to document-only access. Do not expose either transport through an untrusted broker, shell, proxy, or remote service without adding an external policy boundary.
 
@@ -73,7 +73,7 @@ Filesystem capabilities are implemented. General tool and method capabilities re
 
 The five shared core tools are `command_list`, `command_run`, `command_batch`, `doc_inspect`
 and `render_preview`. Existing documented tools, including `doc_render_preview`, remain
-listed. `photocraft://document` and `photocraft://commands` expose live JSON. Long commands
+listed. `patronusphoto://document` and `patronusphoto://commands` expose live JSON. Long commands
 that are waited on report progress and stop when the request is cancelled, headless and in
 bridge mode (where they may also outlast the bridge's reply timeout), and direct headless
 Render Video does too, using the granted write root; see

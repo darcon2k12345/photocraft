@@ -5,7 +5,7 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::app::framework::BuildApp as _;
 use crate::canvas::testing;
 use crate::control::{ControlRequest, Reply, handle};
@@ -14,20 +14,20 @@ use craft::behavior::geometry::{BoxPart, CropBox};
 use craft::behavior::kurbo::{Point, Rect as DocRect};
 use std::cell::Cell;
 
-type AppHarness = Harness<'static, Box<PhotocraftApp>>;
+type AppHarness = Harness<'static, Box<PatronusPhotoApp>>;
 
 thread_local! {
     static SECTION_GAP: Cell<f32> = const { Cell::new(0.0) };
     static HANDLE_SIDE: Cell<f32> = const { Cell::new(0.0) };
 }
 
-fn harness() -> Harness<'static, Box<PhotocraftApp>> {
+fn harness() -> Harness<'static, Box<PatronusPhotoApp>> {
     harness_tool(Tool::Move)
 }
 
 /// The same document with a chosen tool selected (e.g. Hand, #2302).
-fn harness_tool(tool: Tool) -> Harness<'static, Box<PhotocraftApp>> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn harness_tool(tool: Tool) -> Harness<'static, Box<PatronusPhotoApp>> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     app.run("select.rect", json!({"x": 100, "y": 100, "width": 100, "height": 60})).unwrap();
@@ -37,7 +37,7 @@ fn harness_tool(tool: Tool) -> Harness<'static, Box<PhotocraftApp>> {
     app.ui.extras.rulers = false;
     app.ui.tool = tool;
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(egui::vec2(1000.0, 700.0)).build_app(
-        |ui, app: &mut PhotocraftApp| {
+        |ui, app: &mut PatronusPhotoApp| {
             egui::CentralPanel::default().show(ui, |ui| {
                 let env = craft::ui::runtime::env::Env::of(ui);
                 SECTION_GAP.with(|x| x.set(env.tokens.space.gap.section));
@@ -57,7 +57,7 @@ fn harness_tool(tool: Tool) -> Harness<'static, Box<PhotocraftApp>> {
     h
 }
 
-fn begin(h: &mut Harness<'static, Box<PhotocraftApp>>) {
+fn begin(h: &mut Harness<'static, Box<PatronusPhotoApp>>) {
     let ctx = h.ctx.clone();
     crate::menus::invoke(h.state_mut(), &ctx, "edit.freeTransform", json!({})).unwrap();
     h.run_steps(2);
@@ -70,13 +70,13 @@ fn set_crop_frame(h: &mut AppHarness) {
     h.state_mut().canvas_tools.crop.tool.crop_to(CropBox::new(DocRect::new(100.0, 100.0, 200.0, 160.0), 0.0));
 }
 
-fn view(app: &PhotocraftApp) -> craft::behavior::CanvasView {
+fn view(app: &PatronusPhotoApp) -> craft::behavior::CanvasView {
     testing::view(app).expect("the primary canvas has shown its view")
 }
 
 /// The shared BoxState geometry, with the largest standard handle/pivot reach.
 /// The real pointer gesture below must additionally rotate (not scale) the box.
-fn outside_box(app: &PhotocraftApp, at: egui::Pos2) -> BoxPart {
+fn outside_box(app: &PatronusPhotoApp, at: egui::Pos2) -> BoxPart {
     let v = view(app);
     let reach = f64::from(HANDLE_SIDE.with(Cell::get)) * 1.5 / v.zoom;
     app.ui.transform.as_ref().unwrap().session.state().part_at(v.to_doc(at), reach)

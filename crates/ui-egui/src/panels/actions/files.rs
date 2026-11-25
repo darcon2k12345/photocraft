@@ -5,7 +5,7 @@ use serde_json::{Value, json};
 use craft::host::{PickRequest, Picked};
 
 use super::ActionSelection;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::panel_docking::show_panel;
 
 /// Command params for a picked file: a real path keeps the journal small; browser files arrive
@@ -16,11 +16,11 @@ pub(super) fn source(name: &str, bytes: &[u8]) -> Value {
         return json!({"path": name});
     }
     let _ = name;
-    json!({"data": photocraft_engine::paint::tile::b64_encode(bytes)})
+    json!({"data": patronusphoto_engine::paint::tile::b64_encode(bytes)})
 }
 
 /// Import one set and reveal its first action, for both native paths and browser contents.
-pub(super) fn load_source(app: &mut PhotocraftApp, name: &str, params: Value) -> Result<Value, String> {
+pub(super) fn load_source(app: &mut PatronusPhotoApp, name: &str, params: Value) -> Result<Value, String> {
     let r = app.run("actions.load", params)?;
     let n = r["actions"].as_array().map_or(0, Vec::len) as u64;
     let unsupported = r["unsupported"].as_array().map_or(0, Vec::len);
@@ -32,8 +32,8 @@ pub(super) fn load_source(app: &mut PhotocraftApp, name: &str, params: Value) ->
         let note = crate::i18n::trn(
             crate::i18n::current(),
             unsupported as u64,
-            "{n} step has no PhotoCraft equivalent yet",
-            "{n} steps have no PhotoCraft equivalent yet",
+            "{n} step has no Patronus Photo equivalent yet",
+            "{n} steps have no Patronus Photo equivalent yet",
         );
         let template = "{message} ({note})";
         crate::i18n::fmt(tl!(template), &[("message", &loaded), ("note", &note)])
@@ -55,7 +55,7 @@ pub(super) fn load_source(app: &mut PhotocraftApp, name: &str, params: Value) ->
 }
 
 /// Load every chosen action file in order, retaining failures and unsupported-step warnings.
-pub(super) fn load_dialog(app: &mut PhotocraftApp) -> Result<Value, String> {
+pub(super) fn load_dialog(app: &mut PatronusPhotoApp) -> Result<Value, String> {
     // The panel menu greys this row while a recording or a paced playback holds the library (see
     // [`super::menu::states`]); a keyboard, shortcut or control-channel route says so before the
     // picker opens, since `actions.load` only refuses after it has read the chosen file.
@@ -123,7 +123,12 @@ pub(super) fn load_dialog(app: &mut PhotocraftApp) -> Result<Value, String> {
         let files = crate::i18n::trn(lang, loaded as u64, "{n} action file loaded", "{n} action files loaded");
         let mut notes = vec![crate::i18n::trn(lang, actions as u64, "{n} action", "{n} actions")];
         if unsupported > 0 {
-            notes.push(crate::i18n::trn(lang, unsupported as u64, "{n} step has no PhotoCraft equivalent yet", "{n} steps have no PhotoCraft equivalent yet"));
+            notes.push(crate::i18n::trn(
+                lang,
+                unsupported as u64,
+                "{n} step has no Patronus Photo equivalent yet",
+                "{n} steps have no Patronus Photo equivalent yet",
+            ));
         }
         notes.extend(replaced);
         if !errors.is_empty() {
@@ -143,14 +148,14 @@ pub(super) fn load_dialog(app: &mut PhotocraftApp) -> Result<Value, String> {
 
 /// Save Actions…: the given set, else the selected set folder, else the selected action's set,
 /// else every action, as a `.atn` file Photoshop loads. An empty set still saves.
-pub(super) fn save_dialog(app: &mut PhotocraftApp, set: Option<String>) -> Result<Value, String> {
+pub(super) fn save_dialog(app: &mut PatronusPhotoApp, set: Option<String>) -> Result<Value, String> {
     let set = set.or_else(|| super::selected_set(app).map(str::to_string)).or_else(|| super::selected_action(app).and_then(|a| a.set.clone()));
     let params = match &set {
         Some(set) => json!({"set": set, "skipUnsupported": true}),
         None => json!({"skipUnsupported": true}),
     };
     let r = app.run("actions.save", params)?;
-    let bytes = r["data"].as_str().and_then(photocraft_engine::paint::tile::b64_decode).ok_or("the export returned no data")?;
+    let bytes = r["data"].as_str().and_then(patronusphoto_engine::paint::tile::b64_decode).ok_or("the export returned no data")?;
     let n = r["actions"].as_array().map_or(0, Vec::len) as u64;
     let skipped = r["skipped"].as_array().map_or(0, Vec::len);
     // A set name can hold characters a file name can't (as in Keyboard Shortcuts' Save), or be a
@@ -162,7 +167,7 @@ pub(super) fn save_dialog(app: &mut PhotocraftApp, set: Option<String>) -> Resul
         .map(|c| if c.is_control() || matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|') { '_' } else { c })
         .collect();
     // A file name holds at most 255 bytes: the stem gets what `.atn` leaves, cut at a character.
-    let mut stem = photocraft_engine::file_cmds::portable_device_name(stem);
+    let mut stem = patronusphoto_engine::file_cmds::portable_device_name(stem);
     let mut cut = 255 - ".atn".len();
     while !stem.is_char_boundary(cut.min(stem.len())) {
         cut -= 1;

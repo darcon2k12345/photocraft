@@ -4,17 +4,17 @@
 
 use craft::draw::ui::shape::VectorMode;
 use egui::Modifiers;
-use photocraft_doc::vector::Path;
-use photocraft_geom::Point;
+use patronusphoto_doc::vector::Path;
+use patronusphoto_geom::Point;
 use serde_json::json;
 
 use super::{PathRef, editing};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing::{self, click};
 use crate::state::Tool;
 
-fn app(tool: Tool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app(tool: Tool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 200, "height": 200})).unwrap();
     app.sync_views();
     app.ui.tool = tool;
@@ -22,7 +22,7 @@ fn app(tool: Tool) -> Box<PhotocraftApp> {
 }
 
 /// A square work path; knot 1 at (120, 40) is smooth with horizontal handles.
-fn with_path(app: &mut PhotocraftApp) {
+fn with_path(app: &mut PatronusPhotoApp) {
     let path = json!({"subpaths": [{"closed": true, "knots": [
         [40, 40],
         {"anchor": [120, 40], "in": [100, 40], "out": [140, 40], "smooth": true},
@@ -32,24 +32,24 @@ fn with_path(app: &mut PhotocraftApp) {
     app.run("path.set", json!({"name": "work", "path": path})).unwrap();
 }
 
-fn work(app: &PhotocraftApp) -> Path {
+fn work(app: &PatronusPhotoApp) -> Path {
     app.session.active().unwrap().doc.work_path.clone().unwrap()
 }
 
-fn anchor(app: &PhotocraftApp, k: usize) -> Point {
+fn anchor(app: &PatronusPhotoApp, k: usize) -> Point {
     work(app).subpaths[0].knots[k].anchor
 }
 
-fn steps(app: &PhotocraftApp) -> usize {
+fn steps(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.entries().len()
 }
 
 /// The number of anchors of the Pen path being drawn, if one is.
-fn draft_len(app: &PhotocraftApp) -> Option<usize> {
+fn draft_len(app: &PatronusPhotoApp) -> Option<usize> {
     app.ui.pen.as_ref().map(|p| p.draft.knots.len())
 }
 
-fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2], mods: Modifiers) {
+fn drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2], mods: Modifiers) {
     testing::press(app, from, mods);
     let mid = [(from[0] + to[0]) / 2.0, (from[1] + to[1]) / 2.0];
     testing::move_to(app, mid, mods);
@@ -136,7 +136,7 @@ fn the_convert_point_tool_converts_points_without_a_modifier() {
     with_path(&mut app);
     let n = steps(&app);
     click(&mut app, [120.0, 40.0], Modifiers::NONE);
-    assert_eq!(work(&app).subpaths[0].knots[1], photocraft_doc::Knot::corner(120.0, 40.0), "a click makes a corner");
+    assert_eq!(work(&app).subpaths[0].knots[1], patronusphoto_doc::Knot::corner(120.0, 40.0), "a click makes a corner");
     assert_eq!(steps(&app), n + 1);
     assert_eq!(app.ui.direct_selection.anchors, vec![[0, 1]], "the converted anchor is selected");
     drag(&mut app, [40.0, 120.0], [40.0, 140.0], Modifiers::NONE);
@@ -197,14 +197,14 @@ fn a_closed_curvature_pen_path_stays_editable_with_the_curvature_pen() {
     assert_eq!((work(&app).subpaths.len(), steps(&app)), (1, n + 1));
     // The whole loop reflows through the moved anchor, as the Curvature Pen drew it.
     let pts = [[40.0, 40.0], [160.0, 40.0], [100.0, 180.0]];
-    let want = photocraft_vector::edit::curvature_knots(&pts, &[false; 3], true);
+    let want = patronusphoto_vector::edit::curvature_knots(&pts, &[false; 3], true);
     for (k, w) in work(&app).subpaths[0].knots.iter().zip(want) {
         assert_eq!([[k.anchor.x, k.anchor.y], [k.in_ctrl.x, k.in_ctrl.y], [k.out_ctrl.x, k.out_ctrl.y]], w);
     }
 }
 
 /// A Pen-drawn work path: a closed square of corners (40, 40)–(160, 160).
-fn with_corner_square(app: &mut PhotocraftApp) {
+fn with_corner_square(app: &mut PatronusPhotoApp) {
     let path = json!({"subpaths": [{"closed": true, "knots": [[40, 40], [160, 40], [160, 160], [40, 160]]}]});
     app.run("path.set", json!({"name": "work", "path": path})).unwrap();
 }
@@ -237,7 +237,7 @@ fn a_curvature_pen_double_click_through_the_canvas_rounds_a_corner() {
     with_corner_square(&mut app);
     app.ui.extras.rulers = false;
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(vec2(1000.0, 700.0)).with_step_dt(1.0 / 60.0).build_ui_state(
-        |ui, app: &mut Box<PhotocraftApp>| {
+        |ui, app: &mut Box<PatronusPhotoApp>| {
             egui::CentralPanel::default().show(ui, |ui| crate::canvas::document_area(app, ui));
         },
         app,
@@ -265,7 +265,7 @@ fn a_curvature_pen_double_click_through_the_canvas_rounds_a_corner() {
 
 /// Type on the open work path (100,20)–(100,180), its layer id. The text's range ends short of the
 /// last anchor: a marker on an anchor takes the drag instead (see `type_path_placement`).
-pub(super) fn type_on_a_path(app: &mut PhotocraftApp) -> u64 {
+pub(super) fn type_on_a_path(app: &mut PatronusPhotoApp) -> u64 {
     app.run("path.set", json!({"name": "work", "path": {"subpaths": [{"closed": false, "knots": [[100, 20], [100, 180]]}]}})).unwrap();
     let id = app.run("type.create", json!({"x": 20, "y": 70, "text": "On a path", "size": 24})).unwrap()["layer"].as_u64().unwrap();
     app.run("type.attachToPath", json!({})).unwrap();
@@ -281,8 +281,8 @@ pub(super) fn type_on_a_path(app: &mut PhotocraftApp) -> u64 {
 fn dragging_an_anchor_of_type_on_a_path_moves_the_type() {
     let mut app = app(Tool::DirectSelection);
     let id = type_on_a_path(&mut app);
-    let type_path = |app: &PhotocraftApp| match &app.session.active().unwrap().doc.layer(photocraft_doc::LayerId(id)).unwrap().content {
-        photocraft_doc::LayerContent::Text(t) => photocraft_engine::type_extra_cmds::type_path(t).unwrap(),
+    let type_path = |app: &PatronusPhotoApp| match &app.session.active().unwrap().doc.layer(patronusphoto_doc::LayerId(id)).unwrap().content {
+        patronusphoto_doc::LayerContent::Text(t) => patronusphoto_engine::type_extra_cmds::type_path(t).unwrap(),
         _ => panic!("not a type layer"),
     };
     let n = steps(&app);
@@ -305,9 +305,9 @@ fn a_targeted_vector_mask_on_type_on_a_path_is_edited_not_the_type_path() {
     let rect = json!({"subpaths": [{"closed": true, "knots": [[20, 20], [180, 20], [180, 160], [20, 160]]}]});
     app.run("layer.vectorMask.add", json!({"layer": id, "path": rect})).unwrap();
     app.ui.vector_mask_target = true;
-    let layer = |app: &PhotocraftApp| app.session.active().unwrap().doc.layer(photocraft_doc::LayerId(id)).unwrap().clone();
-    let type_path = |app: &PhotocraftApp| match &layer(app).content {
-        photocraft_doc::LayerContent::Text(t) => photocraft_engine::type_extra_cmds::type_path(t).unwrap(),
+    let layer = |app: &PatronusPhotoApp| app.session.active().unwrap().doc.layer(patronusphoto_doc::LayerId(id)).unwrap().clone();
+    let type_path = |app: &PatronusPhotoApp| match &layer(app).content {
+        patronusphoto_doc::LayerContent::Text(t) => patronusphoto_engine::type_extra_cmds::type_path(t).unwrap(),
         _ => panic!("not a type layer"),
     };
     let before = type_path(&app);
@@ -323,12 +323,12 @@ fn a_targeted_vector_mask_on_type_on_a_path_is_edited_not_the_type_path() {
     assert_eq!(layer(&app).vector_mask.unwrap().path.subpaths[0].knots[0].anchor, Point::new(40.0, 30.0));
 }
 
-fn save_path(app: &mut PhotocraftApp) {
-    let path = photocraft_engine::vector_cmds::path_json(&work(app));
+fn save_path(app: &mut PatronusPhotoApp) {
+    let path = patronusphoto_engine::vector_cmds::path_json(&work(app));
     app.run("path.set", json!({"name": "Saved", "path": path})).unwrap();
 }
 
-fn saved(app: &PhotocraftApp) -> Path {
+fn saved(app: &PatronusPhotoApp) -> Path {
     app.session.active().unwrap().doc.paths.iter().find(|path| path.name == "Saved").unwrap().path.clone()
 }
 
@@ -359,14 +359,14 @@ fn selected_saved_and_work_paths_win_overlapping_shape_hits() {
 }
 
 /// ⌘ presses an anchor of the work path and moves it, which leaves an edit in flight.
-fn start_command_drag(app: &mut PhotocraftApp) {
+fn start_command_drag(app: &mut PatronusPhotoApp) {
     testing::press(app, [40.0, 120.0], Modifiers::COMMAND);
     testing::move_to(app, [50.0, 130.0], Modifiers::COMMAND);
     assert!(editing(app));
 }
 
 /// What a drag the app already cancelled still delivers: a move and a release, which change nothing.
-fn consume_stale_drag(app: &mut PhotocraftApp) {
+fn consume_stale_drag(app: &mut PatronusPhotoApp) {
     testing::move_to(app, [60.0, 140.0], Modifiers::NONE);
     testing::release(app, [60.0, 140.0], Modifiers::NONE);
     assert!(!editing(app));
@@ -484,7 +484,7 @@ fn the_convert_point_tool_edits_selected_saved_paths_without_changing_the_work_p
     app.ui.selected_path = Some("Saved".into());
     let (before_work, before_saved, n) = (work(&app), saved(&app), steps(&app));
     click(&mut app, [120.0, 40.0], Modifiers::NONE);
-    assert_eq!(saved(&app).subpaths[0].knots[1], photocraft_doc::Knot::corner(120.0, 40.0));
+    assert_eq!(saved(&app).subpaths[0].knots[1], patronusphoto_doc::Knot::corner(120.0, 40.0));
     assert_eq!(work(&app), before_work);
     assert_eq!(steps(&app), n + 1);
     assert_eq!(app.ui.direct_selection.target, Some(PathRef::Saved(0)));

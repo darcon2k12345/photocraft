@@ -3,12 +3,12 @@
 //! ("Drag Segment"), with the whole path selected the whole path moves ("Drag Path").
 
 use egui::Modifiers;
-use photocraft_doc::vector::Path;
-use photocraft_geom::Point;
+use patronusphoto_doc::vector::Path;
+use patronusphoto_geom::Point;
 use serde_json::json;
 
 use super::convert_point_history_tests::{added, drag};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing;
 use crate::state::Tool;
 
@@ -16,8 +16,8 @@ const BOTTOM_EDGE: [f64; 2] = [200.0, 500.0];
 
 /// The reference document: 800×600 px with a saved path, targeted in the Paths panel: a closed
 /// corner square, an open straight line and an open S-curve of two smooth points.
-fn app(tool: Tool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app(tool: Tool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 800, "height": 600})).unwrap();
     let path = json!({"subpaths": [
         {"closed": true, "knots": [[100, 300], [300, 300], [300, 500], [100, 500]]},
@@ -34,7 +34,7 @@ fn app(tool: Tool) -> Box<PhotocraftApp> {
     app
 }
 
-fn path(app: &PhotocraftApp) -> Path {
+fn path(app: &PatronusPhotoApp) -> Path {
     app.session.active().unwrap().doc.paths[0].path.clone()
 }
 
@@ -70,7 +70,7 @@ fn assert_same_path(a: &Path, b: &Path, what: &str) {
 }
 
 /// Every anchor of the path selected, by a ⌘-marquee (Direct Selection in this tool).
-fn select_all(app: &mut PhotocraftApp) {
+fn select_all(app: &mut PatronusPhotoApp) {
     drag(app, [0.0, 0.0], [800.0, 600.0], Modifiers::COMMAND);
     assert_eq!(app.ui.direct_selection.anchors.len(), 8);
 }

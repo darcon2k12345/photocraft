@@ -1,8 +1,8 @@
 use super::*;
-use photocraft_doc::{Layer, LayerContent};
+use patronusphoto_doc::{Layer, LayerContent};
 
 fn tmp(name: &str) -> String {
-    let d = std::env::temp_dir().join(format!("photocraft-web-{}-{name}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("patronusphoto-web-{}-{name}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).unwrap();
     d.to_string_lossy().into_owned()
@@ -17,10 +17,10 @@ fn session(depth: u32) -> Session {
         let fmt = doc.pixel_format();
         let mut l = Layer::raster("Logo", fmt);
         let surf = l.surface_mut().unwrap();
-        surf.fill_rect(Rect::new(8, 8, 32, 32), &photocraft_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 1.0]));
-        surf.fill_rect(Rect::new(32, 8, 34, 32), &photocraft_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 0.4]));
+        surf.fill_rect(Rect::new(8, 8, 32, 32), &patronusphoto_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 1.0]));
+        surf.fill_rect(Rect::new(32, 8, 34, 32), &patronusphoto_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 0.4]));
         for x in 0..64 {
-            surf.fill_rect(Rect::new(x, 36, x + 1, 48), &photocraft_raster::from_rgba(&fmt, [x as f32 / 63.0, 0.5, 1.0 - x as f32 / 63.0, 1.0]));
+            surf.fill_rect(Rect::new(x, 36, x + 1, 48), &patronusphoto_raster::from_rgba(&fmt, [x as f32 / 63.0, 0.5, 1.0 - x as f32 / 63.0, 1.0]));
         }
         let id = doc.insert_above(None, l);
         *active = Some(id);
@@ -30,8 +30,8 @@ fn session(depth: u32) -> Session {
     s
 }
 
-fn decode(path: &str) -> photocraft_codecs::Image {
-    photocraft_codecs::decode(&std::fs::read(path).unwrap()).unwrap()
+fn decode(path: &str) -> patronusphoto_codecs::Image {
+    patronusphoto_codecs::decode(&std::fs::read(path).unwrap()).unwrap()
 }
 
 #[test]
@@ -54,8 +54,8 @@ fn estimates_preserve_last_successful_export_settings() {
 fn the_estimate_reports_ignored_slices() {
     let mut s = session(8);
     s.edit("slices", |doc, _| {
-        let n = photocraft_doc::slices::MAX_RESOLVED_SLICES + 2;
-        doc.slices.list = (0..n).map(|i| photocraft_doc::Slice { id: i as u32 + 1, rect: Rect::new(0, 0, 8, 8), ..Default::default() }).collect();
+        let n = patronusphoto_doc::slices::MAX_RESOLVED_SLICES + 2;
+        doc.slices.list = (0..n).map(|i| patronusphoto_doc::Slice { id: i as u32 + 1, rect: Rect::new(0, 0, 8, 8), ..Default::default() }).collect();
         Ok(())
     })
     .unwrap();
@@ -93,7 +93,7 @@ fn platform_writer_receives_resized_image_at_every_depth() {
         assert_eq!(files[0].0, "download.png");
         assert_eq!(r["files"], json!(["download.png"]));
         assert_eq!(r["bytes"].as_u64(), Some(files[0].1.len() as u64));
-        let img = photocraft_codecs::decode(&files[0].1).unwrap().convert(photocraft_codecs::ChannelLayout::Rgba, photocraft_codecs::SampleType::U8);
+        let img = patronusphoto_codecs::decode(&files[0].1).unwrap().convert(patronusphoto_codecs::ChannelLayout::Rgba, patronusphoto_codecs::SampleType::U8);
         assert_eq!(img.dimensions(), (32, 24), "{depth}-bit document");
         let i = (8 * 32 + 8) * 4;
         assert_eq!(&img.data()[i..i + 4], &[255, 0, 0, 255]);
@@ -130,7 +130,7 @@ fn platform_writer_checks_authorization_before_dropping_floating_pixels() {
     })
     .unwrap();
     assert!(crate::float_cmds::floating(s.active().unwrap()).is_none());
-    let img = photocraft_codecs::decode(&output).unwrap().convert(photocraft_codecs::ChannelLayout::Rgba, photocraft_codecs::SampleType::U8);
+    let img = patronusphoto_codecs::decode(&output).unwrap().convert(patronusphoto_codecs::ChannelLayout::Rgba, patronusphoto_codecs::SampleType::U8);
     let old = (10 * 64 + 10) * 4;
     let moved = (10 * 64 + 42) * 4;
     assert_eq!(img.data()[old + 3], 0, "the selected pixels left their original position");
@@ -156,12 +156,12 @@ fn platform_writer_receives_slices_spacer_and_html_with_sibling_references() {
         let path = path.as_str().unwrap();
         let filename = path.strip_prefix("downloads/").unwrap();
         assert!(page.contains(&format!("src=\"{filename}\"")), "the HTML refers to its sibling {filename}");
-        assert!(photocraft_codecs::decode(files.get(path).unwrap()).is_ok());
+        assert!(patronusphoto_codecs::decode(files.get(path).unwrap()).is_ok());
     }
     assert!(page.contains("src=\"spacer.gif\""));
     assert!(page.contains("Hello &amp; bye"));
-    assert_eq!(photocraft_codecs::decode(files.get("downloads/spacer.gif").unwrap()).unwrap().dimensions(), (1, 1));
-    assert_eq!(photocraft_codecs::decode(files.get("downloads/logo.png").unwrap()).unwrap().dimensions(), (24, 24));
+    assert_eq!(patronusphoto_codecs::decode(files.get("downloads/spacer.gif").unwrap()).unwrap().dimensions(), (1, 1));
+    assert_eq!(patronusphoto_codecs::decode(files.get("downloads/logo.png").unwrap()).unwrap().dimensions(), (24, 24));
     assert_eq!(s.file_menu.last_web.as_ref(), Some(&params));
 }
 
@@ -240,7 +240,7 @@ fn gif_and_png8_keep_transparency_and_palette() {
     let gif = format!("{dir}/a.gif");
     let r = s.execute("file.export.saveForWebLegacy", json!({"format": "gif", "colors": 8, "dither": "none", "path": gif})).unwrap();
     assert_eq!(r["files"][0], json!(gif));
-    let img = decode(&gif).convert(photocraft_codecs::ChannelLayout::Rgba, photocraft_codecs::SampleType::U8);
+    let img = decode(&gif).convert(patronusphoto_codecs::ChannelLayout::Rgba, patronusphoto_codecs::SampleType::U8);
     let px = |x: usize, y: usize| img.data()[(y * 64 + x) * 4..(y * 64 + x) * 4 + 4].to_vec();
     assert_eq!(px(0, 0)[3], 0, "transparent background");
     assert_eq!(px(16, 16), vec![255, 0, 0, 255]);
@@ -253,7 +253,7 @@ fn gif_and_png8_keep_transparency_and_palette() {
     // Transparency off: everything over the matte.
     let png8 = format!("{dir}/a.png");
     s.execute("file.export.saveForWebLegacy", json!({"format": "png8", "transparency": false, "matte": "#00ff00", "path": png8})).unwrap();
-    let img = decode(&png8).convert(photocraft_codecs::ChannelLayout::Rgba, photocraft_codecs::SampleType::U8);
+    let img = decode(&png8).convert(patronusphoto_codecs::ChannelLayout::Rgba, patronusphoto_codecs::SampleType::U8);
     assert_eq!(&img.data()[..4], &[0, 255, 0, 255]);
 }
 
@@ -270,7 +270,7 @@ fn png8_has_no_matte_by_default() {
         let mut l = Layer::raster("Shadow", fmt);
         let surf = l.surface_mut().unwrap();
         for x in 0..256 {
-            surf.fill_rect(Rect::new(x, 0, x + 1, 8), &photocraft_raster::from_rgba(&fmt, [0.0, 0.0, 0.0, 1.0 - x as f32 / 255.0]));
+            surf.fill_rect(Rect::new(x, 0, x + 1, 8), &patronusphoto_raster::from_rgba(&fmt, [0.0, 0.0, 0.0, 1.0 - x as f32 / 255.0]));
         }
         *active = Some(doc.insert_above(None, l));
         Ok(())
@@ -281,7 +281,7 @@ fn png8_has_no_matte_by_default() {
         let mut p = json!({"format": "png8", "path": path});
         p.as_object_mut().unwrap().extend(extra.as_object().unwrap().clone());
         s.execute("file.export.saveForWebLegacy", p).unwrap();
-        let img = decode(&path).convert(photocraft_codecs::ChannelLayout::Rgba, photocraft_codecs::SampleType::U8);
+        let img = decode(&path).convert(patronusphoto_codecs::ChannelLayout::Rgba, patronusphoto_codecs::SampleType::U8);
         (0..256).map(|x| img.data()[x * 4..x * 4 + 4].to_vec()).collect::<Vec<_>>()
     };
     let plain = export(&mut s, json!({}));
@@ -345,7 +345,7 @@ fn webp_lossy_lossless_transparency_and_metadata() {
     // Lossless is the PNG-24 export's pixels exactly.
     s.execute("file.export.saveForWebLegacy", json!({"format": "png24", "path": path("same.png")})).unwrap();
     let (a, b) = (decode(&path("lossless.webp")), decode(&path("same.png")));
-    let rgba = |i: &photocraft_codecs::Image| i.convert(photocraft_codecs::ChannelLayout::Rgba, photocraft_codecs::SampleType::U8).data().to_vec();
+    let rgba = |i: &patronusphoto_codecs::Image| i.convert(patronusphoto_codecs::ChannelLayout::Rgba, patronusphoto_codecs::SampleType::U8).data().to_vec();
     assert_eq!(rgba(&a), rgba(&b));
     // The transparent corner stays transparent; with transparency off it is the matte.
     assert_eq!(rgba(&a)[3], 0);
@@ -422,7 +422,7 @@ fn slices_export_with_html_table() {
     s.execute("slice.new", json!({"rect": [40, 0, 24, 20], "kind": "noImage", "cellText": "Hello & bye"})).unwrap();
     let r = s.execute("file.export.saveForWebLegacy", json!({"format": "png24", "dir": dir, "html": true})).unwrap();
     let files: Vec<String> = r["files"].as_array().unwrap().iter().map(|v| v.as_str().unwrap().to_string()).collect();
-    let n = photocraft_doc::slices::resolve(&s.active().unwrap().doc).len();
+    let n = patronusphoto_doc::slices::resolve(&s.active().unwrap().doc).len();
     assert_eq!(files.len(), n - 1, "every slice but the no-image one");
     let logo = files.iter().find(|f| f.ends_with("images/logo.png")).unwrap();
     assert_eq!(decode(logo).dimensions(), (24, 24));
@@ -780,7 +780,7 @@ fn image_assets_are_generated_now_and_on_save() {
     let mut d = (*doc).clone();
     d.layers.push(Layer::new(
         "default 200% @2x",
-        LayerContent::Group(photocraft_doc::Group { children: vec![], expanded: false, artboard: None, frame_stroke: None }),
+        LayerContent::Group(patronusphoto_doc::Group { children: vec![], expanded: false, artboard: None, frame_stroke: None }),
     ));
     let lid = d.layers[1].id;
     d.layer_mut(lid).unwrap().name = "icon.png".into();
@@ -804,7 +804,7 @@ fn a_save_script_closing_another_tab_still_generates_the_saved_documents_assets(
     s.edit("logo", |doc, active| {
         let fmt = doc.pixel_format();
         let mut l = Layer::raster("logo.png", fmt);
-        l.surface_mut().unwrap().fill_rect(Rect::new(4, 4, 12, 12), &photocraft_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 1.0]));
+        l.surface_mut().unwrap().fill_rect(Rect::new(4, 4, 12, 12), &patronusphoto_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 1.0]));
         let id = doc.insert_above(None, l);
         *active = Some(id);
         Ok(())
@@ -834,7 +834,7 @@ fn a_save_script_closing_the_saved_document_generates_no_replacement_assets() {
     s.edit("logo", |doc, active| {
         let fmt = doc.pixel_format();
         let mut l = Layer::raster("logo.png", fmt);
-        l.surface_mut().unwrap().fill_rect(Rect::new(4, 4, 12, 12), &photocraft_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 1.0]));
+        l.surface_mut().unwrap().fill_rect(Rect::new(4, 4, 12, 12), &patronusphoto_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 1.0]));
         let id = doc.insert_above(None, l);
         *active = Some(id);
         Ok(())
@@ -847,7 +847,7 @@ fn a_save_script_closing_the_saved_document_generates_no_replacement_assets() {
     s.edit("logo2", |doc, active| {
         let fmt = doc.pixel_format();
         let mut l = Layer::raster("logo2.png", fmt);
-        l.surface_mut().unwrap().fill_rect(Rect::new(4, 4, 12, 12), &photocraft_raster::from_rgba(&fmt, [0.0, 1.0, 0.0, 1.0]));
+        l.surface_mut().unwrap().fill_rect(Rect::new(4, 4, 12, 12), &patronusphoto_raster::from_rgba(&fmt, [0.0, 1.0, 0.0, 1.0]));
         let id = doc.insert_above(None, l);
         *active = Some(id);
         Ok(())
@@ -877,10 +877,13 @@ fn image_assets_keep_full_artboards() {
     s.edit("board", |doc, _| {
         let fmt = doc.pixel_format();
         let mut logo = Layer::raster("logo.png", fmt);
-        logo.surface_mut().unwrap().fill_rect(Rect::new(12, 10, 20, 16), &photocraft_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 1.0]));
-        let board =
-            photocraft_doc::Artboard { rect: Rect::new(4, 6, 44, 36), background: photocraft_doc::ArtboardBackground::Transparent, preset: String::new() };
-        let group = photocraft_doc::Group { children: vec![logo], expanded: true, artboard: Some(board), frame_stroke: None };
+        logo.surface_mut().unwrap().fill_rect(Rect::new(12, 10, 20, 16), &patronusphoto_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 1.0]));
+        let board = patronusphoto_doc::Artboard {
+            rect: Rect::new(4, 6, 44, 36),
+            background: patronusphoto_doc::ArtboardBackground::Transparent,
+            preset: String::new(),
+        };
+        let group = patronusphoto_doc::Group { children: vec![logo], expanded: true, artboard: Some(board), frame_stroke: None };
         doc.layers = vec![Layer::new("board.png", LayerContent::Group(group))].into();
         Ok(())
     })
@@ -912,14 +915,14 @@ fn image_assets_refuse_empty_artboards() {
     s.edit("boards", |doc, _| {
         let fmt = doc.pixel_format();
         let mut outside = Layer::raster("outside", fmt);
-        outside.surface_mut().unwrap().fill_rect(Rect::new(50, 40, 60, 46), &photocraft_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 1.0]));
-        let board = |x0| photocraft_doc::Artboard {
+        outside.surface_mut().unwrap().fill_rect(Rect::new(50, 40, 60, 46), &patronusphoto_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 1.0]));
+        let board = |x0| patronusphoto_doc::Artboard {
             rect: Rect::new(x0, 0, x0 + 20, 20),
-            background: photocraft_doc::ArtboardBackground::Transparent,
+            background: patronusphoto_doc::ArtboardBackground::Transparent,
             preset: String::new(),
         };
-        let empty = photocraft_doc::Group { children: vec![], expanded: true, artboard: Some(board(0)), frame_stroke: None };
-        let off = photocraft_doc::Group { children: vec![outside], expanded: true, artboard: Some(board(24)), frame_stroke: None };
+        let empty = patronusphoto_doc::Group { children: vec![], expanded: true, artboard: Some(board(0)), frame_stroke: None };
+        let off = patronusphoto_doc::Group { children: vec![outside], expanded: true, artboard: Some(board(24)), frame_stroke: None };
         doc.layers = vec![Layer::new("empty.png", LayerContent::Group(empty)), Layer::new("off.png", LayerContent::Group(off))].into();
         Ok(())
     })
@@ -944,14 +947,14 @@ fn image_assets_never_write_one_file_twice() {
     s.edit("paint", |doc, active| {
         let fmt = doc.pixel_format();
         let mut l = Layer::raster("Top", fmt);
-        l.surface_mut().unwrap().fill_rect(Rect::new(0, 0, 4, 4), &photocraft_raster::from_rgba(&fmt, [0.0, 0.0, 1.0, 1.0]));
+        l.surface_mut().unwrap().fill_rect(Rect::new(0, 0, 4, 4), &patronusphoto_raster::from_rgba(&fmt, [0.0, 0.0, 1.0, 1.0]));
         let id = doc.insert_above(None, l);
         *active = Some(id);
         Ok(())
     })
     .unwrap();
     let mut d = (*s.active().unwrap().doc).clone();
-    let id = |d: &photocraft_doc::Document, name: &str| d.walk().into_iter().find(|(_, _, l)| l.name == name).unwrap().2.id;
+    let id = |d: &patronusphoto_doc::Document, name: &str| d.walk().into_iter().find(|(_, _, l)| l.name == name).unwrap().2.id;
     let (top, logo) = (id(&d, "Top"), id(&d, "Logo"));
     d.layer_mut(top).unwrap().name = "Logo.PNG".into();
     d.layer_mut(logo).unwrap().name = "logo.png, logo.png".into();
@@ -968,7 +971,7 @@ fn image_assets_never_write_one_file_twice() {
     d.layer_mut(logo).unwrap().name = "Logo".into();
     d.layers.push(Layer::new(
         "default 50% + 200% + 200% @2x",
-        LayerContent::Group(photocraft_doc::Group { children: vec![], expanded: false, artboard: None, frame_stroke: None }),
+        LayerContent::Group(patronusphoto_doc::Group { children: vec![], expanded: false, artboard: None, frame_stroke: None }),
     ));
     let (files, errors) = generate_assets(&d, &dir);
     let names: Vec<_> = files.iter().map(|p| std::path::Path::new(p).file_name().unwrap().to_string_lossy().into_owned()).collect();
@@ -997,7 +1000,7 @@ fn image_assets_reject_traversal_from_names_and_defaults() {
     d.layer_mut(id).unwrap().name = "safe.png".into();
     d.layers.push(Layer::new(
         "default ../ + /outside/ + ..\\bad/ + C:\\drive/ + 50% nested/",
-        LayerContent::Group(photocraft_doc::Group { children: vec![], expanded: false, artboard: None, frame_stroke: None }),
+        LayerContent::Group(patronusphoto_doc::Group { children: vec![], expanded: false, artboard: None, frame_stroke: None }),
     ));
     let (files, errors) = generate_assets(&d, &dir);
     assert_eq!(
@@ -1066,7 +1069,7 @@ fn previews_show_the_optimised_pixels() {
     let s = session(8);
     let doc = s.active().unwrap().doc.clone();
     let (wd, _, _) = web_document(&doc, &json!({}), &WebSettings::default()).unwrap();
-    let buf = photocraft_compose::flatten(&wd);
+    let buf = patronusphoto_compose::flatten(&wd);
     for f in ["jpeg", "gif", "png8", "png24", "wbmp", "webp"] {
         let st = WebSettings::from_params(&json!({"format": f, "quality": 90, "transparency": false}), "x").unwrap();
         let o = optimize(&buf.px, 64, wd.bounds(), &st, None, None, None, 72.0, true).unwrap();
@@ -1268,14 +1271,14 @@ fn save_for_web_all_writes_the_photos_exif() {
     };
     let (all, r) = export(&mut s, "all");
     let exif = exif_app1(&all).expect("an EXIF APP1 segment");
-    let camera = photocraft_algo::exif::read(&exif);
+    let camera = patronusphoto_algo::exif::read(&exif);
     assert_eq!(camera.make.as_deref(), Some("TestMake"));
     assert_eq!(camera.date_taken.as_deref(), Some("2024:05:01 10:30:00"));
     let (tags, next) = ifd0(&exif);
     assert_eq!(tags.get(&0x0112), Some(&1), "the exported pixels are already upright");
     assert!(tags.contains_key(&0x8825), "GPS kept");
     assert_eq!(next, 0, "the source's thumbnail is not linked");
-    assert_eq!(photocraft_codecs::exif_resolution(&exif), Some((72.0, 72.0)), "the document's resolution, not the source's 300");
+    assert_eq!(patronusphoto_codecs::exif_resolution(&exif), Some((72.0, 72.0)), "the document's resolution, not the source's 300");
     assert!(decode(&format!("{dir}/all.jpg")).meta.xmp.unwrap_or_default().contains("Example"));
     for m in ["none", "copyright", "copyrightAndContact", "allExceptCameraInfo"] {
         let (bytes, r) = export(&mut s, m);
@@ -1306,7 +1309,7 @@ fn save_for_web_webp_all_keeps_an_exif_only_photos_exif() {
             let meta = decode(&path).meta;
             if metadata == "all" {
                 let exif = meta.exif.unwrap_or_else(|| panic!("EXIF kept (lossless {lossless})"));
-                assert_eq!(photocraft_algo::exif::read(&exif).make.as_deref(), Some("TestMake"), "lossless {lossless}");
+                assert_eq!(patronusphoto_algo::exif::read(&exif).make.as_deref(), Some("TestMake"), "lossless {lossless}");
                 assert!(meta.xmp.is_none(), "the photo had no XMP");
             } else {
                 assert!(meta.exif.is_none(), "{metadata} leaves the camera data out (lossless {lossless})");
@@ -1326,7 +1329,7 @@ fn quick_export_all_writes_the_photos_exif() {
         (std::fs::read(&path).unwrap(), r)
     };
     let (all, r) = export(&mut s, "all");
-    assert_eq!(photocraft_algo::exif::read(&exif_app1(&all).expect("EXIF")).make.as_deref(), Some("TestMake"));
+    assert_eq!(patronusphoto_algo::exif::read(&exif_app1(&all).expect("EXIF")).make.as_deref(), Some("TestMake"));
     assert_eq!(r["warnings"], json!([]));
     assert_eq!(exif_app1(&export(&mut s, "copyright").0), None);
     assert_eq!(exif_app1(&export(&mut s, "none").0), None);
@@ -1359,12 +1362,12 @@ fn web_exif_that_does_not_fit_is_reported_and_bad_exif_is_harmless() {
 
 #[test]
 fn quick_export_exr_preserves_linear_hdr_and_alpha() {
-    use photocraft_codecs::{ChannelLayout, Format, Image, SampleType};
+    use patronusphoto_codecs::{ChannelLayout, Format, Image, SampleType};
     let dir = tmp("quick_exr_hdr");
     let samples = [-0.25, 2.0, 0.125, 1.0, 4.0, 0.25, 0.5, 0.5];
     let image = Image::from_f32(2, 1, ChannelLayout::Rgba, &samples).unwrap();
-    let bytes = photocraft_codecs::encode(&image, Format::OpenExr, &Default::default()).unwrap();
-    let doc = photocraft_io::import("hdr.exr", &bytes).unwrap().document;
+    let bytes = patronusphoto_codecs::encode(&image, Format::OpenExr, &Default::default()).unwrap();
+    let doc = patronusphoto_io::import("hdr.exr", &bytes).unwrap().document;
     let mut s = Session::new();
     s.add_document(doc, Some(format!("{dir}/source.psd")));
     for convert in [true, false] {
@@ -1459,7 +1462,7 @@ fn selected_slices_keep_their_place_in_the_html_table() {
     let mut s = session(8);
     s.execute("slice.new", json!({"rect": [0, 0, 32, 48], "name": "left"})).unwrap();
     s.execute("slice.new", json!({"rect": [32, 0, 32, 48], "name": "right"})).unwrap();
-    let right = photocraft_doc::slices::resolve(&s.active().unwrap().doc).iter().find(|r| r.name == "right").unwrap().number;
+    let right = patronusphoto_doc::slices::resolve(&s.active().unwrap().doc).iter().find(|r| r.name == "right").unwrap().number;
     let r = s.execute("file.export.saveForWebLegacy", json!({"format": "png24", "dir": dir, "html": true, "numbers": [right]})).unwrap();
     let files: Vec<&str> = r["files"].as_array().unwrap().iter().map(|v| v.as_str().unwrap().rsplit('/').next().unwrap()).collect();
     assert_eq!(files, ["right.png"]);
@@ -1476,7 +1479,7 @@ fn two_slices() -> (Session, u64, u64) {
     let mut s = session(8);
     s.execute("slice.new", json!({"rect": [0, 0, 32, 48], "name": "left"})).unwrap();
     s.execute("slice.new", json!({"rect": [32, 0, 32, 48], "name": "right"})).unwrap();
-    let all = photocraft_doc::slices::resolve(&s.active().unwrap().doc);
+    let all = patronusphoto_doc::slices::resolve(&s.active().unwrap().doc);
     let number = |name: &str| all.iter().find(|r| r.name == name).unwrap().number as u64;
     (s, number("left"), number("right"))
 }
@@ -1509,7 +1512,7 @@ fn slice_numbers_that_do_not_exist_are_refused() {
     // can only select existing slices; a script naming others is refused.
     let dir = tmp("missing-numbers");
     let (mut s, left, right) = two_slices();
-    let count = photocraft_doc::slices::resolve(&s.active().unwrap().doc).len() as u64;
+    let count = patronusphoto_doc::slices::resolve(&s.active().unwrap().doc).len() as u64;
     let (gone, also_gone) = (count + 1, count + 7);
     assert_refused(&mut s, &dir, json!({"format": "png24", "dir": dir, "html": true, "numbers": [gone]}), &format!("no slice numbered {gone}"));
     // Partly missing: the dialog builds `numbers` from slices it shows, so every number it sends
@@ -1550,7 +1553,7 @@ fn slice_modes_are_validated() {
         assert_refused(&mut s, &dir, p, expect);
     }
     // Every valid call still works.
-    let count = photocraft_doc::slices::resolve(&s.active().unwrap().doc).len();
+    let count = patronusphoto_doc::slices::resolve(&s.active().unwrap().doc).len();
     let names = |r: &Value| r["files"].as_array().unwrap().iter().map(|v| v.as_str().unwrap().rsplit('/').next().unwrap().to_string()).collect::<Vec<_>>();
     for (mode, expect) in [(json!(null), count), (json!("all"), count), (json!("user"), 2)] {
         let out = tmp("slice-modes-ok");

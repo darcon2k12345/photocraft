@@ -14,9 +14,9 @@
 //! All pixel data here is the surface's *native* channels as normalised `f32` (any depth, any colour
 //! model); colour-space-specific work happens in the callbacks.
 
-use photocraft_color::{BlendMode, PixelFormat};
-use photocraft_geom::Rect;
-use photocraft_raster::{Surface, from_rgba_into, to_rgba};
+use patronusphoto_color::{BlendMode, PixelFormat};
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::{Surface, from_rgba_into, to_rgba};
 
 use crate::{Dab, Stroke, dab_coverage, dabs};
 
@@ -246,8 +246,11 @@ pub fn apply_coverage(
             }
             let d = to_rgba(&fmt, px);
             let s = to_rgba(&fmt, src);
-            let o =
-                if lock_transparency { photocraft_color::blend::composite_atop(blend, d, s, k) } else { photocraft_color::blend::composite(blend, d, s, k) };
+            let o = if lock_transparency {
+                patronusphoto_color::blend::composite_atop(blend, d, s, k)
+            } else {
+                patronusphoto_color::blend::composite(blend, d, s, k)
+            };
             let mut enc = [0.0f32; 8];
             from_rgba_into(&fmt, o, &mut enc);
             px.copy_from_slice(&enc[..n]);
@@ -535,7 +538,7 @@ impl Smudge {
                 smudged.copy_from_slice(px);
                 lay_down(smudged, &carry[q..q + n], alpha, self.strength);
                 // A transparent pixel has no colour to blend with: there the smudged colour stays.
-                let out = photocraft_color::blend::blend_rgb(mode, backdrop, [smudged[0], smudged[1], smudged[2]]);
+                let out = patronusphoto_color::blend::blend_rgb(mode, backdrop, [smudged[0], smudged[1], smudged[2]]);
                 for c in 0..3 {
                     smudged[c] += (out[c] - smudged[c]) * backdrop_alpha;
                 }
@@ -587,7 +590,7 @@ fn premultiply(px: &mut [f32], alpha: Option<usize>) {
 mod tests {
     use super::*;
     use crate::{BrushSettings, StrokePoint};
-    use photocraft_geom::Point;
+    use patronusphoto_geom::Point;
 
     fn stroke(points: &[(f64, f64)], size: f32, hardness: f32) -> Stroke {
         Stroke {
@@ -646,7 +649,7 @@ mod tests {
     /// Missing source pixels must preserve native ink values even for non-Normal blend modes.
     #[test]
     fn transparent_retouch_source_preserves_native_channels_in_every_blend_mode() {
-        use photocraft_color::{ColorMode, SampleType};
+        use patronusphoto_color::{ColorMode, SampleType};
         for sample in [SampleType::U8, SampleType::U16, SampleType::F32] {
             for mode in [ColorMode::Rgb, ColorMode::Grayscale, ColorMode::Cmyk, ColorMode::Lab] {
                 let fmt = PixelFormat::new(mode, sample, true);

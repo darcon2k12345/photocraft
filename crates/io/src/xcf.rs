@@ -1,5 +1,5 @@
 //! GIMP XCF import. `craft-xcf` owns XCF parsing, decompression and pixel decoding; this module
-//! maps its neutral document representation into PhotoCraft's model.
+//! maps its neutral document representation into Patronus Photo's model.
 
 #[cfg(test)]
 mod tests;
@@ -7,10 +7,10 @@ mod tests;
 use std::sync::Arc;
 
 use craft_xcf::{BaseType, Orientation, Pixels, TreeNode};
-use photocraft_color::{BlendMode, ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{AlphaChannel, Document, LabelColor, Layer, LayerContent, LayerMask};
-use photocraft_geom::{Rect, Size};
-use photocraft_raster::{Interrupt, Surface};
+use patronusphoto_color::{BlendMode, ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::{AlphaChannel, Document, LabelColor, Layer, LayerContent, LayerMask};
+use patronusphoto_geom::{Rect, Size};
+use patronusphoto_raster::{Interrupt, Surface};
 
 use crate::ora::Warnings;
 use crate::{ImportResult, IoError};
@@ -112,7 +112,7 @@ fn write_pixels(surface: &mut Surface, pixels: &Pixels, x: i32, y: i32, budget: 
     if surface.channels() != pixels.channels || pixels.data.len() != pixels.width as usize * pixels.height as usize * pixels.channels {
         return Err(invalid("pixel data does not match the drawable"));
     }
-    let bytes = usize::try_from(photocraft_raster::tile_storage_bytes(rect, &surface.format())).unwrap_or(usize::MAX);
+    let bytes = usize::try_from(patronusphoto_raster::tile_storage_bytes(rect, &surface.format())).unwrap_or(usize::MAX);
     if bytes > *budget {
         return Err(invalid("the layers exceed the 1 GiB pixel limit"));
     }
@@ -120,7 +120,7 @@ fn write_pixels(surface: &mut Surface, pixels: &Pixels, x: i32, y: i32, budget: 
     surface.write_region(rect, &pixels.data);
     surface.prune();
     let added = surface.tile_count().saturating_sub(before) as u64;
-    *budget = budget.saturating_sub(usize::try_from(photocraft_raster::stored_tiles_bytes(added, &surface.format())).unwrap_or(usize::MAX));
+    *budget = budget.saturating_sub(usize::try_from(patronusphoto_raster::stored_tiles_bytes(added, &surface.format())).unwrap_or(usize::MAX));
     Ok(())
 }
 
@@ -339,14 +339,14 @@ pub(crate) fn import(name: &str, bytes: &[u8], ctl: &Interrupt<'_>) -> Result<Im
     }
     if mapper.clipped_to_backdrop > 0 && document.layers.first().is_some_and(|l| !l.locks.transparency || l.is_group()) {
         mapper.warnings.note(&format!(
-            "{} layer(s) use a mode GIMP clips to the layers beneath; where those are transparent GIMP shows nothing and PhotoCraft shows the layer",
+            "{} layer(s) use a mode GIMP clips to the layers beneath; where those are transparent GIMP shows nothing and Patronus Photo shows the layer",
             mapper.clipped_to_backdrop
         ));
     }
     if !image.precision.linear && mapper.linear_compositing {
         mapper
             .warnings
-            .note("GIMP composites this image in linear light; PhotoCraft composites in gamma-encoded RGB, so blends and soft edges differ slightly");
+            .note("GIMP composites this image in linear light; Patronus Photo composites in gamma-encoded RGB, so blends and soft edges differ slightly");
     }
     if document.layers.is_empty() {
         mapper.warnings.note("the XCF file has no layers");

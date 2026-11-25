@@ -3,9 +3,9 @@
 
 use std::sync::Arc;
 
-use photocraft_color::{BlendMode, ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{Document, Layer, LayerContent, NamedPath, Path};
-use photocraft_geom::Affine;
+use patronusphoto_color::{BlendMode, ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::{Document, Layer, LayerContent, NamedPath, Path};
+use patronusphoto_geom::Affine;
 use serde_json::{Value, json};
 
 use super::edit_cmds::Clip;
@@ -41,10 +41,10 @@ pub(super) fn mode(p: &Value) -> Result<Option<Mode>> {
 
 /// Imported data is temporary; only original bytes and their raster mirror survive in Clip.
 fn prepare(bytes: &[u8]) -> Result<(Document, Vec<String>)> {
-    if bytes.is_empty() || bytes.len() > MAX_SOURCE_BYTES || !photocraft_io::svg::is_svg(bytes) {
+    if bytes.is_empty() || bytes.len() > MAX_SOURCE_BYTES || !patronusphoto_io::svg::is_svg(bytes) {
         return Err(bad("SVG clipboard source must be valid markup between 1 byte and 16 MiB"));
     }
-    let mut imported = photocraft_io::svg::import_svg_bounded("Clipboard.svg", bytes, MAX_CACHE_PIXELS)
+    let mut imported = patronusphoto_io::svg::import_svg_bounded("Clipboard.svg", bytes, MAX_CACHE_PIXELS)
         .map_err(|e| EngineError::Other(format!("can't import clipboard SVG: {e}")))?;
     if imported.document.layers.is_empty() {
         return Err(bad("the SVG contains no drawable objects"));
@@ -161,8 +161,8 @@ fn shape_budget(layer: &Layer, destination: &Document, dx: i32, dy: i32) -> Resu
     for transform in [Affine::IDENTITY, Affine::translate(f64::from(dx), f64::from(dy))] {
         let mut shape = shape.clone();
         crate::vector_cmds::transform_shape(&mut shape, &transform);
-        photocraft_vector::flatten::validate_shape(&shape.path, shape.stroke.as_ref()).map_err(bad)?;
-        let compiled = photocraft_vector::CompiledShape::new(&shape, photocraft_vector::DEFAULT_TOLERANCE, destination.bounds());
+        patronusphoto_vector::flatten::validate_shape(&shape.path, shape.stroke.as_ref()).map_err(bad)?;
+        let compiled = patronusphoto_vector::CompiledShape::new(&shape, patronusphoto_vector::DEFAULT_TOLERANCE, destination.bounds());
         if compiled.bounds().is_some_and(|r| r.intersect(&destination.bounds()).size().area() > MAX_CACHE_PIXELS) {
             return Err(bad("the pasted shape cache exceeds 24 megapixels; use Pixels"));
         }
@@ -202,7 +202,7 @@ pub(super) fn paste(s: &mut Session, p: &Value, mode: Mode) -> Result<Value> {
     let (dx, dy) = (dx as i32, dy as i32);
     if mode == Mode::Path {
         let path = paths(&copies)?.transform(&Affine::translate(f64::from(dx), f64::from(dy)));
-        photocraft_vector::flatten::validate_path(&path).map_err(bad)?;
+        patronusphoto_vector::flatten::validate_path(&path).map_err(bad)?;
         let name = (1..=destination.paths.len().saturating_add(1))
             .map(|i| format!("Pasted Path {i}"))
             .find(|name| !destination.paths.iter().any(|p| &p.name == name))

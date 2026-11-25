@@ -16,7 +16,7 @@ pub struct TypeInsertionStyle {
     /// The caret the choice holds at, in characters.
     pub caret: usize,
     /// The style the next typed characters take.
-    pub style: photocraft_doc::text::CharStyle,
+    pub style: patronusphoto_doc::text::CharStyle,
 }
 
 /// In-progress inline type editing (Type tool). Offsets are character indices.
@@ -49,7 +49,7 @@ pub struct TypeTransform {
     /// The document revision it was started at.
     pub revision: u64,
     /// The layer's transform when the session began.
-    pub original: photocraft_geom::Affine,
+    pub original: patronusphoto_geom::Affine,
     /// The framework's transform session over the layer's text frame.
     pub session: craft::draw::ui::transform::TransformSession<()>,
     /// The capture began on the move reach of the hidden box, which keeps it to the release.

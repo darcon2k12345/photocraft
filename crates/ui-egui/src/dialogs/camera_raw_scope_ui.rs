@@ -8,8 +8,8 @@ use craft::imaging::scopes::{ChannelMask, ClippingMask};
 use craft::imaging::ui::histogram::ChannelColor;
 use craft::imaging::ui::scopes::{ClippingFrame, HistogramSet, ScopeChannel, ScopeFrame, ScopeReadout, VectorscopeFrame};
 use craft::ui::primitives::Revision;
-use photocraft_algo::histogram::RgbHistogram;
-use photocraft_algo::vectorscope::{HUES, SATURATIONS, Vectorscope, hue_saturation};
+use patronusphoto_algo::histogram::RgbHistogram;
+use patronusphoto_algo::vectorscope::{HUES, SATURATIONS, Vectorscope, hue_saturation};
 use std::sync::Arc;
 
 /// Vectorscope analysis samples at most this many proxy pixels.

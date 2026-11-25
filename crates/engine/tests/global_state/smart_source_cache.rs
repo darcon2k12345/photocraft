@@ -1,8 +1,8 @@
 //! #10030: the decoded-source cache counts the bytes it holds, and Purge All and closing a
 //! document with smart objects release them. The global cache is
 //! isolated from parallel unit tests; the tests here take turns on it.
-use photocraft_codecs::{ChannelLayout, EncodeOptions, Format, Image, SampleType};
-use photocraft_engine::{Session, file_cmds, smart_cmds};
+use patronusphoto_codecs::{ChannelLayout, EncodeOptions, Format, Image, SampleType};
+use patronusphoto_engine::{Session, file_cmds, smart_cmds};
 use serde_json::json;
 
 const SIDE: u32 = 256;
@@ -10,16 +10,16 @@ const SIDE: u32 = 256;
 fn png() -> Vec<u8> {
     let px = (0..SIDE * SIDE).flat_map(|i| [(i % SIDE) as u8, (i / SIDE) as u8, ((i * 7) % 251) as u8, 255]);
     let img = Image::from_raw(SIDE, SIDE, ChannelLayout::Rgba, SampleType::U8, px.collect()).unwrap();
-    photocraft_codecs::encode(&img, Format::Png, &EncodeOptions::default()).unwrap()
+    patronusphoto_codecs::encode(&img, Format::Png, &EncodeOptions::default()).unwrap()
 }
 
 /// Every cache `edit.purge.all` clears, emptied.
 fn empty_caches() {
     smart_cmds::purge_source_cache();
     smart_cmds::purge_stack_cache();
-    photocraft_compose::purge_effect_cache();
-    photocraft_compose::masks::purge_cache();
-    photocraft_compose::shape_split::purge_cache();
+    patronusphoto_compose::purge_effect_cache();
+    patronusphoto_compose::masks::purge_cache();
+    patronusphoto_compose::shape_split::purge_cache();
     crate::purge_all_caches();
 }
 

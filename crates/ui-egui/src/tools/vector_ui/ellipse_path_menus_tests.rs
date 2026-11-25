@@ -1,34 +1,34 @@
 //! #13235: with a path operation other than New Layer, the shape tools' next drag becomes a
 //! component of the active shape layer instead of a new layer.
 
-use photocraft_doc::vector::PathOp;
-use photocraft_doc::{LayerContent, ShapeLayer};
+use patronusphoto_doc::vector::PathOp;
+use patronusphoto_doc::{LayerContent, ShapeLayer};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::{ToolEvent, tool_event};
 use crate::state::Tool;
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 400, "height": 400})).unwrap();
     app.sync_views();
     app.ui.tool = Tool::EllipseShape;
     app
 }
 
-fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2]) {
+fn drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2]) {
     let mods = egui::Modifiers::NONE;
     tool_event(app, ToolEvent::Down { x: from[0], y: from[1], pressure: 1.0 }, mods);
     tool_event(app, ToolEvent::Move { x: to[0], y: to[1], pressure: 1.0 }, mods);
     tool_event(app, ToolEvent::Up { x: to[0], y: to[1] }, mods);
 }
 
-fn layer_count(app: &PhotocraftApp) -> usize {
+fn layer_count(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().doc.layer_count()
 }
 
-fn active_shape(app: &PhotocraftApp) -> ShapeLayer {
+fn active_shape(app: &PatronusPhotoApp) -> ShapeLayer {
     let st = app.session.active().unwrap();
     match &st.doc.layer(st.active_layer.unwrap()).unwrap().content {
         LayerContent::Shape(s) => s.clone(),
@@ -96,12 +96,12 @@ fn path_operations_place_the_next_shape() {
             None => None,
             Some(Preset::Ring) => Some("Ring".to_string()),
             Some(Preset::Split) => {
-                use photocraft_doc::vector::{Path, Subpath};
+                use patronusphoto_doc::vector::{Path, Subpath};
                 let xor = Path::new(vec![
                     Subpath::polygon(&[(0.0, 0.0), (60.0, 0.0), (60.0, 60.0), (0.0, 60.0)]),
                     Subpath::polygon(&[(40.0, 40.0), (100.0, 40.0), (100.0, 100.0), (40.0, 100.0)]).with_op(PathOp::Exclude),
                 ]);
-                let r = app.run("shape.presets.new", json!({"name": "Xor", "path": photocraft_engine::vector_cmds::path_json(&xor)})).unwrap();
+                let r = app.run("shape.presets.new", json!({"name": "Xor", "path": patronusphoto_engine::vector_cmds::path_json(&xor)})).unwrap();
                 Some(r["name"].as_str().unwrap().to_string())
             }
         };

@@ -15,12 +15,12 @@ use craft::ui::canvas::ToolHostResponse;
 use craft::ui::contract::Show as _;
 use craft::ui::dialog::{DialogId, DialogResult};
 use craft::ui::runtime::commands::{CommandRef, CommandSet as _, CommandState};
-use photocraft_doc::SliceOrigin;
-use photocraft_doc::slices::{self, ResolvedSlice};
+use patronusphoto_doc::SliceOrigin;
+use patronusphoto_doc::slices::{self, ResolvedSlice};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::document_display::CanvasHost;
 use crate::canvas::tools::{FamilyTool, ToolScope};
 use crate::state::Tool;
@@ -70,7 +70,7 @@ fn is_slice_tool(t: Tool) -> bool {
     matches!(t, Tool::Slice | Tool::SliceSelect)
 }
 
-fn to_doc_rect(r: photocraft_geom::Rect) -> DocRect {
+fn to_doc_rect(r: patronusphoto_geom::Rect) -> DocRect {
     DocRect::new(f64::from(r.x0), f64::from(r.y0), f64::from(r.x1), f64::from(r.y1))
 }
 
@@ -83,7 +83,7 @@ fn origin_of(origin: SliceOrigin) -> ItemOrigin {
 }
 
 /// The resolved slices of the active document, with the dragged slice at its proposed rectangle.
-fn items(app: &PhotocraftApp) -> Vec<SliceItem> {
+fn items(app: &PatronusPhotoApp) -> Vec<SliceItem> {
     let Some(st) = app.session.active() else { return Vec::new() };
     let preview = app.ui.slices.preview;
     slices::resolve(&st.doc)
@@ -99,7 +99,7 @@ fn items(app: &PhotocraftApp) -> Vec<SliceItem> {
 }
 
 /// The Style, Width and Height of the options bar as the marquee's constraint, with Hide Auto Slices.
-fn settings(app: &PhotocraftApp) -> SliceToolSettings {
+fn settings(app: &PatronusPhotoApp) -> SliceToolSettings {
     let o = &app.ui.tool_options;
     let (w, h) = (f64::from(o.slice_width), f64::from(o.slice_height));
     let style = match o.slice_style.as_str() {
@@ -113,7 +113,7 @@ fn settings(app: &PhotocraftApp) -> SliceToolSettings {
 }
 
 /// Writes the bar's settings back to the stored keys (`tool_options.slice_*`, `slices.hide_auto`).
-fn store(app: &mut PhotocraftApp, s: SliceToolSettings) {
+fn store(app: &mut PatronusPhotoApp, s: SliceToolSettings) {
     let o = &mut app.ui.tool_options;
     match s.style {
         Constraint::Ratio(w, h) => (o.slice_style, o.slice_width, o.slice_height) = ("fixedRatio".into(), w as f32, h as f32),
@@ -124,7 +124,7 @@ fn store(app: &mut PhotocraftApp, s: SliceToolSettings) {
 }
 
 /// The slice colour from Preferences › Guides, Grid & Slices.
-pub fn slice_color(app: &PhotocraftApp) -> Srgba {
+pub fn slice_color(app: &PatronusPhotoApp) -> Srgba {
     hex(&app.session.prefs().guides_grid_and_slices.slice_color, Srgba::rgb(f32::from(0x38_u8) / 255.0, f32::from(0xb5_u8) / 255.0, 1.0))
 }
 
@@ -156,7 +156,7 @@ pub(crate) fn tool<'a>(scope: &'a ToolScope<'a>, state: &'a mut SliceTool, _host
 }
 
 /// Takes the events the tool reported in the pass.
-pub(crate) fn drain(app: &mut PhotocraftApp, state: &mut SliceTool, _response: &ToolHostResponse) {
+pub(crate) fn drain(app: &mut PatronusPhotoApp, state: &mut SliceTool, _response: &ToolHostResponse) {
     for event in state.take_events() {
         apply(app, event);
     }
@@ -166,7 +166,7 @@ pub(crate) fn drain(app: &mut PhotocraftApp, state: &mut SliceTool, _response: &
 
 /// Slice outlines and numbered badges (View › Show › Slices; always while a slice tool is on) over
 /// the document at `at`. Its events, and in Select mode its picks, moves and resizes, go to [`apply`].
-pub(crate) fn canvas_controls(ui: &mut egui::Ui, app: &mut PhotocraftApp, at: egui::Rect) {
+pub(crate) fn canvas_controls(ui: &mut egui::Ui, app: &mut PatronusPhotoApp, at: egui::Rect) {
     let tool = app.ui.tool;
     let tool_on = is_slice_tool(tool);
     let Some(has_slices) = app.session.active().map(|d| !d.doc.slices.is_empty()) else { return };
@@ -194,7 +194,7 @@ pub(crate) fn canvas_controls(ui: &mut egui::Ui, app: &mut PhotocraftApp, at: eg
 // ---------- events ----------
 
 /// Carries out one event of the tool or the overlay.
-pub(crate) fn apply(app: &mut PhotocraftApp, event: SliceEvent) {
+pub(crate) fn apply(app: &mut PatronusPhotoApp, event: SliceEvent) {
     match event {
         SliceEvent::Draw(EditEvent::Commit { after, .. } | EditEvent::Set { after, .. }) => draw(app, after),
         SliceEvent::Draw(_) => {}
@@ -211,7 +211,7 @@ pub(crate) fn apply(app: &mut PhotocraftApp, event: SliceEvent) {
 }
 
 /// A new slice drawn to `rect`.
-fn draw(app: &mut PhotocraftApp, rect: DocRect) {
+fn draw(app: &mut PatronusPhotoApp, rect: DocRect) {
     let (x, y) = (rect.x0.round(), rect.y0.round());
     let (w, h) = ((rect.x1 - rect.x0).round(), (rect.y1 - rect.y0).round());
     match app.run("slice.new", json!({"rect": [x, y, w, h]})) {
@@ -222,7 +222,7 @@ fn draw(app: &mut PhotocraftApp, rect: DocRect) {
 
 /// One step of a Move or Resize of the slice `number`. The gesture's value is shown as the preview;
 /// its end moves each edge of the stored slice by what the piece's edge moved.
-fn edit_slice(app: &mut PhotocraftApp, number: usize, event: EditEvent<DocRect>) {
+fn edit_slice(app: &mut PatronusPhotoApp, number: usize, event: EditEvent<DocRect>) {
     match event {
         EditEvent::Begin { .. } => {}
         EditEvent::Update { value, .. } => app.ui.slices.preview = Some((number, value)),
@@ -237,14 +237,14 @@ fn edit_slice(app: &mut PhotocraftApp, number: usize, event: EditEvent<DocRect>)
 
 /// Moves the stored slice that owns piece `number` by the change from `before` to `after`; a gesture
 /// that moved no edge changes nothing.
-fn commit_slice(app: &mut PhotocraftApp, number: usize, before: Option<DocRect>, after: DocRect) {
+fn commit_slice(app: &mut PatronusPhotoApp, number: usize, before: Option<DocRect>, after: DocRect) {
     let Some(doc) = app.session.active().map(|d| d.doc.clone()) else { return };
     let Some(piece) = slices::resolve(&doc).into_iter().find(|r| r.number == number) else { return };
     let Some(stored) = piece.id.and_then(|id| doc.slices.get(id)) else { return };
     let before = before.unwrap_or_else(|| to_doc_rect(piece.rect));
     let delta = |a: f64, b: f64| (a - b).round() as i32;
     let r = stored.rect;
-    let moved = photocraft_geom::Rect::new(
+    let moved = patronusphoto_geom::Rect::new(
         r.x0.saturating_add(delta(after.x0, before.x0)),
         r.y0.saturating_add(delta(after.y0, before.y0)),
         r.x1.saturating_add(delta(after.x1, before.x1)),
@@ -261,12 +261,12 @@ fn commit_slice(app: &mut PhotocraftApp, number: usize, before: Option<DocRect>,
 }
 
 /// The display number of the first piece of stored slice `id`.
-fn number_of(app: &PhotocraftApp, id: u32) -> Option<usize> {
+fn number_of(app: &PatronusPhotoApp, id: u32) -> Option<usize> {
     let st = app.session.active()?;
     slices::resolve(&st.doc).into_iter().find(|r| r.id == Some(id)).map(|r| r.number)
 }
 
-fn report(app: &mut PhotocraftApp, error: String) {
+fn report(app: &mut PatronusPhotoApp, error: String) {
     app.ui.status = error;
     app.ui.status_error = true;
 }
@@ -274,18 +274,18 @@ fn report(app: &mut PhotocraftApp, error: String) {
 // ---------- commands ----------
 
 /// The selected slice as a command target.
-fn selected_target(app: &PhotocraftApp) -> Option<SliceTarget> {
+fn selected_target(app: &PatronusPhotoApp) -> Option<SliceTarget> {
     let n = app.ui.slices.selected?;
     let r = resolved(app, n)?;
     Some(r.id.map_or(SliceTarget::Auto(n), SliceTarget::Stored))
 }
 
-fn resolved(app: &PhotocraftApp, number: usize) -> Option<ResolvedSlice> {
+fn resolved(app: &PatronusPhotoApp, number: usize) -> Option<ResolvedSlice> {
     slices::resolve(&app.session.active()?.doc).into_iter().find(|r| r.number == number)
 }
 
 /// Runs a slice command of the bar, the keyboard or a double click.
-fn run_command(app: &mut PhotocraftApp, command: SliceCommand) {
+fn run_command(app: &mut PatronusPhotoApp, command: SliceCommand) {
     let result: Result<(), String> = match command {
         SliceCommand::Delete => match selected_target(app) {
             Some(SliceTarget::Stored(id)) => app.run("slice.delete", json!({"slice": id})).map(|_| app.ui.slices.selected = None),
@@ -307,7 +307,7 @@ fn run_command(app: &mut PhotocraftApp, command: SliceCommand) {
 }
 
 /// The state of each slice command: gated by the selected slice's origin, the lock and the document.
-pub(crate) fn command_states(app: &PhotocraftApp) -> Vec<(CommandRef, CommandState)> {
+pub(crate) fn command_states(app: &PatronusPhotoApp) -> Vec<(CommandRef, CommandState)> {
     let origin = app.ui.slices.selected.and_then(|n| resolved(app, n)).map(|r| origin_of(r.origin));
     let locked = app.session.file_menu.slices_locked;
     let has_doc = app.session.active().is_some();
@@ -319,14 +319,14 @@ pub(crate) fn command_states(app: &PhotocraftApp) -> Vec<(CommandRef, CommandSta
 
 /// What [`command_states`] reads: the active document and its revision (the selected slice resolves from its
 /// slices), the selected slice's number and the lock.
-pub(crate) fn command_states_key(app: &PhotocraftApp) -> crate::app::framework::StatesKey {
+pub(crate) fn command_states_key(app: &PatronusPhotoApp) -> crate::app::framework::StatesKey {
     let revision = app.session.active().map_or(u64::MAX, |st| st.revision);
     let selected = app.ui.slices.selected.map_or(u64::MAX, |n| n as u64);
     [app.session.active_generation(), revision, selected, u64::from(app.session.file_menu.slices_locked)]
 }
 
 /// Runs a fired slice command; whether it was one.
-pub(crate) fn run_fired(app: &mut PhotocraftApp, _ctx: &egui::Context, command: &CommandRef) -> bool {
+pub(crate) fn run_fired(app: &mut PatronusPhotoApp, _ctx: &egui::Context, command: &CommandRef) -> bool {
     let Some(command) = SliceCommand::from_ref(command) else { return false };
     run_command(app, command);
     true
@@ -335,7 +335,7 @@ pub(crate) fn run_fired(app: &mut PhotocraftApp, _ctx: &egui::Context, command: 
 // ---------- the options bar ----------
 
 /// Options bars of the Slice and Slice Select tools; false for another tool.
-pub fn options_bar(ui: &mut egui::Ui, app: &mut PhotocraftApp, tool: Tool) -> bool {
+pub fn options_bar(ui: &mut egui::Ui, app: &mut PatronusPhotoApp, tool: Tool) -> bool {
     if !is_slice_tool(tool) {
         return false;
     }
@@ -361,11 +361,11 @@ fn kind_id(kind: SliceKind) -> &'static str {
 
 /// Opens Slice Options for the selected slice (an auto slice is promoted on OK). A refusal is the
 /// `Err` text.
-pub(crate) fn open_options(app: &mut PhotocraftApp) -> Result<DialogId, String> {
+pub(crate) fn open_options(app: &mut PatronusPhotoApp) -> Result<DialogId, String> {
     let n = app.ui.slices.selected.ok_or("select a slice with the Slice Select tool")?;
     let st = app.session.active().ok_or("no document")?;
     let r = slices::resolve(&st.doc).into_iter().find(|r| r.number == n).ok_or("no such slice")?;
-    let v = photocraft_engine::slice_cmds::resolved_json(&st.doc, &r);
+    let v = patronusphoto_engine::slice_cmds::resolved_json(&st.doc, &r);
     let text = |k: &str| v[k].as_str().unwrap_or("").to_string();
     let kind = match v["kind"].as_str() {
         Some("noImage") => SliceKind::NoImage,
@@ -395,7 +395,7 @@ pub(crate) fn open_options(app: &mut PhotocraftApp) -> Result<DialogId, String> 
 }
 
 /// Opens Divide Slice for the selected slice. A refusal is the `Err` text.
-pub(crate) fn open_divide(app: &mut PhotocraftApp) -> Result<DialogId, String> {
+pub(crate) fn open_divide(app: &mut PatronusPhotoApp) -> Result<DialogId, String> {
     let target = selected_target(app).ok_or("select a slice first")?;
     let id = app.framework.dialogs.open(DivideSlicesDialog::new(DivideSlices::new(Some(DivideBy::Count(2)), None)));
     app.ui.slices.divide = Some((id, target));
@@ -404,12 +404,12 @@ pub(crate) fn open_divide(app: &mut PhotocraftApp) -> Result<DialogId, String> {
 
 /// The result pump of the two dialogs: the Background colour request goes to the picker and its answer
 /// back, and a finished dialog runs its engine command.
-pub(crate) fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
+pub(crate) fn take(app: &mut PatronusPhotoApp, _ctx: &egui::Context) {
     take_options(app);
     take_divide(app);
 }
 
-fn take_options(app: &mut PhotocraftApp) {
+fn take_options(app: &mut PatronusPhotoApp) {
     let Some((id, target)) = app.ui.slices.options else { return };
     if let Some(request) = app.framework.dialogs.get_mut_by_id::<SliceOptionsDialog>(id).and_then(SliceOptionsDialog::pick_color) {
         crate::color_picker_ui::open_for_request(app, id, request);
@@ -453,7 +453,7 @@ fn take_options(app: &mut PhotocraftApp) {
     }
 }
 
-fn take_divide(app: &mut PhotocraftApp) {
+fn take_divide(app: &mut PatronusPhotoApp) {
     let Some((id, target)) = app.ui.slices.divide else { return };
     match app.framework.dialogs.take_by_id::<DivideSlicesDialog>(id) {
         Some(DialogResult::Ok(divide)) => {

@@ -2,7 +2,7 @@ use craft::theme::variant::Tone;
 use craft::ui::contract::Show as _;
 use craft::ui::notices::{Notice, NoticeLayout};
 
-use super::{BlendMode, LayerId, PhotocraftApp};
+use super::{BlendMode, LayerId, PatronusPhotoApp};
 
 // ----------------------------------------------------------------------------- layers
 
@@ -13,7 +13,7 @@ pub(crate) fn blend_options(groups: bool, current: BlendMode) -> Vec<(BlendMode,
     std::iter::once(BlendMode::PassThrough).filter(|_| groups).chain(BlendMode::LAYER_MODES).chain(own).map(|m| (m, m.label())).collect()
 }
 
-pub(super) fn layers(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub(super) fn layers(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     use craft::layers::ui::panel::LayersPanel;
     use craft::layers::ui::thumbs::LayerThumb;
     use craft::ui::contract::Bind;
@@ -40,7 +40,7 @@ pub(super) fn layers(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     let before = filter.clone();
     let picked = crate::smart_ui::selected(&app.smart_filter_picks, &st.doc, st.active_layer);
     let tree = PhotoLayers::new(app, st, &filter, foreign, picked).held(held);
-    let thumbs = Thumbnails::<LayerThumb<LayerId>>::in_context(&ctx, "photocraft-layer-thumbs", ThumbnailOptions::new());
+    let thumbs = Thumbnails::<LayerThumb<LayerId>>::in_context(&ctx, "patronusphoto-layer-thumbs", ThumbnailOptions::new());
     let source = PhotoThumbs::new(app, &st.doc);
     let mut panel = LayersPanel::new(&tree)
         .settings(settings)

@@ -4,7 +4,7 @@
 use serde_json::{Value, json};
 
 use crate::Session;
-use photocraft_doc::LayerId;
+use patronusphoto_doc::LayerId;
 
 fn session() -> Session {
     let mut s = Session::new();

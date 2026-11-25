@@ -1,8 +1,8 @@
 //! Camera Raw's preview develop on the GPU (#6916). When the settings don't use Detail
 //! (sharpening, noise reduction), the proxy develops in wgpu passes
-//! (`photocraft_gpu::CameraRawDevelop`) on the canvas's device and is read back once for the
+//! (`patronusphoto_gpu::CameraRawDevelop`) on the canvas's device and is read back once for the
 //! histogram, scopes and display conversion. Detail, Rendering Mode CPU,
-//! `PHOTOCRAFT_CPU_CAMERA_RAW`, no GPU canvas, a software adapter, a device fault or a failed
+//! `PATRONUSPHOTO_CPU_CAMERA_RAW`, no GPU canvas, a software adapter, a device fault or a failed
 //! develop all keep the CPU develop on the worker.
 //!
 //! The pipelines build on a thread the first time a dialog opens (DX12's shader compiler takes
@@ -13,10 +13,10 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 use craft::imaging::raw::RawDevelopSettings as CameraRaw;
 use eframe::wgpu;
-use photocraft_algo::camera_raw::DevelopInputs;
-use photocraft_gpu::{CameraRawDevelop, DeviceHealth};
+use patronusphoto_algo::camera_raw::DevelopInputs;
+use patronusphoto_gpu::{CameraRawDevelop, DeviceHealth};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The built pass, shared by every Camera Raw dialog on the device (never built on the web).
 #[derive(Clone)]
@@ -80,9 +80,9 @@ impl Pass {
 }
 
 /// The dialog's GPU develop, if the app may use one.
-pub(crate) fn for_app(app: &PhotocraftApp) -> Option<CameraRawGpu> {
-    let cpu = app.session.prefs().performance.effective_rendering_mode() == photocraft_engine::prefs::RenderingMode::Cpu;
-    if cpu || std::env::var_os("PHOTOCRAFT_CPU_CAMERA_RAW").is_some() {
+pub(crate) fn for_app(app: &PatronusPhotoApp) -> Option<CameraRawGpu> {
+    let cpu = app.session.prefs().performance.effective_rendering_mode() == patronusphoto_engine::prefs::RenderingMode::Cpu;
+    if cpu || std::env::var_os("PATRONUSPHOTO_CPU_CAMERA_RAW").is_some() {
         return None;
     }
     app.gpu.as_ref()?.camera_raw()
@@ -149,7 +149,7 @@ impl CameraRawGpu {
             let Some(Some(pass)) = self.pass.get() else { return None };
             let points = self.points(px, key, w, h, p, inputs);
             // PLAN: assumed `per_pixel(p, inputs, w, h, float, points)` (dialogs-w50 owns the algo signature)
-            let stages = photocraft_algo::camera_raw::per_pixel(p, inputs, w, h, float, points)?;
+            let stages = patronusphoto_algo::camera_raw::per_pixel(p, inputs, w, h, float, points)?;
             let size = [u32::try_from(w).ok()?, u32::try_from(h).ok()?];
             let mut pass = pass.0.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
             match pass.develop(&self.device, &self.queue, Some(&self.health), px, key, size, &stages) {
@@ -167,11 +167,11 @@ impl CameraRawGpu {
     /// spatial stage the GPU measures them after it instead.
     #[cfg(not(target_arch = "wasm32"))]
     fn points(&self, px: &[[f32; 4]], key: Option<u64>, w: usize, h: usize, p: &CameraRaw, inputs: &DevelopInputs) -> Option<(f32, f32)> {
-        if (p.whites == 0.0 && p.blacks == 0.0) || photocraft_algo::camera_raw::spatial(p) {
+        if (p.whites == 0.0 && p.blacks == 0.0) || patronusphoto_algo::camera_raw::spatial(p) {
             return None;
         }
         // PLAN: assumed `white_black_points(px, w, h, p, inputs)` (dialogs-w50 owns the algo signature)
-        let Some(key) = key else { return photocraft_algo::camera_raw::white_black_points(px, w, h, p, inputs) };
+        let Some(key) = key else { return patronusphoto_algo::camera_raw::white_black_points(px, w, h, p, inputs) };
         let key = (key, [p.temperature, p.tint, p.exposure, p.contrast, inputs.encoding_gamma].map(f32::to_bits));
         let mut cache = self.points.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         if let Some((k, points)) = *cache
@@ -179,7 +179,7 @@ impl CameraRawGpu {
         {
             return points;
         }
-        let points = photocraft_algo::camera_raw::white_black_points(px, w, h, p, inputs);
+        let points = patronusphoto_algo::camera_raw::white_black_points(px, w, h, p, inputs);
         *cache = Some((key, points));
         points
     }
@@ -191,7 +191,7 @@ mod gpu_tests {
     use crate::camera_raw_ui::proxy::ProxyJob;
     use craft::imaging::ui::raw_develop::RawPreviewRequest;
     use craft::ui::canvas::PixelRect;
-    use photocraft_algo::camera_raw::develop;
+    use patronusphoto_algo::camera_raw::develop;
     use serde_json::json;
 
     /// `CameraRaw` with the named fields set (the type is `#[non_exhaustive]`, so no struct expression), or a copy of a base with them set.
@@ -208,16 +208,16 @@ mod gpu_tests {
         }};
     }
 
-    /// The pass evaluates develop's expressions in f32 (see `photocraft-gpu`'s Camera Raw tests).
+    /// The pass evaluates develop's expressions in f32 (see `patronusphoto-gpu`'s Camera Raw tests).
     const TOL: f32 = 1.0 / 4096.0;
 
     /// The app on egui_kittest's device (a software adapter where there is one), or `None`.
-    fn gpu_app(depth: u32) -> Option<Box<PhotocraftApp>> {
+    fn gpu_app(depth: u32) -> Option<Box<PatronusPhotoApp>> {
         let Ok(rs) = std::panic::catch_unwind(|| egui_kittest::wgpu::create_render_state(crate::gpu_canvas::wgpu_setup(), Default::default())) else {
             eprintln!("skipping: no GPU adapter");
             return None;
         };
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
         app.set_wgpu(rs);
         app.gpu.as_ref()?;
         app.run("file.new", json!({"width": 300, "height": 200, "depth": depth})).unwrap();
@@ -230,24 +230,24 @@ mod gpu_tests {
     }
 
     /// Opens RAW Develop on the active layer, on the app's own context.
-    fn open_raw(app: &mut PhotocraftApp) {
+    fn open_raw(app: &mut PatronusPhotoApp) {
         let ctx = app.ctx().clone();
         crate::camera_raw_ui::open(app, &ctx).unwrap();
     }
 
     /// Whether the open session has a GPU develop.
-    fn has_gpu(app: &PhotocraftApp) -> bool {
+    fn has_gpu(app: &PatronusPhotoApp) -> bool {
         app.raw.as_ref().is_some_and(|session| session.gpu.is_some())
     }
 
     /// The canvas's pass, built even on a software adapter (which the app leaves on the CPU).
-    fn force_pass(app: &PhotocraftApp) {
+    fn force_pass(app: &PatronusPhotoApp) {
         app.gpu.as_ref().expect("GPU canvas").force_camera_raw_pass();
     }
 
     /// Runs the source's develop of `p` (the body of the job `PcRawSource::develop` returns) and the
     /// CPU develop of the same proxy: where it ran, what it made, what the CPU makes.
-    fn developed(app: &PhotocraftApp, p: CameraRaw) -> (&'static str, Vec<[f32; 4]>, Vec<[f32; 4]>) {
+    fn developed(app: &PatronusPhotoApp, p: CameraRaw) -> (&'static str, Vec<[f32; 4]>, Vec<[f32; 4]>) {
         let base = app.raw.as_ref().expect("session").source.proxy_base();
         let request = RawPreviewRequest::new(1, p.clone(), None, PixelRect::default(), 1.0);
         let frame = ProxyJob::from_request(&request, &base).run();
@@ -260,7 +260,7 @@ mod gpu_tests {
 
     #[test]
     fn the_pass_is_built_when_camera_raw_first_opens_not_with_the_canvas() {
-        let _gpu = photocraft_testkit::gpu_lock();
+        let _gpu = patronusphoto_testkit::gpu_lock();
         let Some(mut app) = gpu_app(8) else { return };
         let canvas = app.gpu.clone().expect("GPU canvas");
         assert!(!canvas.camera_raw_started(), "no RAW Develop pipeline at launch (#6419)");
@@ -274,7 +274,7 @@ mod gpu_tests {
 
     #[test]
     fn per_pixel_settings_develop_on_the_gpu_like_the_cpu_and_the_rest_stays_on_the_cpu() {
-        let _gpu = photocraft_testkit::gpu_lock();
+        let _gpu = patronusphoto_testkit::gpu_lock();
         // 8 and 32 bits: the dialog hands the develop only `float` (32-bit or not, `camera_raw_ui/convert.rs`), so 16
         // bits takes 8 bits' path; every depth's develop is the gpu crate's `tests/it/camera_raw.rs` (#15652).
         for depth in [8, 32] {
@@ -293,7 +293,7 @@ mod gpu_tests {
                 blacks: -20.0,
                 vibrance: 40.0,
                 curve_lights: 25.0,
-                grade_shadows: photocraft_algo::camera_raw::Wheel { hue: 220.0, sat: 40.0, lum: 0.0 },
+                grade_shadows: patronusphoto_algo::camera_raw::Wheel { hue: 220.0, sat: 40.0, lum: 0.0 },
                 vignette_amount: -40.0,
                 grain_amount: 30.0,
             };
@@ -325,7 +325,7 @@ mod gpu_tests {
                 assert_eq!((backend, shown == cpu), ("cpu", true), "{depth}-bit");
             }
             // A device fault: the CPU, from the next frame on.
-            app.gpu.as_ref().unwrap().health().mark(photocraft_gpu::Fault::Lost("test".into()));
+            app.gpu.as_ref().unwrap().health().mark(patronusphoto_gpu::Fault::Lost("test".into()));
             let (backend, shown, cpu) = developed(&app, per_pixel);
             assert_eq!((backend, shown == cpu), ("cpu", true), "{depth}-bit after a fault");
         }
@@ -333,7 +333,7 @@ mod gpu_tests {
 
     #[test]
     fn neutral_settings_skip_the_gpu_round_trip() {
-        let _gpu = photocraft_testkit::gpu_lock();
+        let _gpu = patronusphoto_testkit::gpu_lock();
         let Some(mut app) = gpu_app(8) else { return };
         force_pass(&app);
         open_raw(&mut app);
@@ -349,7 +349,7 @@ mod gpu_tests {
 
     #[test]
     fn shadows_on_a_two_pixel_proxy_develop_on_the_cpu_and_keep_the_gpu() {
-        let _gpu = photocraft_testkit::gpu_lock();
+        let _gpu = patronusphoto_testkit::gpu_lock();
         let Some(mut app) = gpu_app(8) else { return };
         force_pass(&app);
         open_raw(&mut app);
@@ -368,7 +368,7 @@ mod gpu_tests {
 
     #[test]
     fn rendering_mode_cpu_keeps_the_cpu_develop() {
-        let _gpu = photocraft_testkit::gpu_lock();
+        let _gpu = patronusphoto_testkit::gpu_lock();
         let Some(mut app) = gpu_app(8) else { return };
         force_pass(&app);
         app.run("prefs.set", json!({"path": "performance.renderingMode", "value": "cpu"})).unwrap();

@@ -14,10 +14,10 @@
 use craft::layers::ui::panel::{LayersDrag, document_hash};
 use craft::ui::canvas::ToolHost;
 use craft::ui::runtime::drag;
-use photocraft_doc::{DocId, LayerId};
+use patronusphoto_doc::{DocId, LayerId};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::document_display::CanvasHost;
 use crate::canvas::tools::move_tool::MoveLayerDrag;
 
@@ -48,12 +48,12 @@ fn clear(ctx: &egui::Context) {
 }
 
 /// The transfer under way: the Move tool's, else the Layers panel drag the runtime holds.
-fn transfer(app: &PhotocraftApp, ctx: &egui::Context) -> Option<Transfer> {
+fn transfer(app: &PatronusPhotoApp, ctx: &egui::Context) -> Option<Transfer> {
     get(ctx).or_else(|| panel_transfer(app, ctx))
 }
 
 /// The layers' name, or their count, for the ghost and the drag badge.
-fn label_of(doc: &photocraft_doc::Document, layers: &[LayerId]) -> String {
+fn label_of(doc: &patronusphoto_doc::Document, layers: &[LayerId]) -> String {
     match layers {
         [one] => doc.layer(*one).map_or_else(String::new, |l| l.name.clone()),
         many => crate::i18n::trn(crate::i18n::current(), many.len() as u64, "{n} layer", "{n} layers"),
@@ -63,7 +63,7 @@ fn label_of(doc: &photocraft_doc::Document, layers: &[LayerId]) -> String {
 /// The transfer of a Layers panel row drag: the layers it carries, from the document it started in
 /// (`LayersDrag::document`, the hash the panel was given with `.document(doc_id)`). A drag that
 /// carries effects, filters or a mask is no transfer.
-fn panel_transfer(app: &PhotocraftApp, ctx: &egui::Context) -> Option<Transfer> {
+fn panel_transfer(app: &PatronusPhotoApp, ctx: &egui::Context) -> Option<Transfer> {
     let payload = drag::active::<LayersDrag<LayerId>>(ctx)?;
     let layers: Vec<LayerId> = payload.layers().into_iter().copied().collect();
     if layers.is_empty() {
@@ -82,7 +82,7 @@ fn panel_transfer(app: &PhotocraftApp, ctx: &egui::Context) -> Option<Transfer> 
 
 /// Starts a Move-tool transfer of `layers` from the active document; `grab` is the document point
 /// the drag grabbed.
-fn begin(app: &PhotocraftApp, ctx: &egui::Context, layers: Vec<LayerId>, grab: [f64; 2]) -> bool {
+fn begin(app: &PatronusPhotoApp, ctx: &egui::Context, layers: Vec<LayerId>, grab: [f64; 2]) -> bool {
     let Some(st) = app.session.active() else { return false };
     // Several selected layers move whole; the engine's selected-pixel copy intentionally accepts
     // exactly one raster layer.
@@ -93,18 +93,18 @@ fn begin(app: &PhotocraftApp, ctx: &egui::Context, layers: Vec<LayerId>, grab: [
 }
 
 /// The document a transfer under way started in.
-pub fn source(app: &PhotocraftApp, ctx: &egui::Context) -> Option<DocId> {
+pub fn source(app: &PatronusPhotoApp, ctx: &egui::Context) -> Option<DocId> {
     transfer(app, ctx).map(|t| t.source)
 }
 
 /// The Move tool's drag, if it moves whole layers.
-fn layer_drag(app: &PhotocraftApp) -> Option<MoveLayerDrag> {
+fn layer_drag(app: &PatronusPhotoApp) -> Option<MoveLayerDrag> {
     app.canvas_tools.mover.layer_drag()
 }
 
 /// A Move-tool drag of whole layers (not a selection or a floating piece) under way: the document
 /// point it grabbed.
-fn move_drag(app: &PhotocraftApp, ctx: &egui::Context) -> Option<[f64; 2]> {
+fn move_drag(app: &PatronusPhotoApp, ctx: &egui::Context) -> Option<[f64; 2]> {
     let d = layer_drag(app)?;
     let st = app.session.active()?;
     let canvas = CanvasHost::primary(app, app.session.active_index()?).canvas_id();
@@ -116,7 +116,7 @@ fn move_drag(app: &PhotocraftApp, ctx: &egui::Context) -> Option<[f64; 2]> {
 
 /// The pointer, while layers are dragged (or a Move drag could become a transfer): tabs only
 /// hit-test it then.
-pub fn pointer_if_armed(app: &PhotocraftApp, ctx: &egui::Context) -> Option<egui::Pos2> {
+pub fn pointer_if_armed(app: &PatronusPhotoApp, ctx: &egui::Context) -> Option<egui::Pos2> {
     if transfer(app, ctx).is_none() && move_drag(app, ctx).is_none() {
         return None;
     }
@@ -126,7 +126,7 @@ pub fn pointer_if_armed(app: &PhotocraftApp, ctx: &egui::Context) -> Option<egui
 /// The pointer is over document tab `index` while layers are dragged: a Move drag becomes a
 /// transfer (the source layers stay where they were), the tab's document is shown, and a release
 /// right here drops the layers into it.
-fn arm_move_transfer(app: &mut PhotocraftApp, ctx: &egui::Context, index: usize) -> bool {
+fn arm_move_transfer(app: &mut PatronusPhotoApp, ctx: &egui::Context, index: usize) -> bool {
     if transfer(app, ctx).is_none() {
         let Some(grab) = move_drag(app, ctx) else { return false };
         let Some(active) = app.session.active().and_then(|st| st.active_layer) else { return false };
@@ -141,7 +141,7 @@ fn arm_move_transfer(app: &mut PhotocraftApp, ctx: &egui::Context, index: usize)
             // The drag's own float is gone or stale: another edit (an opacity key, say) came
             // after the drag started, and a rollback would take that edit back instead. The
             // drag stays a move in its own document.
-            if app.session.active().and_then(photocraft_engine::float_cmds::floating).is_none() {
+            if app.session.active().and_then(patronusphoto_engine::float_cmds::floating).is_none() {
                 return false;
             }
             // Nothing is taken from the drag before this can fail (a background job holds the
@@ -160,7 +160,7 @@ fn arm_move_transfer(app: &mut PhotocraftApp, ctx: &egui::Context, index: usize)
         // The rollback raised the revision; the restored document is the one the float was
         // over, so it floats over the new revision (else `floating()` drops it as stale).
         if let Some(st) = app.session.active_mut() {
-            st.floating = previous.map(|f| photocraft_engine::float_cmds::Floating { revision: st.revision, ..f });
+            st.floating = previous.map(|f| patronusphoto_engine::float_cmds::Floating { revision: st.revision, ..f });
         }
         let active = app.session.active().and_then(|st| st.active_layer).unwrap_or(active);
         let layers = match app.session.active() {
@@ -174,7 +174,7 @@ fn arm_move_transfer(app: &mut PhotocraftApp, ctx: &egui::Context, index: usize)
     true
 }
 
-pub fn over_tab(app: &mut PhotocraftApp, ctx: &egui::Context, index: usize) {
+pub fn over_tab(app: &mut PatronusPhotoApp, ctx: &egui::Context, index: usize) {
     if !arm_move_transfer(app, ctx, index) {
         return;
     }
@@ -193,7 +193,7 @@ pub fn over_tab(app: &mut PhotocraftApp, ctx: &egui::Context, index: usize) {
 ///
 /// A second pass of a frame gets no release event (egui gives a frame's input events to its
 /// first pass), so a release drops once; the first pass also clears the Move-tool transfer.
-pub fn finish(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub fn finish(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     let Some(t) = transfer(app, ctx) else { return };
     let (pos, released, down) = ctx.input(|i| (i.pointer.latest_pos(), i.pointer.any_released(), i.pointer.primary_down()));
     let target = pos.and_then(|p| target_at(app, p));
@@ -220,7 +220,7 @@ pub fn finish(app: &mut PhotocraftApp, ctx: &egui::Context) {
 
 /// Run before canvases process release: a tiled destination must take over the
 /// drag before the source can commit it as an ordinary move.
-pub(crate) fn prepare(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(crate) fn prepare(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     if transfer(app, ctx).is_some() {
         return;
     }
@@ -240,7 +240,7 @@ pub(crate) fn prepare(app: &mut PhotocraftApp, ctx: &egui::Context) {
 
 /// The document under screen point `p` and the document point there. Arranged tiles use their
 /// own view transform, so selected pixels and plain layers both land at the visible drop point.
-fn target_at(app: &PhotocraftApp, p: egui::Pos2) -> Option<(usize, Option<[f64; 2]>)> {
+fn target_at(app: &PatronusPhotoApp, p: egui::Pos2) -> Option<(usize, Option<[f64; 2]>)> {
     if !app.last_canvas_rect.contains(p) {
         return None;
     }
@@ -260,7 +260,7 @@ fn target_at(app: &PhotocraftApp, p: egui::Pos2) -> Option<(usize, Option<[f64; 
 }
 
 /// Copy the dragged layers into document `dest`, at document point `at` (see the module docs).
-fn drop(app: &mut PhotocraftApp, ctx: &egui::Context, dest: usize, at: Option<[f64; 2]>) {
+fn drop(app: &mut PatronusPhotoApp, ctx: &egui::Context, dest: usize, at: Option<[f64; 2]>) {
     let Some(t) = transfer(app, ctx) else { return };
     clear(ctx);
     let docs = app.session.documents();

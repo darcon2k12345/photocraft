@@ -5,22 +5,22 @@
 use egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::theme::AppTheme;
 
 /// The height of the Hue Cube's field in the Color tab of `kind`, alone in a 300 pt wide group
 /// `height` tall; panics where the tab shows channel rows.
 fn field_height(kind: AppTheme, height: f32) -> f32 {
-    let app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let mut h = egui_kittest::Harness::builder().with_context(app.ctx().clone()).with_size(egui::vec2(300.0, height)).build_ui_state(
-        move |ui, app: &mut Box<PhotocraftApp>| {
+        move |ui, app: &mut Box<PatronusPhotoApp>| {
             if ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 crate::panels::panel_docking::probe::body(app, ui, "color");
             }
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, kind.clone());
+    PatronusPhotoApp::setup_context(&h.ctx, kind.clone());
     h.run_steps(3);
     // The cube's hue strip is a slider named "Hue" too, so the channel rows are told by the others.
     for channel in ["Red", "Green", "Blue", "Saturation", "Brightness"] {

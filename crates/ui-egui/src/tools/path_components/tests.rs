@@ -4,36 +4,36 @@
 
 use craft::draw::ui::shape::VectorMode;
 use egui::Key;
-use photocraft_doc::vector::PathOp;
-use photocraft_doc::{LayerContent, LayerId, Path};
+use patronusphoto_doc::vector::PathOp;
+use patronusphoto_doc::{LayerContent, LayerId, Path};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing;
 use crate::direct_select::PathRef;
 use crate::state::Tool;
 use crate::vector_ui::pen_commit;
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 200})).unwrap();
     app.ui.tool = Tool::Pen;
     app.ui.tool_options.vector_mode = VectorMode::Shape;
     app
 }
 
-fn click(app: &mut PhotocraftApp, x: f64, y: f64) {
+fn click(app: &mut PatronusPhotoApp, x: f64, y: f64) {
     testing::click(app, [x, y], egui::Modifiers::NONE);
 }
 
 /// Clicks a closed square with the Pen, from `(x, y)` with side `side`.
-fn square(app: &mut PhotocraftApp, x: f64, y: f64, side: f64) {
+fn square(app: &mut PatronusPhotoApp, x: f64, y: f64, side: f64) {
     for (dx, dy) in [(0.0, 0.0), (side, 0.0), (side, side), (0.0, side), (0.5, 0.5)] {
         click(app, x + dx, y + dy);
     }
 }
 
-fn shape(app: &PhotocraftApp) -> (LayerId, photocraft_doc::ShapeLayer) {
+fn shape(app: &PatronusPhotoApp) -> (LayerId, patronusphoto_doc::ShapeLayer) {
     let st = app.session.active().unwrap();
     let id = st.active_layer.unwrap();
     match &st.doc.layer(id).unwrap().content {
@@ -47,15 +47,15 @@ fn ops(path: &Path) -> Vec<PathOp> {
 }
 
 fn covered(path: &Path, x: i32, y: i32) -> f32 {
-    photocraft_vector::fill_rasterizer(path, photocraft_vector::DEFAULT_TOLERANCE).render(photocraft_geom::Rect::from_xywh(x, y, 1, 1))[0]
+    patronusphoto_vector::fill_rasterizer(path, patronusphoto_vector::DEFAULT_TOLERANCE).render(patronusphoto_geom::Rect::from_xywh(x, y, 1, 1))[0]
 }
 
-fn history(app: &PhotocraftApp) -> usize {
+fn history(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.past_len()
 }
 
 /// Feeds one key press through the app's shortcut handling.
-fn key(app: &mut PhotocraftApp, ctx: &egui::Context, key: Key, modifiers: egui::Modifiers) {
+fn key(app: &mut PatronusPhotoApp, ctx: &egui::Context, key: Key, modifiers: egui::Modifiers) {
     let raw = egui::RawInput {
         events: vec![egui::Event::ModifiersChanged(modifiers), egui::Event::Key { key, physical_key: None, pressed: true, repeat: false, modifiers }],
         ..Default::default()
@@ -104,7 +104,7 @@ fn path_selection_selects_and_moves_components() {
     square(&mut app, 100.0, 10.0, 40.0);
     square(&mut app, 100.0, 100.0, 40.0);
     app.ui.tool = Tool::PathSelection;
-    let heads = |app: &PhotocraftApp| super::selected(app).map(|(.., h)| h).unwrap_or_default();
+    let heads = |app: &PatronusPhotoApp| super::selected(app).map(|(.., h)| h).unwrap_or_default();
     super::press(&mut app, [30.0, 30.0], false);
     super::press(&mut app, [120.0, 120.0], true);
     assert_eq!(heads(&app), [0, 2]);
@@ -204,7 +204,7 @@ fn dragging_a_live_shape_keeps_it_live() {
         let (x0, y0, ..) = sh.path.control_bounds().unwrap();
         assert_eq!((x0.round(), y0.round()), (30.0, 25.0), "{kind}: moved");
         match sh.live {
-            Some(photocraft_doc::vector::LiveShape::Rect { rect, .. } | photocraft_doc::vector::LiveShape::Ellipse { rect }) => {
+            Some(patronusphoto_doc::vector::LiveShape::Rect { rect, .. } | patronusphoto_doc::vector::LiveShape::Ellipse { rect }) => {
                 assert_eq!(rect, [30.0, 25.0, 60.0, 40.0], "{kind}")
             }
             other => panic!("{kind}: still live, got {other:?}"),
@@ -439,7 +439,7 @@ fn structural_selection_validation_is_cached_per_revision() {
     crate::path_components::press(&mut app, [80.0, 80.0], false);
     app.run("shape.edit", json!({"layer": id.0, "fill": "#0000ff"})).unwrap();
     assert!(super::selected(&app).is_some());
-    let computations = |app: &PhotocraftApp| app.ui.direct_selection.owner.as_ref().unwrap().selection_computations();
+    let computations = |app: &PatronusPhotoApp| app.ui.direct_selection.owner.as_ref().unwrap().selection_computations();
     assert_eq!(computations(&app), 1, "the changed revision is checked once");
     for _ in 0..3 {
         assert!(super::selected(&app).is_some(), "the cached selection stays valid");

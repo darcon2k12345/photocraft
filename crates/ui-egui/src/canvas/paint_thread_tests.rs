@@ -7,13 +7,13 @@ use std::time::{Duration, Instant};
 use serde_json::json;
 
 use super::strokes::{feed_live_stroke_waiting, live_stroke_busy, stroke_command};
-use super::{PhotocraftApp, Tool, ToolEvent, testing, tool_event};
+use super::{PatronusPhotoApp, Tool, ToolEvent, testing, tool_event};
 
 const M: egui::Modifiers = egui::Modifiers::NONE;
 
 /// A document with an empty layer and `tool` set up to paint a short stroke on it.
-fn app_for(tool: Tool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app_for(tool: Tool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     testing::still_clock(&mut app);
     app.run("file.new", json!({"width": 160, "height": 60, "background": "#00ff00"})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
@@ -26,7 +26,7 @@ fn app_for(tool: Tool) -> Box<PhotocraftApp> {
 /// The pen moves along the stroke to x 120, one pass per move. Each pass feeds the live stroke and,
 /// with `LIVE_STROKE_WAIT` at `Duration::MAX` in tests, waits until it has painted, so the moves run
 /// before the thread is held: a pass would wait for a held step for ever.
-fn move_along(app: &mut PhotocraftApp) {
+fn move_along(app: &mut PatronusPhotoApp) {
     for x in (30..=120).step_by(10) {
         tool_event(app, ToolEvent::Move { x: f64::from(x), y: 30.0, pressure: 1.0 }, M);
     }
@@ -35,7 +35,7 @@ fn move_along(app: &mut PhotocraftApp) {
 /// The pen's last point (x 130) reaches the drag between passes and is handed to the thread without
 /// waiting for its step, as `tools::run` does with the paint state taken out of the app: a held
 /// thread is then still painting it.
-fn feed_last_point_without_waiting(app: &mut PhotocraftApp) {
+fn feed_last_point_without_waiting(app: &mut PatronusPhotoApp) {
     let mut state = std::mem::take(&mut app.canvas_tools.paint);
     if let Some(stroke) = state.stroke.as_mut() {
         stroke.points.push([130.0, 30.0, 1.0]);
@@ -45,7 +45,7 @@ fn feed_last_point_without_waiting(app: &mut PhotocraftApp) {
 }
 
 /// The command the release ran, undone and run again from its params: the pixels must match.
-fn assert_commit_replays(app: &mut PhotocraftApp, cmd: &str, what: &str) {
+fn assert_commit_replays(app: &mut PatronusPhotoApp, cmd: &str, what: &str) {
     let doc = app.session.active().unwrap().doc.clone();
     let id = app.session.active().unwrap().active_layer.unwrap();
     assert!(doc.layer(id).unwrap().surface().unwrap().rgba(128, 30)[3] > 0.0, "{what}: the stroke reaches its last point");

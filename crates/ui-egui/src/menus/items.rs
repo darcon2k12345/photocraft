@@ -11,7 +11,7 @@ use serde_json::json;
 
 use super::invoke::{panel_alias, proof_preset, workspace_id};
 use super::state::{checked, is_enabled, reveal_label, translated_menu_label};
-use super::{DOCUMENT_ITEM, PhotocraftApp, TOP_MENUS, UI_COMMANDS};
+use super::{DOCUMENT_ITEM, PatronusPhotoApp, TOP_MENUS, UI_COMMANDS};
 
 /// Is `id` implemented by the engine or the shell (a live menu item)? Shared by the menus and
 /// the parity report ([`crate::parity`]). The command gate asks this for every command a pass
@@ -19,7 +19,7 @@ use super::{DOCUMENT_ITEM, PhotocraftApp, TOP_MENUS, UI_COMMANDS};
 /// the scans of the bridged rows and the workspace commands last.
 pub fn is_live(id: &str) -> bool {
     static UI_IDS: std::sync::OnceLock<std::collections::HashSet<&'static str>> = std::sync::OnceLock::new();
-    photocraft_engine::commands::find(id).is_some()
+    patronusphoto_engine::commands::find(id).is_some()
         || UI_IDS.get_or_init(|| UI_COMMANDS.iter().map(|c| c.0).collect()).contains(id)
         || id.starts_with(super::DOCUMENT_ITEM)
         || id == "view.proofSetup.custom"
@@ -105,7 +105,7 @@ fn collect_english(node: &Node, english: &mut HashMap<(String, String), String>)
 /// frame with a click or key press folds the frame number in, which covers state the hash does not
 /// list. A second pass of that frame sees no input, so it hashes differently and rebuilds once,
 /// after the first pass's commands ran.
-pub fn model<'a>(app: &'a mut PhotocraftApp, ctx: &egui::Context) -> &'a MenuModel {
+pub fn model<'a>(app: &'a mut PatronusPhotoApp, ctx: &egui::Context) -> &'a MenuModel {
     let state = crate::native_menu::state_hash(app, had_input(ctx).then_some(app.frame));
     match app.menu_model.take() {
         Some(held) if held.state == state => app.menu_model.insert(held),
@@ -136,7 +136,7 @@ fn find<'a>(rows: &'a mut [Row], id: &str) -> Option<&'a mut Row> {
 
 /// A live row shows the chord the runtime's keymap runs its command for (`commands::chord`: overrides included, a
 /// key another command wins left out); a catalogue row shows its text.
-fn shortcut_of(app: &PhotocraftApp, id: &str, catalogue: Option<&str>) -> Option<Chord> {
+fn shortcut_of(app: &PatronusPhotoApp, id: &str, catalogue: Option<&str>) -> Option<Chord> {
     if is_live(id) {
         return craft::ui::runtime::commands::chord(app.ctx(), &crate::shortcut_dispatch::keymap_command(id));
     }
@@ -150,7 +150,7 @@ fn shortcut_of(app: &PhotocraftApp, id: &str, catalogue: Option<&str>) -> Option
     }
 }
 
-fn with_state(app: &PhotocraftApp, id: &str, mut row: Row) -> Row {
+fn with_state(app: &PatronusPhotoApp, id: &str, mut row: Row) -> Row {
     if let Some(on) = checked(app, id) {
         row = row.kind(ItemKind::Check(on));
     }
@@ -168,14 +168,14 @@ fn decorate(row: &mut Row) {
     // ⌥ while choosing an Image › Adjustments item opens it at its last settings (#8900).
     if crate::adjust_dialog::has_dialog(&id) {
         row.alternate = Some(Alternate::new(Mods::ALT, CommandRef::with_params(id, json!({"lastSettings": true}))));
-    } else if let Some(stamp) = photocraft_engine::stamp_cmds::alt_variant(&id) {
+    } else if let Some(stamp) = patronusphoto_engine::stamp_cmds::alt_variant(&id) {
         row.alternate = Some(Alternate::new(Mods::ALT, CommandRef::new(stamp)));
     }
 }
 
 /// The rows before Edit › Menus customization: every command with its label, shortcut and state.
 /// The Keyboard Shortcuts Menus tab reads these, so hidden rows can be unhidden.
-pub fn base_rows(app: &PhotocraftApp) -> Vec<Row> {
+pub fn base_rows(app: &PatronusPhotoApp) -> Vec<Row> {
     // 1) Photoshop's full menu tree, in Photoshop order; live where we implement the command.
     let mut rows: Vec<Row> = crate::menu_catalog::CATALOG
         .iter()
@@ -200,7 +200,7 @@ pub fn base_rows(app: &PhotocraftApp) -> Vec<Row> {
         }
         extra.push(with_state(app, id, row));
     }
-    for c in photocraft_engine::command_specs().iter().filter(|c| !c.menu.is_empty()) {
+    for c in patronusphoto_engine::command_specs().iter().filter(|c| !c.menu.is_empty()) {
         let mut row = Row::new(c.menu, c.id, c.label).enabled(is_enabled(app, c.id));
         if let Some(chord) = shortcut_of(app, c.id, c.shortcut) {
             row = row.shortcut(chord);
@@ -230,7 +230,7 @@ pub fn base_rows(app: &PhotocraftApp) -> Vec<Row> {
     // Layer › Merge Layers reads Merge Group with just a group selected, as in Photoshop (#3832).
     if let Some(st) = app.session.active()
         && st.selected_layers().len() <= 1
-        && st.active_layer.and_then(|id| st.doc.layer(id)).is_some_and(|l| matches!(l.content, photocraft_doc::LayerContent::Group(_)))
+        && st.active_layer.and_then(|id| st.doc.layer(id)).is_some_and(|l| matches!(l.content, patronusphoto_doc::LayerContent::Group(_)))
         && let Some(item) = find(&mut rows, "layer.mergeLayers")
     {
         item.label = "Merge Group".into();
@@ -239,7 +239,7 @@ pub fn base_rows(app: &PhotocraftApp) -> Vec<Row> {
     // On the web it intentionally downloads PNG until the quick-export service supports
     // the other formats; the Layer quick-export command also always produces PNG.
     if let Some(item) = find(&mut rows, "file.export.quickExportAsPng") {
-        use photocraft_engine::prefs::QuickExportFormat;
+        use patronusphoto_engine::prefs::QuickExportFormat;
         let format = if cfg!(target_arch = "wasm32") {
             "PNG"
         } else {
@@ -341,10 +341,10 @@ pub fn base_rows(app: &PhotocraftApp) -> Vec<Row> {
 }
 
 /// [`base_rows`] with Edit › Menus applied: hidden rows dropped and the chosen colours set.
-pub fn menu_rows(app: &PhotocraftApp) -> Vec<Row> {
+pub fn menu_rows(app: &PatronusPhotoApp) -> Vec<Row> {
     let mut rows = base_rows(app);
     let prefs = app.session.prefs();
-    let hidden = prefs.menus.hidden.iter().filter(|id| photocraft_engine::prefs::MenuCustomization::hideable(id)).cloned();
+    let hidden = prefs.menus.hidden.iter().filter(|id| patronusphoto_engine::prefs::MenuCustomization::hideable(id)).cloned();
     let colors = if prefs.interface.show_menu_colors {
         prefs.menus.colors.iter().filter_map(|(id, name)| menu_tint(name).map(|c| (id.clone(), c.into()))).collect::<Vec<_>>()
     } else {
@@ -396,7 +396,7 @@ fn put_in_window(bar: &mut MenuBar, node: Node) {
     menu.children.insert(at, node);
 }
 
-fn build(app: &PhotocraftApp, state: u64) -> MenuModel {
+fn build(app: &PatronusPhotoApp, state: u64) -> MenuModel {
     let lang = crate::i18n::current();
     let mut rows = menu_rows(app);
     let mut english = HashMap::new();

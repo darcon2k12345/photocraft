@@ -21,7 +21,7 @@ fn step(event: &[u8; 4], label: &str, d: Descriptor) -> AtnItem {
 fn saved(s: &mut Session) -> Vec<AtnItem> {
     let r = s.execute("actions.save", json!({"action": "A"})).unwrap();
     assert_eq!(r["skipped"], json!([]), "{r}");
-    atn::parse(&photocraft_paint::tile::b64_decode(r["data"].as_str().unwrap()).unwrap()).unwrap().actions.remove(0).items
+    atn::parse(&patronusphoto_paint::tile::b64_decode(r["data"].as_str().unwrap()).unwrap()).unwrap().actions.remove(0).items
 }
 
 /// The gradient object the Gradient tool records: dither, classic interpolation, angle, type,
@@ -66,7 +66,7 @@ fn gradient_tool_steps_load_play_and_save_back() {
         .with("T   ", D::Descriptor(tool_gradient(-35.0, 140.0, (12.5, -8.0)).with("Algn", D::Boolean(false))));
     let items = vec![step(b"Mk  ", "Make", make.clone()), step(b"setd", "Set", set.clone())];
     let mut s = Session::new();
-    let loaded = s.execute("actions.load", json!({"data": photocraft_paint::tile::b64_encode(&action(items))})).unwrap();
+    let loaded = s.execute("actions.load", json!({"data": patronusphoto_paint::tile::b64_encode(&action(items))})).unwrap();
     assert_eq!(loaded["unsupported"], json!([]), "{loaded}");
     let ids: Vec<&str> = s.actions.list.actions()[0].steps.iter().map(|st| st.command.as_str()).collect();
     assert_eq!(ids, ["layer.newFillLayer.gradient", "gradient.fill.set"]);
@@ -120,7 +120,7 @@ fn create_droplet_step_loads_plays_and_saves_back() {
     s.actions.list.push(crate::actions_cmds::Action::new("Sharpen", vec![ActionStep::new("filter.sharpen.sharpen", json!({}))])).unwrap();
     s.actions.list.assign_set(0, Some("Tools".into())).unwrap();
     let loaded = s
-        .execute("actions.load", json!({"data": photocraft_paint::tile::b64_encode(&action(vec![step(b"CrtD", "Create Droplet", recorded.clone())]))}))
+        .execute("actions.load", json!({"data": patronusphoto_paint::tile::b64_encode(&action(vec![step(b"CrtD", "Create Droplet", recorded.clone())]))}))
         .unwrap();
     assert_eq!(loaded["unsupported"], json!([]), "{loaded}");
     let a = s.actions.list.actions().iter().find(|a| a.name == "A").unwrap();
@@ -134,7 +134,7 @@ fn create_droplet_step_loads_plays_and_saves_back() {
     assert_eq!(written["action"]["steps"], json!([["filter.sharpen.sharpen", {}]]));
     assert_eq!((written["options"]["output"].as_str(), written["options"]["overrideOpen"].as_bool()), (Some(out.as_str()), Some(true)));
     let r = s.execute("actions.save", json!({"action": "A"})).unwrap();
-    let back = atn::parse(&photocraft_paint::tile::b64_decode(r["data"].as_str().unwrap()).unwrap()).unwrap();
+    let back = atn::parse(&patronusphoto_paint::tile::b64_decode(r["data"].as_str().unwrap()).unwrap()).unwrap();
     let item = back.actions.iter().find(|a| a.name.to_string_lossy() == "A").unwrap().items[0].clone();
     assert_eq!((item.event.id(), item.descriptor), ("CrtD".to_string(), Some(recorded)));
     let _ = std::fs::remove_dir_all(&dir);
@@ -207,7 +207,7 @@ fn create_droplet_steps_follow_a_renamed_loaded_action() {
     let mut s = Session::new();
     s.actions.list.push(crate::actions_cmds::Action::new("Sharpen", vec![])).unwrap();
     s.actions.list.assign_set(0, Some("Tools".into())).unwrap();
-    let r = s.execute("actions.load", json!({"data": photocraft_paint::tile::b64_encode(&file), "set": "Loaded"})).unwrap();
+    let r = s.execute("actions.load", json!({"data": patronusphoto_paint::tile::b64_encode(&file), "set": "Loaded"})).unwrap();
     assert_eq!(r["actions"], json!(["Sharpen 2", "A"]), "{r}");
     let a = s.actions.list.actions().iter().find(|a| a.name == "A").unwrap();
     assert_eq!(a.steps[0].params["action"], "Sharpen 2", "{:?}", a.steps[0]);

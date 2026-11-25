@@ -17,7 +17,7 @@ fn session() -> (Session, [u64; 3]) {
 
 /// Each page's size in points, in page order, from the exported PDF.
 fn page_sizes(s: &mut Session, params: Value) -> Vec<(u32, u32)> {
-    let dir = std::env::temp_dir().join(format!("photocraft-pdf-order-{}-{}", std::process::id(), params["artboards"]));
+    let dir = std::env::temp_dir().join(format!("patronusphoto-pdf-order-{}-{}", std::process::id(), params["artboards"]));
     std::fs::create_dir_all(&dir).unwrap();
     let path = join(&dir.to_string_lossy(), "boards.pdf");
     let mut params = params;
@@ -49,7 +49,7 @@ fn chosen_artboards_keep_the_bottom_first_order_whatever_the_id_order() {
 #[test]
 fn artboards_to_files_keeps_its_top_first_order() {
     let (mut s, _) = session();
-    let dir = std::env::temp_dir().join(format!("photocraft-pdf-order-files-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("patronusphoto-pdf-order-files-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let r = s.execute("file.export.artboardsToFiles", json!({"dir": dir.to_string_lossy(), "prefix": "p"})).unwrap();
     let _ = std::fs::remove_dir_all(&dir);

@@ -6,7 +6,7 @@ use craft::ui::runtime::requests::PathKind;
 use craft_print::ui::{Duplex, HostedPrint, PrintAnswer, PrintFinish, PrintMarks, PrintSection, PrintSheet, Printer, Settings, State};
 use serde_json::{Map, Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The command whose layout the preview and the drag use.
 const COMMAND: &str = "file.print";
@@ -36,8 +36,8 @@ fn default_first(mut named: Vec<(String, bool)>) -> Vec<Printer> {
 /// The canonical `PAPERS` name a remembered paper name stands for (`file.print` remembers the name
 /// as typed, aliases included); an unknown name stays as it is.
 fn paper_key(name: &str) -> String {
-    match photocraft_engine::print_cmds::paper_size(name) {
-        Some(size) => photocraft_engine::print_cmds::PAPERS.iter().find(|p| (p.1, p.2) == size).map_or_else(|| name.to_string(), |p| p.0.to_string()),
+    match patronusphoto_engine::print_cmds::paper_size(name) {
+        Some(size) => patronusphoto_engine::print_cmds::PAPERS.iter().find(|p| (p.1, p.2) == size).map_or_else(|| name.to_string(), |p| p.0.to_string()),
         None => name.to_string(),
     }
 }
@@ -88,8 +88,8 @@ fn write_settings(fields: &mut DialogFields, settings: &Settings) {
 /// Opens the Print dialog seeded from the last print (also from an earlier session), filling
 /// missing fields with defaults. The printer list is asked for by the dialog's first pass
 /// (`take`). Returns the dialog's id without submitting a print job.
-pub fn open_print(app: &mut PhotocraftApp) -> DialogId {
-    let last = photocraft_engine::print_cmds::last_print(&app.session);
+pub fn open_print(app: &mut PatronusPhotoApp) -> DialogId {
+    let last = patronusphoto_engine::print_cmds::last_print(&app.session);
     let mut fields = DialogFields::new();
     let mut state = State::default();
     let mut paper = Value::String("letter".into());
@@ -155,7 +155,7 @@ pub(super) fn sections(fields: &DialogFields) -> Vec<PrintSection> {
     let choice = |options: &[(&str, &'static str)], default: &str| {
         ParamKind::choice(options.iter().map(|(k, l)| ((*k).to_string(), (*l).into())).collect(), Some(default.to_string()))
     };
-    let limit = photocraft_engine::print_cmds::MAX_POSITION_INCHES;
+    let limit = patronusphoto_engine::print_cmds::MAX_POSITION_INCHES;
 
     // Photoshop's Printer Profile menu: the built-ins, then every installed printer (output class)
     // profile by its description.
@@ -167,7 +167,7 @@ pub(super) fn sections(fields: &DialogFields) -> Vec<PrintSection> {
         ("gray-gamma-2.2".into(), tl!("Gray Gamma 2.2").into()),
     ];
     profiles.extend(
-        photocraft_engine::installed_profiles::installed()
+        patronusphoto_engine::installed_profiles::installed()
             .into_iter()
             .filter(|p| p.is_destination() && p.class == craft::cms::ProfileClass::Output)
             .map(|p| (p.path.clone(), p.description.clone().into())),
@@ -181,7 +181,7 @@ pub(super) fn sections(fields: &DialogFields) -> Vec<PrintSection> {
     }
 
     let mut papers: Vec<(String, craft::ui::runtime::env::Label)> =
-        photocraft_engine::print_cmds::PAPERS.iter().map(|p| (p.0.to_string(), print_paper_label(p.0).into())).collect();
+        patronusphoto_engine::print_cmds::PAPERS.iter().map(|p| (p.0.to_string(), print_paper_label(p.0).into())).collect();
     papers.push(("custom".into(), tl!("Custom").into()));
 
     // The rows are shown in the section's Units menu; stored values keep their units (paper in points, position in
@@ -201,7 +201,7 @@ pub(super) fn sections(fields: &DialogFields) -> Vec<PrintSection> {
     let position = |key: &str, label: &'static str| {
         Param::number_in_units(key, label, 0.0, 0.1, 2, "units", lengths(1.0)).bounds(Some(-limit), Some(limit)).enabled_when("center", FieldValue::Bool(false))
     };
-    let on = |key: &str| (key.to_string(), FieldValue::Text("photocraftManages".into()));
+    let on = |key: &str| (key.to_string(), FieldValue::Text("patronusphotoManages".into()));
     let (on_key, on_value) = on("colorHandling");
     let mark = |key: &str, label: &'static str| Param::new(key, label, ParamKind::bool(false));
 
@@ -215,7 +215,7 @@ pub(super) fn sections(fields: &DialogFields) -> Vec<PrintSection> {
                     choice(
                         &[
                             ("printerManages", tl!("Printer Manages Colors")),
-                            ("photocraftManages", tl!("PhotoCraft Manages Colors")),
+                            ("patronusphotoManages", tl!("Patronus Photo Manages Colors")),
                             ("noColorManagement", tl!("No Color Management")),
                         ],
                         "printerManages",
@@ -277,9 +277,9 @@ pub(super) fn sections(fields: &DialogFields) -> Vec<PrintSection> {
 
 /// The system's printers, as the engine lists them without waiting: the driver list where the
 /// driver API answers (Windows), else the spooler's.
-fn take_printer_lists(app: &mut PhotocraftApp) -> Vec<Printer> {
-    let system = photocraft_engine::print_cmds::printers_without_waiting(&mut app.session);
-    match photocraft_engine::print_cmds::rgb_printers_without_waiting(&app.session) {
+fn take_printer_lists(app: &mut PatronusPhotoApp) -> Vec<Printer> {
+    let system = patronusphoto_engine::print_cmds::printers_without_waiting(&mut app.session);
+    match patronusphoto_engine::print_cmds::rgb_printers_without_waiting(&app.session) {
         Ok(list) => default_first(list.iter().map(|p| (p.name.clone(), p.default)).collect()),
         Err(_) => printer_list(system.get("printers")),
     }
@@ -292,8 +292,8 @@ fn take_printer_lists(app: &mut PhotocraftApp) -> Vec<Printer> {
 /// printer and its driver settings stay, and Print stays unavailable, until a fresh list arrives. A fresh list
 /// without the chosen printer replaces it (an empty list leaves no printer chosen), and the driver settings of the
 /// replaced printer are dropped. With no printer chosen (the system's default), the driver settings stay.
-fn refresh_printers(app: &mut PhotocraftApp, ctx: &egui::Context) {
-    let (list, listed) = match photocraft_engine::print_cmds::try_with_spooler(|| take_printer_lists(app)) {
+fn refresh_printers(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
+    let (list, listed) = match patronusphoto_engine::print_cmds::try_with_spooler(|| take_printer_lists(app)) {
         Some(list) => (list, true),
         None => (take_printer_lists(app), false),
     };
@@ -346,7 +346,7 @@ fn print_paper_size(value: Option<&Value>) -> (f64, f64) {
     let default = (612.0, 792.0);
     match value {
         Some(Value::Array(a)) => (a.first().and_then(Value::as_f64).unwrap_or(default.0), a.get(1).and_then(Value::as_f64).unwrap_or(default.1)),
-        Some(Value::String(name)) => photocraft_engine::print_cmds::paper_size(name).unwrap_or(default),
+        Some(Value::String(name)) => patronusphoto_engine::print_cmds::paper_size(name).unwrap_or(default),
         _ => default,
     }
 }
@@ -354,7 +354,7 @@ fn print_paper_size(value: Option<&Value>) -> (f64, f64) {
 /// Save as PDF › Browse…: where to write the PDF. The answer goes to the open print dialog's
 /// `output` row when the file dialog replies. Without it the only way to save a PDF was to type a
 /// full path (#5328).
-fn browse_pdf(app: &mut PhotocraftApp, suggested: &str) {
+fn browse_pdf(app: &mut PatronusPhotoApp, suggested: &str) {
     let r = app.pick_save(suggested, move |app, path| {
         let dialog = app.framework.dialogs.get_mut::<HostedPrint>().ok_or("the dialog was closed")?;
         dialog.requests_mut().answer_path("output", std::path::PathBuf::from(path));
@@ -372,7 +372,7 @@ fn browse_pdf(app: &mut PhotocraftApp, suggested: &str) {
 /// is the layout the box was drawn from. Center is turned off and the offsets clamp to the
 /// engine's safety bound. A position equal to where the box already is, or a nonfinite one,
 /// changes nothing and returns false: a click without a drag leaves Center on.
-pub(super) fn drag_print_position(f: &mut DialogFields, position: egui::Pos2, layout: &photocraft_engine::print_cmds::PrintLayout) -> bool {
+pub(super) fn drag_print_position(f: &mut DialogFields, position: egui::Pos2, layout: &patronusphoto_engine::print_cmds::PrintLayout) -> bool {
     let (px, py) = (f64::from(position.x), f64::from(position.y));
     if !px.is_finite() || !py.is_finite() {
         return false;
@@ -389,7 +389,7 @@ pub(super) fn drag_print_position(f: &mut DialogFields, position: egui::Pos2, la
     if !left.is_finite() || !top.is_finite() {
         return false;
     }
-    let limit = photocraft_engine::print_cmds::MAX_POSITION_INCHES;
+    let limit = patronusphoto_engine::print_cmds::MAX_POSITION_INCHES;
     fields_set_position(f, left.clamp(-limit, limit), top.clamp(-limit, limit));
     true
 }
@@ -403,11 +403,11 @@ fn fields_set_position(f: &mut DialogFields, left: f64, top: f64) {
 /// The document's flattened picture at the preview size, mirrored for Emulsion Down (the sheet
 /// draws the picture unmirrored in the box). The texture lives in the context's memory under the
 /// document's id and revision.
-fn picture(ctx: &egui::Context, doc: &photocraft_doc::Document, revision: u64, mirror: bool) -> egui::load::SizedTexture {
+fn picture(ctx: &egui::Context, doc: &patronusphoto_doc::Document, revision: u64, mirror: bool) -> egui::load::SizedTexture {
     let key = egui::Id::unique(("print-thumb", doc.id.0, revision, mirror));
     let tex: Option<std::sync::Arc<egui::TextureHandle>> = ctx.data(|d| d.get_temp(key));
     let tex = tex.unwrap_or_else(|| {
-        let th = photocraft_compose::thumbnail(doc, 400);
+        let th = patronusphoto_compose::thumbnail(doc, 400);
         let (w, h) = (th.width as usize, th.height as usize);
         let mut pixels = th.pixels.clone();
         if mirror {
@@ -429,8 +429,8 @@ fn picture(ctx: &egui::Context, doc: &photocraft_doc::Document, revision: u64, m
 
 /// The sheet the preview draws from the engine's shared layout, in paper points with the top-left
 /// origin; `None` when the fields describe no valid layout.
-fn build_sheet(ctx: &egui::Context, doc: &photocraft_doc::Document, revision: u64, fields: &DialogFields) -> Option<PrintSheet> {
-    let l = photocraft_engine::print_cmds::layout(doc, &print_params(fields), COMMAND).ok()?;
+fn build_sheet(ctx: &egui::Context, doc: &patronusphoto_doc::Document, revision: u64, fields: &DialogFields) -> Option<PrintSheet> {
+    let l = patronusphoto_engine::print_cmds::layout(doc, &print_params(fields), COMMAND).ok()?;
     let (pw, ph) = l.paper;
     let (x, y, w, h) = l.rect;
     let shown_x = if l.emulsion_down { pw - x - w } else { x };
@@ -453,7 +453,7 @@ fn build_sheet(ctx: &egui::Context, doc: &photocraft_doc::Document, revision: u6
 /// second pass in the same frame finds them empty and applies only what its own input raised.
 /// The sheet is rebuilt only when the fields' parameters or the document's revision differ from
 /// the last sheet's; the open dialog gets it every pass.
-pub(super) fn take(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(super) fn take(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     match app.framework.dialogs.take::<HostedPrint>() {
         Some(DialogResult::Ok(answer)) => return finish(app, answer),
         Some(DialogResult::Cancel) => return,
@@ -477,7 +477,7 @@ pub(super) fn take(app: &mut PhotocraftApp, ctx: &egui::Context) {
             EditEvent::Commit { after, .. } => *after,
             _ => continue,
         };
-        if let Ok(l) = photocraft_engine::print_cmds::layout(&doc, &print_params(&fields), COMMAND) {
+        if let Ok(l) = patronusphoto_engine::print_cmds::layout(&doc, &print_params(&fields), COMMAND) {
             moved |= drag_print_position(&mut fields, position, &l);
         }
     }
@@ -511,7 +511,7 @@ pub(super) fn take(app: &mut PhotocraftApp, ctx: &egui::Context) {
 
 /// Files the dialog's answer: Print runs `file.print`, Done keeps the settings without printing.
 /// The panel's printer, copies, two-sided mode and grayscale go into the parameters.
-fn finish(app: &mut PhotocraftApp, answer: PrintAnswer) {
+fn finish(app: &mut PatronusPhotoApp, answer: PrintAnswer) {
     let mut fields = answer.fields;
     write_settings(&mut fields, &answer.settings);
     match answer.finish {
@@ -521,7 +521,7 @@ fn finish(app: &mut PhotocraftApp, answer: PrintAnswer) {
                 app.ui.status_error = true;
             }
         }
-        PrintFinish::Done | _ => photocraft_engine::print_cmds::remember_print(&mut app.session, &print_params(&fields)),
+        PrintFinish::Done | _ => patronusphoto_engine::print_cmds::remember_print(&mut app.session, &print_params(&fields)),
     }
 }
 
@@ -550,7 +550,7 @@ pub(super) fn print_params(f: &DialogFields) -> Value {
 
 /// Submits the dialog parameters to `file.print`, propagating command errors unchanged.
 /// Updates the status for completed results only; pending jobs report completion later.
-pub(super) fn print_confirm(app: &mut PhotocraftApp, f: &DialogFields) -> Result<Value, String> {
+pub(super) fn print_confirm(app: &mut PatronusPhotoApp, f: &DialogFields) -> Result<Value, String> {
     let r = app.run("file.print", print_params(f))?;
     if r["pending"] != json!(true) {
         print_status(app, &r);
@@ -558,7 +558,7 @@ pub(super) fn print_confirm(app: &mut PhotocraftApp, f: &DialogFields) -> Result
     Ok(r)
 }
 
-pub(crate) fn print_status(app: &mut PhotocraftApp, r: &Value) {
+pub(crate) fn print_status(app: &mut PatronusPhotoApp, r: &Value) {
     app.ui.status = if let Some(printer) = r["spooler"]["printer"].as_str() {
         crate::i18n::fmt(tl!("Sent to {printer}"), &[("printer", printer)])
     } else if r["sent"] == json!(true) {

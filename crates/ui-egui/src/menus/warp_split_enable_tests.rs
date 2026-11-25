@@ -2,10 +2,10 @@
 //! enabled in one. A warped smart object keeps them, and several layers, a link group and
 //! editable type still grey them.
 
-use photocraft_doc::{LayerContent, LayerId};
+use patronusphoto_doc::{LayerContent, LayerId};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 const SPLITS: [&str; 3] = ["edit.transform.splitWarpCrosswise", "edit.transform.splitWarpHorizontally", "edit.transform.splitWarpVertically"];
 const REMOVE: &str = "edit.transform.removeWarpSplit";
@@ -15,8 +15,8 @@ fn four() -> impl Iterator<Item = &'static str> {
 }
 
 /// A 100 × 100 document with a pixel layer "Paint" holding a red block, active.
-fn app() -> (Box<PhotocraftApp>, LayerId) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> (Box<PatronusPhotoApp>, LayerId) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 100, "height": 100, "background": "white"})).unwrap();
     app.sync_views();
     let paint = LayerId(app.run("layer.new.layer", json!({"name": "Paint"})).unwrap()["layer"].as_u64().unwrap());
@@ -27,7 +27,7 @@ fn app() -> (Box<PhotocraftApp>, LayerId) {
 }
 
 /// The Edit › Transform row's state as the menu builds it.
-fn enabled(app: &PhotocraftApp, id: &str) -> bool {
+fn enabled(app: &PatronusPhotoApp, id: &str) -> bool {
     let rows = crate::menus::menu_rows(app);
     let row = crate::menus::items::row(&rows, id).map(|r| (r.path.clone(), r.enabled));
     let (path, enabled) = row.unwrap_or_else(|| panic!("{id} is in the menu"));
@@ -35,18 +35,18 @@ fn enabled(app: &PhotocraftApp, id: &str) -> bool {
     enabled
 }
 
-fn choose(app: &mut PhotocraftApp, id: &str) -> Result<serde_json::Value, String> {
+fn choose(app: &mut PatronusPhotoApp, id: &str) -> Result<serde_json::Value, String> {
     let app_ctx = app.ctx().clone();
     crate::menus::invoke(app, &app_ctx, id, json!({}))
 }
 
-fn warped_smart_object(app: &mut PhotocraftApp) {
+fn warped_smart_object(app: &mut PatronusPhotoApp) {
     app.run("layer.smartObjects.convertToSmartObject", json!({})).unwrap();
     app.run("layer.smartObjects.warp", json!({"style": "arc", "bend": 30, "rect": [10, 10, 60, 40]})).unwrap();
     assert!(crate::transform_tool::warps_active_layer(app), "the smart object has a stored warp");
 }
 
-fn stored_warp(app: &PhotocraftApp) -> Option<photocraft_geom::warp::Warp> {
+fn stored_warp(app: &PatronusPhotoApp) -> Option<patronusphoto_geom::warp::Warp> {
     let st = app.session.active().unwrap();
     match &st.doc.layer(st.active_layer.unwrap()).unwrap().content {
         LayerContent::Smart(sm) => sm.warp.clone(),
@@ -66,7 +66,7 @@ fn the_split_entries_are_greyed_until_warp_opens() {
         assert!(enabled(&app, id), "{id} is enabled in Warp");
     }
     assert!(!enabled(&app, REMOVE), "a fresh grid has no split line to remove");
-    let open_warp = |app: &PhotocraftApp| app.ui.transform.as_ref().and_then(|t| t.session.warp()).map(|w| w.warp.clone());
+    let open_warp = |app: &PatronusPhotoApp| app.ui.transform.as_ref().and_then(|t| t.session.warp()).map(|w| w.warp.clone());
     let before = open_warp(&app);
     choose(&mut app, "edit.transform.splitWarpCrosswise").unwrap();
     assert_ne!(open_warp(&app), before, "the menu's split cuts the open grid");

@@ -4,7 +4,7 @@
 //! the canvas's tool events.
 
 use egui::Modifiers;
-use photocraft_doc::LayerId;
+use patronusphoto_doc::LayerId;
 use serde_json::json;
 
 use super::super::commit;
@@ -12,25 +12,25 @@ use super::super::host::type_text;
 use super::super::mask_escape_tests::escape;
 use super::super::mask_replace_selection_tests::{bounds, click, new_app, selection};
 use super::super::{PLACEHOLDER, current_text};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing::{ToolEvent, tool_event};
 use crate::state::Tool;
 
 const AT: (f64, f64) = (100.0, 200.0);
 
-fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2]) {
+fn drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2]) {
     tool_event(app, ToolEvent::Down { x: from[0], y: from[1], pressure: 1.0 }, Modifiers::NONE);
     tool_event(app, ToolEvent::Move { x: to[0], y: to[1], pressure: 1.0 }, Modifiers::NONE);
     tool_event(app, ToolEvent::Up { x: to[0], y: to[1] }, Modifiers::NONE);
 }
 
 /// The new text, and the selected range as (anchor, caret).
-fn started(app: &PhotocraftApp) -> (String, (usize, usize)) {
+fn started(app: &PatronusPhotoApp) -> (String, (usize, usize)) {
     let ed = app.ui.text_edit.as_ref().expect("editing new text");
     (current_text(app, LayerId(ed.layer)).unwrap_or_default(), (ed.anchor, ed.caret))
 }
 
-fn app_with(tool: Tool) -> Box<PhotocraftApp> {
+fn app_with(tool: Tool) -> Box<PatronusPhotoApp> {
     let mut app = new_app();
     app.run("prefs.set", json!({"path": "type.fillNewTypeLayersWithPlaceholder", "value": true})).unwrap();
     app.ui.tool = tool;

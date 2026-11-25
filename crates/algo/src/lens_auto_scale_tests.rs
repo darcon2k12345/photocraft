@@ -2,9 +2,9 @@
 //! the Edge fill, as measured in the reference application on a 400 × 300 picture with a red
 //! 20 × 20 square at 0,0.
 
-use photocraft_color::{ColorMode, PixelFormat, SampleType};
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use patronusphoto_color::{ColorMode, PixelFormat, SampleType};
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::Surface;
 
 use super::{EdgeMode, LensCorrection, auto_scale, correct, generic_profile};
 

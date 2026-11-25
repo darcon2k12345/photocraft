@@ -40,7 +40,7 @@ fn harness(v: Value) -> Harness<'static, Value> {
         },
         v,
     );
-    crate::PhotocraftApp::setup_context(&h.ctx, Default::default());
+    crate::PatronusPhotoApp::setup_context(&h.ctx, Default::default());
     h.run_steps(4);
     h
 }

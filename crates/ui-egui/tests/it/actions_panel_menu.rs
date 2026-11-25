@@ -3,21 +3,21 @@
 use craft::automation::ui::actions::{ActionSelection, ActionsPanelCommands};
 use craft::ui::runtime::commands::CommandRef;
 use egui_kittest::Harness;
-use photocraft_engine::{
+use patronusphoto_engine::{
     Session,
     actions_cmds::{Action, ActionStep},
     actions_edit_cmds,
 };
-use photocraft_ui_egui::{
-    PhotocraftApp,
+use patronusphoto_ui_egui::{
+    PatronusPhotoApp,
     control::{ControlRequest, Reply, handle},
     dialogs,
 };
 use serde_json::{Value, json};
 
 /// A real dialog host over one selected action in a set.
-fn harness() -> Harness<'static, Box<PhotocraftApp>> {
-    let mut app = PhotocraftApp::new(Session::new(), Default::default());
+fn harness() -> Harness<'static, Box<PatronusPhotoApp>> {
+    let mut app = PatronusPhotoApp::new(Session::new(), Default::default());
     app.background_jobs = false;
     app.run("file.new", json!({"width":16,"height":12})).unwrap();
     let mut a = Action::new("A", vec![]);
@@ -26,13 +26,13 @@ fn harness() -> Harness<'static, Box<PhotocraftApp>> {
     app.ui.actions.panel.selected = Some(ActionSelection::Action(0));
     app.ui.actions.panel.expanded.insert("A".into());
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(egui::vec2(1100.0, 900.0)).build_ui_state(|ui, app| dialogs::run(app, ui), app);
-    PhotocraftApp::setup_context(&h.ctx, Default::default());
+    PatronusPhotoApp::setup_context(&h.ctx, Default::default());
     h.run_steps(3);
     h
 }
 
 /// One control request through the public channel; the reply is the request's answer.
-fn control(app: &mut PhotocraftApp, ctx: &egui::Context, method: &str, params: Value) -> Value {
+fn control(app: &mut PatronusPhotoApp, ctx: &egui::Context, method: &str, params: Value) -> Value {
     let (request, _reply) = ControlRequest::new(method, params);
     match handle(app, ctx, &request) {
         Reply::Done(reply) => reply,
@@ -41,7 +41,7 @@ fn control(app: &mut PhotocraftApp, ctx: &egui::Context, method: &str, params: V
 }
 
 /// Fire the panel menu row of `command` as a click on it would.
-fn fire(h: &mut Harness<'static, Box<PhotocraftApp>>, command: ActionsPanelCommands) -> Value {
+fn fire(h: &mut Harness<'static, Box<PatronusPhotoApp>>, command: ActionsPanelCommands) -> Value {
     let ctx = h.ctx.clone();
     let reply = control(h.state_mut(), &ctx, "ui.menu.invoke", json!({"id": CommandRef::from(command).id}));
     h.run_steps(3);
@@ -49,7 +49,7 @@ fn fire(h: &mut Harness<'static, Box<PhotocraftApp>>, command: ActionsPanelComma
 }
 
 /// The steps of action `A`.
-fn steps(app: &PhotocraftApp) -> Vec<ActionStep> {
+fn steps(app: &PatronusPhotoApp) -> Vec<ActionStep> {
     app.session.actions.list.action(0).unwrap().steps.clone()
 }
 

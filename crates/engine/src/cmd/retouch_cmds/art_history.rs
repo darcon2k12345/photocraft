@@ -1,10 +1,10 @@
 //! Art History Brush: stylized, oriented dabs sampled from a history state.
 
-use photocraft_algo::art_history::{self, Dab, MAX_COVERAGE, MAX_DABS, RNG_SEED, StampError, StampParams, Style};
-use photocraft_color::BlendMode;
-use photocraft_geom::Rect;
-use photocraft_paint::MAX_BRUSH_SIZE;
-use photocraft_paint::retouch::{Region, alpha_index};
+use patronusphoto_algo::art_history::{self, Dab, MAX_COVERAGE, MAX_DABS, RNG_SEED, StampError, StampParams, Style};
+use patronusphoto_color::BlendMode;
+use patronusphoto_geom::Rect;
+use patronusphoto_paint::MAX_BRUSH_SIZE;
+use patronusphoto_paint::retouch::{Region, alpha_index};
 use serde_json::{Value, json};
 
 use super::{EngineError, Result, Session, bad, blend_param, damage_json, parse_brush, run_stroke};
@@ -96,7 +96,7 @@ fn union_bounds(dabs: &[Dab]) -> Result<Rect> {
     Ok(r)
 }
 
-fn selection_mask(sel: Option<&photocraft_raster::Surface>, rect: Rect) -> Option<Vec<f32>> {
+fn selection_mask(sel: Option<&patronusphoto_raster::Surface>, rect: Rect) -> Option<Vec<f32>> {
     let sel = sel?;
     let w = rect.width() as usize;
     let h = rect.height() as usize;
@@ -180,7 +180,7 @@ pub(super) fn enabled(s: &Session) -> std::result::Result<(), String> {
 /// The targeted layer's pixels can't be painted: a group's (also one with a mask, which the
 /// precondition lets through for its mask), or Lock All or Lock Image Pixels, refused with the
 /// alert texts. A mask or channel target keeps the shared checks (not measured).
-fn refuse_layer(s: &Session, id: Option<photocraft_doc::LayerId>, p: &Value) -> Result<()> {
+fn refuse_layer(s: &Session, id: Option<patronusphoto_doc::LayerId>, p: &Value) -> Result<()> {
     let (Some(id), Some(st)) = (id, s.active()) else { return Ok(()) };
     let Some(layer) = st.doc.layer(id).filter(|_| pixel_target(p)) else { return Ok(()) };
     if layer.is_group() {
@@ -199,7 +199,7 @@ fn pixel_target(p: &Value) -> bool {
 /// alert texts: no source, then another canvas size, then another colour mode or a depth but 8
 /// bits ([`refuse_format`]), then a target layer the source state lacks. A mask or channel target
 /// keeps the History Brush's texts for the source refusals (not measured).
-fn source_surface(s: &Session, id: Option<photocraft_doc::LayerId>, p: &Value) -> Result<photocraft_raster::Surface> {
+fn source_surface(s: &Session, id: Option<patronusphoto_doc::LayerId>, p: &Value) -> Result<patronusphoto_raster::Surface> {
     use crate::history_source_cmds::{SourceRefusal, checked_source, paint_source};
     let st = s.active().ok_or(EngineError::NoDocument)?;
     let pixels = pixel_target(p);
@@ -225,8 +225,8 @@ fn source_surface(s: &Session, id: Option<photocraft_doc::LayerId>, p: &Value) -
 /// application's alert texts (#12637). The 16-bit text was seen with one layer only; two layers,
 /// or a depth change after the source, showed "not directly editable", so that text covers every
 /// other 16-bit case.
-fn refuse_format(doc: &photocraft_doc::Document, source: &photocraft_doc::Document) -> Result<()> {
-    use photocraft_color::SampleType;
+fn refuse_format(doc: &patronusphoto_doc::Document, source: &patronusphoto_doc::Document) -> Result<()> {
+    use patronusphoto_color::SampleType;
     let why = if source.mode != doc.mode {
         "the current color mode does not match that of the history state."
     } else {
@@ -332,8 +332,8 @@ pub fn run(s: &mut Session, p: &Value) -> Result<Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use photocraft_color::ColorMode;
-    use photocraft_doc::LayerContent;
+    use patronusphoto_color::ColorMode;
+    use patronusphoto_doc::LayerContent;
     use serde_json::json;
 
     fn session(w: u32, h: u32, depth: u64, mode: &str) -> Session {
@@ -355,7 +355,7 @@ mod tests {
             let mut data = Vec::new();
             for y in b.y0..b.y1 {
                 for x in b.x0..b.x1 {
-                    data.extend(photocraft_raster::from_rgba(&fmt, f(x, y)));
+                    data.extend(patronusphoto_raster::from_rgba(&fmt, f(x, y)));
                 }
             }
             surf.write_region(b, &data);

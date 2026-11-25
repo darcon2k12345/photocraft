@@ -21,7 +21,7 @@ use craft::theme::Srgba;
 use craft::ui::dialog::{DialogId, StackDialog as _};
 use craft::ui::patterns::form_dialogs::HostedParamDialog;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// A pick a hosted dialog (or the Properties panel) arms on the canvas.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -52,7 +52,7 @@ const PIPETTE_HOTSPOT: egui::Vec2 = egui::vec2(2.0, 22.0);
 /// The pick the stack's top dialog arms now, or the Properties panel's armed picker when no dialog is open.
 ///
 /// Reads the host's stack only. A dialog below the top never arms a pick: the dialog over it takes the input.
-pub(crate) fn armed(app: &PhotocraftApp) -> Option<DialogPick> {
+pub(crate) fn armed(app: &PatronusPhotoApp) -> Option<DialogPick> {
     let dialogs = &app.framework.dialogs;
     let Some(top) = dialogs.stack().top() else {
         return super::layer_picker::armed(app).map(|(_, picker)| DialogPick::TonePicker(picker));
@@ -94,12 +94,12 @@ pub(crate) fn armed(app: &PhotocraftApp) -> Option<DialogPick> {
 /// Records that the dialog `dialog` asked for a screen sample under the request `key`: the next presses on the image
 /// answer it, while `dialog` is the stack's top. The takers of the eyedropper requests call this (`take_eyedropper`
 /// hands a request once, so something has to remember it).
-pub(crate) fn arm_dropper(app: &mut PhotocraftApp, dialog: DialogId, key: String) {
+pub(crate) fn arm_dropper(app: &mut PatronusPhotoApp, dialog: DialogId, key: String) {
     app.dialog_dropper = Some((dialog, key));
 }
 
 /// Forgets the armed dropper (the dialog closed or its toggle went off).
-pub(crate) fn disarm_dropper(app: &mut PhotocraftApp) {
+pub(crate) fn disarm_dropper(app: &mut PatronusPhotoApp) {
     app.dialog_dropper = None;
 }
 
@@ -107,7 +107,7 @@ pub(crate) fn disarm_dropper(app: &mut PhotocraftApp) {
 /// dialogs' eyedroppers (the Levels and Curves picker, the Color Picker's, a parameter dialog's, Color Range's), Add and
 /// Subtract samples included: a held drag keeps adding or subtracting. The Properties panel's armed picker, a Curves
 /// point and the preview locator act on the press alone.
-pub(crate) fn follows_drag(app: &PhotocraftApp, pick: DialogPick) -> bool {
+pub(crate) fn follows_drag(app: &PatronusPhotoApp, pick: DialogPick) -> bool {
     match pick {
         DialogPick::TonePicker(_) => app.framework.dialogs.stack().top().is_some(),
         DialogPick::Color | DialogPick::ParamDropper | DialogPick::ColorRange => true,
@@ -116,7 +116,7 @@ pub(crate) fn follows_drag(app: &PhotocraftApp, pick: DialogPick) -> bool {
 }
 
 /// A drag step at `at` of a pick that [`follows_drag`]: the pick runs again on the press's modifiers.
-pub(crate) fn resample(app: &mut PhotocraftApp, pick: DialogPick, at: [f64; 2], mods: Mods) {
+pub(crate) fn resample(app: &mut PatronusPhotoApp, pick: DialogPick, at: [f64; 2], mods: Mods) {
     match pick {
         DialogPick::TonePicker(_) => {
             pick_tone(app, at);
@@ -136,24 +136,24 @@ pub(crate) fn resample(app: &mut PhotocraftApp, pick: DialogPick, at: [f64; 2], 
 
 /// A press at `at` with the armed Levels or Curves point picker (the dialog's, or the Properties panel's when no dialog
 /// is open). Consumes the press even when nothing changes: a refused mode or a point off the image.
-pub(crate) fn pick_tone(app: &mut PhotocraftApp, at: [f64; 2]) -> bool {
+pub(crate) fn pick_tone(app: &mut PatronusPhotoApp, at: [f64; 2]) -> bool {
     if app.framework.dialogs.stack().top().is_some() { super::adjust_dialog::pick(app, at) } else { super::layer_picker::sample_at(app, at[0], at[1]) }
 }
 
 /// A ⌘-click at `at` on the image with Curves open: a point on the shown curve (one per colour channel with
 /// `every_channel`).
-pub(crate) fn add_curve_point(app: &mut PhotocraftApp, at: [f64; 2], every_channel: bool) -> bool {
+pub(crate) fn add_curve_point(app: &mut PatronusPhotoApp, at: [f64; 2], every_channel: bool) -> bool {
     super::adjust_dialog::add_point(app, at, every_channel)
 }
 
 /// The colour of the image at `at` for the armed dropper of the top dialog. `None` off the image or over transparency.
-fn sampled(app: &mut PhotocraftApp, at: [f64; 2]) -> Option<Srgba> {
+fn sampled(app: &mut PatronusPhotoApp, at: [f64; 2]) -> Option<Srgba> {
     crate::canvas::composite_color(app, at[0], at[1]).map(Srgba::from_rgb_array)
 }
 
 /// A press at `at` with the Color Picker's eyedropper armed: the colour of the image answers the request. A point off
 /// the image changes nothing but is still the dialog's press.
-pub(crate) fn pick_color(app: &mut PhotocraftApp, at: [f64; 2]) -> bool {
+pub(crate) fn pick_color(app: &mut PatronusPhotoApp, at: [f64; 2]) -> bool {
     let Some((id, key)) = app.dialog_dropper.clone() else { return false };
     let Some(color) = sampled(app, at) else { return true };
     let Some(picker) = app.framework.dialogs.get_mut_by_id::<ColorPickerDialog>(id) else { return false };
@@ -163,7 +163,7 @@ pub(crate) fn pick_color(app: &mut PhotocraftApp, at: [f64; 2]) -> bool {
 
 /// A press at `at` with a parameter dialog's eyedropper armed. Replace Color keeps its click order in the dialog
 /// (`mods` add or subtract a sample), every other dialog takes the colour under its request key.
-pub(crate) fn pick_dropper(app: &mut PhotocraftApp, at: [f64; 2], mods: Mods) -> bool {
+pub(crate) fn pick_dropper(app: &mut PatronusPhotoApp, at: [f64; 2], mods: Mods) -> bool {
     let Some((id, key)) = app.dialog_dropper.clone() else { return false };
     let replace_color = app.framework.dialogs.get_by_id::<HostedParamDialog>(id).and_then(|dialog| dialog.key()) == Some(crate::filter_dialog::REPLACE_COLOR);
     if replace_color {
@@ -177,14 +177,14 @@ pub(crate) fn pick_dropper(app: &mut PhotocraftApp, at: [f64; 2], mods: Mods) ->
 
 /// A press at `at` with Color Range open: samples the image under the dialog's sample tool and `mods`. `false` when
 /// the select takes no samples or the point is off the document.
-pub(crate) fn pick_color_range(app: &mut PhotocraftApp, at: [f64; 2], mods: Mods) -> bool {
+pub(crate) fn pick_color_range(app: &mut PatronusPhotoApp, at: [f64; 2], mods: Mods) -> bool {
     app.framework.dialogs.get_mut::<HostedColorRange>().is_some_and(|dialog| dialog.sample_canvas(at, mods))
 }
 
 /// A drag step with a shadow page selected in Layer Style. `total` is the travel since the press, which the press itself
 /// passes as zero; the draft starts its drag from the shown angle and distance on that zero.
 // PLAN: the draft takes `start: bool`; the dialog tool (canvas-widgets-w22) calls with a zero `total` on the press, so a zero travel is the start here.
-pub(crate) fn drag_shadow(app: &mut PhotocraftApp, _start: [f64; 2], total: [f64; 2]) -> bool {
+pub(crate) fn drag_shadow(app: &mut PatronusPhotoApp, _start: [f64; 2], total: [f64; 2]) -> bool {
     let Some(dialog) = app.framework.dialogs.get_mut::<HostedLayerStyle>() else { return false };
     let draft = dialog.draft_mut();
     let Some(kind) = draft.selected_kind().filter(|_| draft.drags_shadow()) else { return false };
@@ -195,7 +195,7 @@ pub(crate) fn drag_shadow(app: &mut PhotocraftApp, _start: [f64; 2], total: [f64
 
 /// A drag step with a Gradient Overlay page selected in Layer Style: the offset moves by the travel over the layer's size.
 /// Nothing for an empty or removed layer.
-pub(crate) fn drag_gradient(app: &mut PhotocraftApp, _start: [f64; 2], total: [f64; 2]) -> bool {
+pub(crate) fn drag_gradient(app: &mut PatronusPhotoApp, _start: [f64; 2], total: [f64; 2]) -> bool {
     let Some(layer) = super::layer_style::open_layer(app) else { return false };
     let Some(size) = super::layer_style::gradient_layer_bounds(&app.session, layer) else { return false };
     let Some(dialog) = app.framework.dialogs.get_mut::<HostedLayerStyle>() else { return false };
@@ -208,13 +208,13 @@ pub(crate) fn drag_gradient(app: &mut PhotocraftApp, _start: [f64; 2], total: [f
 }
 
 /// A press at `at` with a filter preview's locator armed: the preview's view centres on the point.
-pub(crate) fn locate(app: &mut PhotocraftApp, at: [f64; 2]) -> bool {
+pub(crate) fn locate(app: &mut PatronusPhotoApp, at: [f64; 2]) -> bool {
     super::filter_preview_ui::centre_on(app, at);
     true
 }
 
 /// The end of a gesture of `pick`: a Layer Style drag ends. The other picks have nothing to end.
-pub(crate) fn release(app: &mut PhotocraftApp, pick: DialogPick) {
+pub(crate) fn release(app: &mut PatronusPhotoApp, pick: DialogPick) {
     if matches!(pick, DialogPick::ShadowDrag | DialogPick::GradientDrag)
         && let Some(dialog) = app.framework.dialogs.get_mut::<HostedLayerStyle>()
     {
@@ -223,14 +223,14 @@ pub(crate) fn release(app: &mut PhotocraftApp, pick: DialogPick) {
 }
 
 /// The modifiers the pass holds that change what a Color Range press does.
-fn held(app: &PhotocraftApp) -> Mods {
+fn held(app: &PatronusPhotoApp) -> Mods {
     let held = app.ctx().input(|i| i.modifiers);
     Mods { shift: held.shift, alt: held.alt, ..Mods::default() }
 }
 
 /// The cursor over the image while `pick` is armed: the pipette for the samplers (Color Range's with the badge of the
 /// tool the held modifiers select), the move cursor for the drags, the locator mark for the locator.
-pub(crate) fn cursor(app: &PhotocraftApp, pick: DialogPick) -> Cursor {
+pub(crate) fn cursor(app: &PatronusPhotoApp, pick: DialogPick) -> Cursor {
     let pipette = |badge| Cursor::Painted(PaintedCursor::tool(IconId::new("eyedropper"), PIPETTE_HOTSPOT, badge));
     match pick {
         DialogPick::TonePicker(_) | DialogPick::Color | DialogPick::ParamDropper => pipette(None),

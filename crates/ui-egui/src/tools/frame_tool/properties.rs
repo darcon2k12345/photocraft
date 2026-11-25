@@ -2,7 +2,7 @@
 //! commands.
 
 use super::{Target, report, select, stroke, target};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use craft::ui::buttons::Button;
 use craft::ui::choice::Segmented;
 use craft::ui::contract::{Bind, Entry, GlyphLabel, LabelKind, LabelScheme, Props as _, Show as _, ShowContainer as _, SideLabel};
@@ -13,7 +13,7 @@ use craft::ui::runtime::env::UnitKind;
 use craft::ui::sections::Section;
 use craft::ui::text::NumberField;
 use egui::Ui;
-use photocraft_doc::Layer;
+use patronusphoto_doc::Layer;
 use serde_json::json;
 use std::ops::RangeInclusive;
 
@@ -35,7 +35,7 @@ fn field(ui: &mut Ui, glyph: &'static str, name: &'static str, value: f64, range
 }
 
 /// Frame-aware Properties: W/H/X/Y edit the container; the content can be selected, fitted or replaced.
-pub(crate) fn properties(app: &mut PhotocraftApp, ui: &mut Ui, l: &Layer) {
+pub(crate) fn properties(app: &mut PatronusPhotoApp, ui: &mut Ui, l: &Layer) {
     let Some(f) = &l.frame else { return };
     let locked = app.session.active().is_some_and(|st| {
         let locks = st.doc.effective_locks(l.id);

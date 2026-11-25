@@ -4,15 +4,15 @@
 
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::object_finder::{Update, refresh, update};
 use crate::state::{ObjectFinderMode, Tool, ToolOptions};
 
 const DISC: [f64; 2] = [100.0, 80.0];
 
 /// A 200 x 160 document: a red disc (centre 100,80, radius 45) on blue, nothing selected.
-fn app(mode: ObjectFinderMode) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app(mode: ObjectFinderMode) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 160})).unwrap();
     app.sync_views();
     app.run("layer.new.layer", json!({})).unwrap();
@@ -28,7 +28,7 @@ fn app(mode: ObjectFinderMode) -> Box<PhotocraftApp> {
 }
 
 /// Hovers at `at` until the lookup settles (time advances past the debounce).
-fn hover(app: &mut PhotocraftApp, at: [f64; 2]) -> Update {
+fn hover(app: &mut PatronusPhotoApp, at: [f64; 2]) -> Update {
     let ctx = app.ctx().clone();
     let mut t = 100.0;
     loop {
@@ -42,7 +42,7 @@ fn hover(app: &mut PhotocraftApp, at: [f64; 2]) -> Update {
 }
 
 /// A pixel edit away from the disc.
-fn edit_pixels(app: &mut PhotocraftApp) {
+fn edit_pixels(app: &mut PatronusPhotoApp) {
     app.run("select.rect", json!({"x": 0, "y": 0, "width": 20, "height": 20})).unwrap();
     app.run("edit.fill", json!({"contents": "color", "color": "#000000"})).unwrap();
     app.run("select.deselect", json!({})).unwrap();
@@ -82,7 +82,7 @@ fn reset_tool_restores_them() {
 }
 
 /// Hovers long past the debounce and checks nothing was shown or started.
-fn assert_idle(app: &mut PhotocraftApp) {
+fn assert_idle(app: &mut PatronusPhotoApp) {
     let u = hover(app, DISC);
     assert!(u.shown.is_none() && !u.busy);
     let ctx = app.ctx().clone();

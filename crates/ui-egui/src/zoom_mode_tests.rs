@@ -7,7 +7,7 @@ use egui::{Event, Key, Modifiers, PointerButton, Pos2, vec2};
 use egui_kittest::Harness;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::document_display::{CanvasHost, shown_camera};
 use crate::state::Tool;
 
@@ -32,10 +32,10 @@ fn platform(m: Modifiers) -> Modifiers {
 }
 
 /// The app with `tool` selected, Zoom Out chosen, no animation and the view at 100 %.
-fn zoom_out_harness(tool: Tool) -> Harness<'static, Box<PhotocraftApp>> {
+fn zoom_out_harness(tool: Tool) -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut h = Harness::builder().with_size(vec2(1000.0, 700.0)).build_eframe(move |cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, crate::theme::AppTheme::pro());
-        let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), crate::Services::default());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, crate::theme::AppTheme::pro());
+        let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": DOC[0], "height": DOC[1]})).unwrap();
         // No animation and no click-to-centre: a step lands on the first frame where the test reads it.
         app.run("prefs.set", json!({"values": {"general.animatedZoom": false, "tools.zoomClickedPointToCenter": false}})).unwrap();
@@ -49,14 +49,14 @@ fn zoom_out_harness(tool: Tool) -> Harness<'static, Box<PhotocraftApp>> {
     h
 }
 
-fn key(h: &mut Harness<'static, Box<PhotocraftApp>>, key: Key, pressed: bool, m: Modifiers) {
+fn key(h: &mut Harness<'static, Box<PatronusPhotoApp>>, key: Key, pressed: bool, m: Modifiers) {
     let m = platform(m);
     h.event(Event::ModifiersChanged(m));
     h.event(Event::Key { key, physical_key: None, pressed, repeat: false, modifiers: m });
     h.run_steps(2);
 }
 
-fn click(h: &mut Harness<'static, Box<PhotocraftApp>>, p: Pos2, m: Modifiers) {
+fn click(h: &mut Harness<'static, Box<PatronusPhotoApp>>, p: Pos2, m: Modifiers) {
     let m = platform(m);
     h.event(Event::ModifiersChanged(m));
     h.event(Event::PointerMoved(p));
@@ -100,8 +100,8 @@ mod gpu_tests {
         };
         let renderer = egui_kittest::wgpu::WgpuTestRenderer::from_render_state(rs);
         let mut h = Harness::builder().with_size(vec2(1000.0, 700.0)).with_pixels_per_point(1.0).renderer(renderer).build_eframe(|cc| {
-            PhotocraftApp::setup_context(&cc.egui_ctx, crate::theme::AppTheme::pro());
-            let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), crate::Services::default());
+            PatronusPhotoApp::setup_context(&cc.egui_ctx, crate::theme::AppTheme::pro());
+            let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), crate::Services::default());
             app.set_wgpu(cc.wgpu_render_state.clone().unwrap());
             app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
             app.run("edit.fill", json!({"color": "#2060c0"})).unwrap();
@@ -109,7 +109,7 @@ mod gpu_tests {
         });
         // The harness sets egui's animation time to zero, which turns the framework's motion off; the ease needs it on.
         h.ctx.all_styles_mut(|style| style.animation_time = egui::Style::default().animation_time);
-        let shown = |h: &Harness<'static, Box<PhotocraftApp>>| shown_camera(&h.ctx, CanvasHost::main(0), &h.state().ui.views[0], 1.0).0;
+        let shown = |h: &Harness<'static, Box<PatronusPhotoApp>>| shown_camera(&h.ctx, CanvasHost::main(0), &h.state().ui.views[0], 1.0).0;
         h.run_steps(4);
         h.state_mut().run("view.actualPixels", json!({})).unwrap();
         h.step();
@@ -142,7 +142,7 @@ mod gpu_tests {
             let pixel = image.get_pixel(center.x as u32, center.y as u32);
             assert!(pixel[2] > pixel[0] * 2, "{name}: document remains visible: {pixel:?}");
             if let Some(directory) = &directory {
-                image.save(directory.join(format!("photocraft-zoom-{name}.png"))).unwrap();
+                image.save(directory.join(format!("patronusphoto-zoom-{name}.png"))).unwrap();
             }
         }
         assert!(midway, "a frame of the ease showed a zoom between 1 and {target}");
@@ -156,7 +156,7 @@ mod gpu_tests {
         assert_eq!(h.state().perf.last_refresh, "", "immediate zoom reuses the GPU composite");
         let image = h.render().unwrap();
         if let Some(directory) = &directory {
-            image.save(directory.join("photocraft-zoom-disabled.png")).unwrap();
+            image.save(directory.join("patronusphoto-zoom-disabled.png")).unwrap();
         }
     }
 }

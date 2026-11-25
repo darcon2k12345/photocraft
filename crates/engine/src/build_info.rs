@@ -4,14 +4,14 @@
 //! `Cargo.toml`, managed by `cargo xtask version`). The commit and build date are optional and
 //! come from environment variables at compile time, set by CI and the packaging scripts:
 //!
-//! - `PHOTOCRAFT_BUILD_SHA`: the git commit (any length; shown shortened to 9 characters)
-//! - `PHOTOCRAFT_BUILD_DATE`: the build date, conventionally `YYYY-MM-DD`
+//! - `PATRONUSPHOTO_BUILD_SHA`: the git commit (any length; shown shortened to 9 characters)
+//! - `PATRONUSPHOTO_BUILD_DATE`: the build date, conventionally `YYYY-MM-DD`
 //!
 //! Without them (a plain `cargo build`) the build reports itself as a dev build. Nothing here
 //! shells out to git, so builds work from a source tarball and for wasm.
 
 /// The workspace version, such as `0.1.0` or `0.2.0-rc.1`.
-pub const VERSION: &str = match option_env!("PHOTOCRAFT_OVERRIDE_VERSION") {
+pub const VERSION: &str = match option_env!("PATRONUSPHOTO_OVERRIDE_VERSION") {
     Some(v) => v,
     None => env!("CARGO_PKG_VERSION"),
 };
@@ -21,12 +21,12 @@ pub const RELEASES: &str = "https://github.com/storytold/photocraft/releases";
 
 /// The full git commit this build was made from, when the build environment recorded it.
 pub fn git_sha() -> Option<&'static str> {
-    option_env!("PHOTOCRAFT_BUILD_SHA").map(str::trim).filter(|s| !s.is_empty())
+    option_env!("PATRONUSPHOTO_BUILD_SHA").map(str::trim).filter(|s| !s.is_empty())
 }
 
 /// The build date (`YYYY-MM-DD`), when the build environment recorded it.
 pub fn build_date() -> Option<&'static str> {
-    option_env!("PHOTOCRAFT_BUILD_DATE").map(str::trim).filter(|s| !s.is_empty())
+    option_env!("PATRONUSPHOTO_BUILD_DATE").map(str::trim).filter(|s| !s.is_empty())
 }
 
 /// The commit shortened for display.

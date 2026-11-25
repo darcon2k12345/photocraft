@@ -17,13 +17,13 @@ use super::defaults::default_style_params;
 use super::editing::begin_edit;
 use super::layout::{hit_layer, offset_at};
 
-use super::{LayerId, PLACEHOLDER, PhotocraftApp, Point, TextEdit, active_doc_id, json, session_key, text_layer};
+use super::{LayerId, PLACEHOLDER, PatronusPhotoApp, Point, TextEdit, active_doc_id, json, session_key, text_layer};
 use crate::canvas::document_display::CanvasHost;
 use crate::canvas::tools::{FamilyTool, ToolScope};
 
-pub(crate) fn box_shape(app: &PhotocraftApp, id: LayerId) -> Option<(f32, f32, f32, f32)> {
+pub(crate) fn box_shape(app: &PatronusPhotoApp, id: LayerId) -> Option<(f32, f32, f32, f32)> {
     match app.session.active().and_then(|s| text_layer(&s.doc, id).map(|t| t.shape.clone()))? {
-        photocraft_doc::text::TextShape::Box { x, y, width, height } => Some((x, y, width, height)),
+        patronusphoto_doc::text::TextShape::Box { x, y, width, height } => Some((x, y, width, height)),
         _ => None,
     }
 }
@@ -55,7 +55,7 @@ pub(crate) fn tool<'a>(scope: &'a ToolScope<'a>, state: &'a mut TypeState, _host
 
 /// Clears what no gesture is left to take: the press of a gesture that ended some other way, and the flag of a
 /// press that never reached the tool.
-pub(crate) fn drain(app: &mut PhotocraftApp, state: &mut TypeState, _response: &ToolHostResponse) {
+pub(crate) fn drain(app: &mut PatronusPhotoApp, state: &mut TypeState, _response: &ToolHostResponse) {
     state.began_with_session = false;
     if !crate::canvas::tools::in_gesture(app) {
         state.press = None;
@@ -77,9 +77,9 @@ pub(crate) enum PathClick {
 }
 
 /// Arc length (px) along `sub` from its first anchor to segment `seg` at curve parameter `t`.
-fn arc_length_to(sub: &photocraft_doc::Subpath, seg: usize, t: f64) -> f64 {
+fn arc_length_to(sub: &patronusphoto_doc::Subpath, seg: usize, t: f64) -> f64 {
     const PIECES: usize = 32;
-    let eval = photocraft_vector::edit::eval;
+    let eval = patronusphoto_vector::edit::eval;
     let length = |s: &[Point; 4], upto: f64| {
         (1..=PIECES)
             .fold((0.0, eval(s, 0.0)), |(len, prev), j| {
@@ -98,8 +98,8 @@ fn arc_length_to(sub: &photocraft_doc::Subpath, seg: usize, t: f64) -> f64 {
 /// one, area type. The work path's inside counts only while the canvas draws it (selected in the
 /// Paths panel, #6551): a hidden Work Path left after Load as Selection must not turn a plain
 /// click into area type. None while View › Show › Target Path (or Extras) hides paths.
-pub(crate) fn path_target(app: &PhotocraftApp, x: f64, y: f64) -> Option<PathClick> {
-    use photocraft_vector::edit::{Hit, hit};
+pub(crate) fn path_target(app: &PatronusPhotoApp, x: f64, y: f64) -> Option<PathClick> {
+    use patronusphoto_vector::edit::{Hit, hit};
     if !app.ui.view.shows(app.ui.view.show.target_path) {
         return None;
     }
@@ -110,13 +110,13 @@ pub(crate) fn path_target(app: &PhotocraftApp, x: f64, y: f64) -> Option<PathCli
     // anchors than this is not a click target (the click and the pointer agree: plain point
     // text). 4096 anchors is far beyond hand-drawn paths and shapes yet keeps a frame cheap, and
     // it is the most `type.fillPath` accepts, so every area click target can be filled.
-    const MAX_TARGET_KNOTS: usize = photocraft_text::area::MAX_AREA_KNOTS;
-    let small = |path: &photocraft_doc::vector::Path| path.subpaths.iter().map(|s| s.knots.len()).fold(0usize, usize::saturating_add) <= MAX_TARGET_KNOTS;
+    const MAX_TARGET_KNOTS: usize = patronusphoto_text::area::MAX_AREA_KNOTS;
+    let small = |path: &patronusphoto_doc::vector::Path| path.subpaths.iter().map(|s| s.knots.len()).fold(0usize, usize::saturating_add) <= MAX_TARGET_KNOTS;
     let tol = 6.0 / app.point_zoom().max(0.01) as f64;
     // Only the horizontal Type tool starts type on a path: vertical type on a path is not laid
     // out yet.
     let vertical = app.ui.tool.is_vertical_type();
-    let outline = |path: &photocraft_doc::vector::Path, shape: Option<u64>| {
+    let outline = |path: &patronusphoto_doc::vector::Path, shape: Option<u64>| {
         let on_path = |sp: usize, k: usize, t: f64| {
             // Type on a path needs a segment to run along (`type.attachToPath` rejects one anchor).
             let sub = path.subpaths.get(sp).filter(|s| !vertical && s.knots.len() >= 2)?;
@@ -128,7 +128,7 @@ pub(crate) fn path_target(app: &PhotocraftApp, x: f64, y: f64) -> Option<PathCli
             _ => None,
         }
     };
-    let inside = |path: &photocraft_doc::vector::Path| photocraft_text::area::AreaShape::new(path, false).is_some_and(|a| a.contains(x as f32, y as f32));
+    let inside = |path: &patronusphoto_doc::vector::Path| patronusphoto_text::area::AreaShape::new(path, false).is_some_and(|a| a.contains(x as f32, y as f32));
     if let Some((id, p)) = shape_path.as_ref().filter(|(_, p)| small(p)) {
         if let Some(c) = outline(p, Some(*id)) {
             return Some(c);
@@ -150,7 +150,7 @@ pub(crate) fn path_target(app: &PhotocraftApp, x: f64, y: f64) -> Option<PathCli
 /// hover elsewhere lays out nothing. Nothing while a type edit is open (a click then commits rather
 /// than starting new type). While the button is held (`press` is where it went down) it is what the
 /// release makes: nothing once the drag is a text box, else the path click at the press.
-pub(crate) fn hover_path_target(app: &mut PhotocraftApp, x: f64, y: f64, shift: bool, press: Option<[f64; 2]>) -> Option<PathClick> {
+pub(crate) fn hover_path_target(app: &mut PatronusPhotoApp, x: f64, y: f64, shift: bool, press: Option<[f64; 2]>) -> Option<PathClick> {
     if app.ui.text_edit.is_some() {
         return None;
     }
@@ -164,7 +164,7 @@ pub(crate) fn hover_path_target(app: &mut PhotocraftApp, x: f64, y: f64, shift: 
 
 /// Whether a press at `start` released at `end` drags out a paragraph box rather than clicking
 /// (at least 4 screen pixels both ways).
-fn makes_box(app: &PhotocraftApp, start: [f64; 2], end: [f64; 2]) -> bool {
+fn makes_box(app: &PatronusPhotoApp, start: [f64; 2], end: [f64; 2]) -> bool {
     let (w, h) = ((end[0] - start[0]).abs(), (end[1] - start[1]).abs());
     let min = 4.0 / app.point_zoom().max(0.01) as f64;
     w >= min && h >= min
@@ -172,7 +172,7 @@ fn makes_box(app: &PhotocraftApp, start: [f64; 2], end: [f64; 2]) -> bool {
 
 /// A press at document `(x, y)`: edits the type under it, or answers `Claimed` for a press that makes new text on
 /// release. With a session open the press is not the tool's (the editor, the frame or the move zone had it first).
-fn press_at(app: &mut PhotocraftApp, ctx: &egui::Context, x: f64, y: f64, mods: Mods) -> ToolAction {
+fn press_at(app: &mut PatronusPhotoApp, ctx: &egui::Context, x: f64, y: f64, mods: Mods) -> ToolAction {
     if app.ui.text_edit.is_some() {
         return ToolAction::Done;
     }
@@ -205,7 +205,7 @@ fn press_at(app: &mut PhotocraftApp, ctx: &egui::Context, x: f64, y: f64, mods: 
     app.ui.text_edit_return_tool = app.ui.tool.is_type_mask().then_some(app.ui.tool);
     if app.ui.text_edit_return_tool.is_some() {
         let vertical =
-            app.session.active().and_then(|st| text_layer(&st.doc, id)).is_some_and(|t| t.orientation == photocraft_doc::text::Orientation::Vertical);
+            app.session.active().and_then(|st| text_layer(&st.doc, id)).is_some_and(|t| t.orientation == patronusphoto_doc::text::Orientation::Vertical);
         app.ui.tool = if vertical { crate::state::Tool::VerticalType } else { crate::state::Tool::Type };
     }
     ToolAction::Done
@@ -213,7 +213,7 @@ fn press_at(app: &mut PhotocraftApp, ctx: &egui::Context, x: f64, y: f64, mods: 
 
 /// A release that makes new text: from `start` to `end` in document units. A drag of at least 4 screen pixels both
 /// ways makes a paragraph box; anything less is a click, which makes point text, or text on or in the path under it.
-fn create_text(app: &mut PhotocraftApp, start: [f64; 2], end: [f64; 2]) {
+fn create_text(app: &mut PatronusPhotoApp, start: [f64; 2], end: [f64; 2]) {
     let (w, h) = ((end[0] - start[0]).abs(), (end[1] - start[1]).abs());
     let o = app.ui.tool_options.clone();
     let mask = app.ui.tool.is_type_mask();

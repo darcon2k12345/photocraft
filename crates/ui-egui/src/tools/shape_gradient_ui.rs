@@ -5,9 +5,9 @@
 use craft::draw::ui::gradient::{GradientFill, GradientFillEditor, GradientGroup, GradientItem, GradientRef};
 use craft::ui::contract::Bind;
 use craft::ui::patterns::presets::PresetState;
-use photocraft_doc::{Fill, GradientStyle};
-use photocraft_engine::presets::Group;
-use photocraft_engine::presets::gradients::GradientPreset;
+use patronusphoto_doc::{Fill, GradientStyle};
+use patronusphoto_engine::presets::Group;
+use patronusphoto_engine::presets::gradients::GradientPreset;
 
 // PLAN: `gradient_ui::stops` (`of_preset`, `fill_value`, `apply_value`) is tools-w47's and must be `pub(crate) mod stops` in gradient_ui.rs.
 use crate::gradient_ui::stops;

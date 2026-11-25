@@ -13,11 +13,11 @@ use craft::draw::ui::transform::{RotateZone, TransformEdit, TransformOverlay, Tr
 use craft::keymap::Mods;
 use craft::ui::canvas::canvas_space;
 use craft::ui::runtime::env::{Env, Label};
-use photocraft_doc::{DocId, Document, LayerContent, LayerId, text::TextShape};
-use photocraft_geom::{Affine, Point, Rect};
+use patronusphoto_doc::{DocId, Document, LayerContent, LayerId, text::TextShape};
+use patronusphoto_geom::{Affine, Point, Rect};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::TypeTransform;
 
 const PREVIEW_BASE: u64 = 1 << 37;
@@ -51,20 +51,20 @@ pub(crate) struct Frame {
     pub state: BoxState,
 }
 
-pub(crate) fn active(app: &PhotocraftApp) -> bool {
+pub(crate) fn active(app: &PatronusPhotoApp) -> bool {
     app.ui.type_transform.is_some()
 }
 
 /// Whether the transform box shows: while typing with ⌘ held (the held modifiers include the ones the app latches),
 /// or while a capture of it runs.
-pub(crate) fn visible(app: &PhotocraftApp, mods: Mods) -> bool {
+pub(crate) fn visible(app: &PatronusPhotoApp, mods: Mods) -> bool {
     app.ui.tool.is_type() && app.ui.text_edit.is_some() && (mods.cmd || active(app))
 }
 
 /// Whether the whole box takes the pointer, above the editor, rather than only its move reach, below it. A capture
 /// keeps the box it began on to its release, whatever modifiers change during it; otherwise ⌘ held picks the whole
 /// box.
-pub(crate) fn whole_box(app: &PhotocraftApp, mods: Mods) -> bool {
+pub(crate) fn whole_box(app: &PatronusPhotoApp, mods: Mods) -> bool {
     match &app.ui.type_transform {
         Some(t) => !t.from_reach,
         None => mods.cmd,
@@ -84,14 +84,14 @@ fn settings() -> TransformSettings {
 }
 
 /// A session over `frame` with what type allows: moving, scaling, rotating and skewing, never distorting or warping.
-fn session_of(app: &PhotocraftApp, frame: &Frame) -> TransformSession<()> {
+fn session_of(app: &PatronusPhotoApp, frame: &Frame) -> TransformSession<()> {
     TransformSession::<()>::with_state(frame.rect, frame.state)
         .allow(BoxAllow::new(true, true, false).with_warp(false))
         .settings(&settings(), crate::transform_tool::default_interpolation(app))
 }
 
 /// Drop pointer capture when its source changed externally. Never apply to another document.
-pub(crate) fn cancel_stale(app: &mut PhotocraftApp) {
+pub(crate) fn cancel_stale(app: &mut PatronusPhotoApp) {
     let Some(t) = &app.ui.type_transform else { return };
     let valid = app.ui.tool.is_type()
         && app.ui.text_edit.as_ref().is_some_and(|ed| {
@@ -116,7 +116,7 @@ pub(crate) fn cancel_stale(app: &mut PhotocraftApp) {
 }
 
 /// Ends the transform without applying it. A running box gesture ends with it: the box is not shown next pass.
-pub(crate) fn cancel_drag(app: &mut PhotocraftApp) {
+pub(crate) fn cancel_drag(app: &mut PatronusPhotoApp) {
     app.ui.type_transform = None;
     if let Some(p) = app.type_transform_preview.as_mut() {
         // A closed last document has no next canvas frame to release its preview's tiles.
@@ -124,14 +124,14 @@ pub(crate) fn cancel_drag(app: &mut PhotocraftApp) {
     }
 }
 
-pub(crate) fn reset(app: &mut PhotocraftApp) {
+pub(crate) fn reset(app: &mut PatronusPhotoApp) {
     cancel_drag(app);
     app.ui.type_transform_pivot = None;
 }
 
 /// The frame of type layer `id` in text space (its paragraph box, the area's bounds, or the laid-out text) and the
 /// layer's transform to the document. `None` for a layer that is not type or whose geometry is not finite.
-pub(crate) fn source_rect(app: &mut PhotocraftApp, id: LayerId) -> Option<(kurbo::Rect, Affine)> {
+pub(crate) fn source_rect(app: &mut PatronusPhotoApp, id: LayerId) -> Option<(kurbo::Rect, Affine)> {
     let st = app.session.active()?;
     let LayerContent::Text(text) = &st.doc.layer(id)?.content else { return None };
     let shape = text.shape.clone();
@@ -141,7 +141,7 @@ pub(crate) fn source_rect(app: &mut PhotocraftApp, id: LayerId) -> Option<(kurbo
         return None;
     }
     let area = match &shape {
-        TextShape::Area { path } => photocraft_text::area::path_bounds(path),
+        TextShape::Area { path } => patronusphoto_text::area::path_bounds(path),
         _ => None,
     };
     let rect = match (shape, area) {
@@ -175,7 +175,7 @@ pub(crate) fn quad_of(rect: kurbo::Rect, aff: &Affine) -> Option<[kurbo::Point; 
 /// exception is a Type Mask session with ⌘/Ctrl held: its text is a hidden working layer, and the reference
 /// application shows the same box over it as over an ordinary type layer (#12082). Without the modifier, and
 /// for an invisible ordinary layer, the frame stays absent, so neither the box nor its move reach exists.
-pub(crate) fn frame(app: &mut PhotocraftApp) -> Option<Frame> {
+pub(crate) fn frame(app: &mut PatronusPhotoApp) -> Option<Frame> {
     let ed = app.ui.text_edit.as_ref()?;
     let (id, mask_session) = (LayerId(ed.layer), ed.mask);
     if let Some(t) = &app.ui.type_transform {
@@ -199,7 +199,7 @@ pub(crate) fn frame(app: &mut PhotocraftApp) -> Option<Frame> {
 
 /// Starts a temporary transform of `frame`, begun on the move reach of the hidden box when `from_reach`. False when it
 /// can't start.
-fn start(app: &mut PhotocraftApp, frame: &Frame, from_reach: bool) -> bool {
+fn start(app: &mut PatronusPhotoApp, frame: &Frame, from_reach: bool) -> bool {
     let Some((_, original, _)) = crate::type_tool::layout(app, frame.layer) else { return false };
     let Some(st) = app.session.active() else { return false };
     let (document, revision) = (st.doc.id.0, st.revision);
@@ -238,14 +238,14 @@ fn affine(t: &TypeTransform) -> Option<Affine> {
         .then_some(out)
 }
 
-pub(crate) fn current_transform(app: &PhotocraftApp, id: LayerId) -> Option<Affine> {
+pub(crate) fn current_transform(app: &PatronusPhotoApp, id: LayerId) -> Option<Affine> {
     app.ui.text_edit.as_ref().filter(|ed| ed.layer == id.0)?;
     affine(app.ui.type_transform.as_ref()?)
 }
 
 /// Ends the transform and applies it: one `type.edit` with the new transform, or nothing when the box came back to
 /// where it started.
-pub(crate) fn finish(app: &mut PhotocraftApp) {
+pub(crate) fn finish(app: &mut PatronusPhotoApp) {
     cancel_stale(app);
     let Some(mut t) = app.ui.type_transform.take() else { return };
     // Ends a running box gesture. Whether anything changed is decided below, against the layer's own transform: the
@@ -283,7 +283,7 @@ pub(crate) fn finish(app: &mut PhotocraftApp) {
 /// Called twice per pass: with `drawn` false before the text editor (the move reach sits under it, so a press on the
 /// text is the editor's) and with `drawn` true after it (the whole box is above the editor). Each call does its own
 /// half; both show the one box, under one id, so a press it holds carries over.
-pub(crate) fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui, canvas: egui::Rect, drawn: bool) {
+pub(crate) fn show(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, canvas: egui::Rect, drawn: bool) {
     cancel_stale(app);
     if !app.ui.tool.is_type() || app.ui.text_edit.is_none() {
         return;
@@ -344,7 +344,7 @@ pub(crate) fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui, canvas: egui::Rec
 
 /// The `typeTransform` of the control protocol: the open transform's document, revision, frame and reference point,
 /// or null.
-pub(crate) fn inspect(app: &PhotocraftApp) -> serde_json::Value {
+pub(crate) fn inspect(app: &PatronusPhotoApp) -> serde_json::Value {
     let Some(t) = app.ui.type_transform.as_ref() else { return serde_json::Value::Null };
     let point = |p: kurbo::Point| [p.x, p.y];
     let rect = t.session.rect();
@@ -361,7 +361,7 @@ pub(crate) fn inspect(app: &PhotocraftApp) -> serde_json::Value {
 }
 
 /// Preview via the existing text renderer; all glyphs/styles/effects remain native document data.
-pub(crate) fn display_doc(app: &mut PhotocraftApp, idx: usize) -> Option<(Arc<Document>, u64)> {
+pub(crate) fn display_doc(app: &mut PatronusPhotoApp, idx: usize) -> Option<(Arc<Document>, u64)> {
     cancel_stale(app);
     if !active(app) {
         if let Some(p) = app.type_transform_preview.as_mut() {
@@ -393,9 +393,9 @@ pub(crate) fn display_doc(app: &mut PhotocraftApp, idx: usize) -> Option<(Arc<Do
     let LayerContent::Text(text) = &mut shown.layer_mut(layer)?.content else { return None };
     text.transform = transform;
     let started = crate::gpu_canvas::now_ms();
-    photocraft_engine::type_cmds::refresh(&source, text);
+    patronusphoto_engine::type_cmds::refresh(&source, text);
     let area = text.cache.as_ref().map_or(Rect::EMPTY, |s| s.tile_bounds());
-    let shown = Arc::new(photocraft_engine::mode_cmds::display_document(&shown).unwrap_or(shown));
+    let shown = Arc::new(patronusphoto_engine::mode_cmds::display_document(&shown).unwrap_or(shown));
     let key = PREVIEW_BASE | (app.ui.alloc_id() & (PREVIEW_BASE - 1));
     let mut areas = app.type_transform_preview.take().filter(|p| p.document == id && p.revision == revision).map(|p| p.areas).unwrap_or_default();
     if areas.len() >= 128 {
@@ -407,7 +407,7 @@ pub(crate) fn display_doc(app: &mut PhotocraftApp, idx: usize) -> Option<(Arc<Do
     Some((shown, key))
 }
 
-pub(crate) fn damage(app: &PhotocraftApp, doc: DocId, revision: u64, before: u64, after: u64) -> Option<Rect> {
+pub(crate) fn damage(app: &PatronusPhotoApp, doc: DocId, revision: u64, before: u64, after: u64) -> Option<Rect> {
     let p = app.type_transform_preview.as_ref().filter(|p| p.document == doc && p.revision == revision)?;
     let area = |key| if key == 0 { Some(p.original_area) } else { p.areas.iter().find(|(k, _)| *k == key).map(|(_, r)| *r) };
     Some(area(before)?.union(&area(after)?))

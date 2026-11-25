@@ -27,12 +27,12 @@ fn mode_name(mode: TransformMode) -> &'static str {
     }
 }
 
-/// The app's warp as the framework session holds it in the Warp phase: PhotoCraft's [`Warp`](photocraft_geom::warp::Warp)
+/// The app's warp as the framework session holds it in the Warp phase: Patronus Photo's [`Warp`](patronusphoto_geom::warp::Warp)
 /// with the control mesh the imaging warp grid edits, copied once when the warp is made.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SessionWarp {
     /// The warp the engine commands take.
-    pub warp: photocraft_geom::warp::Warp,
+    pub warp: patronusphoto_geom::warp::Warp,
     /// The same warp's control mesh in the imaging library's form.
     pub mesh: WarpMesh,
     /// The warp is Warp Text on an editable type layer: committing it changes the style even when it is the
@@ -45,7 +45,7 @@ pub struct SessionWarp {
 
 impl SessionWarp {
     /// The session warp of `warp`; `on_type` for Warp Text.
-    pub fn new(warp: photocraft_geom::warp::Warp, on_type: bool) -> Self {
+    pub fn new(warp: patronusphoto_geom::warp::Warp, on_type: bool) -> Self {
         let source = warp.to_mesh(1, 1);
         let points = source.points.iter().map(|p| Point::new(p[0], p[1])).collect();
         let bounds = Rect::new(warp.bounds[0], warp.bounds[1], warp.bounds[2], warp.bounds[3]);
@@ -72,7 +72,7 @@ impl TransformWarp for SessionWarp {
     }
 }
 
-/// Free Transform in progress: the framework session (box, mode, warp, undo steps) and what PhotoCraft
+/// Free Transform in progress: the framework session (box, mode, warp, undo steps) and what Patronus Photo
 /// adds to say what the box moves.
 #[derive(Clone, Debug)]
 pub struct FreeTransform {

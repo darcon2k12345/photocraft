@@ -2,12 +2,12 @@
 //! `shape.edit` per changed layer under one key, which is one History step.
 
 use egui::Modifiers;
-use photocraft_doc::LayerContent;
-use photocraft_doc::vector::LiveShape;
+use patronusphoto_doc::LayerContent;
+use patronusphoto_doc::vector::LiveShape;
 use serde_json::json;
 
 use super::corner_targets;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing;
 use crate::state::Tool;
 
@@ -15,8 +15,8 @@ const NONE: Modifiers = Modifiers::NONE;
 
 /// A 200 × 260 document at 100 % with a live rectangle at (40, 40), 120 × 80, radii 20. The radius is above
 /// the widgets' inset, so a widget sits at the centre of its corner's arc: (60, 60) for the top left.
-fn app(tool: Tool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app(tool: Tool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 200, "height": 260})).unwrap();
     app.sync_views();
     app.run("shape.create", json!({"kind": "roundedRect", "rect": [40, 40, 120, 80], "radii": 20})).unwrap();
@@ -26,37 +26,37 @@ fn app(tool: Tool) -> Box<PhotocraftApp> {
     app
 }
 
-fn live_of(app: &PhotocraftApp, id: photocraft_doc::LayerId) -> LiveShape {
+fn live_of(app: &PatronusPhotoApp, id: patronusphoto_doc::LayerId) -> LiveShape {
     match &app.session.active().unwrap().doc.layer(id).unwrap().content {
         LayerContent::Shape(sh) => sh.live.clone().expect("a live shape"),
         _ => panic!("a shape layer"),
     }
 }
 
-fn radii_of(app: &PhotocraftApp, id: photocraft_doc::LayerId) -> [f64; 4] {
+fn radii_of(app: &PatronusPhotoApp, id: patronusphoto_doc::LayerId) -> [f64; 4] {
     match live_of(app, id) {
         LiveShape::Rect { radii, .. } => radii,
         other => panic!("a live rect, not {other:?}"),
     }
 }
 
-fn corner_radius_of(app: &PhotocraftApp, id: photocraft_doc::LayerId) -> f64 {
+fn corner_radius_of(app: &PatronusPhotoApp, id: patronusphoto_doc::LayerId) -> f64 {
     match live_of(app, id) {
         LiveShape::Polygon { corner_radius, .. } => corner_radius,
         other => panic!("a live polygon, not {other:?}"),
     }
 }
 
-fn steps(app: &PhotocraftApp) -> usize {
+fn steps(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.entries().len()
 }
 
-fn active(app: &PhotocraftApp) -> photocraft_doc::LayerId {
+fn active(app: &PatronusPhotoApp) -> patronusphoto_doc::LayerId {
     app.session.active().unwrap().active_layer.unwrap()
 }
 
 /// A press at `from`, two moves and a release at `to`, as a mouse does it.
-fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2]) {
+fn drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2]) {
     testing::press(app, from, NONE);
     testing::move_to(app, [(from[0] + to[0]) / 2.0, (from[1] + to[1]) / 2.0], NONE);
     testing::move_to(app, to, NONE);
@@ -66,8 +66,8 @@ fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2]) {
 /// Live rectangles, bottom first: (20, 20) 60 × 40 radii 15, (110, 20) 70 × 50 radii 15, and (20, 120) 80 × 60
 /// radii 0, the last one left unselected. Radii of 15 are above the widgets' inset: the top-left widgets sit at
 /// (35, 35) and (125, 35).
-fn three(tool: Tool) -> (Box<PhotocraftApp>, Vec<photocraft_doc::LayerId>) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn three(tool: Tool) -> (Box<PatronusPhotoApp>, Vec<patronusphoto_doc::LayerId>) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 200, "height": 260})).unwrap();
     app.sync_views();
     let mut ids = Vec::new();
@@ -128,7 +128,7 @@ fn the_move_tool_shows_and_drags_the_widgets_with_its_transform_controls() {
 
 #[test]
 fn rectangles_and_triangles_selected_together_take_the_same_radius() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 200, "height": 260})).unwrap();
     app.sync_views();
     app.run("shape.create", json!({"kind": "polygon", "rect": [40, 40, 120, 120], "sides": 3, "cornerRadius": 12})).unwrap();
@@ -151,7 +151,7 @@ fn rectangles_and_triangles_selected_together_take_the_same_radius() {
 #[test]
 fn a_star_shows_widgets_at_its_outer_points_only() {
     // #13308: a star's inner points stay sharp, so they have no widget.
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 200, "height": 200})).unwrap();
     app.sync_views();
     app.run("shape.create", json!({"kind": "star", "rect": [40, 40, 120, 100], "sides": 5, "starRatio": 0.5, "cornerRadius": 6})).unwrap();
@@ -161,7 +161,7 @@ fn a_star_shows_widgets_at_its_outer_points_only() {
     let target = &targets[0];
     assert!(!target.individual, "a star has one radius for all its points");
     assert_eq!(target.corners.len(), 5);
-    let sharp = &photocraft_vector::shapes::polygon(40.0, 40.0, 120.0, 100.0, 5, 0.5).subpaths[0].knots;
+    let sharp = &patronusphoto_vector::shapes::polygon(40.0, 40.0, 120.0, 100.0, 5, 0.5).subpaths[0].knots;
     for (i, corner) in target.corners.iter().enumerate() {
         let v = sharp[2 * i].anchor;
         assert_eq!((corner.vertex.x, corner.vertex.y), (v.x, v.y), "corner {i} is outer point {i}");

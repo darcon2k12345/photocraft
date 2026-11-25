@@ -1,23 +1,23 @@
 //! Selected-range font choices, caret typing styles and the commit, through the family field of the options bar
 //! and the Character panel.
-use crate::{PhotocraftApp, Services};
+use crate::{PatronusPhotoApp, Services};
 use egui::{Key, vec2};
 use egui_kittest::{Harness, kittest::Queryable};
-use photocraft_doc::{Document, LayerContent, LayerId};
+use patronusphoto_doc::{Document, LayerContent, LayerId};
 use serde_json::{Value, json};
 
 const FONTS: [&str; 2] = ["Inter", "JetBrains Mono"];
 
-type H = Harness<'static, Box<PhotocraftApp>>;
+type H = Harness<'static, Box<PatronusPhotoApp>>;
 
 use super::commit_tests::ime;
 
 /// A key press through the window host, as the platform's reaches the focused editor.
-fn key(app: &mut PhotocraftApp, key: Key) {
+fn key(app: &mut PatronusPhotoApp, key: Key) {
     crate::canvas::testing::key(app, key, egui::Modifiers::NONE);
 }
 
-fn layer(doc: &Document, id: LayerId) -> &photocraft_doc::TextLayer {
+fn layer(doc: &Document, id: LayerId) -> &patronusphoto_doc::TextLayer {
     let LayerContent::Text(t) = &doc.layer(id).unwrap().content else { panic!("text layer") };
     t
 }
@@ -74,9 +74,9 @@ fn fixture(pattern: usize, content: &str) -> (H, LayerId) {
 /// [`fixture`]'s app with its document and the Type tool, before the text layer.
 fn document() -> H {
     Harness::builder().with_size(vec2(1600.0, 1000.0)).with_max_steps(64).build_eframe(move |cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), Services::default());
-        app.session.edit_prefs(|p| p.type_.font_preview = photocraft_engine::prefs::FontPreview::Off);
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), Services::default());
+        app.session.edit_prefs(|p| p.type_.font_preview = patronusphoto_engine::prefs::FontPreview::Off);
         app.run("file.new", json!({"width": 240, "height": 160})).unwrap();
         app.sync_views();
         app.ui.tool = crate::state::Tool::Type;
@@ -320,7 +320,7 @@ fn caret_font_insertion_preserves_variable_axes_and_style_changes_can_clear_weig
     h.run();
     choose(&mut h, FONTS[1], "enter");
     super::host::type_text(h.state_mut(), "X");
-    let variations = |app: &PhotocraftApp, at: usize| {
+    let variations = |app: &PatronusPhotoApp, at: usize| {
         let mut offset = 0;
         layer(&app.session.active().unwrap().doc, id)
             .char_runs()
@@ -362,8 +362,8 @@ fn caret_font_and_face_persist_across_more_font_choices_and_paste() {
     assert_eq!(saved(&h, id), applied);
     for name in ["probe.pcraft", "probe.psd"] {
         let doc = h.state().session.active().unwrap().doc.clone();
-        let out = photocraft_io::export(&doc, name, &Default::default()).unwrap();
-        let back = photocraft_io::import(name, &out.bytes).unwrap().document;
+        let out = patronusphoto_io::export(&doc, name, &Default::default()).unwrap();
+        let back = patronusphoto_io::import(name, &out.bytes).unwrap().document;
         let imported_id = back.walk().into_iter().find_map(|(_, _, l)| matches!(l.content, LayerContent::Text(_)).then_some(l.id)).unwrap();
         assert_eq!(families(&styles(&back, imported_id)), families(&applied));
     }

@@ -13,11 +13,11 @@ use craft::imaging::ui::warp::{CylinderValues, CylinderWarp, WarpEdit, WarpGrid,
 use craft::ui::canvas::RasterDisplay;
 use craft::ui::contract::{Bind, Show as _};
 use craft::ui::primitives::PaintSlot;
-use photocraft_doc::DocId;
-use photocraft_geom::warp::WarpStyle;
+use patronusphoto_doc::DocId;
+use patronusphoto_geom::warp::WarpStyle;
 
 use super::{OpenPreview, begin, cancel, commit, warp};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::{FreeTransform, SessionWarp};
 use crate::transform_fx::LayerStyleSource;
 
@@ -56,7 +56,7 @@ struct Shown {
 /// Returns whether the session's box was shown in this pass, even if an edit then ended the session (the Move tool's
 /// transform controls share its id and must not open a second box in the same pass), and the box's snap lines, which
 /// the session's canvas tool hands to the host in this frame's pass ([`super::canvas_tool`]).
-pub fn show_in_canvas(app: &mut PhotocraftApp, ui: &mut egui::Ui, rect: egui::Rect, now: f64) -> SessionShown {
+pub fn show_in_canvas(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, rect: egui::Rect, now: f64) -> SessionShown {
     let shown = {
         let (Some(t), Some(pv)) = (&app.ui.transform, &app.transform_preview) else { return SessionShown::default() };
         show_session(app, t, pv, ui, rect)
@@ -99,7 +99,7 @@ pub fn show_in_canvas(app: &mut PhotocraftApp, ui: &mut egui::Ui, rect: egui::Re
 }
 
 /// The pass's shows, in paint order.
-fn show_session(app: &PhotocraftApp, t: &FreeTransform, pv: &OpenPreview, ui: &mut egui::Ui, rect: egui::Rect) -> Shown {
+fn show_session(app: &PatronusPhotoApp, t: &FreeTransform, pv: &OpenPreview, ui: &mut egui::Ui, rect: egui::Rect) -> Shown {
     let mut out = Shown { picture: show_preview(app, t, pv, ui, rect), ..Shown::default() };
     if pv.committing.is_some() {
         // The moving pixels stay without the box until the commit job lands.
@@ -141,7 +141,7 @@ pub struct SessionShown {
 
 /// The moving pixels as the session maps them (warped, skewed or styled), then the layers above
 /// them, both in the canvas's picture, under the grid, guides and controls. Nothing is shown for the Frame tool's transform.
-fn show_preview(app: &PhotocraftApp, t: &FreeTransform, pv: &OpenPreview, ui: &mut egui::Ui, rect: egui::Rect) -> Vec<egui::Shape> {
+fn show_preview(app: &PatronusPhotoApp, t: &FreeTransform, pv: &OpenPreview, ui: &mut egui::Ui, rect: egui::Rect) -> Vec<egui::Shape> {
     if crate::frame_tool::frame_transform(t) {
         return Vec::new();
     }
@@ -149,7 +149,7 @@ fn show_preview(app: &PhotocraftApp, t: &FreeTransform, pv: &OpenPreview, ui: &m
     let mark = PaintSlot::reserve(ui.painter());
     let display = preview_display(app, ui.ctx());
     let boxed = t.session.phase() == TransformPhase::Box;
-    // The layers that get the styled preview stay PhotoCraft's: a visible layer with a style.
+    // The layers that get the styled preview stay Patronus Photo's: a visible layer with a style.
     let source = LayerStyleSource::new(app).filter(|_| boxed && pv.styled.is_some());
     let (map, textures) = match t.session.warp() {
         Some(w) => (PreviewMap::mesh(&w.mesh, t.session.rect()), &pv.textures),
@@ -184,7 +184,7 @@ fn show_preview(app: &PhotocraftApp, t: &FreeTransform, pv: &OpenPreview, ui: &m
 /// plan, or `None` when the box draws the bare pixels (no style, a warp, a part of the layer, the Frame tool). Tests
 /// read the pixels here; the preview keeps them as a texture.
 #[cfg(test)]
-pub(crate) fn styled_composite(app: &PhotocraftApp, zoom: f32) -> Option<(egui::ColorImage, craft::imaging::ui::transform_preview::StylePlan)> {
+pub(crate) fn styled_composite(app: &PatronusPhotoApp, zoom: f32) -> Option<(egui::ColorImage, craft::imaging::ui::transform_preview::StylePlan)> {
     use craft::behavior::geometry::Homography;
     use craft::imaging::ui::transform_preview::{PreviewTextures, StyledFrame, StyledSource as _, resample};
     let (t, pv) = (app.ui.transform.as_ref()?, app.transform_preview.as_ref()?);
@@ -260,7 +260,7 @@ pub(super) fn texture_quad(t: &FreeTransform, pv: &OpenPreview) -> [Point; 4] {
 /// The monitor conversion of the preview, or `None` when the display is the identity. Selection
 /// tint and lone mask or channel values are UI diagnostics, not document colours, so those boxes
 /// show their texels as they are.
-pub(super) fn preview_display(app: &PhotocraftApp, ctx: &egui::Context) -> Option<PreviewDisplay> {
+pub(super) fn preview_display(app: &PatronusPhotoApp, ctx: &egui::Context) -> Option<PreviewDisplay> {
     let (t, pv) = (app.ui.transform.as_ref()?, app.transform_preview.as_ref()?);
     if t.selection || t.target.is_some() || t.path.is_some() {
         return None;
@@ -273,11 +273,11 @@ pub(super) fn preview_display(app: &PhotocraftApp, ctx: &egui::Context) -> Optio
 
 /// Premultiplied preview texels -> straight document values -> monitor values. The temporary float
 /// buffer is bounded by converting in chunks.
-fn display_image(image: &egui::ColorImage, display: &photocraft_engine::display_color::CanvasDisplay) -> egui::ColorImage {
+fn display_image(image: &egui::ColorImage, display: &patronusphoto_engine::display_color::CanvasDisplay) -> egui::ColorImage {
     let mut out = image.clone();
     let convert = |pixels: &mut [egui::Color32]| {
         let px = pixels.iter().map(|p| p.to_srgba_unmultiplied().map(|c| f32::from(c) / 255.0)).collect();
-        let buffer = photocraft_compose::Buffer { rect: photocraft_geom::Rect::new(0, 0, pixels.len() as i32, 1), px };
+        let buffer = patronusphoto_compose::Buffer { rect: patronusphoto_geom::Rect::new(0, 0, pixels.len() as i32, 1), px };
         let converted = display.to_rgba8(&buffer);
         for (p, rgba) in pixels.iter_mut().zip(converted.pixels.as_chunks::<4>().0) {
             *p = egui::Color32::from_rgba_unmultiplied(rgba[0], rgba[1], rgba[2], rgba[3]);
@@ -366,7 +366,7 @@ fn mapped_runs(points: &[Point], closed: bool, map: &dyn Fn(Point) -> Option<Poi
 /// Applying the open box moves the selection outline with it: `edit.transform` and
 /// `edit.transform.warp` map it like the pixels. Not Transform Selection (its ants are hidden), a
 /// path, Content-Aware Scale or a type layer's Warp Text, which leave the selection alone.
-fn carries_selection(app: &PhotocraftApp, t: &FreeTransform) -> bool {
+fn carries_selection(app: &PatronusPhotoApp, t: &FreeTransform) -> bool {
     !t.selection
         && !crate::frame_tool::frame_transform(t)
         && t.path.is_none()
@@ -377,13 +377,13 @@ fn carries_selection(app: &PhotocraftApp, t: &FreeTransform) -> bool {
 /// Applying the open box moves the selection outline: Transform Selection's own box, or a box
 /// that [carries the selection along](carries_selection). A path, Content-Aware Scale or Warp Text
 /// leaves it where it is, so its edges stay snap targets.
-pub(crate) fn moves_selection(app: &PhotocraftApp, t: &FreeTransform) -> bool {
+pub(crate) fn moves_selection(app: &PatronusPhotoApp, t: &FreeTransform) -> bool {
     t.selection || carries_selection(app, t)
 }
 
 /// A transform of `document` is open that carries its selection along (#5297): the canvas traces
 /// the whole outline, not only the part in view where it started, through [`selection_map`].
-pub(crate) fn carries_selection_of(app: &PhotocraftApp, document: DocId) -> bool {
+pub(crate) fn carries_selection_of(app: &PatronusPhotoApp, document: DocId) -> bool {
     matches!((&app.ui.transform, &app.transform_preview), (Some(t), Some(pv)) if pv.doc.id == document && carries_selection(app, t))
 }
 
@@ -391,7 +391,7 @@ pub(crate) fn carries_selection_of(app: &PhotocraftApp, document: DocId) -> bool
 /// scale, rotation, skew, distort, perspective or warp while it is made, to where applying it
 /// leaves it. `None` when no open transform carries that selection: the canvas shows it where it is.
 /// A degenerate box maps nothing, so no outline shows.
-pub(crate) fn selection_map(app: &PhotocraftApp, document: DocId) -> Option<PointMap<'_>> {
+pub(crate) fn selection_map(app: &PatronusPhotoApp, document: DocId) -> Option<PointMap<'_>> {
     if !carries_selection_of(app, document) {
         return None;
     }

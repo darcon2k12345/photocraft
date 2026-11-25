@@ -6,9 +6,9 @@ use craft_psd::resources::{ImageResource, ResolutionInfo, ids, version_info_reso
 use craft_psd::{
     BlendMode as PsdBlend, ColorMode as PsdMode, Compression, Header, ImageData, LayerRecord, PsdFile, Rect as PsdRect, SectionType, TaggedBlock, Version,
 };
-use photocraft_color::{ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{Document, Layer, LayerContent, LayerMask, SmartContentsId};
-use photocraft_raster::{Interrupt, Surface};
+use patronusphoto_color::{ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::{Document, Layer, LayerContent, LayerMask, SmartContentsId};
+use patronusphoto_raster::{Interrupt, Surface};
 
 use crate::adjust_map;
 use crate::blocks;
@@ -109,7 +109,7 @@ struct Ex<'c> {
     /// Whether linked files may be read and embedded ([`PsdExportOptions::read_linked_files`]).
     read_linked_files: bool,
     /// Character/paragraph styles written into every type layer's engine data.
-    text_styles: photocraft_doc::TextStyles,
+    text_styles: patronusphoto_doc::TextStyles,
     mask_fmt: PixelFormat,
     cc: usize,
     cmyk: bool,
@@ -118,24 +118,24 @@ struct Ex<'c> {
     /// Reserved imported layer and generated divider IDs.
     used_ids: std::collections::HashSet<u32>,
     /// PSD ids assigned to document layers (kept from `psd_id` when unique).
-    layer_ids: std::collections::HashMap<photocraft_doc::LayerId, u32>,
+    layer_ids: std::collections::HashMap<patronusphoto_doc::LayerId, u32>,
     /// The generated `Txt2` object number of each type layer (a preserved `TySh` keeps its own
-    /// `TextIndex`, others get the next free number; see `photocraft_text::psd::build_txt2`),
+    /// `TextIndex`, others get the next free number; see `patronusphoto_text::psd::build_txt2`),
     /// written into the `TySh` data this export re-serializes.
-    text_index: std::collections::HashMap<photocraft_doc::LayerId, i32>,
-    canvas: photocraft_geom::Rect,
+    text_index: std::collections::HashMap<patronusphoto_doc::LayerId, i32>,
+    canvas: patronusphoto_geom::Rect,
     records: Vec<LayerRecord>,
     warnings: Vec<String>,
     /// Guides (artboard blocks list the guides inside each board).
-    guides: photocraft_doc::Guides,
+    guides: patronusphoto_doc::Guides,
     /// Layer comps to regenerate into each layer's `cmls`; None = preserved data still matches.
-    comps: Option<(Vec<photocraft_doc::LayerComp>, Option<photocraft_doc::LayerComp>)>,
+    comps: Option<(Vec<patronusphoto_doc::LayerComp>, Option<patronusphoto_doc::LayerComp>)>,
     /// Smart objects: embedded files and filter caches for the global blocks.
     smart: SmartOut,
     /// The document's patterns, which Pattern Fill layers are rendered from.
-    patterns: Vec<photocraft_doc::Pattern>,
+    patterns: Vec<patronusphoto_doc::Pattern>,
     /// The layer written as Photoshop's Background (see [`psd_background`]).
-    background: Option<photocraft_doc::LayerId>,
+    background: Option<patronusphoto_doc::LayerId>,
     /// Where encoded channels go instead of memory ([`PsdExportOptions::stage_on_scratch_from`]).
     stage: Option<std::sync::Arc<stage::Stage>>,
 }
@@ -146,12 +146,12 @@ struct Ex<'c> {
 /// Background by the bottom layer having no transparency channel (measured on Photoshop 27.11:
 /// with the `-1` channel written, 317 of 427 re-exported corpus files reopened with the
 /// Background as an ordinary layer).
-fn psd_background(doc: &Document) -> Option<photocraft_doc::LayerId> {
+fn psd_background(doc: &Document) -> Option<patronusphoto_doc::LayerId> {
     let l = doc.layers.first()?;
     let LayerContent::Raster(s) = &l.content else { return None };
     let locked = l.locks.transparency && l.locks.position;
     let plain = !l.clipped && l.mask.is_none() && l.vector_mask.is_none() && l.opacity >= 1.0 && l.fill_opacity >= 1.0;
-    let normal = l.blend == photocraft_doc::BlendMode::Normal;
+    let normal = l.blend == patronusphoto_doc::BlendMode::Normal;
     if !(locked && plain && normal) {
         return None;
     }
@@ -166,7 +166,7 @@ fn psd_background(doc: &Document) -> Option<photocraft_doc::LayerId> {
 /// as pixels instead.
 const MAX_NESTING: u32 = 8;
 
-fn h_of(r: photocraft_geom::Rect) -> usize {
+fn h_of(r: patronusphoto_geom::Rect) -> usize {
     r.height() as usize
 }
 
@@ -179,7 +179,7 @@ fn psd_mode(m: ColorMode) -> PsdMode {
     }
 }
 
-fn to_psd_rect(r: photocraft_geom::Rect) -> PsdRect {
+fn to_psd_rect(r: patronusphoto_geom::Rect) -> PsdRect {
     PsdRect { top: r.y0, left: r.x0, bottom: r.y1, right: r.x1 }
 }
 
@@ -235,7 +235,7 @@ impl Ex<'_> {
         let row_len = r.width() as usize;
         let bands = crate::pixels::bands(h_of(r));
         let parts =
-            crate::pixels::par_map(bands, |rows| s.to_interleaved(photocraft_geom::Rect::new(r.x0, r.y0 + rows.start as i32, r.x1, r.y0 + rows.end as i32)));
+            crate::pixels::par_map(bands, |rows| s.to_interleaved(patronusphoto_geom::Rect::new(r.x0, r.y0 + rows.start as i32, r.x1, r.y0 + rows.end as i32)));
         let mut bytes = Vec::with_capacity(row_len * h_of(r) * s.format().bytes_per_pixel());
         for part in parts {
             bytes.extend_from_slice(&part);
@@ -350,7 +350,7 @@ impl Ex<'_> {
         if lspf != 0 {
             blocks.push(TaggedBlock::protection(lspf));
         }
-        if l.label != photocraft_doc::LabelColor::None {
+        if l.label != patronusphoto_doc::LabelColor::None {
             blocks.push(TaggedBlock::sheet_color(blocks::label_index(l.label)));
         }
         blocks.push(TaggedBlock::fill_opacity(q255(l.fill_opacity)));
@@ -358,7 +358,7 @@ impl Ex<'_> {
         // could not be decoded at all); otherwise regenerated.
         let fx = &l.effects;
         for effect in &fx.items {
-            use photocraft_doc::effects::Effect;
+            use patronusphoto_doc::effects::Effect;
             let modes = match effect {
                 Effect::DropShadow(s) | Effect::InnerShadow(s) => [Some(s.common.blend), None],
                 Effect::OuterGlow(g) | Effect::InnerGlow(g) => [Some(g.common.blend), None],
@@ -426,8 +426,8 @@ impl Ex<'_> {
     /// the layer's current parameters; otherwise it is regenerated.
     /// Sets the `TySh` of type layer `t` (of `l`) in its blocks `raw`, warning when the layer can
     /// only be written as pixels.
-    fn type_blocks(&mut self, l: &Layer, t: &photocraft_doc::TextLayer, raw: &mut Vec<([u8; 4], Vec<u8>)>) {
-        if matches!(t.shape, photocraft_doc::text::TextShape::Area { .. }) {
+    fn type_blocks(&mut self, l: &Layer, t: &patronusphoto_doc::TextLayer, raw: &mut Vec<([u8; 4], Vec<u8>)>) {
+        if matches!(t.shape, patronusphoto_doc::text::TextShape::Area { .. }) {
             self.warnings.push(format!("layer \"{}\": area type is saved as paragraph text over its path's bounds (PSD area type is not written yet)", l.name));
         }
         match self.type_tysh(l, t) {
@@ -445,9 +445,9 @@ impl Ex<'_> {
     }
 
     /// The `TySh` block to write for type layer `t` of `l`, or `None` to write it as pixels.
-    fn type_tysh(&self, l: &Layer, t: &photocraft_doc::TextLayer) -> Option<std::sync::Arc<Vec<u8>>> {
+    fn type_tysh(&self, l: &Layer, t: &patronusphoto_doc::TextLayer) -> Option<std::sync::Arc<Vec<u8>>> {
         // Text layers without PSD data (created here) get a generated TySh.
-        let generated = t.psd_raw.is_none().then(|| photocraft_text::psd::build_tysh(t, self.dpi, None)).flatten().map(std::sync::Arc::new);
+        let generated = t.psd_raw.is_none().then(|| patronusphoto_text::psd::build_tysh(t, self.dpi, None)).flatten().map(std::sync::Arc::new);
         let src = t.psd_raw.as_ref().or(generated.as_ref())?;
         // Character/paragraph style sheets from the document's styles.
         let styled = crate::text_styles_map::export_tysh(src, t, &self.text_styles, self.dpi).map(std::sync::Arc::new);
@@ -458,8 +458,8 @@ impl Ex<'_> {
         // however, even when no style sheet needed rebuilding: otherwise two
         // layers may read the same Txt2 object and acquire the wrong kerning.
         let idx = self.text_index.get(&l.id).copied().unwrap_or(0);
-        let rewrite = styled.as_ref().or(generated.as_ref()).or_else(|| Some(src).filter(|d| photocraft_text::psd::text_index(d.as_slice()) != Some(idx)));
-        let fresh = rewrite.and_then(|d| photocraft_text::psd::set_text_index(d.as_slice(), idx)).map(std::sync::Arc::new);
+        let rewrite = styled.as_ref().or(generated.as_ref()).or_else(|| Some(src).filter(|d| patronusphoto_text::psd::text_index(d.as_slice()) != Some(idx)));
+        let fresh = rewrite.and_then(|d| patronusphoto_text::psd::set_text_index(d.as_slice(), idx)).map(std::sync::Arc::new);
         Some(fresh.or(styled).unwrap_or_else(|| src.clone()))
     }
 
@@ -483,7 +483,7 @@ impl Ex<'_> {
                 None => raw.push((*keys[0], d.to_vec())),
             }
         };
-        let fill_rule = |raw: &mut Vec<([u8; 4], Vec<u8>)>, regenerated: &mut Vec<([u8; 4], Vec<u8>)>, f: &photocraft_doc::Fill| {
+        let fill_rule = |raw: &mut Vec<([u8; 4], Vec<u8>)>, regenerated: &mut Vec<([u8; 4], Vec<u8>)>, f: &patronusphoto_doc::Fill| {
             let keep = raw.iter().any(|(k, d)| matches!(k, b"SoCo" | b"GdFl" | b"PtFl") && blocks::parse_fill(k, d).as_ref() == Some(f));
             if !keep {
                 raw.retain(|(k, _)| !matches!(k, b"SoCo" | b"GdFl" | b"PtFl"));
@@ -506,31 +506,31 @@ impl Ex<'_> {
                 };
                 let cged = raw.iter().find(|(k, _)| k == b"CgEd").map(|(_, d)| d.clone());
                 let keep = raw.iter().any(|(k, d)| {
-                    // A previously saved PhotoCraft v2 Photo Filter block may be 18 bytes.
+                    // A previously saved Patronus Photo v2 Photo Filter block may be 18 bytes.
                     // It parses here, but Photoshop requires four-byte alignment, so repair
                     // that legacy record on re-save rather than preserving the broken bytes.
                     let legacy_phfl = k == b"phfl" && d.starts_with(&[0, 2]) && d.len() % 4 != 0;
-                    // Older PhotoCraft builds wrote `grdm` 2 bytes short of four-byte alignment,
+                    // Older Patronus Photo builds wrote `grdm` 2 bytes short of four-byte alignment,
                     // which makes Photoshop refuse the file (#8070): regenerate it too.
-                    let legacy_grdm = k == b"grdm" && adjust_map::is_unpadded_photocraft_gradient_map(d);
+                    let legacy_grdm = k == b"grdm" && adjust_map::is_unpadded_patronusphoto_gradient_map(d);
                     !legacy_phfl && !legacy_grdm && adjust_map::ADJUSTMENT_KEYS.contains(&k) && adjust_map::parse(k, d, cged.as_deref(), channels) == *a
                 });
                 // A Gradient Map whose stops are unchanged keeps the file's own block (stops in
                 // the document's CMYK/Lab/Gray space, smoothness, method) with Reverse and Dither
                 // updated in place.
                 let keep = keep
-                    || (matches!(a, photocraft_doc::Adjustment::GradientMap { .. })
+                    || (matches!(a, patronusphoto_doc::Adjustment::GradientMap { .. })
                         && raw.iter_mut().any(|(k, d)| {
-                            k == b"grdm" && !adjust_map::is_unpadded_photocraft_gradient_map(d) && adjust_map::retarget_gradient_map(d, a, channels)
+                            k == b"grdm" && !adjust_map::is_unpadded_patronusphoto_gradient_map(d) && adjust_map::retarget_gradient_map(d, a, channels)
                         }));
                 // An adjustment type no mapper knows (#6575) is its block: kept verbatim, and
                 // never written a second time beside a stale copy.
                 let own = match a {
-                    photocraft_doc::Adjustment::Unsupported { psd_key, .. } => Some(psd_key.as_bytes()),
+                    patronusphoto_doc::Adjustment::Unsupported { psd_key, .. } => Some(psd_key.as_bytes()),
                     _ => None,
                 };
                 let keep = keep
-                    || matches!(a, photocraft_doc::Adjustment::Unsupported { raw: r, .. } if raw.iter().any(|(k, d)| own == Some(&k[..]) && d[..] == r[..]));
+                    || matches!(a, patronusphoto_doc::Adjustment::Unsupported { raw: r, .. } if raw.iter().any(|(k, d)| own == Some(&k[..]) && d[..] == r[..]));
                 if !keep {
                     raw.retain(|(k, _)| !adjust_map::ADJUSTMENT_KEYS.contains(&k) && k != b"CgEd" && own != Some(&k[..]));
                     let w = adjust_map::write(a);
@@ -539,7 +539,7 @@ impl Ex<'_> {
                     }
                     // Photoshop's `clrL` descriptor has no interpolation setting, so the
                     // reopened layer renders trilinear.
-                    if matches!(a, photocraft_doc::Adjustment::ColorLookup { tetrahedral: true, .. }) {
+                    if matches!(a, patronusphoto_doc::Adjustment::ColorLookup { tetrahedral: true, .. }) {
                         self.warnings.push(format!(
                             "layer \"{}\": Color Lookup tetrahedral interpolation is saved as trilinear (PSD has no interpolation setting)",
                             l.name
@@ -678,7 +678,7 @@ impl Ex<'_> {
     /// filter cache (`FEid`). An imported placed layer that nothing changed is written verbatim;
     /// otherwise the blocks are regenerated (from the imported descriptor where the source is
     /// the same). Without a source that can be embedded the layer is written as pixels.
-    fn smart_blocks(&mut self, l: &Layer, sm: &photocraft_doc::SmartObject, template: Option<crate::smart_map::Placed>, raw: &mut Vec<([u8; 4], Vec<u8>)>) {
+    fn smart_blocks(&mut self, l: &Layer, sm: &patronusphoto_doc::SmartObject, template: Option<crate::smart_map::Placed>, raw: &mut Vec<([u8; 4], Vec<u8>)>) {
         use crate::smart_map::{FilterStack, PlacedSpec, filter_fx, plld_bytes, sold_bytes, uuid_from};
         let src = match self.smart_source(sm, template.as_ref()) {
             Ok(s) => s,
@@ -758,10 +758,13 @@ impl Ex<'_> {
             let item = match (sm.stack_mode, self.source_composite(&src.uuid)) {
                 (None, Some((img, img_bounds))) => {
                     let unfiltered = match &sm.perspective {
-                        Some(p) => {
-                            photocraft_algo::warp::place_source_projective(&img, img_bounds, &photocraft_algo::transform::Homography(*p), sm.warp.as_ref())
-                        }
-                        None => photocraft_algo::warp::place_source(&img, img_bounds, &sm.transform, sm.warp.as_ref()),
+                        Some(p) => patronusphoto_algo::warp::place_source_projective(
+                            &img,
+                            img_bounds,
+                            &patronusphoto_algo::transform::Homography(*p),
+                            sm.warp.as_ref(),
+                        ),
+                        None => patronusphoto_algo::warp::place_source(&img, img_bounds, &sm.transform, sm.warp.as_ref()),
                     };
                     match unfiltered {
                         Ok(unfiltered) => {
@@ -795,7 +798,7 @@ impl Ex<'_> {
     /// moved, transformed, warped, filtered or given other contents. `false` for a record that
     /// can't be read (or whose warp can't), or whose file isn't embedded: its contents were never
     /// available, so it is kept.
-    fn plld_edited(&self, sm: &photocraft_doc::SmartObject) -> bool {
+    fn plld_edited(&self, sm: &patronusphoto_doc::SmartObject) -> bool {
         let Some(data) = sm.psd_raw.as_deref() else { return false };
         let Some((id, corners)) = blocks::parse_plld(data) else { return false };
         // Without its embedded file the contents were never available: keep the record as it
@@ -808,7 +811,7 @@ impl Ex<'_> {
             blocks::PlldWarp::None => None,
             blocks::PlldWarp::Warp(w) => Some(w),
         };
-        if sm.source != (photocraft_doc::SmartSource::Linked { path: id.clone() })
+        if sm.source != (patronusphoto_doc::SmartSource::Linked { path: id.clone() })
             || sm.warp != warp
             || !sm.smart_filters.is_empty()
             || sm.filter_mask.is_some()
@@ -817,13 +820,14 @@ impl Ex<'_> {
         }
         // Placed as the importer places it (the same source size, from the same file, and the
         // same frame: a custom warp's control-point box, #3677).
-        let size = crate::linked::source_size_in_blocks(self.smart.globals.iter().map(|(_, k, d)| (k, d.as_slice())), &id, &photocraft_raster::Interrupt::NONE);
+        let size =
+            crate::linked::source_size_in_blocks(self.smart.globals.iter().map(|(_, k, d)| (k, d.as_slice())), &id, &patronusphoto_raster::Interrupt::NONE);
         blocks::plld_transform(&corners, size, warp.as_ref()) != (sm.transform, sm.perspective)
     }
 
     /// Whether an imported placed layer still says what the smart object is: transform, warp,
     /// filter stack and filter mask as stored.
-    fn placed_unchanged(&self, t: &crate::smart_map::Placed, data: &[u8], sm: &photocraft_doc::SmartObject, stack: &crate::smart_map::FilterStack) -> bool {
+    fn placed_unchanged(&self, t: &crate::smart_map::Placed, data: &[u8], sm: &patronusphoto_doc::SmartObject, stack: &crate::smart_map::FilterStack) -> bool {
         if t.transform != sm.transform || blocks::parse_placed_warp(b"SoLd", data) != sm.warp || t.stack.clone().unwrap_or_default() != *stack {
             return false;
         }
@@ -842,8 +846,8 @@ impl Ex<'_> {
     /// The `lnk2` file a smart object's source is written as: a preserved embedded file, or a new
     /// one (a `.pcraft` source becomes a PSB of the nested document; image files are embedded as
     /// they are; a linked file is read and embedded).
-    fn smart_source(&mut self, sm: &photocraft_doc::SmartObject, template: Option<&crate::smart_map::Placed>) -> Result<Source, String> {
-        use photocraft_doc::SmartSource;
+    fn smart_source(&mut self, sm: &patronusphoto_doc::SmartObject, template: Option<&crate::smart_map::Placed>) -> Result<Source, String> {
+        use patronusphoto_doc::SmartSource;
         let preview = self.smart.vector_preview(sm).and_then(|preview| Some((preview.document.clone(), preview.frame?)));
         let mut source = match &sm.source {
             // A file of the imported document, or one its placed-layer data names (a missing
@@ -851,9 +855,9 @@ impl Ex<'_> {
             SmartSource::Linked { path } if self.smart.known.contains(path) || template.is_some_and(|t| t.idnt == *path) => {
                 let stored = template.filter(|t| t.idnt == *path).and_then(|t| crate::smart_map::stored_size(&t.descriptor));
                 let geometry = stored.map(|size| (size, f64::from(self.dpi))).or_else(|| {
-                    let meta = photocraft_doc::Metadata { psd_global_blocks: self.smart.globals.clone(), ..Default::default() };
+                    let meta = patronusphoto_doc::Metadata { psd_global_blocks: self.smart.globals.clone(), ..Default::default() };
                     let f = crate::linked::find_linked_file(&meta, path)?;
-                    crate::linked::source_geometry(&f.file_name, &f.bytes, &photocraft_raster::Interrupt::NONE).ok()
+                    crate::linked::source_geometry(&f.file_name, &f.bytes, &patronusphoto_raster::Interrupt::NONE).ok()
                 });
                 let (size, dpi) = geometry.unwrap_or((size_from_layer(sm), f64::from(self.dpi)));
                 let original = self.smart.linked_contents.entry(path.clone()).or_insert(sm.contents_id);
@@ -891,7 +895,7 @@ impl Ex<'_> {
                     let file = crate::doc_path::resolve(path, self.document.as_deref()).map_err(|e| format!("the linked file {path} is not opened: {e}"))?;
                     // Regular files only, in bounded reads: a link to a FIFO would block the save
                     // and one to a device such as `/dev/zero` would never end (#8601).
-                    let bytes = photocraft_format::read_file(&file).map_err(|e| format!("the linked file {path} can't be read: {e}"))?;
+                    let bytes = patronusphoto_format::read_file(&file).map_err(|e| format!("the linked file {path} can't be read: {e}"))?;
                     let name = path.rsplit(['/', '\\']).next().unwrap_or(path).to_string();
                     let source = self.embed(sm.contents_id, &name, &bytes, true)?;
                     self.warnings.push(format!("the linked smart object {name} was embedded (PSD export keeps no external links)"));
@@ -915,7 +919,7 @@ impl Ex<'_> {
 
     /// The composite of the source `uuid` (an embedded file of this export or of the imported
     /// document) in the document's pixel format, its top-left at the origin; decoded once.
-    fn source_composite(&mut self, uuid: &str) -> Option<(std::sync::Arc<Surface>, photocraft_geom::Rect)> {
+    fn source_composite(&mut self, uuid: &str) -> Option<(std::sync::Arc<Surface>, patronusphoto_geom::Rect)> {
         if let Some(c) = self.smart.composites.get(uuid) {
             return c.clone();
         }
@@ -923,7 +927,7 @@ impl Ex<'_> {
             Some(d) => Some(d.clone()),
             None => {
                 let file = self.smart.add.iter().find(|f| f.uuid == uuid).cloned().or_else(|| {
-                    let meta = photocraft_doc::Metadata {
+                    let meta = patronusphoto_doc::Metadata {
                         psd_global_blocks: self.smart.globals.iter().chain(self.smart.linked_copies.values()).cloned().collect(),
                         ..Default::default()
                     };
@@ -935,11 +939,11 @@ impl Ex<'_> {
         let c = doc.map(|d| {
             let mut s = Surface::new(self.fmt);
             let fmt = self.fmt;
-            let _ = photocraft_compose::render_bands(&d, d.bounds(), 0, |band| -> Result<(), ()> {
+            let _ = patronusphoto_compose::render_bands(&d, d.bounds(), 0, |band| -> Result<(), ()> {
                 let mut vals = Vec::with_capacity(band.px.len() * fmt.channels());
                 let mut v = [0.0f32; 5];
                 for p in &band.px {
-                    let n = photocraft_raster::from_rgba_into(&fmt, *p, &mut v);
+                    let n = patronusphoto_raster::from_rgba_into(&fmt, *p, &mut v);
                     vals.extend_from_slice(&v[..n]);
                 }
                 s.write_region(band.rect, &vals);
@@ -954,7 +958,7 @@ impl Ex<'_> {
 
     /// Adds `bytes` as an embedded file (converted to PSB when it is a `.pcraft` bundle), once
     /// per contents identity and bytes. Equal bytes in independent objects stay independent.
-    /// `linked`: the bytes were read from a path the document names, so only a file PhotoCraft
+    /// `linked`: the bytes were read from a path the document names, so only a file Patronus Photo
     /// can open is embedded (a link to a text or settings file is written as pixels instead).
     #[cfg(not(target_arch = "wasm32"))]
     fn embed(&mut self, contents_id: SmartContentsId, file_name: &str, bytes: &[u8], linked: bool) -> Result<Source, String> {
@@ -973,11 +977,11 @@ impl Ex<'_> {
     }
 
     fn convert_source(&mut self, contents_id: SmartContentsId, file_name: &str, bytes: &[u8], linked: bool) -> Result<Source, String> {
-        let (name, data, size, dpi, nested) = if photocraft_format::is_pcraft(bytes) {
+        let (name, data, size, dpi, nested) = if patronusphoto_format::is_pcraft(bytes) {
             if self.smart.depth >= MAX_NESTING {
                 return Err(format!("smart objects nest more than {MAX_NESTING} deep"));
             }
-            let doc = photocraft_format::load_from_bytes(bytes).map_err(|e| format!("its contents can't be read: {e}"))?;
+            let doc = patronusphoto_format::load_from_bytes(bytes).map_err(|e| format!("its contents can't be read: {e}"))?;
             let (file, warnings) = document_to_psd_nested(
                 &doc,
                 &PsdExportOptions { force_psb: true, document_path: self.document.clone(), read_linked_files: self.read_linked_files, ..Default::default() },
@@ -993,9 +997,9 @@ impl Ex<'_> {
         } else {
             // Embedded formats we can't decode (vector PDF/AI…) are kept; their size comes from the
             // layer. A linked file we can't decode is not embedded.
-            let (size, dpi) = match crate::linked::source_geometry(file_name, bytes, &photocraft_raster::Interrupt::NONE) {
+            let (size, dpi) = match crate::linked::source_geometry(file_name, bytes, &patronusphoto_raster::Interrupt::NONE) {
                 Ok(geometry) => geometry,
-                Err(e) if linked => return Err(format!("the linked file {file_name} is not an image PhotoCraft can open: {e}")),
+                Err(e) if linked => return Err(format!("the linked file {file_name} is not an image Patronus Photo can open: {e}")),
                 Err(_) => ((0.0, 0.0), f64::from(self.dpi)),
             };
             (file_name.to_string(), bytes.to_vec(), size, dpi, None)
@@ -1012,7 +1016,7 @@ impl Ex<'_> {
 
     /// Pixels for a fill layer: Photoshop's cached rendering while valid,
     /// otherwise our own rendering of the fill over the canvas.
-    fn fill_pixels(&self, l: &Layer, f: &photocraft_doc::Fill) -> Surface {
+    fn fill_pixels(&self, l: &Layer, f: &patronusphoto_doc::Fill) -> Surface {
         if let Some(c) = &l.fill_cache
             && c.fill == *f
         {
@@ -1020,16 +1024,16 @@ impl Ex<'_> {
         }
         if self.cmyk
             && let Some(s) =
-                photocraft_compose::gradient_fill::render_cmyk_fill(f, self.canvas, photocraft_compose::fill_frame(l, self.canvas), self.fmt.sample)
+                patronusphoto_compose::gradient_fill::render_cmyk_fill(f, self.canvas, patronusphoto_compose::fill_frame(l, self.canvas), self.fmt.sample)
         {
             return s;
         }
         // In the frame the layer's masks give it, like the compositor (masks are stored apart).
         // Readers composite these pixels (ours keeps them as the fill's rendering), so a pattern
         // fill must be rendered from the document's patterns, not left transparent (#1907).
-        let buf = photocraft_compose::render_fill_content(l, f, self.canvas, &self.patterns);
+        let buf = patronusphoto_compose::render_fill_content(l, f, self.canvas, &self.patterns);
         let mut s = Surface::new(self.fmt);
-        let vals: Vec<f32> = buf.px.iter().flat_map(|p| photocraft_raster::from_rgba(&self.fmt, *p)).collect();
+        let vals: Vec<f32> = buf.px.iter().flat_map(|p| patronusphoto_raster::from_rgba(&self.fmt, *p)).collect();
         s.write_region(self.canvas, &vals);
         s.prune();
         s
@@ -1044,7 +1048,7 @@ impl Ex<'_> {
             let expanded;
             let l = if let (Some(frame), Some(children)) = (&l.frame, l.children()) {
                 let mut clip = Layer::group("Frame Image", children.to_vec());
-                clip.blend = photocraft_color::BlendMode::Normal;
+                clip.blend = patronusphoto_color::BlendMode::Normal;
                 clip.mask = l.mask.clone();
                 clip.vector_mask = l.vector_mask.clone();
                 clip.psd_blocks.push((*b"pcFc", std::sync::Arc::new(vec![1])));
@@ -1056,7 +1060,7 @@ impl Ex<'_> {
                 let mut parts = vec![clip];
                 if let Some(mut shape) = frame.stroke_shape() {
                     // Readers that composite pixels see the border too, as for any shape layer.
-                    shape.cache = Some(photocraft_vector::render_shape(&shape, self.fmt, self.canvas));
+                    shape.cache = Some(patronusphoto_vector::render_shape(&shape, self.fmt, self.canvas));
                     let mut border = Layer::new("Frame Stroke", LayerContent::Shape(shape));
                     border.psd_blocks.push((*b"pcFs", std::sync::Arc::new(vec![1])));
                     let bid = self.fresh_id();
@@ -1117,7 +1121,7 @@ impl Ex<'_> {
                 LayerContent::Smart(sm) => {
                     // Photoshop's record holds the filtered pixels without the filter mask.
                     let unmixed = match (self.smart.unfiltered.get(&l.id), sm.cache.as_ref(), sm.filter_mask.as_ref()) {
-                        (Some(u), Some(c), Some(m)) if masked(sm) => Some(photocraft_compose::filter_mask::unmix(u, c, m)),
+                        (Some(u), Some(c), Some(m)) if masked(sm) => Some(patronusphoto_compose::filter_mask::unmix(u, c, m)),
                         _ => None,
                     };
                     let r = self.record(l, extra, unmixed.as_ref().or(sm.cache.as_ref()));

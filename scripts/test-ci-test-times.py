@@ -9,13 +9,13 @@ spec.loader.exec_module(times)
 # As `gh run view --log` prints them: job, step, timestamp, and the escape character as `^[`.
 LOG = '\n'.join([
     'gate / test 4/4 (ubuntu-24.04)\tUNKNOWN STEP\t2026-11-19T16:21:04.4143043Z ^[[32;1m        PASS^[[0m [   1.673s] (   1/4515) '
-    '^[[35;1mphotocraft-engine^[[0m ^[[36mcmd::retouch::tests^[[0m^[[36m::^[[0m^[[34;1mslow_one^[[0m',
+    '^[[35;1mpatronusphoto-engine^[[0m ^[[36mcmd::retouch::tests^[[0m^[[36m::^[[0m^[[34;1mslow_one^[[0m',
     'gate / test 4/4 (ubuntu-24.04)\tUNKNOWN STEP\t2026-11-19T16:21:05.0Z \x1b[32;1m        PASS\x1b[0m [   0.272s] (   2/4515) '
-    '\x1b[35;1mphotocraft::it\x1b[0m \x1b[36mcontrol\x1b[0m\x1b[36m::\x1b[0m\x1b[34;1mquick\x1b[0m',
-    'x\tUNKNOWN STEP\t2026-11-19T16:21:06.0Z         SLOW [> 60.000s] photocraft-engine cmd::still_running',
-    'x\tUNKNOWN STEP\t2026-11-19T16:21:07.0Z         FAIL [   2.500s] (   3/4515) photocraft-engine cmd::fails',
+    '\x1b[35;1mpatronusphoto::it\x1b[0m \x1b[36mcontrol\x1b[0m\x1b[36m::\x1b[0m\x1b[34;1mquick\x1b[0m',
+    'x\tUNKNOWN STEP\t2026-11-19T16:21:06.0Z         SLOW [> 60.000s] patronusphoto-engine cmd::still_running',
+    'x\tUNKNOWN STEP\t2026-11-19T16:21:07.0Z         FAIL [   2.500s] (   3/4515) patronusphoto-engine cmd::fails',
     # nextest repeats each failure at the end of the run.
-    'x\tUNKNOWN STEP\t2026-11-19T16:21:09.0Z         FAIL [   2.500s] (   3/4515) photocraft-engine cmd::fails',
+    'x\tUNKNOWN STEP\t2026-11-19T16:21:09.0Z         FAIL [   2.500s] (   3/4515) patronusphoto-engine cmd::fails',
     'x\tUNKNOWN STEP\t2026-11-19T16:21:08.0Z      Summary [ 527.727s] 4515 tests run: 4515 passed',
 ])
 
@@ -23,17 +23,17 @@ LOG = '\n'.join([
 class TestTimes(unittest.TestCase):
     def test_reads_each_finished_test_once(self):
         self.assertEqual(times.parse_log(LOG), {
-            ('photocraft-engine', 'cmd::retouch::tests::slow_one'): 1.673,
-            ('photocraft::it', 'control::quick'): 0.272,
-            ('photocraft-engine', 'cmd::fails'): 2.5,
+            ('patronusphoto-engine', 'cmd::retouch::tests::slow_one'): 1.673,
+            ('patronusphoto::it', 'control::quick'): 0.272,
+            ('patronusphoto-engine', 'cmd::fails'): 2.5,
         })
 
     def test_rows_total_each_binary_and_list_the_slow_tests(self):
         self.assertEqual(times.rows('linux', times.parse_log(LOG)), [
-            'bin\tlinux\tphotocraft-engine\t2\t4.17',
-            'bin\tlinux\tphotocraft::it\t1\t0.27',
-            'test\tlinux\tphotocraft-engine\t2.50\tcmd::fails',
-            'test\tlinux\tphotocraft-engine\t1.67\tcmd::retouch::tests::slow_one',
+            'bin\tlinux\tpatronusphoto-engine\t2\t4.17',
+            'bin\tlinux\tpatronusphoto::it\t1\t0.27',
+            'test\tlinux\tpatronusphoto-engine\t2.50\tcmd::fails',
+            'test\tlinux\tpatronusphoto-engine\t1.67\tcmd::retouch::tests::slow_one',
         ])
 
     def test_a_refresh_keeps_the_rows_of_the_os_it_did_not_read(self):

@@ -1,5 +1,5 @@
 //! Duplicate keeps action identities, complete settings and per-step flags stable.
-use photocraft_engine::{
+use patronusphoto_engine::{
     Session,
     actions_cmds::{Action, ActionColor, ActionList, ActionStep, ActionsFile},
 };

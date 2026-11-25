@@ -2,14 +2,14 @@
 use super::*;
 use crate::canvas::ToolEvent;
 
-fn raster(name: &str, bounds: Rect, format: photocraft_color::PixelFormat) -> Layer {
+fn raster(name: &str, bounds: Rect, format: patronusphoto_color::PixelFormat) -> Layer {
     let mut layer = Layer::raster(name, format);
     layer.surface_mut().unwrap().fill_rect(bounds, &[1., 0., 0., 1.]);
     layer
 }
 
-fn scene() -> (Box<PhotocraftApp>, LayerId, LayerId, LayerId) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn scene() -> (Box<PatronusPhotoApp>, LayerId, LayerId, LayerId) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width":600,"height":400})).unwrap();
     let ids = app
         .session
@@ -40,7 +40,7 @@ fn topmost_overlapping_content_is_independent_of_active_layer() {
     }
 }
 
-fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2]) {
+fn drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2]) {
     let m = egui::Modifiers::NONE;
     crate::canvas::tool_event(app, ToolEvent::Down { x: from[0], y: from[1], pressure: 1. }, m);
     crate::canvas::tool_event(app, ToolEvent::Move { x: to[0], y: to[1], pressure: 1. }, m);
@@ -59,10 +59,10 @@ fn hidden_locked_and_nonimage_candidates_are_skipped_but_lower_eligible_content_
                     "all" => top.locks.all = true,
                     "position" => top.locks.position = true,
                     "text" => {
-                        top.content = LayerContent::Text(photocraft_doc::TextLayer { cache: top.surface().cloned(), ..Default::default() });
+                        top.content = LayerContent::Text(patronusphoto_doc::TextLayer { cache: top.surface().cloned(), ..Default::default() });
                     }
                     "shape" => {
-                        top.content = LayerContent::Shape(photocraft_doc::ShapeLayer { cache: top.surface().cloned(), ..Default::default() });
+                        top.content = LayerContent::Shape(patronusphoto_doc::ShapeLayer { cache: top.surface().cloned(), ..Default::default() });
                     }
                     _ => {
                         top = Layer::group("Parent", vec![top]);

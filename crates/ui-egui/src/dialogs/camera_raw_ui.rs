@@ -13,7 +13,7 @@
 //! Control channel: `ui.menu.invoke {"id":"filter.cameraRaw","params":{"ui":{"set":{…},
 //! "commit":true | "cancel":true}}}`; the reply describes the dialog ([`describe`]). `{"ui":{"saveSettings":true}}`
 //! and `{"ui":{"loadSettings":true}}` run Save Settings… / Load Settings… (Camera Raw `.xmp` settings files, see
-//! [`photocraft_io::camera_raw_xmp`]) through the file dialog.
+//! [`patronusphoto_io::camera_raw_xmp`]) through the file dialog.
 
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -31,13 +31,13 @@ use craft::ui::primitives::Revision;
 use craft::ui::runtime::env::Label;
 use craft::ui::runtime::pending::Job;
 use egui::ColorImage;
-use photocraft_algo::camera_raw::{CameraRaw, DevelopInputs};
-use photocraft_algo::histogram::RgbHistogram;
-use photocraft_doc::LayerId;
-use photocraft_geom::Rect;
+use patronusphoto_algo::camera_raw::{CameraRaw, DevelopInputs};
+use patronusphoto_algo::histogram::RgbHistogram;
+use patronusphoto_doc::LayerId;
+use patronusphoto_geom::Rect;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::camera_raw_gpu::CameraRawGpu;
 use crate::dialogs::camera_raw_detail_ui::DetailPreview;
 use crate::dialogs::camera_raw_scope_ui as scope_ui;
@@ -110,7 +110,7 @@ struct AfterRaster {
     picture: Arc<SharedPicture>,
     detail: Arc<Mutex<DetailPreview>>,
     /// The document's display encoding, for the refinement's pixels.
-    display: Arc<photocraft_engine::display_color::CanvasDisplay>,
+    display: Arc<patronusphoto_engine::display_color::CanvasDisplay>,
 }
 
 impl AfterRaster {
@@ -150,7 +150,7 @@ pub(crate) struct SourceInit {
     pub(crate) full_size: (usize, usize),
     pub(crate) block: usize,
     pub(crate) float: bool,
-    pub(crate) display: Arc<photocraft_engine::display_color::CanvasDisplay>,
+    pub(crate) display: Arc<patronusphoto_engine::display_color::CanvasDisplay>,
     pub(crate) gpu: Option<CameraRawGpu>,
     pub(crate) encoding_gamma: f32,
     pub(crate) lab_transform: Arc<craft::cms::Transform>,
@@ -162,7 +162,7 @@ pub(crate) struct SourceInit {
 #[cfg(test)]
 type BeforePreviewPublish = Arc<dyn Fn(u64, &CameraRaw) + Send + Sync>;
 
-/// PhotoCraft's develop for the RAW Develop workspace: the proxy, the selection coverage, the GPU handle and the
+/// Patronus Photo's develop for the RAW Develop workspace: the proxy, the selection coverage, the GPU handle and the
 /// result slot the develop jobs fill. Nothing in it is kept across passes beyond those results.
 pub(crate) struct PcRawSource {
     /// Proxy pixels (straight RGBA) and size.
@@ -177,7 +177,7 @@ pub(crate) struct PcRawSource {
     /// The open-time dialog's camera tone curve: Shadows / Highlights act on the raw data there, in linear light before
     /// this curve, and the preview undoes it to show the same.
     raw_curve: Mutex<Option<Arc<Vec<[f32; 2]>>>>,
-    display: Arc<photocraft_engine::display_color::CanvasDisplay>,
+    display: Arc<patronusphoto_engine::display_color::CanvasDisplay>,
     pub(crate) gpu: Option<CameraRawGpu>,
     /// Names [`Self::proxy`] for the GPU pass's upload cache.
     source_key: u64,
@@ -380,7 +380,7 @@ impl RawDevelopSource for PcRawSource {
 
     fn auto(&self, settings: &CameraRaw) -> CameraRaw {
         let mut next = settings.clone();
-        photocraft_algo::camera_raw::auto_tone(&self.proxy, &mut next);
+        patronusphoto_algo::camera_raw::auto_tone(&self.proxy, &mut next);
         next
     }
 
@@ -429,30 +429,30 @@ pub(crate) struct RawSession {
 }
 
 /// The hosted workspace, while it is open.
-pub(crate) fn hosted(app: &PhotocraftApp) -> Option<&Hosted> {
+pub(crate) fn hosted(app: &PatronusPhotoApp) -> Option<&Hosted> {
     app.framework.dialogs.get::<Hosted>()
 }
 
 /// The hosted workspace, for the app's answers to its events.
-pub(crate) fn hosted_mut(app: &mut PhotocraftApp) -> Option<&mut Hosted> {
+pub(crate) fn hosted_mut(app: &mut PatronusPhotoApp) -> Option<&mut Hosted> {
     app.framework.dialogs.get_mut::<Hosted>()
 }
 
 /// The settings the workspace holds now: the one copy while it is open.
-pub(crate) fn settings(app: &PhotocraftApp) -> Option<&CameraRaw> {
+pub(crate) fn settings(app: &PatronusPhotoApp) -> Option<&CameraRaw> {
     hosted(app).map(|h| h.workspace().session())
 }
 
 /// The demosaic the workspace shows for the raw being opened.
-pub(crate) fn workspace_demosaic(hosted: &Hosted) -> Option<photocraft_io::raw::Demosaic> {
+pub(crate) fn workspace_demosaic(hosted: &Hosted) -> Option<patronusphoto_io::raw::Demosaic> {
     let fields = hosted.workspace().json_fields(&**hosted.source())?;
     let value = fields.get("demosaic")?.clone();
     serde_json::from_value::<FrameworkDemosaic>(value).ok().map(from_framework)
 }
 
 /// The framework's demosaic for the app's.
-pub(crate) fn to_framework(d: photocraft_io::raw::Demosaic) -> FrameworkDemosaic {
-    use photocraft_io::raw::Demosaic;
+pub(crate) fn to_framework(d: patronusphoto_io::raw::Demosaic) -> FrameworkDemosaic {
+    use patronusphoto_io::raw::Demosaic;
     match d {
         Demosaic::Ahd => FrameworkDemosaic::Ahd,
         Demosaic::Mhc => FrameworkDemosaic::Mhc,
@@ -461,8 +461,8 @@ pub(crate) fn to_framework(d: photocraft_io::raw::Demosaic) -> FrameworkDemosaic
 }
 
 /// The app's demosaic for the framework's.
-pub(crate) fn from_framework(d: FrameworkDemosaic) -> photocraft_io::raw::Demosaic {
-    use photocraft_io::raw::Demosaic;
+pub(crate) fn from_framework(d: FrameworkDemosaic) -> patronusphoto_io::raw::Demosaic {
+    use patronusphoto_io::raw::Demosaic;
     match d {
         FrameworkDemosaic::Mhc => Demosaic::Mhc,
         FrameworkDemosaic::Bilinear => Demosaic::Bilinear,
@@ -477,7 +477,7 @@ pub(crate) fn command_params(settings: &CameraRaw) -> Value {
 
 /// `px` (`w`×`h`) as a display image. Bands are copied straight from `px` and converted in parallel (#4682), not a
 /// whole copy of the proxy converted on one thread.
-pub(crate) fn image(px: &[[f32; 4]], w: usize, h: usize, display: &photocraft_engine::display_color::CanvasDisplay) -> ColorImage {
+pub(crate) fn image(px: &[[f32; 4]], w: usize, h: usize, display: &patronusphoto_engine::display_color::CanvasDisplay) -> ColorImage {
     crate::dialogs::camera_raw_detail_ui::display_image(Rect::new(0, 0, w as i32, h as i32), display, |r, out| {
         let start = (r.y0.max(0) as usize).saturating_mul(w);
         if let Some(src) = px.get(start..start.saturating_add(out.len())) {
@@ -488,7 +488,7 @@ pub(crate) fn image(px: &[[f32; 4]], w: usize, h: usize, display: &photocraft_en
 
 /// The reply that describes RAW Develop: its settings and what the develop and the scope hold. `null` while it is
 /// closed.
-pub(crate) fn describe(app: &PhotocraftApp) -> Value {
+pub(crate) fn describe(app: &PatronusPhotoApp) -> Value {
     let (Some(session), Some(hosted)) = (app.raw.as_ref(), hosted(app)) else { return Value::Null };
     let source = &session.source;
     let developed = source.developed();
@@ -546,14 +546,14 @@ pub(crate) fn describe(app: &PhotocraftApp) -> Value {
 /// Each call acts on what the workspace reported since the last call, whatever number of passes the frame ran: the host keeps
 /// every pass's events and a held OK is taken once. A finish or cancel leaves its reply for the menu request that
 /// caused it (`app.raw_reply`).
-pub(crate) fn take(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(crate) fn take(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     if let Some(reply) = take_with(app, ctx) {
         app.raw_reply = Some(reply);
     }
 }
 
 /// [`take`], with the reply of a finish that landed in this call: the command's result, an error, or `{"cancelled": true}`.
-pub(crate) fn take_with(app: &mut PhotocraftApp, ctx: &egui::Context) -> Option<Result<Value, String>> {
+pub(crate) fn take_with(app: &mut PatronusPhotoApp, ctx: &egui::Context) -> Option<Result<Value, String>> {
     // A raw queued by an open (`queue_open_dialog`) shows its dialog on the next pass; the shelf keeps it as the
     // filmstrip's tile while it is shown.
     if app.raw.is_none()
@@ -602,7 +602,7 @@ pub(crate) fn take_with(app: &mut PhotocraftApp, ctx: &egui::Context) -> Option<
 }
 
 /// Closes RAW Develop without acting on it: a request that opened it and was then refused.
-pub(crate) fn dismiss(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(crate) fn dismiss(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     app.framework.dialogs.cancel_by_id(ctx, dialog_id(RawDevelopWorkspace::KEY));
     let _ = app.framework.dialogs.take::<Hosted>();
     app.raw = None;
@@ -610,7 +610,7 @@ pub(crate) fn dismiss(app: &mut PhotocraftApp, ctx: &egui::Context) {
 
 /// OK of the workspace: the command (or the open) its target asks for. A failure leaves the session as it is, so the
 /// workspace stays open with its settings.
-fn finish(app: &mut PhotocraftApp, result: &RawDevelopResult) -> Result<Value, String> {
+fn finish(app: &mut PatronusPhotoApp, result: &RawDevelopResult) -> Result<Value, String> {
     let session = app.raw.as_ref().ok_or(tl!("RAW Develop isn't open"))?;
     let (layer, target, original) = (session.layer, session.target, session.original.clone());
     let raw = session.raw_open.clone();

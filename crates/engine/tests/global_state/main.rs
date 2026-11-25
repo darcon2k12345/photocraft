@@ -29,7 +29,7 @@ pub(crate) fn lock(lock: &'static Mutex<()>) -> MutexGuard<'static, ()> {
 /// Empties every global cache that Purge All reports, so a test that asserts on what Purge All
 /// finds starts from nothing whatever ran before it in this process.
 pub(crate) fn purge_all_caches() {
-    let mut session = photocraft_engine::Session::new();
+    let mut session = patronusphoto_engine::Session::new();
     if session.is_enabled("edit.purge.all") {
         let _ = session.execute("edit.purge.all", serde_json::json!({}));
     }

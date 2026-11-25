@@ -13,11 +13,11 @@ use std::sync::Arc;
 use craft_psd::resources::ids;
 use craft_psd::tiff::{ByteOrder, ImageSourceData, resources_from_bytes, resources_to_bytes};
 use craft_psd::{ColorMode as PsdMode, Compression, Header, ImageData, ImageResource, ResolutionInfo};
-use photocraft_codecs::{self as codecs, ChannelLayout, Format, Image, SampleType as CSample};
-use photocraft_color::{ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{AlphaChannel, Document};
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use patronusphoto_codecs::{self as codecs, ChannelLayout, Format, Image, SampleType as CSample};
+use patronusphoto_color::{ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::{AlphaChannel, Document};
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::Surface;
 
 use crate::flat::{csample, encode_image, image_to_document, layout_for, single_layer, try_buffer};
 use crate::psd_export::PsdExportOptions;
@@ -34,7 +34,7 @@ pub fn would_write_layers(doc: &Document) -> bool {
 
 /// Documents a layered TIFF can hold: the TIFF composite must be in the document's model so
 /// that the layer channels inside the tag match it (Lab TIFFs are not decoded or encoded by
-/// `photocraft-codecs`), and there must be layers to keep (a Multichannel document has none:
+/// `patronusphoto-codecs`), and there must be layers to keep (a Multichannel document has none:
 /// its channels are the image).
 fn layered_mode(doc: &Document) -> bool {
     matches!(doc.pixel_format().mode, ColorMode::Grayscale | ColorMode::Rgb | ColorMode::Cmyk) && doc.mode != ColorMode::Multichannel && !doc.layers.is_empty()
@@ -202,7 +202,7 @@ pub(crate) fn layered_import_bytes(est: u64, w: u32, h: u32, channels: usize, sa
 /// admission before any pixel is decoded, so nothing here resolves a second budget or charges
 /// the enclosing attempt again: a top-level TIFF is charged once, and a nested independent one
 /// spends only what its parent still has. `ctl` stops the PSD conversion between layers.
-pub(crate) fn import_layered(name: &str, img: &Image, plan: LayeredPlan, ctl: &photocraft_raster::Interrupt) -> Result<ImportResult, IoError> {
+pub(crate) fn import_layered(name: &str, img: &Image, plan: LayeredPlan, ctl: &patronusphoto_raster::Interrupt) -> Result<ImportResult, IoError> {
     let LayeredPlan { model, flatten_warning, mut warnings, required: _, tiles: _ } = plan;
     let Some(model) = model else {
         let mut r = image_to_document(name, img)?;
@@ -246,7 +246,7 @@ pub(crate) fn import_layered(name: &str, img: &Image, plan: LayeredPlan, ctl: &p
     file.header.channels = u16::try_from(img.layout().channels().saturating_add(added)).map_err(|_| IoError::Unsupported("too many channels".into()))?;
     file.image_data = ImageData::new(Compression::Raw, data);
     // Spot planes are read in Photoshop's polarity (0 = solid ink), as from a PSD. The importer's
-    // rule for PSDs from earlier PhotoCraft versions never applies: those versions stored no
+    // rule for PSDs from earlier Patronus Photo versions never applies: those versions stored no
     // extra samples in a TIFF, and a TIFF with them carries 1053.
     let (mut doc, psd_warnings, _, fatal_error) = psd_to_document_owned(file, ctl, None).ok_or(IoError::Cancelled)?;
     if let Some(error) = fatal_error {
@@ -333,7 +333,7 @@ const TIFF_COMPOSITE_DONE: f32 = 0.72;
 /// Saves `doc` as a layered TIFF. Documents whose colour mode a TIFF cannot hold in our
 /// codec (Lab) are saved flat, with a warning. Reports progress through `ctl` (see
 /// [`crate::export_with`]).
-pub(crate) fn export_layered(doc: &Document, opts: &ExportOptions, ctl: &photocraft_raster::Interrupt) -> Result<ExportResult, IoError> {
+pub(crate) fn export_layered(doc: &Document, opts: &ExportOptions, ctl: &patronusphoto_raster::Interrupt) -> Result<ExportResult, IoError> {
     if !layered_mode(doc) {
         let mut r = crate::flat::export_flat_with(doc, Format::Tiff, opts, ctl)?;
         if !doc.layers.is_empty() {
@@ -608,7 +608,7 @@ fn matte_and_drop_alpha(img: &mut Image) -> bool {
     let white_byte: u8 = if cmyk { 0 } else { 255 };
     let white_u16: u16 = if cmyk { 0 } else { u16::MAX };
     let white_f: f32 = if cmyk { 0.0 } else { 1.0 };
-    // Lab's white is L* 100 with a* and b* 0, which PhotoCraft holds mid-range (`(0 + 128) / 255`).
+    // Lab's white is L* 100 with a* and b* 0, which Patronus Photo holds mid-range (`(0 + 128) / 255`).
     let lab = img.layout().is_lab();
     // Out of memory keeps the transparency (the caller warns) rather than aborting the app.
     let mut out = Vec::new();
@@ -958,18 +958,18 @@ fn mask_from_plane(data: &[u8], w: u32, h: u32, n: usize, from: CSample, depth: 
 
 #[cfg(test)]
 mod tests {
-    use photocraft_doc::{Color, Document, Fill, FillCache, Layer, LayerContent};
-    use photocraft_raster::Surface;
+    use patronusphoto_doc::{Color, Document, Fill, FillCache, Layer, LayerContent};
+    use patronusphoto_raster::Surface;
 
     use crate::{ExportOptions, ImportOptions, IoError, export};
 
     /// The in-place guard follows actual writable planes, including Quick Mask and early exits.
     #[test]
     fn flat_alpha_guard_uses_the_prepared_image_and_written_planes() {
-        use photocraft_codecs::{ChannelLayout, Image};
-        use photocraft_color::{ColorMode, PixelFormat, SampleType};
-        use photocraft_doc::AlphaChannel;
-        let mut doc = Document::new("guard", photocraft_geom::Size::new(2, 2), ColorMode::Rgb, SampleType::U8);
+        use patronusphoto_codecs::{ChannelLayout, Image};
+        use patronusphoto_color::{ColorMode, PixelFormat, SampleType};
+        use patronusphoto_doc::AlphaChannel;
+        let mut doc = Document::new("guard", patronusphoto_geom::Size::new(2, 2), ColorMode::Rgb, SampleType::U8);
         let image = || Image::from_u8(2, 2, ChannelLayout::Rgba, vec![0; 16]).unwrap();
         let mut no_planes = image();
         super::stamp_flat_channels(&doc, &mut no_planes, false, true).unwrap();
@@ -996,7 +996,8 @@ mod tests {
     /// PSD-style layer data: Photoshop does not read the PSB-style header in a TIFF and opens only
     /// the composite, as one locked Background.
     fn many_cheap_fills() -> Document {
-        let mut doc = Document::new("many fills", photocraft_geom::Size::new(2048, 2048), photocraft_color::ColorMode::Rgb, photocraft_color::SampleType::U8);
+        let mut doc =
+            Document::new("many fills", patronusphoto_geom::Size::new(2048, 2048), patronusphoto_color::ColorMode::Rgb, patronusphoto_color::SampleType::U8);
         for i in 0..140 {
             let fill = Fill::Solid(Color::rgb(0.5, 0.25, 0.75));
             let mut l = Layer::new(format!("Fill {i}"), LayerContent::Fill(fill.clone()));
@@ -1010,12 +1011,13 @@ mod tests {
     /// A small two-layer RGB document exported as a TIFF with Photoshop layer data: the real
     /// file the admission tests below import. No fixture is decoded at a size near a threshold.
     fn layered_tiff(w: u32, h: u32) -> Vec<u8> {
-        let mut doc = Document::new("charge.tif", photocraft_geom::Size::new(w, h), photocraft_color::ColorMode::Rgb, photocraft_color::SampleType::U8);
+        let mut doc =
+            Document::new("charge.tif", patronusphoto_geom::Size::new(w, h), patronusphoto_color::ColorMode::Rgb, patronusphoto_color::SampleType::U8);
         let fmt = doc.pixel_format();
         let bytes = (w as usize * h as usize * fmt.bytes_per_pixel()).max(1);
         for name in ["bottom", "top"] {
             let mut s = Surface::new(fmt);
-            s.write_interleaved(photocraft_geom::Rect::new(0, 0, w as i32, h as i32), &vec![96u8; bytes]);
+            s.write_interleaved(patronusphoto_geom::Rect::new(0, 0, w as i32, h as i32), &vec![96u8; bytes]);
             doc.layers.push(Layer::new(name, LayerContent::Raster(s)));
         }
         export(&doc, "charge.tif", &ExportOptions { tiff_layers: true, ..Default::default() }).expect("export layered TIFF").bytes
@@ -1024,7 +1026,7 @@ mod tests {
     /// The bytes of the layered TIFF's decoded composite: the size of both the planar copy the
     /// importer builds and the interleaved image it keeps beside it.
     fn composite_bytes(bytes: &[u8]) -> u64 {
-        let img = photocraft_codecs::decode_with(bytes, &photocraft_codecs::DecodeOptions { keep_orientation: true, ..Default::default() })
+        let img = patronusphoto_codecs::decode_with(bytes, &patronusphoto_codecs::DecodeOptions { keep_orientation: true, ..Default::default() })
             .expect("decode the composite");
         let (w, h) = img.dimensions();
         let sample = u64::try_from(img.sample_type().bytes()).unwrap_or(1);
@@ -1036,7 +1038,7 @@ mod tests {
         let doc = many_cheap_fills();
 
         let r = export(&doc, "x.tif", &ExportOptions { tiff_layers: true, ..Default::default() }).unwrap();
-        let (_, layers) = photocraft_codecs::tiff_photoshop_tags(&r.bytes);
+        let (_, layers) = patronusphoto_codecs::tiff_photoshop_tags(&r.bytes);
         let layers = layers.unwrap();
         assert!(layers.starts_with(craft_psd::tiff::SIGNATURE), "{:?}", String::from_utf8_lossy(&layers[..36.min(layers.len())]));
         assert!(!r.warnings.iter().any(|w| w.contains("PSB")), "{:?}", r.warnings);
@@ -1052,7 +1054,7 @@ mod tests {
     fn forcing_psb_still_writes_psb_style_layer_data() {
         let doc = many_cheap_fills();
         let r = export(&doc, "x.tif", &ExportOptions { tiff_layers: true, force_psb: true, ..Default::default() }).unwrap();
-        let (_, layers) = photocraft_codecs::tiff_photoshop_tags(&r.bytes);
+        let (_, layers) = patronusphoto_codecs::tiff_photoshop_tags(&r.bytes);
         assert!(layers.unwrap().starts_with(craft_psd::tiff::SIGNATURE_PSB));
     }
 
@@ -1126,7 +1128,7 @@ mod tests {
         let bytes = layered_tiff(8, 6);
         let composite = composite_bytes(&bytes);
         assert!(composite > 0);
-        let ctl = photocraft_raster::Interrupt::NONE;
+        let ctl = patronusphoto_raster::Interrupt::NONE;
 
         let _guard = crate::psd_gate::acquire_decode_admission(&ctl).expect("parent admission");
         let start = 1u64 << 40;
@@ -1165,7 +1167,7 @@ mod tests {
 
         let bytes = layered_tiff(8, 6);
         let snapshot = crate::memory::MemorySnapshot { available_ram: Some(32 << 30), swap_free: None, commit_headroom: None };
-        let _guard = crate::psd_gate::acquire_decode_admission(&photocraft_raster::Interrupt::NONE).expect("active decode");
+        let _guard = crate::psd_gate::acquire_decode_admission(&patronusphoto_raster::Interrupt::NONE).expect("active decode");
 
         let cancel = Arc::new(AtomicBool::new(false));
         let prechecked = Arc::new(AtomicBool::new(false));
@@ -1181,7 +1183,7 @@ mod tests {
                 });
                 let cancelled = move || cancel.load(Ordering::SeqCst);
                 let progress = |_: f32| {};
-                let ctl = photocraft_raster::Interrupt::new(&cancelled, &progress);
+                let ctl = patronusphoto_raster::Interrupt::new(&cancelled, &progress);
                 let result = crate::memory::with_mock_memory_provider(provider, || {
                     crate::import_with_options_and_interrupt("cancel.tif", &bytes, &ImportOptions::default(), &ctl)
                 });
@@ -1213,7 +1215,7 @@ mod tests {
     /// the tags it copies, and a half-float conversion's extra buffers.
     #[test]
     fn layered_estimate_counts_decode_conversion_extras_and_scratch() {
-        use photocraft_codecs::SampleType as S;
+        use patronusphoto_codecs::SampleType as S;
         // 100 × 50 px, RGB, 8-bit, no extras: the decoded image plus the planar copy.
         let pixels = 100u64 * 50;
         assert_eq!(super::layered_import_bytes(0, 100, 50, 3, S::U8, 0, 0, 0), 2 * pixels * 3);
@@ -1236,14 +1238,14 @@ mod tests {
         use std::cell::Cell;
         use std::rc::Rc;
 
-        use photocraft_codecs::{ChannelLayout, EncodeOptions, Format, Image, SampleType};
+        use patronusphoto_codecs::{ChannelLayout, EncodeOptions, Format, Image, SampleType};
 
         if cfg!(any(target_arch = "wasm32", target_pointer_width = "32")) {
             return;
         }
         let mut img = Image::from_raw(4, 3, ChannelLayout::Rgb, SampleType::U8, vec![40; 4 * 3 * 3]).unwrap();
         img.meta.photoshop_layers = Some(b"not Photoshop image source data".to_vec());
-        let bytes = photocraft_codecs::encode(&img, Format::Tiff, &EncodeOptions::default()).unwrap();
+        let bytes = patronusphoto_codecs::encode(&img, Format::Tiff, &EncodeOptions::default()).unwrap();
 
         let decoded = Rc::new(Cell::new(0u32));
         let hook = |decoded: &Rc<Cell<u32>>| -> Rc<dyn Fn()> {
@@ -1344,7 +1346,7 @@ mod tests {
         let bytes = layered_tiff(8, 6);
 
         // Hold the gate so the import stops between its pre-gate check and the post-gate one.
-        let _guard = crate::psd_gate::acquire_decode_admission(&photocraft_raster::Interrupt::NONE).expect("active decode");
+        let _guard = crate::psd_gate::acquire_decode_admission(&patronusphoto_raster::Interrupt::NONE).expect("active decode");
         let available = Arc::new(AtomicU64::new(32 * gb));
         let prechecked = Arc::new(AtomicBool::new(false));
         let decoded = Arc::new(AtomicBool::new(false));

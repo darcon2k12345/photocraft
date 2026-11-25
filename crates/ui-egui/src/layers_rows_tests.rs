@@ -1,4 +1,4 @@
-//! The Layers panel's rows through the real panel: what a key on a row runs in PhotoCraft, and what an eye sweep
+//! The Layers panel's rows through the real panel: what a key on a row runs in Patronus Photo, and what an eye sweep
 //! becomes in the history. How the rows look and hit-test is craft-layers'.
 
 use std::sync::Arc;
@@ -8,18 +8,18 @@ use craft::layers::ui::panel::{LayerColumn, LayerToggle, LayersEvent};
 use craft::layers::ui::tree::LayerRowKey;
 use egui::{Key, Modifiers};
 use egui_kittest::Harness;
-use photocraft_engine::Session;
+use patronusphoto_engine::Session;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::layers_panel_nodes::{click, row};
 
-type H = Harness<'static, Box<PhotocraftApp>>;
+type H = Harness<'static, Box<PatronusPhotoApp>>;
 
 fn harness(s: Session) -> H {
     let mut h = Harness::builder().with_size(egui::vec2(1440.0, 900.0)).with_step_dt(1.0 / 60.0).with_max_steps(64).build_eframe(|cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::with_context(cc.egui_ctx.clone(), s, crate::Services::default())
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        PatronusPhotoApp::with_context(cc.egui_ctx.clone(), s, crate::Services::default())
     });
     let ctx = h.ctx.clone();
     let (r, _) = crate::control::ControlRequest::new("ui.set", json!({"dock": {"collapsed": ["color", "properties", "history", "navigator"]}}));
@@ -28,7 +28,7 @@ fn harness(s: Session) -> H {
     h
 }
 
-fn st(h: &H) -> &photocraft_engine::DocState {
+fn st(h: &H) -> &patronusphoto_engine::DocState {
     h.state().session.active().unwrap()
 }
 
@@ -53,7 +53,7 @@ fn three() -> Session {
 /// One sweep down the eye column (the panel's events of one gesture) hides every layer swept over in one history step.
 #[test]
 fn sweeping_the_eyes_is_one_step() {
-    let mut app = PhotocraftApp::new(three(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(three(), crate::Services::default());
     let ctx = app.ctx().clone();
     let doc = app.session.active().unwrap().doc.clone();
     let rows: Vec<LayerRowKey<_>> = ["L2", "L1", "L0"].iter().map(|n| LayerRowKey::Layer(doc.layers.iter().find(|l| l.name == *n).unwrap().id)).collect();
@@ -75,7 +75,7 @@ fn sweeping_the_eyes_is_one_step() {
 }
 
 /// Cmd+] with the rows focused moves the active layer up once per press: the list's stacking key
-/// and PhotoCraft's Layer › Arrange › Bring Forward share the chord, and one press runs one of them.
+/// and Patronus Photo's Layer › Arrange › Bring Forward share the chord, and one press runs one of them.
 #[test]
 fn command_bracket_moves_the_layer_once() {
     let mut h = harness(three());

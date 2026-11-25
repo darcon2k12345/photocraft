@@ -12,7 +12,7 @@ fn tiff_prompt(command: &str) -> (Prompted, Writes, DocId, DocId) {
 
 /// [`tiff_prompt`] with a save dialog that answers each of `paths` in turn.
 fn tiff_prompt_answering(command: &str, paths: &[&str]) -> (Prompted, Writes, DocId, DocId) {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let mut app = app_with_docs_over(2, Some(Arc::new(ScriptedFiles::answering(paths.iter().map(|p| Picked::Paths(vec![(*p).into()]))))));
     make_dirty(&mut app, 0);
     let (saved, other) = (doc_id(&app, 0), doc_id(&app, 1));
@@ -25,7 +25,7 @@ fn tiff_prompt_answering(command: &str, paths: &[&str]) -> (Prompted, Writes, Do
         Ok(())
     }));
     let builder = egui_kittest::Harness::builder().with_size(egui::vec2(800.0, 600.0)).with_context(app.ctx().clone());
-    let builder = if std::env::var_os("PHOTOCRAFT_TIFF_SNAPSHOTS").is_some() { builder.wgpu() } else { builder };
+    let builder = if std::env::var_os("PATRONUSPHOTO_TIFF_SNAPSHOTS").is_some() { builder.wgpu() } else { builder };
     let mut h = builder.build_ui_state(
         |ui, app| {
             crate::dialogs::run(app, ui);
@@ -33,7 +33,7 @@ fn tiff_prompt_answering(command: &str, paths: &[&str]) -> (Prompted, Writes, Do
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     craft::ui::testing::windows::set_os(&h.ctx, craft::host::target::Os::Windows);
     assert!(intercept(h.state_mut(), command, &Value::Null));
     h.run_steps(3);
@@ -41,7 +41,7 @@ fn tiff_prompt_answering(command: &str, paths: &[&str]) -> (Prompted, Writes, Do
 }
 
 fn capture(h: &mut Prompted, name: &str) {
-    if let Some(dir) = std::env::var_os("PHOTOCRAFT_TIFF_SNAPSHOTS") {
+    if let Some(dir) = std::env::var_os("PATRONUSPHOTO_TIFF_SNAPSHOTS") {
         let dir = std::path::PathBuf::from(dir);
         std::fs::create_dir_all(&dir).unwrap();
         h.render().unwrap().save(dir.join(format!("{name}.png"))).unwrap();

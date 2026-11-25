@@ -1,6 +1,6 @@
 [package]
-name = "photocraft-automation"
-description = "MCP server (rmcp) over the PhotoCraft engine, plus a bridge to a running GUI"
+name = "patronusphoto-automation"
+description = "MCP server (rmcp) over the Patronus Photo engine, plus a bridge to a running GUI"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,23 +9,23 @@ rust-version.workspace = true
 [features]
 default = []
 gpu = [
-    "dep:photocraft-gpu",
+    "dep:patronusphoto-gpu",
     "dep:wgpu",
     "dep:pollster",
-    "photocraft-gpu/native",
+    "patronusphoto-gpu/native",
 ]
 
 [lints]
 workspace = true
 
 [dependencies]
-photocraft-doc = { workspace = true }
-photocraft-raster = { workspace = true }
-photocraft-compose = { workspace = true }
-photocraft-codecs = { workspace = true }
-photocraft-io = { workspace = true }
-photocraft-format = { path = "../format" }
-photocraft-engine = { workspace = true }
+patronusphoto-doc = { workspace = true }
+patronusphoto-raster = { workspace = true }
+patronusphoto-compose = { workspace = true }
+patronusphoto-codecs = { workspace = true }
+patronusphoto-io = { workspace = true }
+patronusphoto-format = { path = "../format" }
+patronusphoto-engine = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
@@ -41,18 +41,18 @@ clap = { workspace = true }
 craft = { workspace = true, features = ["automation-agents", "control-agents"] }
 
 # Optional native GPU rendering backend
-photocraft-gpu = { workspace = true, optional = true }
+patronusphoto-gpu = { workspace = true, optional = true }
 wgpu = { version = "30", default-features = false, features = ["std", "wgsl"], optional = true }
 pollster = { version = "1", optional = true }
 
 [dev-dependencies]
-photocraft-color = { workspace = true }
-photocraft-geom = { workspace = true }
+patronusphoto-color = { workspace = true }
+patronusphoto-geom = { workspace = true }
 # Synthetic camera raws (#7789).
-photocraft-raw = { workspace = true, features = ["testgen"] }
+patronusphoto-raw = { workspace = true, features = ["testgen"] }
 # Tiny generated PSDs and the scoped estimate charge for the high-memory approval tests
 # (no multi-gigabyte fixture or global override).
-photocraft-io = { workspace = true, features = ["testgen"] }
+patronusphoto-io = { workspace = true, features = ["testgen"] }
 craft-psd = { workspace = true, features = ["testgen"] }
 rmcp = { version = "3.5", default-features = false, features = ["client", "server", "macros", "transport-io"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "io-std", "sync", "net", "io-util", "time"] }

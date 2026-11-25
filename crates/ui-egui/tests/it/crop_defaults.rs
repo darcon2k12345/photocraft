@@ -3,18 +3,18 @@
 //! committed crop, a cancelled crop).
 
 use craft::draw::ui::crop::CropFill;
-use photocraft_ui_egui::PhotocraftApp;
-use photocraft_ui_egui::control::{ControlRequest, Reply, handle};
-use photocraft_ui_egui::crop_ui;
+use patronusphoto_ui_egui::PatronusPhotoApp;
+use patronusphoto_ui_egui::control::{ControlRequest, Reply, handle};
+use patronusphoto_ui_egui::crop_ui;
 use serde_json::{Value, json};
 
-type Harness = egui_kittest::Harness<'static, Box<PhotocraftApp>>;
+type Harness = egui_kittest::Harness<'static, Box<PatronusPhotoApp>>;
 
 /// The app with one 64 × 48 document and the Crop tool in Classic Mode, so a drag draws a frame.
 fn harness() -> Harness {
     let mut h = Harness::builder().with_size(egui::vec2(1100.0, 760.0)).with_max_steps(64).build_eframe(|cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), Default::default());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), Default::default());
         app.session.prefs.edit(|p| p.interface.language = "en".into());
         app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
         // Snapping would pull the drawn frames' corners to the canvas edges and guides.

@@ -10,19 +10,19 @@
 //!   rotation, so those stay 0, and reports pressure 0 (a tap lighter than the pen's first
 //!   pressure level) as no force, which the pen source reads as pressure 0 once it knows a pen is
 //!   in use. The desktop app's pointer message hook
-//!   (`photocraft-tablet`) reports which end of the pen is in use through `Services::pen_end`.
+//!   (`patronusphoto-tablet`) reports which end of the pen is in use through `Services::pen_end`.
 //! - **Web**: eframe forwards touch force but not pen pointer events, so the web runner listens
 //!   to `pointerdown`/`pointermove` itself and writes `pressure`, `tiltX`, `tiltY`, `twist` and
 //!   the eraser button of `pointerType == "pen"` events into the [`StylusFeed`].
 //! - **macOS**: winit 0.30 drops `NSEvent` tablet data, so the desktop app installs an AppKit
-//!   local event monitor (the `photocraft-tablet` crate) that writes pressure, tilt, rotation and
+//!   local event monitor (the `patronusphoto-tablet` crate) that writes pressure, tilt, rotation and
 //!   the eraser end into the [`StylusFeed`] before winit handles each event.
 //! - **Linux X11**: the desktop app reads XInput2 raw valuator events on its own X connection
-//!   (`photocraft-tablet`, x11rb) and writes them into the [`StylusFeed`].
+//!   (`patronusphoto-tablet`, x11rb) and writes them into the [`StylusFeed`].
 //! - **Linux Wayland**: compositors give a pen only to clients that bind `zwp_tablet_v2`, which
 //!   winit doesn't (it would have to share winit's connection), so with a pen attached the
 //!   desktop app opens its window through Xwayland, which reports tablet valuators to the X11
-//!   reader. `PHOTOCRAFT_NATIVE_WAYLAND=1` keeps native Wayland, where the pen has no input.
+//!   reader. `PATRONUSPHOTO_NATIVE_WAYLAND=1` keeps native Wayland, where the pen has no input.
 //!
 //! Preferences › Tools › Use Tablet Pressure off makes a pen paint like a mouse. Flipping the pen
 //! to its eraser end selects the Eraser tool and flipping back restores the previous tool, as in
@@ -123,7 +123,7 @@ impl StylusFeed {
 }
 
 fn feed_id() -> egui::Id {
-    egui::Id::unique("photocraft::stylus::feed")
+    egui::Id::unique("patronusphoto::stylus::feed")
 }
 
 /// Per-app stylus state.
@@ -134,7 +134,7 @@ pub struct Stylus {
     /// Preferences › Tools › Use Tablet Pressure: off, a pen paints like a mouse.
     pub use_pressure: bool,
     /// Preferences › Tools › Pressure Curve (`None`: linear), with the points it was built from.
-    pressure_curve: Option<photocraft_engine::prefs::PressureCurve>,
+    pressure_curve: Option<patronusphoto_engine::prefs::PressureCurve>,
     curve_points: Vec<[f32; 2]>,
     /// The pen end last seen (`Some(true)` = eraser), for the eraser tool switch.
     end: Option<bool>,
@@ -213,7 +213,7 @@ impl Stylus {
     pub fn set_pressure_curve(&mut self, points: &[[f32; 2]]) {
         if self.curve_points != points {
             self.curve_points = points.to_vec();
-            let c = photocraft_engine::prefs::PressureCurve::new(points);
+            let c = patronusphoto_engine::prefs::PressureCurve::new(points);
             self.pressure_curve = (!c.is_linear()).then_some(c);
         }
     }
@@ -230,7 +230,7 @@ impl Stylus {
 
     /// Switch to the Eraser when the pen's eraser end comes in, and back to the previous tool when
     /// the tip does (Photoshop). Not during a drag. Returns whether the tool changed.
-    pub fn sync_eraser_tool(app: &mut crate::PhotocraftApp) -> bool {
+    pub fn sync_eraser_tool(app: &mut crate::PatronusPhotoApp) -> bool {
         use crate::state::Tool;
         // PLAN: `in_gesture(app)` is cw.P1's (canvas-widgets-w14, `canvas/tools/mod.rs`); the module path is theirs to make visible.
         if crate::canvas::tools::in_gesture(app) {

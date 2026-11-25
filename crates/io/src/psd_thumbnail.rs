@@ -8,9 +8,9 @@
 
 use craft_cms::{Builtin, ColorSpace, Intent, Profile, Transform};
 use craft_psd::resources::{ImageResource, ids};
-use photocraft_codecs::{ChannelLayout, EncodeOptions, Format, Image, SampleType as CSample};
-use photocraft_color::ColorMode;
-use photocraft_doc::Document;
+use patronusphoto_codecs::{ChannelLayout, EncodeOptions, Format, Image, SampleType as CSample};
+use patronusphoto_color::ColorMode;
+use patronusphoto_doc::Document;
 
 use crate::IoError;
 
@@ -24,7 +24,7 @@ pub const HEADER_LEN: usize = 28;
 /// printed over it (with the Spot dot gain, as Photoshop saves it), converted to sRGB through the
 /// document's profile, matted over white and JPEG-compressed.
 pub(crate) fn resource(doc: &Document) -> Result<ImageResource, IoError> {
-    let mut buf = photocraft_compose::multichannel::thumbnail_with_inks(doc, MAX_SIDE);
+    let mut buf = patronusphoto_compose::multichannel::thumbnail_with_inks(doc, MAX_SIDE);
     let (w, h) = (buf.rect.width(), buf.rect.height());
     if w == 0 || h == 0 || w > MAX_SIDE || h > MAX_SIDE || buf.px.len() != (w as usize) * (h as usize) {
         return Err(IoError::Unsupported("the image preview could not be rendered".into()));
@@ -46,7 +46,7 @@ pub(crate) fn resource(doc: &Document) -> Result<ImageResource, IoError> {
     }
     let img = Image::from_raw(w, h, ChannelLayout::Rgb, CSample::U8, rgb)?;
     let opts = EncodeOptions { jpeg_quality: 80, embed_icc: false, embed_metadata: false, ..EncodeOptions::default() };
-    let jfif = photocraft_codecs::encode(&img, Format::Jpeg, &opts)?;
+    let jfif = patronusphoto_codecs::encode(&img, Format::Jpeg, &opts)?;
     Ok(ImageResource::new(ids::THUMBNAIL, thumbnail_bytes(w, h, &jfif)?))
 }
 

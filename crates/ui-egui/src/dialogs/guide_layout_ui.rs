@@ -14,11 +14,11 @@ use craft::ui::patterns::form_dialogs::{
 };
 use craft::ui::runtime::env::UnitKind;
 use egui::Color32;
-use photocraft_doc::{Document, Guides};
-use photocraft_engine::prefs::Unit;
+use patronusphoto_doc::{Document, Guides};
+use patronusphoto_engine::prefs::Unit;
 use serde_json::{Map, Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 const COMMAND: &str = "view.newGuideLayout";
 
@@ -27,16 +27,16 @@ const MAX_COUNT: u64 = 1000;
 
 /// A `"#rrggbb"` colour as drawn.
 fn rgb(hex: &str) -> Option<Color32> {
-    photocraft_engine::prefs::parse_hex(hex).map(|[r, g, b]| Color32::from_rgb(r, g, b))
+    patronusphoto_engine::prefs::parse_hex(hex).map(|[r, g, b]| Color32::from_rgb(r, g, b))
 }
 
-fn ruler_unit(app: &PhotocraftApp) -> Unit {
+fn ruler_unit(app: &PatronusPhotoApp) -> Unit {
     app.session.prefs().units_and_rulers.rulers
 }
 
 /// What the guide dialogs measure in: the active document's size and resolution and the ruler unit. With no document
 /// it is a 1 px page at 72 ppi, so a dialog still opens.
-pub(crate) fn guide_units(app: &PhotocraftApp) -> GuideUnits {
+pub(crate) fn guide_units(app: &PatronusPhotoApp) -> GuideUnits {
     let prefs = &app.session.prefs().units_and_rulers;
     let (width, height, dpi) = app
         .session
@@ -46,7 +46,7 @@ pub(crate) fn guide_units(app: &PhotocraftApp) -> GuideUnits {
 }
 
 /// The guide colour preference as a framework colour (Cyan when it does not parse).
-pub(crate) fn preference_rgba(app: &PhotocraftApp) -> Rgba {
+pub(crate) fn preference_rgba(app: &PatronusPhotoApp) -> Rgba {
     rgb(&app.session.prefs().guides_grid_and_slices.guide_color).map_or(GuideColor::Cyan.rgba(), |c| Rgba::rgb(c.r(), c.g(), c.b()))
 }
 
@@ -201,12 +201,12 @@ fn params(o: &GuideLayoutOptions, units: &GuideUnits) -> Value {
 }
 
 /// Opens New Guide Layout on the active document; `None` without one.
-pub fn open(app: &mut PhotocraftApp) -> Option<DialogId> {
+pub fn open(app: &mut PatronusPhotoApp) -> Option<DialogId> {
     let st = app.session.active()?;
     let doc_id = st.doc.id;
     let existing = document_guides(&st.doc.guides);
     let first_key = next_key(&existing);
-    let artboards: Vec<GuideRect> = photocraft_engine::guide_layout::selected_artboards(&app.session)
+    let artboards: Vec<GuideRect> = patronusphoto_engine::guide_layout::selected_artboards(&app.session)
         .iter()
         .map(|r| GuideRect::new(f64::from(r.x0), f64::from(r.y0), f64::from(r.x1), f64::from(r.y1)))
         .collect();
@@ -226,13 +226,13 @@ pub fn open(app: &mut PhotocraftApp) -> Option<DialogId> {
     Some(id)
 }
 
-fn layout_requests(app: &mut PhotocraftApp, id: DialogId) -> Option<&mut HostRequests> {
+fn layout_requests(app: &mut PatronusPhotoApp, id: DialogId) -> Option<&mut HostRequests> {
     app.framework.dialogs.get_mut_by_id::<HostedGuideLayoutDialog>(id).map(HostedGuideLayoutDialog::requests)
 }
 
 /// Opens the colour picker for a hosted dialog's Custom… request and hands the picked colour back with the request's
 /// key. `requests` finds the dialog's request queue.
-pub(crate) fn pump_colors(app: &mut PhotocraftApp, id: DialogId, requests: for<'a> fn(&'a mut PhotocraftApp, DialogId) -> Option<&'a mut HostRequests>) {
+pub(crate) fn pump_colors(app: &mut PatronusPhotoApp, id: DialogId, requests: for<'a> fn(&'a mut PatronusPhotoApp, DialogId) -> Option<&'a mut HostRequests>) {
     if let Some(request) = requests(app, id).and_then(HostRequests::take_color) {
         crate::color_picker_ui::open_for_request(app, id, request);
     }
@@ -245,7 +245,7 @@ pub(crate) fn pump_colors(app: &mut PhotocraftApp, id: DialogId, requests: for<'
 }
 
 /// The dialog's colour requests and its answer, once per pass.
-pub(crate) fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
+pub(crate) fn take(app: &mut PatronusPhotoApp, _ctx: &egui::Context) {
     let Some((id, doc)) = app.guide_layout_doc else { return };
     pump_colors(app, id, layout_requests);
     let Some(result) = app.framework.dialogs.take_by_id::<HostedGuideLayoutDialog>(id) else { return };
@@ -259,7 +259,7 @@ pub(crate) fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
 
 /// OK: the layout on the document the dialog opened on, the guides revealed, the colour preference and the layout
 /// remembered.
-fn apply(app: &mut PhotocraftApp, doc: photocraft_doc::DocId, result: &GuideLayoutResult) -> Result<(), String> {
+fn apply(app: &mut PatronusPhotoApp, doc: patronusphoto_doc::DocId, result: &GuideLayoutResult) -> Result<(), String> {
     if app.session.active().map(|st| st.doc.id) != Some(doc) {
         return Err("the guide layout belongs to another document".into());
     }
@@ -278,7 +278,7 @@ fn apply(app: &mut PhotocraftApp, doc: photocraft_doc::DocId, result: &GuideLayo
 }
 
 /// Full replacement guide set for the dialog's own document. Cancel and removal drop it at once.
-pub fn preview(app: &PhotocraftApp, doc: &Document) -> Option<(Guides, Color32)> {
+pub fn preview(app: &PatronusPhotoApp, doc: &Document) -> Option<(Guides, Color32)> {
     let (id, opened_on) = app.guide_layout_doc?;
     if opened_on != doc.id {
         return None;

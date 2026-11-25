@@ -20,20 +20,20 @@ const YELLOW: [f32; 4] = [1.0, 1.0, 0.0, 1.0];
 
 /// The measured test document: 800 x 500, red (top left), green (top right), blue (bottom left)
 /// and yellow (bottom right) quadrants with a black square in the middle; the Perspective Crop tool.
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 800, "height": 500})).unwrap();
     app.sync_views();
     app.ui.tool = Tool::PerspectiveCrop;
     let surf = Arc::make_mut(app.session.active_mut().unwrap().doc_mut()).layers[0].surface_mut().unwrap();
     for (x, y, c) in [(0, 0, RED), (400, 0, GREEN), (0, 250, BLUE), (400, 250, YELLOW)] {
-        surf.fill_rect(photocraft_geom::Rect::from_xywh(x, y, 400, 250), &c);
+        surf.fill_rect(patronusphoto_geom::Rect::from_xywh(x, y, 400, 250), &c);
     }
-    surf.fill_rect(photocraft_geom::Rect::from_xywh(395, 245, 10, 10), &[0.0, 0.0, 0.0, 1.0]);
+    surf.fill_rect(patronusphoto_geom::Rect::from_xywh(395, 245, 10, 10), &[0.0, 0.0, 0.0, 1.0]);
     app
 }
 
-fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2], mods: Modifiers) {
+fn drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2], mods: Modifiers) {
     tool_event(app, ToolEvent::Down { x: from[0], y: from[1], pressure: 1.0 }, mods);
     let mid = [(from[0] + to[0]) / 2.0, (from[1] + to[1]) / 2.0];
     tool_event(app, ToolEvent::Move { x: mid[0], y: mid[1], pressure: 1.0 }, mods);
@@ -41,12 +41,12 @@ fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2], mods: Modifiers) 
     tool_event(app, ToolEvent::Up { x: to[0], y: to[1] }, mods);
 }
 
-fn set_quad(app: &mut PhotocraftApp, q: [[f64; 2]; 4]) {
+fn set_quad(app: &mut PatronusPhotoApp, q: [[f64; 2]; 4]) {
     app.canvas_tools.perspective.tool.set(Some(q.map(|[x, y]| Point::new(x, y))));
 }
 
 /// The committed canvas's size and the colours at its four corners (TL, TR, BL, BR).
-fn corners(app: &PhotocraftApp) -> ((u32, u32), [[f32; 4]; 4]) {
+fn corners(app: &PatronusPhotoApp) -> ((u32, u32), [[f32; 4]; 4]) {
     let doc = &app.session.active().unwrap().doc;
     let (w, h) = (doc.size.width as i32, doc.size.height as i32);
     let surf = doc.layers[0].surface().unwrap();

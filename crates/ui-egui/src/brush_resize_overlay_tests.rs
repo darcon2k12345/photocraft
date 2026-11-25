@@ -5,16 +5,16 @@ use egui::{Modifiers, PointerButton, vec2};
 use egui_kittest::Harness;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::app::framework::BuildApp as _;
 use crate::state::Tool;
 
-fn harness() -> Harness<'static, Box<PhotocraftApp>> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn harness() -> Harness<'static, Box<PatronusPhotoApp>> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 100, "background": "white"})).unwrap();
     app.sync_views();
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(vec2(900.0, 600.0)).build_app(
-        |ui, app: &mut PhotocraftApp| {
+        |ui, app: &mut PatronusPhotoApp| {
             egui::CentralPanel::default().show(ui, |ui| crate::canvas::document_area(app, ui));
         },
         app,
@@ -38,7 +38,7 @@ fn flatten<'a>(shape: &'a Shape, out: &mut Vec<&'a Shape>) {
 
 /// The untextured meshes with a transparent outer ring (the falloff) round `press` painted this frame, each with the clip rect it
 /// was painted under.
-fn falloff_meshes(h: &Harness<'static, Box<PhotocraftApp>>, press: egui::Pos2) -> Vec<(egui::Rect, egui::Rect)> {
+fn falloff_meshes(h: &Harness<'static, Box<PatronusPhotoApp>>, press: egui::Pos2) -> Vec<(egui::Rect, egui::Rect)> {
     let mut found = Vec::new();
     for clipped in &h.output().shapes {
         let mut all = Vec::new();

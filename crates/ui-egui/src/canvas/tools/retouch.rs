@@ -16,7 +16,7 @@ use craft::ui::primitives::Draw;
 use super::dialog::doc_point;
 use super::selection::{InsideSelectionDrag, PcSelection, drag_delta};
 use super::{FamilyTool, ToolScope};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::document_display::CanvasHost;
 use crate::canvas::tool_feedback;
 use crate::retouch_ui::{self, PatchPress};
@@ -73,7 +73,7 @@ pub(crate) fn tool<'a>(scope: &'a ToolScope<'a>, state: &'a mut RetouchTools, _h
         let bar = tool_feedback::selection_op(tool, app.ui.selection_mode, Mods::NONE, true);
         // Indexed Color and Bitmap refuse Object Selection: the press must reach `finish_object_selection` for the
         // tool's alert (#12867), never deselect or move the outline.
-        let refused = app.session.active().is_some_and(|st| photocraft_engine::smartselect_cmds::object_mode_refusal(st.doc.mode).is_some());
+        let refused = app.session.active().is_some_and(|st| patronusphoto_engine::smartselect_cmds::object_mode_refusal(st.doc.mode).is_some());
         (tool, PcSelection::of(app), bar, app.ui.tool_options.object_finder && !refused)
     });
     state.drag.operation(bar);
@@ -82,8 +82,8 @@ pub(crate) fn tool<'a>(scope: &'a ToolScope<'a>, state: &'a mut RetouchTools, _h
 
 /// A Red Eye click. CMYK, Grayscale and Indexed Color documents get the reference's alert (#12575); the alert host
 /// shows one alert per message, so more clicks while it is open add nothing.
-fn red_eye_click(app: &mut PhotocraftApp, at: [f64; 2]) {
-    use photocraft_engine::redeye_cmds::MODE_REFUSAL;
+fn red_eye_click(app: &mut PatronusPhotoApp, at: [f64; 2]) {
+    use patronusphoto_engine::redeye_cmds::MODE_REFUSAL;
     let o = app.ui.tool_options.clone();
     let result = app.run(
         "paint.redEye",
@@ -109,7 +109,7 @@ pub(crate) fn source_tool<'a>(scope: &'a ToolScope<'a>, _state: &'a mut RetouchT
 
 /// Applies what the lasso outline and Object Selection's outline drag reported. A Patch or Content-Aware Move press
 /// that dragged the selection applied itself on release.
-pub(crate) fn drain(app: &mut PhotocraftApp, state: &mut RetouchTools, _response: &ToolHostResponse) {
+pub(crate) fn drain(app: &mut PatronusPhotoApp, state: &mut RetouchTools, _response: &ToolHostResponse) {
     state.drag.drain(app, Tool::ObjectSelection);
     for event in state.lasso.take_events() {
         // A press inside the selection is routed to the selection drag, so the lasso's own inside drag and

@@ -10,7 +10,7 @@ use craft::ui::runtime::env::Env;
 use craft::ui::sections::Section;
 
 use super::defaults::{apply_defaults, formatting_params, target, target_text};
-use super::{PhotocraftApp, fonts, json, values};
+use super::{PatronusPhotoApp, fonts, json, values};
 
 /// The Character panel's OpenType buttons, in Photoshop's order: (feature tag, command id,
 /// tooltip). The tooltips are the Type › OpenType menu labels.
@@ -28,7 +28,7 @@ pub(crate) const OPENTYPE_BUTTONS: [(&str, &str, &str); 8] = [
 /// Runs an OpenType toggle command on the Character panel's scope: the edited layer's selected
 /// characters (or its whole text) while typing, else every selected type layer. The new state
 /// is explicit, so it follows the button the user saw rather than the layer's first run.
-pub(crate) fn toggle_opentype(app: &mut PhotocraftApp, id: &str, shown_on: bool) {
+pub(crate) fn toggle_opentype(app: &mut PatronusPhotoApp, id: &str, shown_on: bool) {
     let Some(mut p) = formatting_params(app) else {
         if let Some((tag, _, _)) = OPENTYPE_BUTTONS.iter().find(|(_, command, _)| *command == id) {
             let props = match *tag {
@@ -45,19 +45,19 @@ pub(crate) fn toggle_opentype(app: &mut PhotocraftApp, id: &str, shown_on: bool)
 }
 
 /// Properties panel sections for a type layer: Character, Paragraph and Type Options (#155).
-pub fn type_properties(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn type_properties(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     type_sections(app, ui, true, true, false);
     type_options(app, ui);
 }
 
 /// Window › Character / Paragraph (#150): the same controls as Properties, in their own dock
 /// group. Without a type target they edit the defaults for the next Type-tool layer.
-pub fn character_panel(app: &mut PhotocraftApp, ui: &mut egui::Ui, paragraph: bool) {
+pub fn character_panel(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, paragraph: bool) {
     type_sections(app, ui, !paragraph, paragraph, true);
 }
 
 /// The Character and/or Paragraph sections.
-fn type_sections(app: &mut PhotocraftApp, ui: &mut egui::Ui, character: bool, paragraph: bool, show_defaults: bool) {
+fn type_sections(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, character: bool, paragraph: bool, show_defaults: bool) {
     if !show_defaults && target(app).is_none() {
         return;
     }
@@ -70,7 +70,7 @@ fn type_sections(app: &mut PhotocraftApp, ui: &mut egui::Ui, character: bool, pa
     }
 }
 
-fn character_controls(app: &mut PhotocraftApp, ui: &mut egui::Ui, unit: DocUnit) {
+fn character_controls(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, unit: DocUnit) {
     let shown = values::character_values(app);
     let families = fonts::families();
     let styles = values::style_names(app, &shown);
@@ -90,16 +90,16 @@ fn character_controls(app: &mut PhotocraftApp, ui: &mut egui::Ui, unit: DocUnit)
     }
 }
 
-fn paragraph_controls(app: &mut PhotocraftApp, ui: &mut egui::Ui, unit: DocUnit) {
+fn paragraph_controls(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, unit: DocUnit) {
     let shown = values::paragraph_values(app);
     let vertical = values::orientation(app) == TextOrientation::Vertical;
-    // PhotoCraft's layout does not hyphenate (#6710): the check box stays hidden.
+    // Patronus Photo's layout does not hyphenate (#6710): the check box stays hidden.
     let out = ParagraphControls::new(tl!("Paragraph"), &shown).unit(unit).point_text(values::point_text(app)).vertical(vertical).hyphenate(false).show(ui);
     values::apply_paragraph_events(app, &out.edits);
 }
 
 /// Type Options: anti-aliasing and orientation of the whole layer (the Type menu's commands).
-fn type_options(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+fn type_options(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     if target_text(app).is_none() {
         return;
     }

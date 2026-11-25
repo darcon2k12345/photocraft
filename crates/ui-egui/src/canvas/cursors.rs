@@ -1,6 +1,6 @@
 use super::tool_input::ToolEvent;
 use super::view_xform::ViewXform;
-use super::{Color32, PhotocraftApp, Pos2, Rect, Stroke, Tool, json, pos2, vec2};
+use super::{Color32, PatronusPhotoApp, Pos2, Rect, Stroke, Tool, json, pos2, vec2};
 
 /// Windows' crosshair cursor inverts the pixels under it, so over mid-grey (the pasteboard, many
 /// photos) it vanishes (#737), and the Linux themes' and macOS's differ. Use the same black-and-white
@@ -17,7 +17,7 @@ pub(super) fn visible_crosshair(icon: egui::CursorIcon, painter: &egui::Painter,
 /// (`paint::grid_square`), in screen points with its edges on physical pixels (`ppp` = pixels
 /// per point), so it lines up with the pixel grid at any zoom.
 pub(crate) fn pencil_cursor_rect(xf: &ViewXform, doc: [f64; 2], size: f32, ppp: f32) -> Rect {
-    let [x0, y0, x1, y1] = photocraft_engine::paint::grid_square(doc[0], doc[1], size);
+    let [x0, y0, x1, y1] = patronusphoto_engine::paint::grid_square(doc[0], doc[1], size);
     let r = Rect::from_two_pos(xf.to_screen(x0 as f32, y0 as f32), xf.to_screen(x1 as f32, y1 as f32));
     let ppp = if ppp.is_finite() && ppp > 0.0 { ppp } else { 1.0 };
     let snap = |v: f32| (v * ppp).round() / ppp;
@@ -60,7 +60,7 @@ fn display_color(c: [f32; 3]) -> Color32 {
 /// The Eyedropper ring's two colours at document point (x, y): the colour under the pointer
 /// (what a click would pick) and the current foreground, or `None` where there is no colour
 /// to sample (#213).
-pub(crate) fn eyedropper_ring_colors(app: &mut PhotocraftApp, x: f64, y: f64) -> Option<(Color32, Color32)> {
+pub(crate) fn eyedropper_ring_colors(app: &mut PatronusPhotoApp, x: f64, y: f64) -> Option<(Color32, Color32)> {
     let new = eyedropper_color(app, x, y)?;
     let fg = app.session.tools.foreground;
     Some((display_color(new), display_color([fg[0], fg[1], fg[2]])))
@@ -73,9 +73,9 @@ pub(crate) fn eyedropper_ring_colors(app: &mut PhotocraftApp, x: f64, y: f64) ->
 /// only while the mouse button is held (`held`): hovering shows the plain pipette and
 /// samples nothing. `None` when not held, there is nothing to sample, or the Precise-cursor
 /// preference wants the plain crosshair.
-pub(super) fn eyedropper_ring(app: &mut PhotocraftApp, painter: &egui::Painter, xf: &ViewXform, p: Pos2, held: bool) -> Option<egui::CursorIcon> {
+pub(super) fn eyedropper_ring(app: &mut PatronusPhotoApp, painter: &egui::Painter, xf: &ViewXform, p: Pos2, held: bool) -> Option<egui::CursorIcon> {
     // The options bar's Show Sampling Ring turns it off (#1649).
-    if !held || !app.ui.tool_options.eyedropper_ring || app.session.prefs().cursors.other == photocraft_engine::prefs::OtherCursor::Precise {
+    if !held || !app.ui.tool_options.eyedropper_ring || app.session.prefs().cursors.other == patronusphoto_engine::prefs::OtherCursor::Precise {
         return None;
     }
     let [x, y] = xf.to_doc(p);
@@ -124,8 +124,8 @@ pub(crate) fn alt_samples(tool: Tool, mods: egui::Modifiers) -> bool {
 
 /// Preferences › Cursors › Other Cursors asks for the precise crosshair, or Caps Lock swaps the
 /// standard cursor for it (and back), as in Photoshop (#4639).
-pub(crate) fn precise_other_cursor(app: &PhotocraftApp) -> bool {
-    (app.session.prefs().cursors.other == photocraft_engine::prefs::OtherCursor::Precise) != app.caps_lock
+pub(crate) fn precise_other_cursor(app: &PatronusPhotoApp) -> bool {
+    (app.session.prefs().cursors.other == patronusphoto_engine::prefs::OtherCursor::Precise) != app.caps_lock
 }
 
 /// A pen tool's standard cursor: its toolbar icon with the nib (the Convert Point tool: the
@@ -201,8 +201,8 @@ pub(crate) fn preview_locator_cursor(ctx: &egui::Context, p: Pos2) -> egui::Curs
 /// or the comparison ring while it samples with the button `held` (#213), or the precise crosshair
 /// with Preferences › Cursors › Other Cursors = Precise. The Mixer Brush's ⌥ loads paint instead:
 /// its sample target, with no ring (#11957).
-pub(super) fn alt_pick_cursor(app: &mut PhotocraftApp, painter: &egui::Painter, xf: &ViewXform, p: Pos2, held: bool, tool: Tool) -> egui::CursorIcon {
-    let precise = app.session.prefs().cursors.other == photocraft_engine::prefs::OtherCursor::Precise;
+pub(super) fn alt_pick_cursor(app: &mut PatronusPhotoApp, painter: &egui::Painter, xf: &ViewXform, p: Pos2, held: bool, tool: Tool) -> egui::CursorIcon {
+    let precise = app.session.prefs().cursors.other == patronusphoto_engine::prefs::OtherCursor::Precise;
     if tool == Tool::MixerBrush && !app.alt_sampling {
         return if precise { egui::CursorIcon::Crosshair } else { sample_target_cursor(painter, p) };
     }
@@ -237,7 +237,7 @@ fn ring(radius: f32) -> Vec<egui::Vec2> {
 }
 
 /// Whether the Mixer Brush's target layer has Lock All on, so it shows [`no_entry_cursor`].
-pub(crate) fn mixer_target_locked(app: &PhotocraftApp) -> bool {
+pub(crate) fn mixer_target_locked(app: &PatronusPhotoApp) -> bool {
     app.session.active().and_then(|st| st.active_layer.and_then(|id| st.doc.layer(id))).is_some_and(|layer| layer.locks.all)
 }
 
@@ -251,9 +251,9 @@ mod healing_alt_cursor_tests;
 
 /// The Paint Bucket artwork and target share one cached cursor image. Report rasterization
 /// failures once per distinct message, with the same concise error in the dialog and status bar.
-pub(crate) fn paint_bucket_cursor(app: &mut PhotocraftApp, painter: &egui::Painter, p: Pos2) -> egui::CursorIcon {
+pub(crate) fn paint_bucket_cursor(app: &mut PatronusPhotoApp, painter: &egui::Painter, p: Pos2) -> egui::CursorIcon {
     let ctx = painter.ctx();
-    let id = egui::Id::unique("photocraft-bucket-cursor-error");
+    let id = egui::Id::unique("patronusphoto-bucket-cursor-error");
     match crate::tool_cursor::bucket(painter, p) {
         Ok(icon) => {
             // The failure belonged to another scale: its status goes, and a new one reports again.
@@ -286,7 +286,7 @@ pub(crate) fn paint_bucket_cursor(app: &mut PhotocraftApp, painter: &egui::Paint
 
 /// Decided when the press starts, so ⌥ pressed or released mid-stroke never switches between
 /// painting and sampling.
-pub(super) fn alt_eyedropper(app: &mut PhotocraftApp, ev: ToolEvent, mods: egui::Modifiers) -> bool {
+pub(super) fn alt_eyedropper(app: &mut PatronusPhotoApp, ev: ToolEvent, mods: egui::Modifiers) -> bool {
     if let ToolEvent::Down { x, y, .. } = ev {
         let physical_right = app.services.right_button_down.as_ref().is_some_and(|f| f());
         app.alt_sampling = !physical_right && !app.secondary_erase && (alt_samples(app.active_tool(), mods) || shape_alt_samples(app, mods, x, y));
@@ -309,7 +309,7 @@ pub(super) fn alt_eyedropper(app: &mut PhotocraftApp, ev: ToolEvent, mods: egui:
             if inside && let Err(e) = app.run("view.colorSamplers.add", json!({"x": x, "y": y})) {
                 // Only the limit is a plain report; any other refusal (a failed Pen draft left in
                 // another document) stays an error, also when the document is full.
-                let limit = e == photocraft_engine::sampler_cmds::limit_message();
+                let limit = e == patronusphoto_engine::sampler_cmds::limit_message();
                 app.ui.status = e;
                 app.ui.status_error = !limit;
             }
@@ -333,7 +333,7 @@ pub(super) fn alt_eyedropper(app: &mut PhotocraftApp, ev: ToolEvent, mods: egui:
 /// mode and with no shape layer active (#13364, #13467): with one, ⌥ subtracts from it. Path or Pixels mode and a press
 /// with nothing to sample (off the image, over transparency) weren't measured and keep drawing
 /// from the centre. Control+⌥ stays the brush-resize drag, as in [`alt_samples`].
-fn shape_alt_samples(app: &mut PhotocraftApp, mods: egui::Modifiers, x: f64, y: f64) -> bool {
+fn shape_alt_samples(app: &mut PatronusPhotoApp, mods: egui::Modifiers, x: f64, y: f64) -> bool {
     mods.alt
         && !mods.ctrl
         && shape_samples_fill(app.active_tool())
@@ -350,7 +350,7 @@ fn shape_samples_fill(tool: Tool) -> bool {
 
 /// The Triangle or Custom Shape tool's ⌥ sample: the colour at (x, y) becomes the foreground and
 /// the tool's Fill, a solid fill, which follows the foreground. Where nothing is sampled, both stay.
-fn sample_shape_fill(app: &mut PhotocraftApp, x: f64, y: f64) {
+fn sample_shape_fill(app: &mut PatronusPhotoApp, x: f64, y: f64) {
     if sampled_eyedropper(app, x, y, egui::Modifiers::NONE) {
         app.ui.tool_options.shape_fill = true;
         app.ui.tool_options.shape_fill_gradient = None;
@@ -359,7 +359,7 @@ fn sample_shape_fill(app: &mut PhotocraftApp, x: f64, y: f64) {
 
 /// Is document point (x, y) on a colour sampler, within the Color Sampler tool's reach of one (7
 /// screen pixels)?
-fn on_sampler(app: &PhotocraftApp, x: f64, y: f64) -> bool {
+fn on_sampler(app: &PatronusPhotoApp, x: f64, y: f64) -> bool {
     let tol = 7.0 / f64::from(app.point_zoom().max(0.01));
     app.session.active().is_some_and(|d| d.color_samplers.iter().any(|q| (q[0] - x).hypot(q[1] - y) <= tol))
 }
@@ -374,16 +374,16 @@ mod brush_shift_alt_sampler_tests;
 
 /// Sample the image or targeted raster mask at (x, y) using the configured Sample Size.
 /// Write a valid sample to the foreground swatch, or to the background swatch with Alt.
-pub(super) fn sample_eyedropper(app: &mut PhotocraftApp, x: f64, y: f64, mods: egui::Modifiers) {
+pub(super) fn sample_eyedropper(app: &mut PatronusPhotoApp, x: f64, y: f64, mods: egui::Modifiers) {
     sampled_eyedropper(app, x, y, mods);
 }
 
 /// [`sample_eyedropper`], true when it set a swatch.
-fn sampled_eyedropper(app: &mut PhotocraftApp, x: f64, y: f64, mods: egui::Modifiers) -> bool {
+fn sampled_eyedropper(app: &mut PatronusPhotoApp, x: f64, y: f64, mods: egui::Modifiers) -> bool {
     let rgb = if let Some((surface, canvas)) = eyedropper_mask_source(app) {
         sample_layer_mask(surface, canvas, x, y, app.ui.tool_options.eyedropper_size)
     } else {
-        eyedropper_color(app, x, y).map(|rgb| if super::paint_target(app) == json!("pixels") { rgb } else { [photocraft_color::convert::rgb_to_gray(rgb); 3] })
+        eyedropper_color(app, x, y).map(|rgb| if super::paint_target(app) == json!("pixels") { rgb } else { [patronusphoto_color::convert::rgb_to_gray(rgb); 3] })
     };
     if let Some(rgb) = rgb {
         let key = if mods.alt { "background" } else { "foreground" };
@@ -393,8 +393,8 @@ fn sampled_eyedropper(app: &mut PhotocraftApp, x: f64, y: f64, mods: egui::Modif
 }
 
 /// Only the Eyedropper's Current Layer and Current & Below modes pick the targeted raster mask.
-fn eyedropper_mask_source(app: &PhotocraftApp) -> Option<(&photocraft_raster::Surface, photocraft_geom::Rect)> {
-    use photocraft_engine::{channel_cmds::ChannelTarget, mask_view_cmds};
+fn eyedropper_mask_source(app: &PatronusPhotoApp) -> Option<(&patronusphoto_raster::Surface, patronusphoto_geom::Rect)> {
+    use patronusphoto_engine::{channel_cmds::ChannelTarget, mask_view_cmds};
 
     if app.active_tool() != Tool::Eyedropper
         || app.ui.vector_mask_target
@@ -413,8 +413,8 @@ fn eyedropper_mask_source(app: &PhotocraftApp) -> Option<(&photocraft_raster::Su
 }
 
 /// Read the stored mask channel, including its sparse default, rather than its composited coverage.
-fn sample_layer_mask(surface: &photocraft_raster::Surface, canvas: photocraft_geom::Rect, x: f64, y: f64, size: u32) -> Option<[f32; 3]> {
-    let rect = photocraft_engine::cmd::sample_cmds::sample_rect(x, y, size, canvas)?;
+fn sample_layer_mask(surface: &patronusphoto_raster::Surface, canvas: patronusphoto_geom::Rect, x: f64, y: f64, size: u32) -> Option<[f32; 3]> {
+    let rect = patronusphoto_engine::cmd::sample_cmds::sample_rect(x, y, size, canvas)?;
     let mut sum = 0.0;
     for y in rect.y0..rect.y1 {
         for x in rect.x0..rect.x1 {
@@ -428,7 +428,7 @@ fn sample_layer_mask(surface: &photocraft_raster::Surface, canvas: photocraft_ge
 /// The colour at document point (x, y) with the Eyedropper's Sample Size (the composite pixel,
 /// or the average of the square around it) from the layers `sample_layer` names (`document.sampleColor`).
 /// `None` off the image or over transparency.
-fn sample_color(app: &mut PhotocraftApp, x: f64, y: f64, sample_layer: &str) -> Option<[f32; 3]> {
+fn sample_color(app: &mut PatronusPhotoApp, x: f64, y: f64, sample_layer: &str) -> Option<[f32; 3]> {
     if !(x.is_finite() && y.is_finite()) {
         return None;
     }
@@ -444,7 +444,7 @@ fn sample_color(app: &mut PhotocraftApp, x: f64, y: f64, sample_layer: &str) -> 
 
 /// What the Eyedropper tool (and a painting tool's ⌥-click) picks at document point (x, y): its
 /// options bar's Sample Size and Sample (#1649).
-pub(crate) fn eyedropper_color(app: &mut PhotocraftApp, x: f64, y: f64) -> Option<[f32; 3]> {
+pub(crate) fn eyedropper_color(app: &mut PatronusPhotoApp, x: f64, y: f64) -> Option<[f32; 3]> {
     let layers = app.ui.tool_options.eyedropper_sample.clone();
     sample_color(app, x, y, &layers)
 }
@@ -452,7 +452,7 @@ pub(crate) fn eyedropper_color(app: &mut PhotocraftApp, x: f64, y: f64) -> Optio
 /// The active document's composite colour at document point (x, y), averaged over the
 /// Eyedropper's Sample Size as Photoshop's dialog eyedroppers (Curves, Color Picker) do.
 /// `None` off the image or over transparency.
-pub(crate) fn composite_color(app: &mut PhotocraftApp, x: f64, y: f64) -> Option<[f32; 3]> {
+pub(crate) fn composite_color(app: &mut PatronusPhotoApp, x: f64, y: f64) -> Option<[f32; 3]> {
     sample_color(app, x, y, "all")
 }
 

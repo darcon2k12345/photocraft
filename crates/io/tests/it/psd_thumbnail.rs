@@ -3,10 +3,10 @@
 
 use craft_psd::PsdFile;
 use craft_psd::resources::ids;
-use photocraft_color::{ColorMode, SampleType};
-use photocraft_doc::{Document, Layer};
-use photocraft_geom::Size;
-use photocraft_io::{ExportOptions, export, import};
+use patronusphoto_color::{ColorMode, SampleType};
+use patronusphoto_doc::{Document, Layer};
+use patronusphoto_geom::Size;
+use patronusphoto_io::{ExportOptions, export, import};
 
 /// A `w`×`h` document of `mode`/`depth` holding one layer of `rgba` (given as straight sRGB-ish
 /// RGBA and converted to the document's model), covering the left `cover` fraction.
@@ -14,10 +14,10 @@ fn doc(mode: ColorMode, depth: SampleType, w: u32, h: u32, rgba: [f32; 4], cover
     let mut d = Document::new("thumb", Size::new(w, h), mode, depth);
     let fmt = d.pixel_format();
     let mut px = vec![0.0; fmt.channels()];
-    photocraft_raster::from_rgba_into(&fmt, rgba, &mut px);
+    patronusphoto_raster::from_rgba_into(&fmt, rgba, &mut px);
     let mut layer = Layer::raster("pixels", fmt);
     let right = ((w as f32 * cover).round() as i32).max(1);
-    layer.surface_mut().unwrap().fill_rect(photocraft_geom::Rect::new(0, 0, right, h as i32), &px);
+    layer.surface_mut().unwrap().fill_rect(patronusphoto_geom::Rect::new(0, 0, right, h as i32), &px);
     d.layers.push(layer);
     d
 }
@@ -40,7 +40,7 @@ fn thumbnail(bytes: &[u8]) -> Option<(u32, u32, Vec<[f32; 3]>)> {
     assert_eq!(&d[24..28], &[0, 24, 0, 1], "24 bits per pixel, 1 plane");
     let jfif = &d[28..];
     assert!(jfif.starts_with(&[0xFF, 0xD8, 0xFF, 0xE0]) && &jfif[6..11] == b"JFIF\0", "a JFIF stream");
-    let img = photocraft_codecs::decode(jfif).expect("decodes");
+    let img = patronusphoto_codecs::decode(jfif).expect("decodes");
     assert_eq!(img.dimensions(), (w, h));
     let n = img.layout().channels();
     assert_eq!(n, 3, "RGB JPEG");
@@ -159,11 +159,11 @@ fn the_document_profile_is_honoured() {
 fn spot_inks_print_in_the_thumbnail() {
     for mode in [ColorMode::Rgb, ColorMode::Cmyk] {
         let mut d = doc(mode, SampleType::U8, 64, 32, [1.0, 1.0, 1.0, 1.0], 1.0);
-        let fmt = photocraft_color::PixelFormat::new(ColorMode::Grayscale, SampleType::U8, false);
-        let mut ink = photocraft_raster::Surface::new(fmt);
-        ink.fill_rect(photocraft_geom::Rect::new(0, 0, 32, 32), &[1.0]);
-        let teal = photocraft_color::Color::rgb(0.0, 157.0 / 255.0, 165.0 / 255.0);
-        d.channels.push(photocraft_doc::AlphaChannel { spot: Some((teal, 0.0)), ..photocraft_doc::AlphaChannel::new("light teal", ink) });
+        let fmt = patronusphoto_color::PixelFormat::new(ColorMode::Grayscale, SampleType::U8, false);
+        let mut ink = patronusphoto_raster::Surface::new(fmt);
+        ink.fill_rect(patronusphoto_geom::Rect::new(0, 0, 32, 32), &[1.0]);
+        let teal = patronusphoto_color::Color::rgb(0.0, 157.0 / 255.0, 165.0 / 255.0);
+        d.channels.push(patronusphoto_doc::AlphaChannel { spot: Some((teal, 0.0)), ..patronusphoto_doc::AlphaChannel::new("light teal", ink) });
         let bytes = export(&d, "x.psd", &ExportOptions::default()).unwrap().bytes;
         let (w, _, px) = thumbnail(&bytes).unwrap();
         let (inked, bare) = (px[(16 * w + 8) as usize], px[(16 * w + 56) as usize]);

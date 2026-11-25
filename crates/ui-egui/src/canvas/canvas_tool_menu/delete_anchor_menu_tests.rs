@@ -6,18 +6,18 @@
 use egui::Modifiers;
 use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
-use photocraft_doc::vector::Path;
+use patronusphoto_doc::vector::Path;
 use serde_json::json;
 
 use super::tests::{harness, right_click, screen_of};
 use super::{PEN_MENU, rows};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// 800 x 600 with a saved, targeted **Path 1**: a closed square (100,300)(300,300)(300,500)
 /// (100,500), an open line (400,300)->(700,300) and an open S-curve (400,450)->(700,450).
-pub(super) fn setup(tool: Tool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+pub(super) fn setup(tool: Tool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 800, "height": 600})).unwrap();
     let path = json!({"subpaths": [
         {"closed": true, "knots": [[100, 300], [300, 300], [300, 500], [100, 500]]},
@@ -34,29 +34,29 @@ pub(super) fn setup(tool: Tool) -> Box<PhotocraftApp> {
 }
 
 /// A harness over [`setup`] with the right-click at document point `at` done.
-pub(super) fn right_clicked(tool: Tool, at: [f32; 2]) -> Harness<'static, Box<PhotocraftApp>> {
+pub(super) fn right_clicked(tool: Tool, at: [f32; 2]) -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut h = harness(setup(tool));
     let p = screen_of(h.state(), at);
     right_click(&mut h, p, Modifiers::NONE);
     h
 }
 
-pub(super) fn saved(app: &PhotocraftApp) -> Path {
+pub(super) fn saved(app: &PatronusPhotoApp) -> Path {
     app.session.active().unwrap().doc.paths.iter().find(|p| p.name == "Path 1").unwrap().path.clone()
 }
 
-pub(super) fn steps(app: &PhotocraftApp) -> usize {
+pub(super) fn steps(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.entries().len()
 }
 
 /// The path menu is open and its rows are the Pen's, in the Pen's order.
-fn assert_path_menu(h: &Harness<'static, Box<PhotocraftApp>>, tool: Tool) {
+fn assert_path_menu(h: &Harness<'static, Box<PatronusPhotoApp>>, tool: Tool) {
     assert!(h.state().ui.canvas_tool_menu.as_ref().is_some_and(|m| m.tool == tool && rows(m) == PEN_MENU), "{tool:?}: the path menu is open");
 }
 
 /// The first entry of the open menu is `label`, above Create Vector Mask, and is the only one of
 /// the two Add / Delete Anchor Point entries shown.
-pub(super) fn assert_top_entry(h: &Harness<'static, Box<PhotocraftApp>>, tool: Tool, label: &str) {
+pub(super) fn assert_top_entry(h: &Harness<'static, Box<PatronusPhotoApp>>, tool: Tool, label: &str) {
     assert_path_menu(h, tool);
     let other = if label == "Delete Anchor Point" { "Add Anchor Point" } else { "Delete Anchor Point" };
     assert!(h.query_by_label(other).is_none(), "{other} is not offered");
@@ -65,7 +65,7 @@ pub(super) fn assert_top_entry(h: &Harness<'static, Box<PhotocraftApp>>, tool: T
 
 /// The context-menu contract after a menu edit: undo restores the whole original path and redo
 /// replays the edit (the path as it was right after the menu choice, `edited`).
-fn assert_undo_redo(h: &mut Harness<'static, Box<PhotocraftApp>>, original: &Path, edited: &Path) {
+fn assert_undo_redo(h: &mut Harness<'static, Box<PatronusPhotoApp>>, original: &Path, edited: &Path) {
     h.state_mut().run("edit.undo", json!({})).unwrap();
     assert_eq!(&saved(h.state()), original, "undo restores the whole path");
     h.state_mut().run("edit.redo", json!({})).unwrap();
@@ -147,7 +147,7 @@ fn an_expired_point_entry_is_drawn_disabled() {
 /// so the menu offers no point entry on its corner either: the rest of the menu is as before.
 #[test]
 fn a_shape_with_only_its_position_lock_gets_no_point_entry() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 800, "height": 600})).unwrap();
     let shape = app.run("shape.create", json!({"kind": "rect", "rect": [450, 100, 200, 150], "fill": "#3070c0"})).unwrap()["layer"].as_u64().unwrap();
     app.run("layer.select", json!({"layer": shape})).unwrap();

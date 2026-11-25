@@ -1,5 +1,5 @@
 use super::*;
-use photocraft_geom::Rect;
+use patronusphoto_geom::Rect;
 
 fn session() -> Session {
     let mut s = Session::new();
@@ -13,7 +13,7 @@ fn px(s: &Session, x: i32, y: i32) -> Vec<f32> {
 }
 
 /// A visible wall on the Background with an empty, active layer above it.
-fn bucket_layers(depth: u32) -> (Session, photocraft_doc::LayerId) {
+fn bucket_layers(depth: u32) -> (Session, patronusphoto_doc::LayerId) {
     let mut s = Session::new();
     s.execute("file.new", json!({"width": 20, "height": 10, "depth": depth, "background": "white"})).unwrap();
     let bottom = s.active().unwrap().active_layer.unwrap();
@@ -206,7 +206,7 @@ fn bucket_and_stroke_write_a_cmyk_pick_as_its_inks() {
     let cyan = [1.0f32, 0.0, 0.0, 0.0];
     let mut s = session();
     s.execute("image.mode.cmyk", json!({})).unwrap();
-    let rgb = photocraft_color::convert::cmyk_to_rgb(cyan).map(|c| c.clamp(0.0, 1.0));
+    let rgb = patronusphoto_color::convert::cmyk_to_rgb(cyan).map(|c| c.clamp(0.0, 1.0));
     s.execute("tools.setColors", json!({"foreground": rgb, "foregroundCmyk": cyan})).unwrap();
     let inks_at = |s: &Session, x: i32, y: i32| -> Vec<f32> {
         let st = s.active().unwrap();
@@ -364,7 +364,7 @@ fn assert_all_white(s: &Session, what: &str) {
     let width = doc.bounds().width() as usize;
     let layer = layer_rgba(s);
     assert_eq!(not_white(&layer, width, 8), vec![], "{what}: layer pixels left after the fill");
-    let composite = photocraft_compose::render(doc, doc.bounds()).px.clone();
+    let composite = patronusphoto_compose::render(doc, doc.bounds()).px.clone();
     assert_eq!(composite.len(), layer.len());
     assert_eq!(not_white(&composite, width, 8), vec![], "{what}: composite pixels left after the fill");
 }

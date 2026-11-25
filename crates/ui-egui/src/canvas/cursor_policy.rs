@@ -4,9 +4,9 @@
 
 use craft::behavior::{Cursor, PaintedCursor, PointerGlyph};
 use craft::keymap::Mods;
-use photocraft_engine::prefs::PaintingCursor as PaintingPref;
+use patronusphoto_engine::prefs::PaintingCursor as PaintingPref;
 
-use super::PhotocraftApp;
+use super::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// Whether an aliased (Pencil) dab of `size` pixels is round rather than its whole square. The dab
@@ -66,7 +66,7 @@ pub(crate) fn click_tool_cursor(tool: Tool, precise: bool) -> Option<Cursor> {
 /// one; Precise Other Cursors (or Caps Lock, `precise`) the crosshair. `mods` and `at` are the
 /// press's while a drag runs, so the arrow does not flicker under an ⌥-drag: the components move
 /// away from the pointer only on release.
-pub(crate) fn path_selection_cursor(app: &PhotocraftApp, mods: Mods, at: Option<[f64; 2]>, precise: bool) -> Cursor {
+pub(crate) fn path_selection_cursor(app: &PatronusPhotoApp, mods: Mods, at: Option<[f64; 2]>, precise: bool) -> Cursor {
     if precise {
         return Cursor::Painted(PaintedCursor::Crosshair);
     }
@@ -95,7 +95,7 @@ pub(super) fn shape_alt_sets_fill(tool: Tool) -> bool {
 /// Whether an Alt or Shift+Alt press samples the Triangle or Custom Shape foreground and Fill
 /// (#13364, #15856). Sampling requires Shape mode, no active shape layer, and a sampleable pixel.
 /// Control+Alt is excluded here, as in [`alt_samples`].
-pub(crate) fn shape_alt_samples(app: &mut PhotocraftApp, mods: Mods, x: f64, y: f64) -> bool {
+pub(crate) fn shape_alt_samples(app: &mut PatronusPhotoApp, mods: Mods, x: f64, y: f64) -> bool {
     mods.alt
         && !mods.ctrl
         && shape_alt_sets_fill(app.ui.tool)
@@ -110,7 +110,7 @@ pub(crate) fn alt_loads_mixer(tool: Tool, mods: craft::keymap::Mods) -> bool {
 }
 
 /// Whether the Mixer Brush's target layer has Lock All on, so its cursor shows the not-allowed mark.
-pub(crate) fn mixer_target_locked(app: &PhotocraftApp) -> bool {
+pub(crate) fn mixer_target_locked(app: &PatronusPhotoApp) -> bool {
     app.session.active().and_then(|st| st.active_layer.and_then(|id| st.doc.layer(id))).is_some_and(|layer| layer.locks.all)
 }
 

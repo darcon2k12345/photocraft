@@ -139,7 +139,7 @@ pub(super) fn load_items(items: Vec<AtnItem>) -> Session {
     };
     let bytes = atn::write(&file).unwrap();
     let mut s = Session::new();
-    s.execute("actions.load", json!({"data":photocraft_paint::tile::b64_encode(&bytes)})).unwrap();
+    s.execute("actions.load", json!({"data":patronusphoto_paint::tile::b64_encode(&bytes)})).unwrap();
     s
 }
 
@@ -147,7 +147,7 @@ pub(super) fn load_items(items: Vec<AtnItem>) -> Session {
 pub(super) fn saved_items(s: &mut Session) -> Vec<AtnItem> {
     let result = s.execute("actions.save", json!({"action":"A"})).unwrap();
     assert_eq!(result["skipped"], json!([]));
-    let bytes = photocraft_paint::tile::b64_decode(result["data"].as_str().unwrap()).unwrap();
+    let bytes = patronusphoto_paint::tile::b64_decode(result["data"].as_str().unwrap()).unwrap();
     atn::parse(&bytes).unwrap().actions.remove(0).items
 }
 
@@ -426,13 +426,13 @@ fn prepare_pattern(s: &mut Session, depth: u32, mode: &str) {
 }
 
 fn pixels(s: &Session) -> Vec<[f32; 4]> {
-    photocraft_compose::render(&s.active().unwrap().doc, photocraft_geom::Rect::new(0, 0, 32, 24)).into_px()
+    patronusphoto_compose::render(&s.active().unwrap().doc, patronusphoto_geom::Rect::new(0, 0, 32, 24)).into_px()
 }
 
 /// Saving omitted native params preserves their actual command behavior, not Photoshop's defaults.
 #[test]
 fn native_and_measured_defaults_stay_distinct_through_playback() {
-    use photocraft_algo::FilterParams;
+    use patronusphoto_algo::FilterParams;
     let mosaic = load_items(vec![code_item("Msc ", desc("null"))]);
     let measured = &mosaic.actions.list.actions()[0].steps[0].params;
     assert!(matches!(crate::filters::params_for("filter.pixelate.mosaic",&json!({})),Some(FilterParams::Mosaic{cell_size}) if cell_size==10.0));

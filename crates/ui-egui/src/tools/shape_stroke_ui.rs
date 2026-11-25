@@ -1,7 +1,7 @@
 //! Shape stroke geometry shared by the tool defaults and Properties.
 use craft::draw::stroke::{DashAlign, DashUnit, LineCap as FwCap, LineJoin as FwJoin, StrokeAlign as FwAlign, StrokeStyle};
 use egui::vec2;
-use photocraft_doc::{LineCap, LineJoin, ShapeStroke, StrokeAlign};
+use patronusphoto_doc::{LineCap, LineJoin, ShapeStroke, StrokeAlign};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
@@ -94,7 +94,7 @@ impl StrokeOptions {
             "miterLimit": self.miter_limit, "dashes": self.dashes, "dashOffset": self.dash_offset, "opacity": self.opacity * 100.0})
     }
 
-    pub fn stroke(&self, width: f32, paint: photocraft_doc::Fill) -> ShapeStroke {
+    pub fn stroke(&self, width: f32, paint: patronusphoto_doc::Fill) -> ShapeStroke {
         ShapeStroke {
             width,
             paint,
@@ -111,7 +111,7 @@ impl StrokeOptions {
 
 #[derive(Clone)]
 struct DragCache {
-    shape: photocraft_doc::ShapeLayer,
+    shape: patronusphoto_doc::ShapeLayer,
     clip: egui::Rect,
     image_rect: egui::Rect,
     texture: egui::TextureHandle,
@@ -119,7 +119,7 @@ struct DragCache {
 
 /// The drag uses the committed vector rasterizer. Cache by geometry/style/visible region, and
 /// cap proxy resolution so oversized windows cannot allocate a document-sized preview.
-pub fn paint_shape_preview(painter: &egui::Painter, shape: &photocraft_doc::ShapeLayer) {
+pub fn paint_shape_preview(painter: &egui::Painter, shape: &patronusphoto_doc::ShapeLayer) {
     let clip = painter.clip_rect();
     if !clip.is_finite() || clip.is_negative() {
         return;
@@ -129,13 +129,14 @@ pub fn paint_shape_preview(painter: &egui::Painter, shape: &photocraft_doc::Shap
     let cache = cached.filter(|c| c.shape == *shape && c.clip == clip).or_else(|| {
         let scale = (2048.0 / clip.width().max(clip.height()).max(1.0)).min(1.0);
         let mut proxy = shape.clone();
-        let tr = photocraft_geom::Affine { m: [scale as f64, 0.0, 0.0, scale as f64, -(clip.left() * scale) as f64, -(clip.top() * scale) as f64] };
+        let tr = patronusphoto_geom::Affine { m: [scale as f64, 0.0, 0.0, scale as f64, -(clip.left() * scale) as f64, -(clip.top() * scale) as f64] };
         proxy.path = proxy.path.transform(&tr);
         if let Some(stroke) = proxy.stroke.as_mut() {
             stroke.width *= scale;
         }
-        let canvas = photocraft_geom::Rect::from_size(photocraft_geom::Size::new((clip.width() * scale).ceil() as u32, (clip.height() * scale).ceil() as u32));
-        let compiled = photocraft_vector::CompiledShape::new(&proxy, photocraft_vector::DEFAULT_TOLERANCE, canvas);
+        let canvas =
+            patronusphoto_geom::Rect::from_size(patronusphoto_geom::Size::new((clip.width() * scale).ceil() as u32, (clip.height() * scale).ceil() as u32));
+        let compiled = patronusphoto_vector::CompiledShape::new(&proxy, patronusphoto_vector::DEFAULT_TOLERANCE, canvas);
         let bounds = compiled.bounds()?.intersect(&canvas);
         if bounds.is_empty() {
             return None;

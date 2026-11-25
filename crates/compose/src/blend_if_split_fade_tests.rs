@@ -2,9 +2,9 @@
 //! the reference application on the test document of [`band_doc`].
 
 use crate::render;
-use photocraft_color::{ColorMode, SampleType};
-use photocraft_doc::{BlendRange, Document, Layer};
-use photocraft_geom::{Rect, Size};
+use patronusphoto_color::{ColorMode, SampleType};
+use patronusphoto_doc::{BlendRange, Document, Layer};
+use patronusphoto_geom::{Rect, Size};
 
 /// The issue's test document at `depth`: 400x300 px, a Background of 16 vertical grey bands of
 /// 25 px (band `i` has the value 17·i), a blue Base rectangle from (0,150) to (400,300) and the
@@ -122,7 +122,7 @@ fn split_points_in_deep_documents_keep_their_ramp() {
 fn split_points_in_grayscale_documents_keep_their_ramp() {
     // Only RGB was measured: a Grayscale value of 128 under a split black point at 128/129 stays
     // hidden, where an RGB document would show it at 1/2.
-    let mut d = Document::with_background("g", Size::new(1, 1), ColorMode::Grayscale, SampleType::U8, photocraft_color::Color::WHITE);
+    let mut d = Document::with_background("g", Size::new(1, 1), ColorMode::Grayscale, SampleType::U8, patronusphoto_color::Color::WHITE);
     let mut l = Layer::raster("k", d.pixel_format());
     l.surface_mut().unwrap().fill_rect(Rect::new(0, 0, 1, 1), &[128.0 / 255.0, 1.0]);
     l.blend_if.set(1, [range([128, 129], [255, 255]), BlendRange::FULL]);

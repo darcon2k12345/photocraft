@@ -2,11 +2,11 @@
 //! See docs/guide-edit-interactions.md for the pinned runner and scenario command.
 use std::io::{self, BufRead, Write};
 
-use photocraft_ui_egui::{PhotocraftApp, Services, canvas, dialogs, guide_select, new_guide_ui};
+use patronusphoto_ui_egui::{PatronusPhotoApp, Services, canvas, dialogs, guide_select, new_guide_ui};
 use serde_json::{Value, json};
 
 struct Driver {
-    app: Box<PhotocraftApp>,
+    app: Box<PatronusPhotoApp>,
     ctx: egui::Context,
     time: f64,
 }
@@ -14,7 +14,7 @@ struct Driver {
 impl Driver {
     /// Create a fresh synthetic document and two guides for each independent scenario.
     fn new() -> Result<Self, String> {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Services::default());
         app.run("file.new", json!({"width":400,"height":200,"resolution":100}))?;
         app.run("prefs.set", json!({"path":"unitsAndRulers.rulers","value":"pixels"}))?;
         app.run("view.newGuide", json!({"orientation":"vertical","position":10}))?;

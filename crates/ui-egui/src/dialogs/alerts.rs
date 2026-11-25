@@ -9,7 +9,7 @@
 use craft::ui::dialog::{Alert, DialogId, HostedAlert, PromptAnswer, PromptChoice, StackDialog, StandardPrompt};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The tag of an alert opened by [`alert_once`]: the dialog preference its "Don't show again" box sets.
 pub(crate) struct AlertOnce {
@@ -17,11 +17,11 @@ pub(crate) struct AlertOnce {
 }
 
 /// The title every alert of the app carries.
-const TITLE: &str = "PhotoCraft";
+const TITLE: &str = "Patronus Photo";
 
 /// Shows `alert` on the host. One alert is open at a time, and the same message opened again while it
 /// is up adds nothing: the open alert's id comes back.
-pub fn show(app: &mut PhotocraftApp, alert: Alert<'static>) -> DialogId {
+pub fn show(app: &mut PatronusPhotoApp, alert: Alert<'static>) -> DialogId {
     let dialog = HostedAlert::new(alert);
     let message = |dialog: &HostedAlert| dialog.json_fields().and_then(|fields| fields.get("message").and_then(Value::as_str).map(str::to_owned));
     let host = &mut app.framework.dialogs;
@@ -33,8 +33,8 @@ pub fn show(app: &mut PhotocraftApp, alert: Alert<'static>) -> DialogId {
     host.open(dialog)
 }
 
-/// An alert titled "PhotoCraft" with `message` and OK; see [`show`] for the one-per-message rule.
-pub fn alert(app: &mut PhotocraftApp, message: impl Into<String>) -> DialogId {
+/// An alert titled "Patronus Photo" with `message` and OK; see [`show`] for the one-per-message rule.
+pub fn alert(app: &mut PatronusPhotoApp, message: impl Into<String>) -> DialogId {
     show(app, Alert::new(TITLE, message.into()))
 }
 
@@ -42,7 +42,7 @@ pub fn alert(app: &mut PhotocraftApp, message: impl Into<String>) -> DialogId {
 /// Content-Aware Move tool's "No pixels are selected.". `None` once the box was ticked for `pref`.
 ///
 /// Escape answers OK (the prompt has no Cancel), so a ticked box is kept on OK and on Escape.
-pub fn alert_once(app: &mut PhotocraftApp, message: impl Into<String>, pref: &'static str) -> Option<DialogId> {
+pub fn alert_once(app: &mut PatronusPhotoApp, message: impl Into<String>, pref: &'static str) -> Option<DialogId> {
     if dismissed(app, pref) {
         return None;
     }
@@ -52,18 +52,18 @@ pub fn alert_once(app: &mut PhotocraftApp, message: impl Into<String>, pref: &'s
 }
 
 /// Whether "Don't show again" was ticked on the question remembered as `pref`.
-pub fn dismissed(app: &PhotocraftApp, pref: &str) -> bool {
+pub fn dismissed(app: &PatronusPhotoApp, pref: &str) -> bool {
     app.session.prefs().dialogs.get(pref).and_then(|v| v.get("skip")).and_then(Value::as_bool) == Some(true)
 }
 
 /// Keeps "Don't show again" for the question remembered as `pref`, with the other dialog preferences.
-pub fn remember_skip(app: &mut PhotocraftApp, pref: &str) {
+pub fn remember_skip(app: &mut PatronusPhotoApp, pref: &str) {
     remember_skip_or(app, pref, tl!("The preference could not be saved: {error}"));
 }
 
 /// [`remember_skip`] with `failure` (a template with `{error}`) as the status text when the preference
 /// could not be saved.
-pub(crate) fn remember_skip_or(app: &mut PhotocraftApp, pref: &str, failure: &str) {
+pub(crate) fn remember_skip_or(app: &mut PatronusPhotoApp, pref: &str, failure: &str) {
     app.session.edit_prefs(|prefs| {
         prefs.dialogs.insert(pref.into(), json!({"skip": true}));
     });
@@ -74,13 +74,13 @@ pub(crate) fn remember_skip_or(app: &mut PhotocraftApp, pref: &str, failure: &st
 }
 
 /// Reports a refused answer in the status bar: a prompt's answer has no reply to carry the error.
-pub(crate) fn report_error(app: &mut PhotocraftApp, error: impl Into<String>) {
+pub(crate) fn report_error(app: &mut PatronusPhotoApp, error: impl Into<String>) {
     app.ui.status = error.into();
     app.ui.status_error = true;
 }
 
 /// Reports the `Err` of a prompt's answer; the value of an `Ok` is dropped.
-pub(crate) fn report(app: &mut PhotocraftApp, result: Result<Value, String>) {
+pub(crate) fn report(app: &mut PatronusPhotoApp, result: Result<Value, String>) {
     if let Err(error) = result {
         report_error(app, error);
     }
@@ -88,7 +88,7 @@ pub(crate) fn report(app: &mut PhotocraftApp, result: Result<Value, String>) {
 
 /// The `PROMPTS` entry of [`alert_once`]: stores a ticked box. `false` when the answer is another
 /// family's.
-pub(crate) fn answer(app: &mut PhotocraftApp, _ctx: &egui::Context, answer: &mut PromptAnswer) -> bool {
+pub(crate) fn answer(app: &mut PatronusPhotoApp, _ctx: &egui::Context, answer: &mut PromptAnswer) -> bool {
     let Some(AlertOnce { pref }) = answer.take_tag::<AlertOnce>() else { return false };
     if answer.skip {
         remember_skip(app, pref);
@@ -97,7 +97,7 @@ pub(crate) fn answer(app: &mut PhotocraftApp, _ctx: &egui::Context, answer: &mut
 }
 
 /// Opens `prompt` unless a `StandardPrompt` is already open. `Err` carries the open prompt's id.
-pub(crate) fn open_prompt(app: &mut PhotocraftApp, prompt: StandardPrompt) -> Result<DialogId, DialogId> {
+pub(crate) fn open_prompt(app: &mut PatronusPhotoApp, prompt: StandardPrompt) -> Result<DialogId, DialogId> {
     let host = &mut app.framework.dialogs;
     match host.get::<StandardPrompt>().map(StackDialog::id) {
         Some(open) => Err(open),
@@ -106,23 +106,23 @@ pub(crate) fn open_prompt(app: &mut PhotocraftApp, prompt: StandardPrompt) -> Re
 }
 
 /// Takes the answer of a closed alert: it carries nothing, and the host keeps one plain result per dialog type.
-pub(crate) fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
+pub(crate) fn take(app: &mut PatronusPhotoApp, _ctx: &egui::Context) {
     let _ = app.framework.dialogs.take::<HostedAlert>();
 }
 
 /// The ids of the alerts open now: the plain alert and the prompt of [`alert_once`]. For tests.
 #[cfg(test)]
-pub(crate) fn alerts(app: &PhotocraftApp) -> Vec<DialogId> {
+pub(crate) fn alerts(app: &PatronusPhotoApp) -> Vec<DialogId> {
     let host = &app.framework.dialogs;
     host.get::<HostedAlert>().map(StackDialog::id).into_iter().chain(prompt_tagged::<AlertOnce>(app)).collect()
 }
 
 /// The open `StandardPrompt` when its tag is a `T`.
-pub(crate) fn prompt_tagged<T: std::any::Any>(app: &PhotocraftApp) -> Option<DialogId> {
+pub(crate) fn prompt_tagged<T: std::any::Any>(app: &PatronusPhotoApp) -> Option<DialogId> {
     app.framework.dialogs.get::<StandardPrompt>().filter(|prompt| prompt.tag_as::<T>().is_some()).map(StackDialog::id)
 }
 
 /// The tag of the open `StandardPrompt` when it is a `T`.
-pub(crate) fn prompt_tag<T: std::any::Any>(app: &PhotocraftApp) -> Option<&T> {
+pub(crate) fn prompt_tag<T: std::any::Any>(app: &PatronusPhotoApp) -> Option<&T> {
     app.framework.dialogs.get::<StandardPrompt>()?.tag_as::<T>()
 }

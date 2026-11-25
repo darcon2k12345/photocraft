@@ -17,16 +17,16 @@
 use craft::ui::contract::CommandSet;
 use craft::ui::menu::PanelRow;
 use craft::ui::runtime::commands::{CommandRef, CommandState};
-use photocraft_engine::BrushSettings;
-use photocraft_engine::paint;
+use patronusphoto_engine::BrushSettings;
+use patronusphoto_engine::paint;
 use serde_json::{Map, Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 pub(crate) mod brushes;
 
 pub use crate::brush_preview::{preview_pixels, preview_sig};
-pub use photocraft_engine::brush_cmds::brush_patch;
+pub use patronusphoto_engine::brush_cmds::brush_patch;
 
 /// Sections in Photoshop's order. The bool says whether the section has an enable box.
 pub const SECTIONS: [(&str, bool); 13] = [
@@ -88,18 +88,18 @@ pub fn section_lock(b: &mut BrushSettings, i: usize) -> Option<&mut bool> {
 }
 
 /// Send the panel's edits (`before` → `after`) through `tools.setBrush`.
-pub fn commit(app: &mut PhotocraftApp, before: &BrushSettings, after: &BrushSettings) {
+pub fn commit(app: &mut PatronusPhotoApp, before: &BrushSettings, after: &BrushSettings) {
     send(app, before, after, None);
 }
 
 /// [`commit`] as part of an edit gesture: every call of one gesture carries the same `coalesce`
 /// `key` (from `crate::history_keys::coalesce` of the edit event; `None` for a step of its own), so
 /// the engine journals the gesture as a single `tools.setBrush` (Rule 1: one command per gesture).
-pub(crate) fn commit_keyed(app: &mut PhotocraftApp, before: &BrushSettings, after: &BrushSettings, key: Option<String>) {
+pub(crate) fn commit_keyed(app: &mut PatronusPhotoApp, before: &BrushSettings, after: &BrushSettings, key: Option<String>) {
     send(app, before, after, key);
 }
 
-fn send(app: &mut PhotocraftApp, before: &BrushSettings, after: &BrushSettings, key: Option<String>) -> bool {
+fn send(app: &mut PatronusPhotoApp, before: &BrushSettings, after: &BrushSettings, key: Option<String>) -> bool {
     if before == after {
         return false;
     }
@@ -118,14 +118,14 @@ fn send(app: &mut PhotocraftApp, before: &BrushSettings, after: &BrushSettings, 
 }
 
 /// Group label for presets saved without a group.
-pub const UNGROUPED: &str = photocraft_engine::brush_key_cmds::UNGROUPED;
+pub const UNGROUPED: &str = patronusphoto_engine::brush_key_cmds::UNGROUPED;
 
 /// A fresh "Brush N" name.
 pub(crate) fn new_preset_name(presets: &[paint::BrushPreset]) -> String {
     (1..).map(|n| format!("Brush {n}")).find(|n| !presets.iter().any(|p| &p.name == n)).unwrap_or_else(|| "Brush".into())
 }
 
-pub(crate) fn run_or_status(app: &mut PhotocraftApp, id: &str, p: Value) {
+pub(crate) fn run_or_status(app: &mut PatronusPhotoApp, id: &str, p: Value) {
     if let Err(e) = app.run(id, p) {
         app.ui.status = e;
     }
@@ -175,7 +175,7 @@ pub fn clear_brush_controls(current: &BrushSettings) -> BrushSettings {
 }
 
 /// Copy the current brush's Texture settings to other painting tools that have Texture enabled.
-pub fn copy_texture_to_other_tools(app: &mut PhotocraftApp) {
+pub fn copy_texture_to_other_tools(app: &mut PatronusPhotoApp) {
     let texture = app.session.tools.brush.texture.clone();
     for (_, brush) in &mut app.ui.tool_brushes {
         if brush.texture.enabled {
@@ -204,7 +204,7 @@ pub(crate) enum BrushSettingsCommand {
 }
 
 /// The Brush Settings panel menu's rows (pn.PC12), in production's order.
-pub(crate) fn panel_rows(_app: &PhotocraftApp) -> Vec<PanelRow> {
+pub(crate) fn panel_rows(_app: &PatronusPhotoApp) -> Vec<PanelRow> {
     let row = |command: BrushSettingsCommand| PanelRow::Command(CommandRef::from(command));
     vec![
         row(BrushSettingsCommand::NewPreset),
@@ -216,16 +216,16 @@ pub(crate) fn panel_rows(_app: &PhotocraftApp) -> Vec<PanelRow> {
 }
 
 /// What the menu's commands may do now: Reset needs a lock, Copy Texture needs Texture on.
-pub(crate) fn command_states(app: &PhotocraftApp) -> Vec<(CommandRef, CommandState)> {
+pub(crate) fn command_states(app: &PatronusPhotoApp) -> Vec<(CommandRef, CommandState)> {
     let brush = &app.session.tools.brush;
     vec![
-        (CommandRef::from(BrushSettingsCommand::ResetLocks), CommandState::new().enabled(brush.locks != photocraft_paint::brush::SectionLocks::default())),
+        (CommandRef::from(BrushSettingsCommand::ResetLocks), CommandState::new().enabled(brush.locks != patronusphoto_paint::brush::SectionLocks::default())),
         (CommandRef::from(BrushSettingsCommand::CopyTexture), CommandState::new().enabled(brush.texture.enabled)),
     ]
 }
 
 /// Runs a fired menu command; false for a command this panel does not own.
-pub(crate) fn run_fired(app: &mut PhotocraftApp, _ctx: &egui::Context, command: &CommandRef) -> bool {
+pub(crate) fn run_fired(app: &mut PatronusPhotoApp, _ctx: &egui::Context, command: &CommandRef) -> bool {
     let Some(command) = BrushSettingsCommand::from_ref(command) else { return false };
     match command {
         // Every way of making a preset opens the dialog, which names it and says what it captures.
@@ -240,7 +240,7 @@ pub(crate) fn run_fired(app: &mut PhotocraftApp, _ctx: &egui::Context, command: 
         BrushSettingsCommand::ResetLocks => {
             let before = app.session.tools.brush.clone();
             let mut after = before.clone();
-            after.locks = photocraft_paint::brush::SectionLocks::default();
+            after.locks = patronusphoto_paint::brush::SectionLocks::default();
             commit(app, &before, &after);
         }
         BrushSettingsCommand::CopyTexture => copy_texture_to_other_tools(app),

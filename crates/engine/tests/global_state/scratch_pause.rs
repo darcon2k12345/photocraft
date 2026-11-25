@@ -1,20 +1,20 @@
 //! A scratch disk that fills up pauses spilling; History's byte limit applies again until it
 //! resumes, so undo states cannot pile up in memory unbounded meanwhile.
-use photocraft_color::{ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{Document, Layer};
-use photocraft_engine::Session;
-use photocraft_geom::{Size, TileCoord};
-use photocraft_raster::spill;
+use patronusphoto_color::{ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::{Document, Layer};
+use patronusphoto_engine::Session;
+use patronusphoto_geom::{Size, TileCoord};
+use patronusphoto_raster::spill;
 use serde_json::json;
 
 #[test]
 fn paused_scratch_disk_restores_the_history_limit() {
-    photocraft_raster::spill::use_test_volume_space();
+    patronusphoto_raster::spill::use_test_volume_space();
     let _scratch = crate::lock(&crate::PROCESS);
-    let dir = std::env::temp_dir().join(format!("photocraft-engine-scratch-pause-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("patronusphoto-engine-scratch-pause-{}", std::process::id()));
     let mut session = Session::new();
     session.edit_prefs(|p| {
-        p.scratch_disks.disks = vec![photocraft_engine::prefs::ScratchDisk { path: dir.to_string_lossy().into(), enabled: true }];
+        p.scratch_disks.disks = vec![patronusphoto_engine::prefs::ScratchDisk { path: dir.to_string_lossy().into(), enabled: true }];
         p.performance.memory_usage_mb = 64;
     });
     assert!(spill::enabled());

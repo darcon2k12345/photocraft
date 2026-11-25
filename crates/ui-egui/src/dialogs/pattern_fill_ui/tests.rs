@@ -1,43 +1,43 @@
-use photocraft_doc::{Fill, LayerContent, LayerId};
+use patronusphoto_doc::{Fill, LayerContent, LayerId};
 use serde_json::json;
 
 use super::*;
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 40, "height": 30, "depth": 16})).unwrap();
     app
 }
 
-fn pattern_id(app: &PhotocraftApp, name: &str) -> String {
+fn pattern_id(app: &PatronusPhotoApp, name: &str) -> String {
     app.session.patterns.items.iter().find(|p| p.name == name).unwrap().id.clone()
 }
 
-fn steps(app: &PhotocraftApp) -> usize {
+fn steps(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.entries().len()
 }
 
-fn set(app: &mut PhotocraftApp, id: DialogId, field: &str, value: Value) {
+fn set(app: &mut PatronusPhotoApp, id: DialogId, field: &str, value: Value) {
     let ctx = app.ctx().clone();
     app.framework.dialogs.set_json_field(&ctx, id, field, value).unwrap();
 }
 
-fn current(app: &PhotocraftApp) -> PatternFillOptions {
+fn current(app: &PatronusPhotoApp) -> PatternFillOptions {
     app.framework.dialogs.get::<PatternFillDialog>().unwrap().current().clone()
 }
 
-fn confirm(app: &mut PhotocraftApp, id: DialogId) {
+fn confirm(app: &mut PatronusPhotoApp, id: DialogId) {
     let ctx = app.ctx().clone();
     crate::dialogs::confirm(app, &ctx, id).unwrap();
 }
 
-fn cancel(app: &mut PhotocraftApp, id: DialogId) {
+fn cancel(app: &mut PatronusPhotoApp, id: DialogId) {
     let ctx = app.ctx().clone();
     crate::dialogs::cancel(app, &ctx, id).unwrap();
 }
 
 /// A refused OK reports in the status bar and changes nothing.
-fn refused(app: &mut PhotocraftApp, id: DialogId) -> bool {
+fn refused(app: &mut PatronusPhotoApp, id: DialogId) -> bool {
     app.ui.status_error = false;
     confirm(app, id);
     app.ui.status_error
@@ -95,7 +95,7 @@ fn cancelling_a_new_pattern_fill_adds_nothing() {
     let r = crate::menus::invoke(&mut app, &ctx, cmds::CREATE, json!({"pattern": "Grid"})).unwrap();
     assert!(r["layer"].as_u64().is_some());
     // No document: an error, not a dialog or a panic.
-    let mut empty = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut empty = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = empty.ctx().clone();
     assert!(crate::menus::invoke(&mut empty, &ctx, cmds::CREATE, json!({})).is_err());
     assert!(!empty.framework.dialogs.is_open::<PatternFillDialog>());
@@ -210,7 +210,7 @@ fn a_pattern_drag_uses_the_total_travel_and_keeps_external_edits() {
     let mut app = app();
     app.run(cmds::CREATE, json!({"pattern": "Checkerboard"})).unwrap();
     let dialog = open(&mut app).unwrap();
-    let phase = |app: &PhotocraftApp| current(app).phase;
+    let phase = |app: &PatronusPhotoApp| current(app).phase;
     set(&mut app, dialog, "phase", json!([2.5, -3.25]));
     let mut g = press(&app, [0.0, 0.0]).unwrap();
     assert_eq!(phase(&app), [2.5, -3.25], "a press leaves the phase");

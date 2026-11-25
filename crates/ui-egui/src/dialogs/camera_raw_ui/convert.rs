@@ -5,12 +5,12 @@ use craft::imaging::ui::raw_develop::{RawDevelopOpen, RawDevelopSource, RawDevel
 use craft::ui::dialog::HostedWorkspace;
 
 use super::open::{Coverage, RawOpen, Target};
-use super::{CameraRaw, LayerId, PROXY_SIDE, PcRawSource, PhotocraftApp, RawSession, Rect, SourceInit, hosted_mut, to_framework};
+use super::{CameraRaw, LayerId, PROXY_SIDE, PatronusPhotoApp, PcRawSource, RawSession, Rect, SourceInit, hosted_mut, to_framework};
 use serde_json::json;
 
 /// Camera Raw Defaults › Sharpen For: output sharpening, folded into the Camera Raw step `rest`
 /// as the workflow's Sharpen For is. Returns what it applied.
-pub(super) fn output_sharpening(d: &photocraft_engine::prefs::RawDefaults, rest: &mut CameraRaw) -> Vec<&'static str> {
+pub(super) fn output_sharpening(d: &patronusphoto_engine::prefs::RawDefaults, rest: &mut CameraRaw) -> Vec<&'static str> {
     match d.sharpen_for.preset() {
         Some((amount, radius)) if rest.sharpen_amount == 0.0 => {
             rest.sharpen_amount = amount;
@@ -23,10 +23,10 @@ pub(super) fn output_sharpening(d: &photocraft_engine::prefs::RawDefaults, rest:
 
 /// The Camera Raw Defaults [`apply_raw_conversions`] applies. Resolution is not among them: the
 /// open itself sets it (`file_cmds::raw_defaults`), and a re-develop keeps it.
-pub(super) fn raw_conversions(d: &photocraft_engine::prefs::RawDefaults) -> Vec<&'static str> {
-    use photocraft_engine::prefs::{RawColorSpace, RawDepth};
+pub(super) fn raw_conversions(d: &patronusphoto_engine::prefs::RawDefaults) -> Vec<&'static str> {
+    use patronusphoto_engine::prefs::{RawColorSpace, RawDepth};
     let mut out = Vec::new();
-    // Raws develop into ProPhoto-compatible RGB (`photocraft_io::raw`); the other spaces are a
+    // Raws develop into ProPhoto-compatible RGB (`patronusphoto_io::raw`); the other spaces are a
     // conversion.
     if d.color_space != RawColorSpace::ProPhoto {
         out.push("colorSpace");
@@ -42,7 +42,7 @@ pub(super) fn raw_conversions(d: &photocraft_engine::prefs::RawDefaults) -> Vec<
 
 /// Camera Raw Defaults (Preferences) after the Camera Raw step: the colour space and bit depth
 /// the developed document opens in, and Open as Smart Object.
-pub(super) fn apply_raw_conversions(app: &mut PhotocraftApp, index: usize, d: &photocraft_engine::prefs::RawDefaults) -> Result<(), String> {
+pub(super) fn apply_raw_conversions(app: &mut PatronusPhotoApp, index: usize, d: &patronusphoto_engine::prefs::RawDefaults) -> Result<(), String> {
     app.session.set_active(index);
     for step in raw_conversions(d) {
         let (id, params) = match step {
@@ -59,7 +59,7 @@ pub(super) fn apply_raw_conversions(app: &mut PhotocraftApp, index: usize, d: &p
 /// past the last row repeats that row, as a clamped edge; each source row is still read once,
 /// weighted by the block rows it stands for (a one-row domain read the same row `k` times, which
 /// is quadratic in its width).
-fn box_average(surf: &photocraft_raster::Surface, area: Rect, k: usize) -> Vec<[f32; 4]> {
+fn box_average(surf: &patronusphoto_raster::Surface, area: Rect, k: usize) -> Vec<[f32; 4]> {
     let (w, h) = (area.width() as usize, area.height() as usize);
     let (pw, ph) = (w.div_ceil(k), h.div_ceil(k));
     let mut proxy = vec![[0.0f32; 4]; pw * ph];
@@ -89,7 +89,7 @@ fn box_average(surf: &photocraft_raster::Surface, area: Rect, k: usize) -> Vec<[
 /// What the preview develops, and its size: the engine filter domain, including pixels outside the
 /// canvas, since spatial Camera Raw stages (vignette, grain, local contrast) must agree with the
 /// committed result.
-pub(super) fn preview_area(canvas: Rect, surf: &photocraft_raster::Surface) -> Result<(Rect, usize, usize), String> {
+pub(super) fn preview_area(canvas: Rect, surf: &patronusphoto_raster::Surface) -> Result<(Rect, usize, usize), String> {
     let area = canvas.union(&surf.content_bounds());
     let width = area.x1.checked_sub(area.x0).filter(|n| (1..=1_048_576).contains(n));
     let height = area.y1.checked_sub(area.y0).filter(|n| (1..=1_048_576).contains(n));
@@ -105,7 +105,7 @@ pub(super) fn preview_area(canvas: Rect, surf: &photocraft_raster::Surface) -> R
 
 /// `area` of `surf` (`w`×`h`) box-averaged down to at most [`PROXY_SIDE`] pixels on its long side:
 /// the proxy, its size, and the side of the blocks averaged.
-pub(super) fn box_proxy(surf: &photocraft_raster::Surface, area: Rect, w: usize, h: usize) -> (Vec<[f32; 4]>, usize, usize, usize) {
+pub(super) fn box_proxy(surf: &patronusphoto_raster::Surface, area: Rect, w: usize, h: usize) -> (Vec<[f32; 4]>, usize, usize, usize) {
     let k = w.max(h).div_ceil(PROXY_SIDE).max(1);
     let (pw, ph) = (w.div_ceil(k), h.div_ceil(k));
     let proxy = box_average(surf, area, k);
@@ -128,7 +128,7 @@ fn tone_curve(raw: &RawOpen) -> Option<Arc<Vec<[f32; 2]>>> {
 }
 
 /// The filmstrip tiles of the open-time dialog (one per queued raw) and the one shown.
-fn film_items(app: &PhotocraftApp, raw: &RawOpen) -> (Vec<RawFilmItem>, usize) {
+fn film_items(app: &PatronusPhotoApp, raw: &RawOpen) -> (Vec<RawFilmItem>, usize) {
     let mut items: Vec<RawFilmItem> = app.raw_shelf.iter().map(|h| RawFilmItem::new(h.raw.name.clone())).collect();
     let current = match app.raw_shelf.iter().position(|h| h.raw.document == raw.document) {
         Some(i) => i,
@@ -142,10 +142,10 @@ fn film_items(app: &PhotocraftApp, raw: &RawOpen) -> (Vec<RawFilmItem>, usize) {
 
 /// Opens RAW Develop as a filter (`target` is [`Target::NewFilter`] or [`Target::SmartFilter`]) on `surf`.
 pub(super) fn open_pixels(
-    app: &mut PhotocraftApp,
+    app: &mut PatronusPhotoApp,
     ctx: &egui::Context,
     layer: LayerId,
-    surf: photocraft_raster::Surface,
+    surf: patronusphoto_raster::Surface,
     params: CameraRaw,
     coverage: Coverage,
     target: Target,
@@ -155,10 +155,10 @@ pub(super) fn open_pixels(
 
 /// Opens, or on a filmstrip pick shows in the open workspace, the open-time dialog of `start.raw` on `surf`.
 pub(super) fn open_raw_pixels(
-    app: &mut PhotocraftApp,
+    app: &mut PatronusPhotoApp,
     ctx: &egui::Context,
     layer: LayerId,
-    surf: photocraft_raster::Surface,
+    surf: patronusphoto_raster::Surface,
     params: CameraRaw,
     start: RawStart,
 ) -> Result<(), String> {
@@ -167,10 +167,10 @@ pub(super) fn open_raw_pixels(
 
 #[allow(clippy::too_many_arguments)]
 fn open_session(
-    app: &mut PhotocraftApp,
+    app: &mut PatronusPhotoApp,
     ctx: &egui::Context,
     layer: LayerId,
-    surf: photocraft_raster::Surface,
+    surf: patronusphoto_raster::Surface,
     params: CameraRaw,
     coverage: Coverage,
     target: Target,
@@ -185,7 +185,7 @@ fn open_session(
     let canvas = st.doc.bounds();
     let name = st.doc.layer(layer).map(|l| l.name.clone()).unwrap_or_default();
     // The engine derives the same value for the command (`lens_cmds::camera_raw_cmd`).
-    let encoding_gamma = photocraft_engine::lens_cmds::encoding_gamma(&st.doc);
+    let encoding_gamma = patronusphoto_engine::lens_cmds::encoding_gamma(&st.doc);
     let (area, w, h) = preview_area(canvas, &surf)?;
     let (proxy, pw, ph, k) = box_proxy(&surf, area, w, h);
     // Coverage at the centre of each proxy block.
@@ -200,11 +200,11 @@ fn open_session(
         Coverage::Mask(mask) => Some(sample(&|x, y| mask.value(x, y))),
         Coverage::None => None,
     };
-    let source = photocraft_engine::color_cmds::composite_profile(&st.doc);
+    let source = patronusphoto_engine::color_cmds::composite_profile(&st.doc);
     let display = app.session.color.canvas_display(&st.doc).map_err(|e| e.to_string())?;
     let lab_transform = craft::cms::cached(&source, craft::cms::Builtin::LabD50.profile(), Default::default()).map_err(|e| e.to_string())?;
     let scope_transform = craft::cms::cached(&source, craft::cms::Builtin::Srgb.profile(), Default::default()).map_err(|e| e.to_string())?;
-    let float = surf.format().sample == photocraft_color::SampleType::F32;
+    let float = surf.format().sample == patronusphoto_color::SampleType::F32;
     // Builds the GPU pass the first time any Camera Raw dialog opens.
     let gpu = crate::camera_raw_gpu::for_app(app);
     let detail = crate::dialogs::camera_raw_detail_ui::DetailPreview::new(
@@ -246,7 +246,7 @@ fn open_session(
     let mut film = None;
     if let Some(start) = raw {
         if start.auto_tone {
-            photocraft_algo::camera_raw::auto_tone(&source.proxy, &mut settings);
+            patronusphoto_algo::camera_raw::auto_tone(&source.proxy, &mut settings);
         }
         source.set_raw_curve(tone_curve(&start.raw));
         subject = start.raw.name.clone();
@@ -298,8 +298,8 @@ fn open_session(
 #[cfg(test)]
 mod box_average_tests {
     use super::{Rect, box_average};
-    use photocraft_color::PixelFormat;
-    use photocraft_raster::Surface;
+    use patronusphoto_color::PixelFormat;
+    use patronusphoto_raster::Surface;
 
     /// The clamped reference: every block row read, past the last row the last row again.
     fn reference(surf: &Surface, area: Rect, k: usize) -> Vec<[f32; 4]> {

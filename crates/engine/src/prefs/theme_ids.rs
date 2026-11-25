@@ -1,5 +1,5 @@
 //! Theme ids in the preferences: the dark and light slots and the favorites hold the ids of the
-//! Craft suite's themes. The theme names PhotoCraft took before ids (`proMedium`, `studioLight`,
+//! Craft suite's themes. The theme names Patronus Photo took before ids (`proMedium`, `studioLight`,
 //! `Pro (Medium Gray)`, `gnome`, ...) read as their ids, in the slots, the favorites and `ui.set
 //! {theme}`. Saved command ids go through [`command_id`].
 
@@ -9,7 +9,7 @@ use serde::{Deserialize, Deserializer};
 /// How many favorite themes the appearance menu keeps.
 pub const MAX_FAVORITES: usize = 64;
 
-/// The suite theme a name PhotoCraft took before theme ids stands for, and whether it is the dark
+/// The suite theme a name Patronus Photo took before theme ids stands for, and whether it is the dark
 /// variant. Case, spaces, `_`, `-` and parentheses don't matter: `proMedium`, `Pro (Medium Gray)`
 /// and `pro_medium_gray` are one name.
 pub fn alias(name: &str) -> Option<(&'static str, bool)> {

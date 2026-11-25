@@ -5,7 +5,7 @@
 
 use serde_json::{Value, json};
 
-use photocraft_doc::LayerId;
+use patronusphoto_doc::LayerId;
 
 use super::enabled_tests::{CMD, blank};
 use crate::Session;

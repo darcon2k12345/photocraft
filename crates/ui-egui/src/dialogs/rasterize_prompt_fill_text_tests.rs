@@ -9,8 +9,8 @@ use crate::canvas::testing::{ToolEvent, tool_event};
 
 /// A Solid Color fill layer over a white Background, its content (not its mask) targeted, with
 /// the Paint Bucket.
-fn fill_layer_app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn fill_layer_app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 120, "height": 80})).unwrap();
     app.run("layer.newFillLayer.solidColor", json!({"color": "#00ff00"})).unwrap();
     app.ui.mask_target = false;
@@ -20,17 +20,17 @@ fn fill_layer_app() -> Box<PhotocraftApp> {
     app
 }
 
-fn bucket_click(app: &mut PhotocraftApp) {
+fn bucket_click(app: &mut PatronusPhotoApp) {
     tool_event(app, ToolEvent::Down { x: 30.0, y: 20.0, pressure: 1.0 }, Modifiers::NONE);
     tool_event(app, ToolEvent::Up { x: 30.0, y: 20.0 }, Modifiers::NONE);
 }
 
-fn active_content(app: &PhotocraftApp) -> &'static str {
+fn active_content(app: &PatronusPhotoApp) -> &'static str {
     let st = app.session.active().unwrap();
     st.doc.layer(st.active_layer.unwrap()).unwrap().content.kind_name()
 }
 
-fn past(app: &PhotocraftApp) -> usize {
+fn past(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.past_len()
 }
 

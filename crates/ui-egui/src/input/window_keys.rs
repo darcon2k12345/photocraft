@@ -1,8 +1,8 @@
-//! Escape for PhotoCraft's own code beside the craft runtime.
+//! Escape for Patronus Photo's own code beside the craft runtime.
 //!
 //! The runtime takes a plain Escape (Alt and Shift may be held) out of egui's input. While a
 //! framework stop has focus it goes there; otherwise it reaches the window as `Intent::Cancel`
-//! (craft-framework.md 2.2). While a PhotoCraft widget holds egui focus, the press stays in
+//! (craft-framework.md 2.2). While a Patronus Photo widget holds egui focus, the press stays in
 //! egui's input instead. A pass carries one or the other, never both, so every reader here takes
 //! whichever is there, once.
 //!
@@ -36,7 +36,7 @@ fn window_cancel(ctx: &Context, mods: Option<Modifiers>, take: bool) -> bool {
 }
 
 fn seen_id() -> egui::Id {
-    egui::Id::unique("photocraft.window_keys.escape_seen")
+    egui::Id::unique("patronusphoto.window_keys.escape_seen")
 }
 
 /// Takes this pass's Escape with no Command or Ctrl held (Shift and Alt may be), as

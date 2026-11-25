@@ -11,21 +11,21 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
-type H = Harness<'static, Box<PhotocraftApp>>;
+type H = Harness<'static, Box<PatronusPhotoApp>>;
 
 /// The whole app on a new document with the Brush, and an adjustment layer of `kind` when one is asked for.
 fn harness(kind: Option<&'static str>) -> H {
     let mut h = Harness::builder().with_size(vec2(1440.0, 900.0)).with_max_steps(64).with_step_dt(1.0 / 60.0).build_eframe(move |cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        let mut s = photocraft_engine::Session::new();
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        let mut s = patronusphoto_engine::Session::new();
         s.execute("file.new", json!({"width": 400, "height": 300})).unwrap();
         if let Some(kind) = kind {
             s.execute(&format!("layer.newAdjustmentLayer.{kind}"), json!({})).unwrap();
         }
-        let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), s, crate::Services::default());
+        let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), s, crate::Services::default());
         app.ui.tool = Tool::Brush;
         app
     });

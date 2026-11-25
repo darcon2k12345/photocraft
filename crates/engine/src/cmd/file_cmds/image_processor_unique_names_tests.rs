@@ -39,7 +39,7 @@ fn selects_the_first_free_suffix_and_reports_every_written_format() {
     assert_eq!(fs::read(&source).unwrap(), PIXELS);
     for name in expected {
         let file = output.join(name);
-        let result = photocraft_io::import(name, &fs::read(file).unwrap()).unwrap();
+        let result = patronusphoto_io::import(name, &fs::read(file).unwrap()).unwrap();
         assert_eq!((result.document.size.width, result.document.size.height), (2, 1));
     }
 }
@@ -103,7 +103,7 @@ fn concurrent_folder_runs_cannot_replace_each_others_results() {
     assert_eq!(written.iter().map(Path::new).collect::<Vec<_>>(), expected.iter().map(|path| path.as_path()).collect::<Vec<_>>());
     assert_eq!(fs::read_dir(&output).unwrap().count(), 4);
     for path in &expected {
-        assert!(photocraft_io::import(&path.to_string_lossy(), &fs::read(path).unwrap()).is_ok());
+        assert!(patronusphoto_io::import(&path.to_string_lossy(), &fs::read(path).unwrap()).is_ok());
     }
 }
 
@@ -155,6 +155,6 @@ fn current_and_open_document_sources_keep_their_output_naming() {
         let result = session.execute(COMMAND, json!({"source":source,"output":root.path(),"format":"png"})).unwrap();
         assert_eq!(files(&result).unwrap().as_slice(), std::slice::from_ref(&out));
         assert_eq!(result["errors"], json!([]));
-        assert!(photocraft_io::import("Current.png", &fs::read(out).unwrap()).is_ok());
+        assert!(patronusphoto_io::import("Current.png", &fs::read(out).unwrap()).is_ok());
     }
 }

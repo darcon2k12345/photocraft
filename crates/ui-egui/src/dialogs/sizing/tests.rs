@@ -5,34 +5,34 @@ use serde_json::{Value, json};
 
 use super::*;
 
-fn app_with(width: u32, height: u32, resolution: u32) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app_with(width: u32, height: u32, resolution: u32) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": width, "height": height, "resolution": resolution})).unwrap();
     app
 }
 
 /// Opens `command` on the host and returns its id.
-fn open_hosted(app: &mut PhotocraftApp, command: &str) -> DialogId {
+fn open_hosted(app: &mut PatronusPhotoApp, command: &str) -> DialogId {
     open(app, command).expect("a document is open")
 }
 
 /// Writes a field as `ui.dialog.set` does.
-fn set(app: &mut PhotocraftApp, id: DialogId, field: &str, value: Value) {
+fn set(app: &mut PatronusPhotoApp, id: DialogId, field: &str, value: Value) {
     let ctx = app.ctx().clone();
     app.framework.dialogs.set_json_field(&ctx, id, field, value).unwrap_or_else(|e| panic!("{field}: {e}"));
 }
 
 /// Answers OK, which runs the command through `take`.
-fn confirm_by_id(app: &mut PhotocraftApp, id: DialogId) {
+fn confirm_by_id(app: &mut PatronusPhotoApp, id: DialogId) {
     crate::dialogs::testing::confirm(app, id).unwrap();
 }
 
-fn doc_size(app: &PhotocraftApp) -> photocraft_doc::Size {
+fn doc_size(app: &PatronusPhotoApp) -> patronusphoto_doc::Size {
     app.session.active().unwrap().doc.size
 }
 
 /// The fields of the open Image Size `id`.
-fn image_fields(app: &PhotocraftApp, id: DialogId) -> Value {
+fn image_fields(app: &PatronusPhotoApp, id: DialogId) -> Value {
     app.framework.dialogs.get_by_id::<HostedImageSize>(id).expect("Image Size is open").json_fields().expect("it has fields")
 }
 
@@ -50,7 +50,7 @@ fn typed_columns_resize_the_document() {
         set(&mut app, id, "widthUnit", unit(UnitKind::Columns));
         set(&mut app, id, "width", json!(2));
         confirm_by_id(&mut app, id);
-        let want = if command == "image.imageSize" { photocraft_doc::Size::new(1550, 775) } else { photocraft_doc::Size::new(1550, 500) };
+        let want = if command == "image.imageSize" { patronusphoto_doc::Size::new(1550, 775) } else { patronusphoto_doc::Size::new(1550, 500) };
         assert_eq!(doc_size(&app), want, "{command}");
     }
 }
@@ -62,12 +62,12 @@ fn dialog_maps_to_engine_command() {
     set(&mut app, id, "width", json!(100));
     set(&mut app, id, "height", json!(50));
     confirm_by_id(&mut app, id);
-    assert_eq!(doc_size(&app), photocraft_doc::Size::new(100, 50));
+    assert_eq!(doc_size(&app), patronusphoto_doc::Size::new(100, 50));
     let id = open_hosted(&mut app, "image.canvasSize");
     set(&mut app, id, "width", json!(120));
     set(&mut app, id, "anchor", serde_json::to_value(craft::behavior::Anchor9::TopLeft).unwrap());
     confirm_by_id(&mut app, id);
-    assert_eq!(doc_size(&app), photocraft_doc::Size::new(120, 50));
+    assert_eq!(doc_size(&app), patronusphoto_doc::Size::new(120, 50));
 }
 
 /// #9260: OK with a new Width resizes a document whose own resolution is outside the range the
@@ -87,7 +87,7 @@ fn ok_resizes_a_document_with_an_imported_resolution_out_of_range() {
         set(&mut app, id, "height", json!(50));
         confirm_by_id(&mut app, id);
         let doc = &app.session.active().unwrap().doc;
-        assert_eq!((doc.size, doc.resolution_dpi), (photocraft_doc::Size::new(100, 50), own), "{own}");
+        assert_eq!((doc.size, doc.resolution_dpi), (patronusphoto_doc::Size::new(100, 50), own), "{own}");
     }
 }
 
@@ -96,7 +96,7 @@ fn ok_resizes_a_document_with_an_imported_resolution_out_of_range() {
 #[test]
 fn indexed_color_resamples_with_nearest_neighbor_only() {
     let method = |m: Resample| serde_json::to_value(m).unwrap();
-    let ctx_of = |app: &PhotocraftApp| app.ctx().clone();
+    let ctx_of = |app: &PatronusPhotoApp| app.ctx().clone();
 
     let mut app = app_with(200, 100, 72);
     for (pref, want) in [
@@ -136,7 +136,7 @@ fn traditional_point_size_drives_points_and_picas() {
     set(&mut app, id, "width", json!(72.27));
     confirm_by_id(&mut app, id);
     let doc = &app.session.active().unwrap().doc;
-    assert_eq!(doc.size, photocraft_doc::Size::new(100, 50));
+    assert_eq!(doc.size, patronusphoto_doc::Size::new(100, 50));
     assert!((doc.resolution_dpi - 100.0).abs() < 1e-2, "{}", doc.resolution_dpi);
 }
 
@@ -149,7 +149,7 @@ fn large_documents_in_physical_units_open_unchanged() {
         let id = open_hosted(&mut app, command);
         set(&mut app, id, "unit", unit(UnitKind::Points));
         confirm_by_id(&mut app, id);
-        assert_eq!(doc_size(&app), photocraft_doc::Size::new(40000, 4), "{command}");
+        assert_eq!(doc_size(&app), patronusphoto_doc::Size::new(40000, 4), "{command}");
     }
 }
 
@@ -158,7 +158,7 @@ fn large_documents_in_physical_units_open_unchanged() {
 #[test]
 fn the_image_size_readout_counts_the_flat_image() {
     let bpp = |new: Value, commands: &[&str]| {
-        let mut s = photocraft_engine::Session::new();
+        let mut s = patronusphoto_engine::Session::new();
         s.execute("file.new", new).unwrap();
         for c in commands {
             s.execute(c, json!({})).unwrap();
@@ -184,16 +184,16 @@ fn image_size_draws_width_and_height_with_values_and_unit() {
     use egui_kittest::kittest::{NodeT, Queryable};
 
     let mut h = Harness::builder().with_size(vec2(1280.0, 800.0)).with_max_steps(8).build_eframe(|cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        let mut s = photocraft_engine::Session::new();
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        let mut s = patronusphoto_engine::Session::new();
         s.execute("file.new", json!({"width": 1600, "height": 1000, "resolution": 72})).unwrap();
-        PhotocraftApp::with_context(cc.egui_ctx.clone(), s, crate::Services::default())
+        PatronusPhotoApp::with_context(cc.egui_ctx.clone(), s, crate::Services::default())
     });
     h.run_steps(4);
     open(h.state_mut(), "image.imageSize").expect("a document is open");
     h.run_steps(6);
 
-    let value_of = |h: &Harness<'_, Box<PhotocraftApp>>, label: &str| -> Vec<String> {
+    let value_of = |h: &Harness<'_, Box<PatronusPhotoApp>>, label: &str| -> Vec<String> {
         h.query_all_by_label(label).filter_map(|n| n.accesskit_node().value().map(|v| v.to_string())).collect()
     };
     for (label, want) in [("Width", "1600"), ("Height", "1000"), ("Resolution", "72")] {

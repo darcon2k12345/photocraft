@@ -4,17 +4,17 @@
 
 use craft::keymap::Mods;
 use egui::{Context, Event, Key, Modifiers, RawInput};
-use photocraft_doc::BlendMode;
+use patronusphoto_doc::BlendMode;
 use serde_json::{Value, json};
 
 use super::{Item, choose, current, enabled, engine_call, items};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// A 64 × 64 document with the Pattern Stamp; with `layer`, a layer above the Background whose
 /// left half is red and whose right half is transparent.
-fn app(layer: bool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app(layer: bool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 64, "height": 64, "background": "white"})).unwrap();
     if layer {
         app.run("layer.new.layer", json!({})).unwrap();
@@ -29,7 +29,7 @@ fn app(layer: bool) -> Box<PhotocraftApp> {
 }
 
 /// Shift+Alt+`key` through the shortcut handler.
-fn key(app: &mut PhotocraftApp, ctx: &Context, key: Key) {
+fn key(app: &mut PatronusPhotoApp, ctx: &Context, key: Key) {
     let modifiers = Modifiers::SHIFT | Modifiers::ALT;
     let events = vec![Event::ModifiersChanged(modifiers), Event::Key { key, physical_key: Some(key), pressed: true, repeat: false, modifiers }];
     ctx.begin_pass(RawInput { events, ..Default::default() });
@@ -38,18 +38,18 @@ fn key(app: &mut PhotocraftApp, ctx: &Context, key: Key) {
 }
 
 /// The last journaled command.
-fn last_call(app: &PhotocraftApp) -> (String, Value) {
+fn last_call(app: &PatronusPhotoApp) -> (String, Value) {
     app.session.journal.last().cloned().unwrap()
 }
 
 /// The active layer's pixel as straight RGBA.
-fn pixel(app: &PhotocraftApp, x: i32, y: i32) -> [f32; 4] {
+fn pixel(app: &PatronusPhotoApp, x: i32, y: i32) -> [f32; 4] {
     let st = app.session.active().unwrap();
     st.doc.layer(st.active_layer.unwrap()).unwrap().surface().unwrap().rgba(x, y)
 }
 
 /// One Pattern Stamp stroke across both halves of the layer, as a drag commits it.
-fn stamp(app: &mut PhotocraftApp) {
+fn stamp(app: &mut PatronusPhotoApp) {
     assert!(crate::retouch_ui::finish_stroke(app, Tool::PatternStamp, &[[12.0, 32.0, 1.0], [52.0, 32.0, 1.0]], Mods::default(), false));
 }
 

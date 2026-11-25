@@ -6,13 +6,13 @@ use serde_json::{Value, json};
 
 use super::*;
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 120, "height": 80, "name": "web"})).unwrap();
     app
 }
 
-fn set(app: &mut PhotocraftApp, ctx: &egui::Context, id: DialogId, field: &str, value: Value) {
+fn set(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: DialogId, field: &str, value: Value) {
     app.framework.dialogs.set_json_field(ctx, id, field, value).unwrap_or_else(|e| panic!("{field}: {e}"));
 }
 
@@ -67,9 +67,9 @@ fn create_droplet_uses_the_action_selected_in_the_form() {
     crate::dialogs::confirm(&mut app, &ctx, id).unwrap();
     let saved: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
     assert_eq!(saved["action"]["steps"], json!([["image.imageRotation.90cw", {}]]));
-    let result = photocraft_engine::Session::new().execute("file.automate.runDroplet", json!({"droplet": path, "input": [input]})).unwrap();
+    let result = patronusphoto_engine::Session::new().execute("file.automate.runDroplet", json!({"droplet": path, "input": [input]})).unwrap();
     assert_eq!(result["errors"], json!([]));
-    let image = photocraft_io::import("source.png", &std::fs::read(result["files"][0].as_str().unwrap()).unwrap()).unwrap().document;
+    let image = patronusphoto_io::import("source.png", &std::fs::read(result["files"][0].as_str().unwrap()).unwrap()).unwrap().document;
     assert_eq!((image.size.width, image.size.height), (1, 2));
 
     let cancelled = dir.path().join("cancelled.pcdroplet");

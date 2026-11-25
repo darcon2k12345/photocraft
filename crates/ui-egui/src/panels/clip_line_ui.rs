@@ -1,7 +1,7 @@
 //! Alt-click on the line between two layers in the Layers panel clips the upper one to the one
 //! below, or releases it when it is clipped already (Photoshop, #967): the commands it runs.
 
-use photocraft_doc::{Document, LayerId};
+use patronusphoto_doc::{Document, LayerId};
 use serde_json::{Value, json};
 
 /// A line between two layers.

@@ -2,9 +2,9 @@ use super::*;
 use crate::{Services, menus};
 use craft::host::{Picked, ScriptedFiles};
 use craft::ui::runtime::drag::OsFile;
-use photocraft_color::{ColorMode, SampleType};
-use photocraft_doc::Document;
-use photocraft_geom::Size;
+use patronusphoto_color::{ColorMode, SampleType};
+use patronusphoto_doc::Document;
+use patronusphoto_geom::Size;
 use serde_json::json;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -13,21 +13,21 @@ use std::sync::Arc;
 /// Writes recorded by the fake writer: (path, bytes).
 type Written = Rc<RefCell<Vec<(String, Vec<u8>)>>>;
 
-/// An app whose importer names the document after the file (like `photocraft-io`) and reports a
+/// An app whose importer names the document after the file (like `patronusphoto-io`) and reports a
 /// warning for names containing "warn", and fails for bytes "bad"; the exporter warns for ".png"
 /// and the writer records what it wrote. Its file picks answer with `answers`, in order; a pick past the
 /// last answer is cancelled.
-fn app_with(answers: Vec<Picked>) -> (Box<PhotocraftApp>, Written) {
+fn app_with(answers: Vec<Picked>) -> (Box<PatronusPhotoApp>, Written) {
     app_over(Arc::new(ScriptedFiles::answering(answers)))
 }
 
 /// [`app_with`] over a file service the test keeps, to read the requests it was asked. The framework takes the
 /// service when the app is built.
-fn app_over(files: Arc<ScriptedFiles>) -> (Box<PhotocraftApp>, Written) {
+fn app_over(files: Arc<ScriptedFiles>) -> (Box<PatronusPhotoApp>, Written) {
     let written: Written = Rc::default();
     let w = written.clone();
     let services = Services {
-        import: Some(Box::new(|name: &str, bytes: &[u8], _opts: &photocraft_io::ImportOptions| {
+        import: Some(Box::new(|name: &str, bytes: &[u8], _opts: &patronusphoto_io::ImportOptions| {
             if bytes == b"bad" {
                 return Err("not an image".into());
             }
@@ -45,11 +45,11 @@ fn app_over(files: Arc<ScriptedFiles>) -> (Box<PhotocraftApp>, Written) {
         })),
         ..Default::default()
     };
-    (PhotocraftApp::new(photocraft_engine::Session::new(), services), written)
+    (PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services), written)
 }
 
 /// The end of a frame: the dialog asked for is shown, and its answer acted on.
-fn answer(app: &mut PhotocraftApp) {
+fn answer(app: &mut PatronusPhotoApp) {
     app.poll_file_dialog();
 }
 
@@ -60,7 +60,7 @@ fn chosen(paths: &[String]) -> Picked {
 
 /// Files named `names` (holding `bytes`) in a fresh directory for `tag`: (directory, paths).
 fn files(tag: &str, names: &[&str], bytes: &[u8]) -> (std::path::PathBuf, Vec<String>) {
-    let dir = std::env::temp_dir().join(format!("photocraft-file-open-{tag}-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("patronusphoto-file-open-{tag}-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let paths = names
         .iter()
@@ -265,11 +265,11 @@ fn a_flat_file_that_keeps_the_document_saves_in_place() {
 #[test]
 fn save_in_place_skips_files_it_would_write_back_with_less() {
     let (mut app, written) = app_with(vec![Picked::Cancelled; 3]);
-    app.services.import = Some(Box::new(|name: &str, bytes: &[u8], _opts: &photocraft_io::ImportOptions| {
-        photocraft_io::import(name, bytes).map(|r| (r.document, r.warnings)).map_err(|e| e.to_string())
+    app.services.import = Some(Box::new(|name: &str, bytes: &[u8], _opts: &patronusphoto_io::ImportOptions| {
+        patronusphoto_io::import(name, bytes).map(|r| (r.document, r.warnings)).map_err(|e| e.to_string())
     }));
     let ctx = egui::Context::default();
-    let save = |app: &mut PhotocraftApp| menus::invoke(app, &ctx, "file.save", json!({})).unwrap();
+    let save = |app: &mut PatronusPhotoApp| menus::invoke(app, &ctx, "file.save", json!({})).unwrap();
     // One icon size: written back.
     app.open_file("/pics/one.ico", &ico(1)).unwrap();
     assert_eq!(save(&mut app)["path"], "/pics/one.ico");
@@ -298,7 +298,7 @@ fn save_in_place_skips_files_it_would_write_back_with_less() {
 fn save_in_place_skips_alpha_profiles_and_layer_state_the_file_would_drop() {
     let (mut app, written) = app_with(vec![Picked::Cancelled; 3]);
     let ctx = egui::Context::default();
-    let edit = |app: &mut PhotocraftApp, f: &dyn Fn(&mut Document)| f(std::sync::Arc::make_mut(app.session.active_mut().unwrap().doc_mut()));
+    let edit = |app: &mut PatronusPhotoApp, f: &dyn Fn(&mut Document)| f(std::sync::Arc::make_mut(app.session.active_mut().unwrap().doc_mut()));
     // An RGB layer with transparency: DPX keeps its alpha, so it is written back.
     app.open_file("/pics/rgb.dpx", b"x").unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
@@ -348,8 +348,8 @@ fn gif_bytes() -> Vec<u8> {
 
 /// `bytes` (a PNG) re-encoded for the file name `name`.
 fn export_as(bytes: &[u8], name: &str) -> Vec<u8> {
-    let doc = photocraft_io::import("p.png", bytes).unwrap().document;
-    photocraft_io::export(&doc, name, &Default::default()).unwrap().bytes
+    let doc = patronusphoto_io::import("p.png", bytes).unwrap().document;
+    patronusphoto_io::export(&doc, name, &Default::default()).unwrap().bytes
 }
 
 #[test]
@@ -422,7 +422,7 @@ fn open_failures_are_errors_and_leave_no_document() {
 
 #[test]
 fn a_picked_file_that_cannot_be_read_is_reported_like_any_open_failure() {
-    let missing = std::env::temp_dir().join("photocraft-missing-dir").join("big.psb").to_string_lossy().into_owned();
+    let missing = std::env::temp_dir().join("patronusphoto-missing-dir").join("big.psb").to_string_lossy().into_owned();
     let picked = || chosen(std::slice::from_ref(&missing));
     let (mut app, _) = app_with(vec![picked(), picked(), Picked::Cancelled]);
     app.open_dialog_file().unwrap();
@@ -445,7 +445,7 @@ fn a_picked_file_that_cannot_be_read_is_reported_like_any_open_failure() {
 #[test]
 fn open_paths_reports_each_failure_without_panicking() {
     let (mut app, _) = app_with(Vec::new());
-    let missing = std::env::temp_dir().join("photocraft-definitely-missing-file.psd").to_string_lossy().to_string();
+    let missing = std::env::temp_dir().join("patronusphoto-definitely-missing-file.psd").to_string_lossy().to_string();
     let dir = std::env::temp_dir().to_string_lossy().to_string();
     let n = app.open_paths(&[missing, String::new(), dir, "\u{0}".into()]);
     assert_eq!(n, 0);
@@ -459,7 +459,7 @@ fn open_paths_reports_each_failure_without_panicking() {
 
 #[test]
 fn os_open_events_open_files_with_paths() {
-    let dir = std::env::temp_dir().join(format!("photocraft-os-open-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("patronusphoto-os-open-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let a = dir.join("a.psd");
     let b = dir.join("b.png");
@@ -488,7 +488,7 @@ fn raise_commands() -> Vec<egui::ViewportCommand> {
     app.services.os_events = Some(Box::new(move || std::mem::take(&mut queue)));
     let ctx = egui::Context::default();
     // PLAN: assumed `setup_context` installs the runtime whose shell reports window commands
-    PhotocraftApp::setup_context(&ctx, Default::default());
+    PatronusPhotoApp::setup_context(&ctx, Default::default());
     let mut out = ctx.run_ui(egui::RawInput::default(), |ui| app.drain_os_events(ui.ctx()));
     out.textures_delta.clear();
     out.viewport_output.get(&egui::ViewportId::ROOT).map(|v| v.commands.clone()).unwrap_or_default()
@@ -524,14 +524,14 @@ fn dropped(path: impl Into<std::path::PathBuf>, bytes: Result<Vec<u8>, String>) 
     f
 }
 
-fn doc_names(app: &PhotocraftApp) -> Vec<String> {
+fn doc_names(app: &PatronusPhotoApp) -> Vec<String> {
     app.session.documents().iter().map(|d| d.doc.name.clone()).collect()
 }
 
 #[test]
 fn dropped_files_open_with_path_and_recent() {
     let (mut app, _) = app_with(Vec::new());
-    let dir = std::env::temp_dir().join(format!("photocraft-drop-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("patronusphoto-drop-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let abs = dir.join("dropped.psd");
     std::fs::write(&abs, b"x").unwrap();
@@ -562,24 +562,24 @@ fn dropped_files_open_with_path_and_recent() {
 
 /// PNG bytes of a white `w`×`h` image.
 fn png_bytes(w: u32, h: u32) -> Vec<u8> {
-    let mut s = photocraft_engine::Session::new();
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": w, "height": h, "background": "white"})).unwrap();
-    photocraft_io::export(&s.active().unwrap().doc, "p.png", &Default::default()).unwrap().bytes
+    patronusphoto_io::export(&s.active().unwrap().doc, "p.png", &Default::default()).unwrap().bytes
 }
 
 /// An app with one open document whose canvas showed at (100, 50)–(700, 550) last frame.
-fn app_with_canvas() -> Box<PhotocraftApp> {
+fn app_with_canvas() -> Box<PatronusPhotoApp> {
     let (mut app, _) = app_with(Vec::new());
     app.open_bytes("canvas.psd", b"x").unwrap();
     app.drop_canvas_rect = Some(egui::Rect::from_min_max(egui::pos2(100.0, 50.0), egui::pos2(700.0, 550.0)));
     app
 }
 
-fn layer_count(app: &PhotocraftApp) -> usize {
+fn layer_count(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().doc.layers.len()
 }
 
-fn history_steps(app: &PhotocraftApp) -> usize {
+fn history_steps(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.past_len()
 }
 
@@ -587,7 +587,7 @@ fn history_steps(app: &PhotocraftApp) -> usize {
 /// Transform; the next is placed once the previous transform is committed or cancelled.
 #[test]
 fn files_dropped_onto_the_canvas_are_placed_in_free_transform_one_by_one() {
-    let dir = std::env::temp_dir().join(format!("photocraft-drop-place-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("patronusphoto-drop-place-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let abs = dir.join("photo.png");
     std::fs::write(&abs, png_bytes(200, 100)).unwrap();
@@ -627,7 +627,7 @@ fn files_dropped_onto_the_canvas_are_placed_in_free_transform_one_by_one() {
     let st = app.session.active().unwrap();
     let top = st.doc.layer(st.active_layer.unwrap()).unwrap();
     assert_eq!(top.name, "small");
-    assert!(matches!(top.content, photocraft_doc::LayerContent::Smart(_)));
+    assert!(matches!(top.content, patronusphoto_doc::LayerContent::Smart(_)));
     // Esc takes the place back, leaving nothing to redo.
     crate::transform_tool::cancel(&mut app);
     assert_eq!((layer_count(&app), history_steps(&app)), (layers + 1, steps + 1));
@@ -640,7 +640,7 @@ fn files_dropped_onto_the_canvas_are_placed_in_free_transform_one_by_one() {
     let st = app.session.active().unwrap();
     let placed_svg = st.doc.layer(st.active_layer.unwrap()).unwrap();
     assert_eq!(placed_svg.name, "logo");
-    assert!(matches!(placed_svg.content, photocraft_doc::LayerContent::Smart(_)), "SVG drops use Place Embedded");
+    assert!(matches!(placed_svg.content, patronusphoto_doc::LayerContent::Smart(_)), "SVG drops use Place Embedded");
     assert!(app.ui.transform.is_some(), "SVG drop should enter Free Transform");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -668,7 +668,7 @@ fn a_separate_drop_applies_the_open_transform_and_places_at_once() {
 }
 
 /// Apply the jobs that have finished, frame by frame, until `done` holds (or 30 s pass).
-fn tick_until(app: &mut PhotocraftApp, ctx: &egui::Context, done: impl Fn(&PhotocraftApp) -> bool) {
+fn tick_until(app: &mut PatronusPhotoApp, ctx: &egui::Context, done: impl Fn(&PatronusPhotoApp) -> bool) {
     let t = std::time::Instant::now();
     while !done(app) {
         assert!(t.elapsed() < std::time::Duration::from_secs(30), "not done after 30 s");
@@ -770,7 +770,7 @@ fn a_dropped_file_is_placed_over_several_frames_without_background_jobs() {
 /// A file dropped from a path, a damaged file and a cancel all end as they do with worker threads.
 #[test]
 fn stepped_places_from_a_path_fail_and_cancel_like_background_ones() {
-    let dir = std::env::temp_dir().join(format!("photocraft-drop-place-steps-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("patronusphoto-drop-place-steps-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let good = dir.join("good.png");
     std::fs::write(&good, png_bytes(30, 30)).unwrap();
@@ -806,7 +806,7 @@ fn stepped_places_from_a_path_fail_and_cancel_like_background_ones() {
 /// egui's reader), making its layer once.
 #[test]
 fn a_cooperative_drop_from_a_path_completes_in_slices() {
-    let dir = std::env::temp_dir().join(format!("photocraft-drop-path-slices-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("patronusphoto-drop-path-slices-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let good = dir.join("good.png");
     std::fs::write(&good, png_bytes(30, 30)).unwrap();
@@ -933,7 +933,7 @@ fn a_scripted_place_never_opens_free_transform() {
 }
 
 /// Frames with nothing to wait for: jobs applied and the drop queue served.
-fn idle_frames(app: &mut PhotocraftApp, ctx: &egui::Context) {
+fn idle_frames(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     for _ in 0..3 {
         crate::jobs_ui::tick(app, ctx);
         app.place_next_dropped(ctx);
@@ -942,7 +942,7 @@ fn idle_frames(app: &mut PhotocraftApp, ctx: &egui::Context) {
 
 /// Drops two files on the canvas of document A (the app's only one) with background jobs on, starts
 /// placing the first, then opens document B, which becomes active. Returns A's id and layer count.
-fn two_drops_then_switch(app: &mut PhotocraftApp, ctx: &egui::Context) -> (photocraft_doc::DocId, usize) {
+fn two_drops_then_switch(app: &mut PatronusPhotoApp, ctx: &egui::Context) -> (patronusphoto_doc::DocId, usize) {
     app.background_jobs = true;
     let (a, layers) = (app.session.active().unwrap().doc.id, layer_count(app));
     app.open_dropped(ctx, vec![dropped("first.png", Ok(png_bytes(4, 4))), dropped("second.png", Ok(png_bytes(2, 2)))], DropTo::Canvas { at: None });
@@ -1184,7 +1184,7 @@ fn overlapping_web_drop_deliveries_keep_each_target() {
 /// drop that arrives meanwhile queues behind it.
 #[test]
 fn a_background_drop_from_a_path_is_tracked_and_later_drops_queue() {
-    let dir = std::env::temp_dir().join(format!("photocraft-drop-place-job-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("patronusphoto-drop-place-job-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let abs = dir.join("photo.png");
     std::fs::write(&abs, png_bytes(40, 20)).unwrap();
@@ -1283,11 +1283,11 @@ fn views_and_windows_stay_with_their_documents() {
         v.zoom = i as f32 + 1.0;
     }
     // Each document also has a floating window; a window follows its document through moves and closes.
-    let ids: Vec<photocraft_doc::DocId> = app.session.documents().iter().map(|d| d.doc.id).collect();
+    let ids: Vec<patronusphoto_doc::DocId> = app.session.documents().iter().map(|d| d.doc.id).collect();
     let made: Vec<u64> = ids.iter().map(|id| app.ui.document_windows.new_window_for(id, egui::Rect::NOTHING)).collect();
-    let zooms = |app: &PhotocraftApp| app.ui.views.iter().map(|v| v.zoom).collect::<Vec<_>>();
+    let zooms = |app: &PatronusPhotoApp| app.ui.views.iter().map(|v| v.zoom).collect::<Vec<_>>();
     // Each floating window with the index of the document it shows.
-    let windows = |app: &PhotocraftApp| {
+    let windows = |app: &PatronusPhotoApp| {
         let docs = app.session.documents();
         app.ui
             .document_windows
@@ -1315,8 +1315,8 @@ fn open_documents_as_tabs_preference_controls_floating_windows() {
     let (mut app, _) = app_with(Vec::new());
     app.session.edit_prefs(|p| p.workspace.open_documents_as_tabs = false);
     app.open_bytes("a.psd", b"x").unwrap();
-    let floating = |app: &PhotocraftApp| app.ui.document_windows.floating.iter().map(|(group, _)| group.documents.clone()).collect::<Vec<_>>();
-    let id = |app: &PhotocraftApp, at: usize| app.session.documents()[at].doc.id;
+    let floating = |app: &PatronusPhotoApp| app.ui.document_windows.floating.iter().map(|(group, _)| group.documents.clone()).collect::<Vec<_>>();
+    let id = |app: &PatronusPhotoApp, at: usize| app.session.documents()[at].doc.id;
     assert_eq!(floating(&app), [vec![id(&app, 0)]]);
 
     app.run("file.new", json!({"width": 100, "height": 100})).unwrap();
@@ -1350,13 +1350,13 @@ fn open_paths_reports_in_the_interface_language_before_the_first_frame() {
         return;
     }
     let pattern = |i: u8| {
-        let mut surface = photocraft_raster::Surface::new(photocraft_color::PixelFormat::RGBA8);
-        surface.fill_rect(photocraft_geom::Rect::new(0, 0, 4, 4), &[f32::from(i) / 3.0, 0.5, 0.2, 1.0]);
-        let mut p = photocraft_doc::Pattern::new("Launch", surface, 4, 4);
+        let mut surface = patronusphoto_raster::Surface::new(patronusphoto_color::PixelFormat::RGBA8);
+        surface.fill_rect(patronusphoto_geom::Rect::new(0, 0, 4, 4), &[f32::from(i) / 3.0, 0.5, 0.2, 1.0]);
+        let mut p = patronusphoto_doc::Pattern::new("Launch", surface, 4, 4);
         p.id = format!("6f1c2c1e-0000-4000-8000-00000000000{i}");
         p
     };
-    let bytes = photocraft_io::pattern_map::write_pat(&[pattern(1), pattern(2), pattern(3)]).unwrap();
+    let bytes = patronusphoto_io::pattern_map::write_pat(&[pattern(1), pattern(2), pattern(3)]).unwrap();
     let (dir, paths) = files("launch-language", &["launch.pat"], &bytes);
     let (mut app, _) = app_with(Vec::new());
     app.session.edit_prefs(|p| p.interface.language = "ar".into());
@@ -1392,7 +1392,7 @@ fn open_paths_opens_a_set_in_name_order() {
 #[test]
 fn a_set_of_background_opens_keeps_its_order_however_they_finish() {
     use crate::jobs_ui::{self, OpenOrder, OpenTab};
-    use photocraft_engine::jobs::JobId;
+    use patronusphoto_engine::jobs::JobId;
     let (mut app, _) = app_with(Vec::new());
     app.open_bytes("existing.psd", b"x").unwrap();
     let batch = jobs_ui::begin_batch(&mut app);
@@ -1472,12 +1472,12 @@ fn export_as_is_recorded_and_replayed() {
         write: Some(Box::new(|_: &str, _: &[u8]| Ok(()))),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 40, "height": 20})).unwrap();
     app.run("actions.record", json!({})).unwrap();
     let id = menus::invoke(&mut app, &ctx, "file.export.exportAs", json!({})).unwrap()["dialog"].clone();
-    let control = |app: &mut PhotocraftApp, method: &str, params: serde_json::Value| {
+    let control = |app: &mut PatronusPhotoApp, method: &str, params: serde_json::Value| {
         let (request, _reply) = crate::control::ControlRequest::new(method, params);
         match crate::control::handle(app, &ctx, &request) {
             crate::control::Reply::Done(reply) => assert_eq!(reply["ok"], true, "{method}: {reply}"),
@@ -1532,7 +1532,7 @@ fn saving_a_new_document_lists_it_in_recent_files() {
 #[test]
 fn opening_type_in_a_missing_font_warns() {
     fn doc_with_type(font: Option<&str>) -> Document {
-        let mut s = photocraft_engine::Session::new();
+        let mut s = patronusphoto_engine::Session::new();
         s.execute("file.new", json!({"width": 40, "height": 20})).unwrap();
         let mut p = json!({"text": "Hi", "x": 2, "y": 12, "size": 10});
         if let Some(f) = font {
@@ -1546,7 +1546,7 @@ fn opening_type_in_a_missing_font_warns() {
     let (with_missing, installed) = (doc_with_type(Some(MISSING)), doc_with_type(None));
     let already = warning.clone();
     let services = Services {
-        import: Some(Box::new(move |name: &str, _bytes: &[u8], _opts: &photocraft_io::ImportOptions| {
+        import: Some(Box::new(move |name: &str, _bytes: &[u8], _opts: &patronusphoto_io::ImportOptions| {
             Ok(match name {
                 "installed.psd" => (installed.clone(), Vec::new()),
                 "warned.psd" => (with_missing.clone(), vec![already.clone()]),
@@ -1555,7 +1555,7 @@ fn opening_type_in_a_missing_font_warns() {
         })),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     let warnings = app.open_bytes("poster.psd", b"x").unwrap();
     assert_eq!(warnings, vec![warning.clone()]);
     assert!(app.ui.status.contains(MISSING), "{}", app.ui.status);
@@ -1683,13 +1683,13 @@ fn only_a_canvas_drop_of_a_non_preset_file_is_placed() {
 
 /// A scratch folder, removed by the test.
 fn scratch(tag: &str) -> std::path::PathBuf {
-    let dir = std::env::temp_dir().join(format!("photocraft-drop-{tag}-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("patronusphoto-drop-{tag}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     dir
 }
 
-fn error_titles(app: &PhotocraftApp) -> Vec<String> {
+fn error_titles(app: &PatronusPhotoApp) -> Vec<String> {
     app.ui.notices.iter().filter(|n| n.tone == craft::theme::variant::Tone::Bad).map(|n| n.title.clone()).collect()
 }
 

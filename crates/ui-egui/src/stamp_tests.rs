@@ -3,10 +3,10 @@
 use egui::{Key, Modifiers};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 120, "height": 80})).unwrap();
     app.run("layer.new.layer", json!({"name": "Paint"})).unwrap();
     app.run("edit.fill", json!({"color": "#3366cc"})).unwrap();
@@ -15,7 +15,7 @@ fn app() -> Box<PhotocraftApp> {
     app
 }
 
-fn layers(app: &PhotocraftApp) -> usize {
+fn layers(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().doc.walk().len()
 }
 

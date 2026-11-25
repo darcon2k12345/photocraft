@@ -4,7 +4,7 @@ use craft::draw::ui::transform::{TransformEdit, TransformRequest};
 
 use super::begin::{fold_made, moves_kind, moving_layers, rect_to_quad_affine, take_back_made};
 use super::{
-    Arc, DocId, FreeTransform, JobEvent, JobId, JobOutcome, LayerContent, LayerId, MadeLayer, OpenPreview, PhotocraftApp, SessionWarp, Several, json,
+    Arc, DocId, FreeTransform, JobEvent, JobId, JobOutcome, LayerContent, LayerId, MadeLayer, OpenPreview, PatronusPhotoApp, SessionWarp, Several, json,
     preset_for_command, swap_mode_texels,
 };
 
@@ -13,7 +13,7 @@ const STILL_APPLYING: &str = "Free Transform is still being applied";
 
 const STILL_WARPING: &str = "Warp is still being applied";
 
-pub fn commit(app: &mut PhotocraftApp) {
+pub fn commit(app: &mut PatronusPhotoApp) {
     if committing(app).is_some() {
         return;
     }
@@ -117,7 +117,7 @@ pub fn commit(app: &mut PhotocraftApp) {
 /// another layer's pixels commits; a click outside the box where only the Background has pixels does nothing and
 /// the box stays open (#11100). The commit doesn't pick the layer under the click: as in the reference
 /// application, that takes a second click (#8208). A click moves nothing, so there is no box to restore.
-pub fn apply_click(app: &mut PhotocraftApp, at: Point) {
+pub fn apply_click(app: &mut PatronusPhotoApp, at: Point) {
     let at = [at.x, at.y];
     let Some(t) = app.ui.transform.as_ref() else { return };
     if on_pasteboard(app, at) || on_other_layer(app, t, at) {
@@ -128,7 +128,7 @@ pub fn apply_click(app: &mut PhotocraftApp, at: Point) {
 /// Commits the Frame tool's auto-opened session when one of this pass's `edits` ends a box gesture, and clears the
 /// flag. It reads only the edits it is given, so a second pass of a frame commits nothing the first one did.
 /// `true` when it committed.
-pub fn auto_commit(app: &mut PhotocraftApp, edits: &[TransformEdit<SessionWarp>]) -> bool {
+pub fn auto_commit(app: &mut PatronusPhotoApp, edits: &[TransformEdit<SessionWarp>]) -> bool {
     let ends_gesture = edits.iter().any(|e| matches!(e, TransformEdit::Box(EditEvent::Commit { .. })));
     if !ends_gesture || !app.ui.frame_tool.auto_transform {
         return false;
@@ -139,7 +139,7 @@ pub fn auto_commit(app: &mut PhotocraftApp, edits: &[TransformEdit<SessionWarp>]
 }
 
 /// Whether a document point is outside the document, on the pasteboard around the canvas.
-fn on_pasteboard(app: &PhotocraftApp, p: [f64; 2]) -> bool {
+fn on_pasteboard(app: &PatronusPhotoApp, p: [f64; 2]) -> bool {
     app.session.active().is_some_and(|st| p[0] < 0.0 || p[1] < 0.0 || p[0] >= f64::from(st.doc.size.width) || p[1] >= f64::from(st.doc.size.height))
 }
 
@@ -150,7 +150,7 @@ fn on_pasteboard(app: &PhotocraftApp, p: [f64; 2]) -> bool {
 /// a second click picks that layer. Not measured, so the box stays open as before: Transform
 /// Selection, a path or mask target, and hidden, locked or grouped layers (also when a grouped
 /// layer covers a top-level one at the click).
-fn on_other_layer(app: &PhotocraftApp, t: &FreeTransform, p: [f64; 2]) -> bool {
+fn on_other_layer(app: &PatronusPhotoApp, t: &FreeTransform, p: [f64; 2]) -> bool {
     if t.selection || t.path.is_some() || t.target.is_some() || !p[0].is_finite() || !p[1].is_finite() {
         return false;
     }
@@ -158,10 +158,10 @@ fn on_other_layer(app: &PhotocraftApp, t: &FreeTransform, p: [f64; 2]) -> bool {
     let doc = &st.doc;
     // The layers the commit moves: `edit.transform` takes the link group along as it is then, so a
     // layer linked after the box opened counts as moved too.
-    let moved = photocraft_engine::transform_cmds::box_targets(doc, &moving_layers(t));
-    let moved = |id: photocraft_doc::LayerId| id.0 == t.layer || moved.contains(&id);
+    let moved = patronusphoto_engine::transform_cmds::box_targets(doc, &moving_layers(t));
+    let moved = |id: patronusphoto_doc::LayerId| id.0 == t.layer || moved.contains(&id);
     // `as` saturates out-of-range floats; `layers_at` returns nothing off the canvas.
-    photocraft_engine::pick_cmds::layers_at(doc, p[0].floor() as i32, p[1].floor() as i32)
+    patronusphoto_engine::pick_cmds::layers_at(doc, p[0].floor() as i32, p[1].floor() as i32)
         .into_iter()
         .find(|id| !moved(*id) && !doc.effective_locks(*id).all)
         .is_some_and(|id| !doc.is_background(id) && doc.layers.iter().any(|l| l.id == id && l.artboard().is_none()))
@@ -169,7 +169,7 @@ fn on_other_layer(app: &PhotocraftApp, t: &FreeTransform, p: [f64; 2]) -> bool {
 
 /// After the transform landed or not: fold the layer the session made into its step, or take it
 /// back.
-fn finish(app: &mut PhotocraftApp, document: Option<DocId>, layer: LayerId, made: Option<MadeLayer>, landed: bool) {
+fn finish(app: &mut PatronusPhotoApp, document: Option<DocId>, layer: LayerId, made: Option<MadeLayer>, landed: bool) {
     let (Some(made), Some(document)) = (made, document) else { return };
     if landed {
         fold_made(app, document, layer, made);
@@ -179,13 +179,13 @@ fn finish(app: &mut PhotocraftApp, document: Option<DocId>, layer: LayerId, made
 }
 
 /// The job applying the transform, while it runs.
-pub(crate) fn committing(app: &PhotocraftApp) -> Option<JobId> {
+pub(crate) fn committing(app: &PatronusPhotoApp) -> Option<JobId> {
     app.transform_preview.as_ref().and_then(|pv| pv.committing)
 }
 
 /// A job ended (see [`crate::jobs_ui`]): when it was the commit, the session ends with it. Its
 /// status and errors are reported like any job's.
-pub fn on_job_event(app: &mut PhotocraftApp, e: &JobEvent) {
+pub fn on_job_event(app: &mut PatronusPhotoApp, e: &JobEvent) {
     if super::begin::on_prepared(app, e) {
         return;
     }
@@ -219,7 +219,7 @@ pub fn on_job_event(app: &mut PhotocraftApp, e: &JobEvent) {
 /// A commit the engine refused (a result over the pixel budget, #3773): the box stays open as it
 /// was, with the reason in the status bar, so the transform can be changed or cancelled. A copy or
 /// a placed layer it made goes only when it is cancelled.
-fn keep_open(app: &mut PhotocraftApp, t: FreeTransform, preview: Option<OpenPreview>, e: String) {
+fn keep_open(app: &mut PatronusPhotoApp, t: FreeTransform, preview: Option<OpenPreview>, e: String) {
     app.ui.transform = Some(t);
     app.transform_preview = preview;
     app.ui.status = e;
@@ -230,7 +230,7 @@ fn keep_open(app: &mut PhotocraftApp, t: FreeTransform, preview: Option<OpenPrev
 /// never stays on a layer that is no longer the active one (#1400). Checked every frame and before
 /// each pointer event, so a press with a tool chosen just before it (`ui.pointer`'s `tool`) goes to
 /// that tool.
-pub fn end_if_left(app: &mut PhotocraftApp) {
+pub fn end_if_left(app: &mut PatronusPhotoApp) {
     let Some(t) = &app.ui.transform else { return };
     if committing(app).is_some() {
         return;
@@ -266,7 +266,7 @@ pub fn end_if_left(app: &mut PhotocraftApp) {
 
 /// Another tool picked, or (outside Transform Selection) another layer selected or the selected
 /// layers changed, since the box opened: the session ends ([`end_if_left`], #1400, #11101).
-fn switched_away(app: &PhotocraftApp) -> bool {
+fn switched_away(app: &PatronusPhotoApp) -> bool {
     let (Some(t), Some(st)) = (&app.ui.transform, app.session.active()) else { return false };
     let opened = app.transform_preview.as_ref().and_then(|pv| pv.follow.as_ref()).and_then(|f| f.selected.as_deref());
     app.transform_preview.as_ref().is_some_and(|pv| pv.tool != app.ui.tool)
@@ -280,7 +280,7 @@ fn switched_away(app: &PhotocraftApp) -> bool {
 /// compared, not the layers the box moves: those also hold the layers linked to it (#11217) and
 /// leave out the children of a selected group. Boxes over a selection, a mask or channel, a path,
 /// a placed file or Content-Aware Scale don't follow the selection.
-fn selected_layers_changed(st: &photocraft_engine::DocState, t: &FreeTransform, opened: Option<&[LayerId]>) -> bool {
+fn selected_layers_changed(st: &patronusphoto_engine::DocState, t: &FreeTransform, opened: Option<&[LayerId]>) -> bool {
     if t.selection || t.target.is_some() || t.path.is_some() || t.made == Some(MadeLayer::Place) || t.content_aware.is_some() {
         return false;
     }
@@ -295,7 +295,7 @@ fn selected_layers_changed(st: &photocraft_engine::DocState, t: &FreeTransform, 
 /// document under them (other layers, and the part of the layer a selection leaves behind) is
 /// rebuilt from the current one. The moving pixels keep the session's. Called before the canvas
 /// reads the preview, so it never caches a revision with the old preview.
-pub fn follow_edits(app: &mut PhotocraftApp) {
+pub fn follow_edits(app: &mut PatronusPhotoApp) {
     let (Some(t), Some(pv)) = (&app.ui.transform, app.transform_preview.as_mut()) else { return };
     let Some(follow) = pv.follow.as_mut() else { return };
     let Some(st) = app.session.active().filter(|st| st.doc.id == pv.doc.id && st.revision != follow.revision) else { return };
@@ -330,7 +330,7 @@ pub fn follow_edits(app: &mut PhotocraftApp) {
     pv.doc = Arc::new(pd);
 }
 
-pub fn cancel(app: &mut PhotocraftApp) {
+pub fn cancel(app: &mut PatronusPhotoApp) {
     if app.ui.transform.as_ref().is_some_and(crate::frame_tool::frame_transform) {
         app.frame_preview = None;
     }
@@ -357,11 +357,11 @@ pub fn cancel(app: &mut PhotocraftApp) {
 pub(crate) const SAVE_FOR_WEB: &str = "file.export.saveForWebLegacy";
 
 /// Layer › Copy CSS: refused under an open box too, as it would copy the bounds from before it.
-const COPY_CSS: &str = photocraft_engine::layer_css_cmds::ID;
+const COPY_CSS: &str = patronusphoto_engine::layer_css_cmds::ID;
 
 /// While transforming, Undo and Redo apply to the box: `Some(enabled)` for those commands (and
 /// Toggle Last State, which would change the document under the box), `None` for the rest.
-pub fn is_enabled(app: &PhotocraftApp, id: &str) -> Option<bool> {
+pub fn is_enabled(app: &PatronusPhotoApp, id: &str) -> Option<bool> {
     if (matches!(id, "edit.freeTransform" | "edit.freeTransformCopy") || id.starts_with("edit.transform."))
         && crate::vector_ui::free_transform_path(app).is_none()
         && crate::canvas::multiple_color_target(app)
@@ -403,7 +403,7 @@ pub fn is_enabled(app: &PhotocraftApp, id: &str) -> Option<bool> {
 }
 
 /// Does the box move an editable type layer (not its selection outline, a lone mask or a path)?
-pub(super) fn moves_type(app: &PhotocraftApp, t: &FreeTransform) -> bool {
+pub(super) fn moves_type(app: &PatronusPhotoApp, t: &FreeTransform) -> bool {
     !t.selection && t.target.is_none() && t.path.is_none() && moves_kind(app, t, |c| matches!(c, LayerContent::Text(_)))
 }
 
@@ -419,7 +419,7 @@ fn box_command(id: &str) -> bool {
 }
 
 /// `None` for other commands or when not transforming.
-pub fn intercept(app: &mut PhotocraftApp, id: &str) -> Option<Result<serde_json::Value, String>> {
+pub fn intercept(app: &mut PatronusPhotoApp, id: &str) -> Option<Result<serde_json::Value, String>> {
     let warping = app.ui.transform.as_ref()?.session.warp().is_some();
     if committing(app).is_some() {
         return box_command(id).then(|| Err(if warping { STILL_WARPING } else { STILL_APPLYING }.into()));
@@ -445,7 +445,7 @@ pub fn intercept(app: &mut PhotocraftApp, id: &str) -> Option<Result<serde_json:
 }
 
 /// Undo (or redo) one step of the open session; nothing mid-drag or with no step to take.
-fn step(app: &mut PhotocraftApp, redo: bool) -> serde_json::Value {
+fn step(app: &mut PatronusPhotoApp, redo: bool) -> serde_json::Value {
     let Some(t) = app.ui.transform.as_mut() else { return serde_json::Value::Null };
     let had_warp = t.session.warp().is_some();
     let moved = if redo { t.session.redo() } else { t.session.undo() };

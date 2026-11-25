@@ -8,11 +8,11 @@ use craft::ui::display::Text;
 use craft::ui::layout_components::{Row, Stack};
 use craft::ui::patterns::form_dialogs::{DialogFields, Param, ParamDialog, ParamKind, ParamResult};
 use craft::ui::runtime::env::{Label, UnitKind};
-use photocraft_doc::Document;
-use photocraft_engine::analysis_cmds;
+use patronusphoto_doc::Document;
+use patronusphoto_engine::analysis_cmds;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::dialogs::params;
 
 /// The three analysis dialogs.
@@ -60,7 +60,7 @@ fn suggested_length(d: &Document) -> f64 {
 
 /// Opens the dialog of `kind` with the values the document and the session hold now. `Err` when the dialog needs a
 /// document and none is open.
-pub(crate) fn open(app: &mut PhotocraftApp, kind: Kind) -> Result<DialogId, String> {
+pub(crate) fn open(app: &mut PatronusPhotoApp, kind: Kind) -> Result<DialogId, String> {
     let no_document = || tl!("No document is open.").to_owned();
     let mut fields = DialogFields::new();
     match kind {
@@ -123,7 +123,7 @@ pub(crate) fn command(kind: Kind, f: &DialogFields) -> Option<(&'static str, Val
 }
 
 /// OK: runs the dialog's command; an engine refusal goes to the status line.
-pub(crate) fn run(app: &mut PhotocraftApp, _ctx: &egui::Context, result: ParamResult) {
+pub(crate) fn run(app: &mut PatronusPhotoApp, _ctx: &egui::Context, result: ParamResult) {
     let Some(kind) = Kind::of(&result.key) else { return };
     let Some((id, params)) = command(kind, &result.fields) else { return };
     if let Err(error) = app.run(id, params)

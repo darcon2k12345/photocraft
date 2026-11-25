@@ -9,10 +9,10 @@
 use std::sync::Arc;
 
 use craft::imaging::ui::mask_view::{MaskCoverage, MaskViewRecipe, VeilMask};
-use photocraft_color::{Color, PixelFormat};
-use photocraft_doc::{Document, Fill, Layer, LayerContent, LayerId, LayerMask};
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use patronusphoto_color::{Color, PixelFormat};
+use patronusphoto_doc::{Document, Fill, Layer, LayerContent, LayerId, LayerMask};
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::Surface;
 use serde_json::{Value, json};
 
 /// The engine command behind Select › Select and Mask….
@@ -27,14 +27,14 @@ struct Coverage {
 impl Coverage {
     /// Creates an empty coverage buffer with zero outside default.
     fn empty() -> Coverage {
-        Coverage { values: Surface::new(PixelFormat::GRAY8.with_sample(photocraft_color::SampleType::F32)), outside: 0.0 }
+        Coverage { values: Surface::new(PixelFormat::GRAY8.with_sample(patronusphoto_color::SampleType::F32)), outside: 0.0 }
     }
 
     /// Reads sparse mask coverage from `s` within `canvas`, preserving shared tile buffers.
     fn read(s: Option<&Surface>, canvas: Rect) -> Coverage {
         let Some(s) = s else { return Coverage::empty() };
         let outside = s.default_pixel().first().copied().unwrap_or(0.0).clamp(0.0, 1.0);
-        let mut out = Coverage { values: Surface::with_default(PixelFormat::GRAY8.with_sample(photocraft_color::SampleType::F32), &[outside]), outside };
+        let mut out = Coverage { values: Surface::with_default(PixelFormat::GRAY8.with_sample(patronusphoto_color::SampleType::F32), &[outside]), outside };
         let mut converted = std::collections::HashMap::new();
         for (tc, tile) in s.tiles() {
             let area = tc.rect().intersect(&canvas);
@@ -48,7 +48,7 @@ impl Coverage {
                 out.values.put_tiles([(*tc, Arc::clone(shared))]);
                 continue;
             }
-            let data = photocraft_algo::selection::mask_from_surface(Some(s), area);
+            let data = patronusphoto_algo::selection::mask_from_surface(Some(s), area);
             out.values.write_region(area, &data);
             if area == tc.rect()
                 && let Some(shared) = out.values.tile(*tc)
@@ -74,9 +74,9 @@ impl Coverage {
             let core = tc.rect().intersect(&area);
             let input = core.inflate(reach).intersect(&area);
             let (w, h) = (input.width() as usize, input.height() as usize);
-            let values = photocraft_algo::selection::mask_from_surface(Some(s), input);
-            let grown = photocraft_algo::matting::morph(&values, w, h, r, true);
-            let shrunk = photocraft_algo::matting::morph(&values, w, h, r, false);
+            let values = patronusphoto_algo::selection::mask_from_surface(Some(s), input);
+            let grown = patronusphoto_algo::matting::morph(&values, w, h, r, true);
+            let shrunk = patronusphoto_algo::matting::morph(&values, w, h, r, false);
             for y in core.y0..core.y1 {
                 for x in core.x0..core.x1 {
                     let i = (y - input.y0) as usize * w + (x - input.x0) as usize;
@@ -98,7 +98,7 @@ impl Coverage {
     }
 
     /// Blends painted brush additions and restorations into the coverage buffer.
-    fn with_brush(mut self, brush: Option<&photocraft_algo::matting::EdgeBrush>, canvas: Rect) -> Coverage {
+    fn with_brush(mut self, brush: Option<&patronusphoto_algo::matting::EdgeBrush>, canvas: Rect) -> Coverage {
         let Some(brush) = brush else { return self };
         for tc in brush.tile_coords() {
             let area = tc.rect().intersect(&canvas);
@@ -122,7 +122,7 @@ impl Coverage {
         let g = |v: f32| f(v).clamp(0.0, 1.0);
         let mut s = Surface::with_default(PixelFormat::GRAY8, &[g(self.outside)]);
         let default = s.default_bytes().first().copied().unwrap_or(0);
-        let mut converted: std::collections::HashMap<usize, Option<Arc<photocraft_raster::Tile>>> = std::collections::HashMap::new();
+        let mut converted: std::collections::HashMap<usize, Option<Arc<patronusphoto_raster::Tile>>> = std::collections::HashMap::new();
         for (tc, tile) in self.values.tiles() {
             let key = Arc::as_ptr(tile) as usize;
             if let Some(shared) = converted.get(&key) {
@@ -158,7 +158,7 @@ pub fn preview_proxy(
     params: &Value,
     recipe: &MaskViewRecipe,
     k: u32,
-    cancel: Option<&photocraft_engine::jobs::JobCtx>,
+    cancel: Option<&patronusphoto_engine::jobs::JobCtx>,
 ) -> Option<Document> {
     // X held: the image without a view.
     if recipe.hidden {
@@ -174,7 +174,7 @@ pub fn preview_proxy(
             let band = Coverage::edge_band(original.as_ref(), canvas, length(params, "radius", k).round().clamp(1.0, 250.0) as usize);
             // With nothing selected OK refines nothing (`matting::refine_area`), so the brush shows nothing either.
             let selects = original.as_ref().is_some_and(|s| !s.content_bounds().intersect(&canvas).is_empty());
-            let brush = if selects { scaled_strokes(params, k).and_then(|s| photocraft_algo::matting::EdgeBrush::new(&s, canvas)) } else { None };
+            let brush = if selects { scaled_strokes(params, k).and_then(|s| patronusphoto_algo::matting::EdgeBrush::new(&s, canvas)) } else { None };
             band.with_brush(brush.as_ref(), canvas)
         }
         MaskCoverage::Original => Coverage::read(original.as_ref(), canvas),
@@ -186,8 +186,8 @@ pub fn preview_proxy(
 }
 
 /// `select.refineEdge` on the proxy, its output forced to the selection: the refined coverage.
-fn refine(proxy: &Document, active: Option<LayerId>, params: &Value, k: u32, cancel: Option<&photocraft_engine::jobs::JobCtx>) -> Option<Option<Surface>> {
-    let mut s = photocraft_engine::Session::new();
+fn refine(proxy: &Document, active: Option<LayerId>, params: &Value, k: u32, cancel: Option<&patronusphoto_engine::jobs::JobCtx>) -> Option<Option<Surface>> {
+    let mut s = patronusphoto_engine::Session::new();
     s.set_inline_job_ctx(cancel.cloned());
     s.add_document(proxy.clone(), None);
     if let Some(id) = active {
@@ -230,7 +230,7 @@ fn refine(proxy: &Document, active: Option<LayerId>, params: &Value, k: u32, can
 
 /// The Refine Edge Brush strokes of `params`, reduced by `k`, for Show Edge; `None` when there
 /// are none (or they are malformed: the refinement itself reports those).
-fn scaled_strokes(params: &Value, k: u32) -> Option<Vec<photocraft_algo::matting::EdgeStroke>> {
+fn scaled_strokes(params: &Value, k: u32) -> Option<Vec<patronusphoto_algo::matting::EdgeStroke>> {
     let k = k.max(1) as f32;
     params
         .get("refineStrokes")?
@@ -244,7 +244,7 @@ fn scaled_strokes(params: &Value, k: u32) -> Option<Vec<photocraft_algo::matting
                 .map(|p| Some((p.get(0)?.as_f64()? as f32 / k, p.get(1)?.as_f64()? as f32 / k)))
                 .collect::<Option<Vec<_>>>()?;
             let size = (s.get("size").and_then(Value::as_f64).unwrap_or(30.0) as f32 / k).max(1.0);
-            Some(photocraft_algo::matting::EdgeStroke { points, size, add: s.get("mode").and_then(Value::as_str) != Some("subtract") })
+            Some(patronusphoto_algo::matting::EdgeStroke { points, size, add: s.get("mode").and_then(Value::as_str) != Some("subtract") })
         })
         .collect()
 }
@@ -297,8 +297,8 @@ mod tests {
     use super::*;
     use craft::imaging::selection::ColorIndicates;
     use craft::imaging::ui::mask_view::{MaskViewChange, MaskViewMode, MaskViewState};
-    use photocraft_color::{ColorMode, SampleType};
-    use photocraft_doc::Size;
+    use patronusphoto_color::{ColorMode, SampleType};
+    use patronusphoto_doc::Size;
 
     /// A white 40×20 document with its left half selected.
     fn half_selected() -> Document {
@@ -318,7 +318,7 @@ mod tests {
     }
 
     fn pixel(doc: &Document, x: i32, y: i32) -> Vec<f32> {
-        let s = photocraft_compose::flatten_to_surface(doc, PixelFormat::RGBA8, None);
+        let s = patronusphoto_compose::flatten_to_surface(doc, PixelFormat::RGBA8, None);
         s.pixel(x, y)
     }
 
@@ -416,11 +416,11 @@ fn sparse_edge_band_matches_dense_reference_at_canvas_edges_and_default_holes() 
     mask.fill_rect(Rect::new(240, 100, 270, 280), &[0.0]);
     mask.fill_rect(Rect::new(20, 0, 24, 5), &[0.0]);
     let sparse = Coverage::edge_band(Some(&mask), canvas, 2);
-    let input = photocraft_algo::selection::mask_from_surface(Some(&mask), canvas);
+    let input = patronusphoto_algo::selection::mask_from_surface(Some(&mask), canvas);
     let w = canvas.width() as usize;
     let h = canvas.height() as usize;
-    let grown = photocraft_algo::matting::morph(&input, w, h, 2, true);
-    let shrunk = photocraft_algo::matting::morph(&input, w, h, 2, false);
+    let grown = patronusphoto_algo::matting::morph(&input, w, h, 2, true);
+    let shrunk = patronusphoto_algo::matting::morph(&input, w, h, 2, false);
     for y in canvas.y0..canvas.y1 {
         for x in canvas.x0..canvas.x1 {
             let i = y as usize * w + x as usize;
@@ -437,14 +437,14 @@ fn sparse_edge_band_matches_dense_reference_at_canvas_edges_and_default_holes() 
 #[test]
 fn sparse_brush_dabs_bound_tiles_and_apply_add_restore_formula() {
     let canvas = Rect::new(0, 0, 100_000, 32);
-    let mut base = Surface::with_default(PixelFormat::GRAY8.with_sample(photocraft_color::SampleType::F32), &[0.25]);
+    let mut base = Surface::with_default(PixelFormat::GRAY8.with_sample(patronusphoto_color::SampleType::F32), &[0.25]);
     base.fill_rect(Rect::new(100, 10, 104, 14), &[0.6]);
     let coverage = Coverage::read(Some(&base), canvas);
     let strokes = [
-        photocraft_algo::matting::EdgeStroke { points: vec![(101.5, 11.5)], size: 4.0, add: true },
-        photocraft_algo::matting::EdgeStroke { points: vec![(99_001.5, 11.5)], size: 4.0, add: false },
+        patronusphoto_algo::matting::EdgeStroke { points: vec![(101.5, 11.5)], size: 4.0, add: true },
+        patronusphoto_algo::matting::EdgeStroke { points: vec![(99_001.5, 11.5)], size: 4.0, add: false },
     ];
-    let brush = photocraft_algo::matting::EdgeBrush::new(&strokes, canvas).expect("dabs paint");
+    let brush = patronusphoto_algo::matting::EdgeBrush::new(&strokes, canvas).expect("dabs paint");
     let brush_tiles = brush.tile_coords().count();
     assert!(brush_tiles <= 4, "distant dabs allocated {brush_tiles} tiles");
     let original = Coverage::read(Some(&base), canvas);
@@ -464,8 +464,8 @@ fn preview_conversion_preserves_shared_solid_tiles() {
     selection.fill_rect(canvas, &[1.0]);
     let coverage = Coverage::read(Some(&selection), canvas);
     let display = coverage.surface(|v| v);
-    let a = photocraft_geom::TileCoord::new(0, 0);
-    let b = photocraft_geom::TileCoord::new(3, 2);
+    let a = patronusphoto_geom::TileCoord::new(0, 0);
+    let b = patronusphoto_geom::TileCoord::new(3, 2);
     assert!(Arc::ptr_eq(coverage.values.tile(a).unwrap(), coverage.values.tile(b).unwrap()));
     assert!(Arc::ptr_eq(display.tile(a).unwrap(), display.tile(b).unwrap()));
 }

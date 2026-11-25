@@ -25,8 +25,8 @@ fn mods_of(m: Modifiers) -> Mods {
 }
 
 /// A 200 × 100 document, red on the left half and green on the right, the foreground blue and `tool`'s brush at 40 px.
-fn app(tool: Tool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app(tool: Tool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 200, "height": 100, "background": "white"})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     app.run("select.rect", json!({"x": 0, "y": 0, "width": 100, "height": 100})).unwrap();
@@ -46,16 +46,16 @@ fn app(tool: Tool) -> Box<PhotocraftApp> {
     app
 }
 
-fn history(app: &PhotocraftApp) -> usize {
+fn history(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.past_len()
 }
 
-fn painted_since(app: &PhotocraftApp, journal: usize) -> bool {
+fn painted_since(app: &PatronusPhotoApp, journal: usize) -> bool {
     app.session.journal[journal..].iter().any(|(id, _)| id == "paint.stroke" || id == "brush.mixer.sample" || id == "paint.mixerBrush")
 }
 
 /// Runs frames until the window host has delivered the queued input.
-fn settle(app: &mut PhotocraftApp, host: &WindowHost) {
+fn settle(app: &mut PatronusPhotoApp, host: &WindowHost) {
     for _ in 0..64 {
         testing::frame(app);
         if host.injected_idle() {
@@ -68,7 +68,7 @@ fn settle(app: &mut PhotocraftApp, host: &WindowHost) {
 /// One press, a drag to `to` in four steps and the release, with the given button and modifiers. The primary button
 /// goes through the canvas driver; the secondary one through the window host's input, as the driver has no
 /// secondary button.
-fn drive(app: &mut PhotocraftApp, button: PointerButton, from: [f64; 2], to: [f64; 2], m: Modifiers) {
+fn drive(app: &mut PatronusPhotoApp, button: PointerButton, from: [f64; 2], to: [f64; 2], m: Modifiers) {
     let step = |k: f64| [from[0] + (to[0] - from[0]) * k / 4.0, from[1] + (to[1] - from[1]) * k / 4.0];
     if button == PointerButton::Primary {
         testing::press(app, from, m);

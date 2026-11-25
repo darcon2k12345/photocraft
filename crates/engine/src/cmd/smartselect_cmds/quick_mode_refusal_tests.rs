@@ -3,7 +3,7 @@
 //! RGB, Grayscale, CMYK and Lab at every depth, Multichannel and Duotone keep selecting, and
 //! the Magic Wand keeps working in Indexed Color.
 
-use photocraft_color::{ColorMode, SampleType};
+use patronusphoto_color::{ColorMode, SampleType};
 
 use super::object_mode_refusal_tests::{selection, session, steps};
 use super::*;

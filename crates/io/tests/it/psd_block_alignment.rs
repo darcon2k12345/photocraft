@@ -6,11 +6,11 @@
 //! boundary for half of all pattern names.
 
 use craft_psd::PsdFile;
-use photocraft_color::{ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{Adjustment, Document, Fill, Layer, LayerContent, Pattern};
-use photocraft_geom::{Rect, Size};
-use photocraft_io::*;
-use photocraft_raster::Surface;
+use patronusphoto_color::{ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::{Adjustment, Document, Fill, Layer, LayerContent, Pattern};
+use patronusphoto_geom::{Rect, Size};
+use patronusphoto_io::*;
+use patronusphoto_raster::Surface;
 
 fn pattern(name: &str) -> Pattern {
     let mut s = Surface::new(PixelFormat::RGBA8);

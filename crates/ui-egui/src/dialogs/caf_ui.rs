@@ -24,12 +24,12 @@ use craft::ui::dialog::DialogId;
 use craft::ui::dialog::HostedWorkspace;
 use craft::ui::runtime::memory::SaveKey;
 use craft::ui::runtime::pending::Job;
-use photocraft_algo::content_aware::{SamplingStroke as ProxyStroke, paint_strokes};
-use photocraft_doc::{DocId, Document, LayerId};
-use photocraft_geom::Rect;
-use photocraft_raster::Interrupt;
+use patronusphoto_algo::content_aware::{SamplingStroke as ProxyStroke, paint_strokes};
+use patronusphoto_doc::{DocId, Document, LayerId};
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::Interrupt;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 use crate::dialogs::shared_picture::SharedPicture;
 
@@ -43,7 +43,7 @@ use preview::{Base, compute_preview, plan_params};
 /// Longest side of the document proxy shown in the view (px).
 const PROXY_SIDE: usize = 1600;
 /// The saved slot of the workspace's settings.
-const REMEMBERED: SaveKey = SaveKey::new("photocraft.edit.contentAwareFill.workspace");
+const REMEMBERED: SaveKey = SaveKey::new("patronusphoto.edit.contentAwareFill.workspace");
 const CMD: &str = "edit.contentAwareFill";
 /// What a preview job that was superseded answers.
 const CANCELLED: &str = "cancelled";

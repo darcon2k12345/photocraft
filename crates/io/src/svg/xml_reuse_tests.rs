@@ -120,7 +120,7 @@ fn repeated_use_reports_encoded_byte_exhaustion_at_small_pixel_counts() {
     let source = format!(
         "<svg xmlns='{SVG_NS}' width='4' height='4'><defs><image id='i' width='1' height='1' href='data:image/png;base64,{body}'/></defs>{references}</svg>"
     );
-    // Keep the test small while using the real resolver and PhotoCraft error
+    // Keep the test small while using the real resolver and Patronus Photo error
     // adapter. The repeated callbacks exhaust encoded bytes before raster pixels.
     let mut limits = svg::tree_limits(svg::MAX_XML_DEPTH, 1024);
     limits.bytes = source.len();

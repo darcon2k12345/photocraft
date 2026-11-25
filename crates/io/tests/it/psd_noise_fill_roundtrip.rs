@@ -8,8 +8,8 @@
 use craft_psd::descriptor::{Descriptor, Id, UnicodeString, Value, VersionedDescriptor};
 use craft_psd::testgen;
 use craft_psd::{Compression, LayerRecord, PsdFile, TaggedBlock, Version};
-use photocraft_doc::{Fill, LayerContent};
-use photocraft_io::*;
+use patronusphoto_doc::{Fill, LayerContent};
+use patronusphoto_io::*;
 
 /// Photoshop's default Noise gradient (RGB, min 0/0/0, max 100/100/100) as `GdFl` block data.
 fn default_noise_gdfl() -> Vec<u8> {

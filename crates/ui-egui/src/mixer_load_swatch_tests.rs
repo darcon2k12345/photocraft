@@ -8,7 +8,7 @@ use egui_kittest::kittest::Queryable;
 use serde_json::json;
 
 use super::{mixer_load_image, mixer_load_texture};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::{ToolEvent, tool_event};
 use crate::state::Tool;
 
@@ -16,8 +16,8 @@ const GREEN: [f32; 4] = [0.0, 1.0, 0.0, 1.0];
 const BLUE: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 
 /// A pixel layer green left of x 100 and blue from there on, with the Mixer Brush active.
-fn app() -> PhotocraftApp {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app() -> PatronusPhotoApp {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 200, "height": 100, "background": "white"})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     app.run("select.rect", json!({"x": 0, "y": 0, "width": 100, "height": 100})).unwrap();
@@ -32,9 +32,9 @@ fn app() -> PhotocraftApp {
     app
 }
 
-fn harness() -> Harness<'static, PhotocraftApp> {
+fn harness() -> Harness<'static, PatronusPhotoApp> {
     let mut h = Harness::builder().with_size(vec2(1600.0, 120.0)).build_ui_state(
-        |ui, app: &mut PhotocraftApp| {
+        |ui, app: &mut PatronusPhotoApp| {
             if !ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 return;
             }
@@ -42,7 +42,7 @@ fn harness() -> Harness<'static, PhotocraftApp> {
         },
         app(),
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::Studio);
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::ThemeKind::Studio);
     h.run_steps(4);
     h
 }
@@ -57,7 +57,7 @@ fn flatten<'a>(shape: &'a Shape, out: &mut Vec<&'a Shape>) {
 
 /// What the swatch draws this frame: the fill colours of its rectangles and the textures of its
 /// images, inside the swatch's chip.
-fn swatch(h: &Harness<'static, PhotocraftApp>) -> (Vec<egui::Color32>, Vec<TextureId>) {
+fn swatch(h: &Harness<'static, PatronusPhotoApp>) -> (Vec<egui::Color32>, Vec<TextureId>) {
     let r = h.get_by_label("Current Brush Load").rect();
     let chip = Rect::from_min_size(egui::pos2(r.left() + 4.0, r.center().y - 8.0), vec2(16.0, 16.0)).expand(0.5);
     let (mut fills, mut textures) = (Vec::new(), Vec::new());
@@ -75,7 +75,7 @@ fn swatch(h: &Harness<'static, PhotocraftApp>) -> (Vec<egui::Color32>, Vec<Textu
     (fills, textures)
 }
 
-fn has_fonts(h: &Harness<'static, PhotocraftApp>) -> bool {
+fn has_fonts(h: &Harness<'static, PatronusPhotoApp>) -> bool {
     h.ctx.fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into())))
 }
 

@@ -4,23 +4,23 @@
 //! (2026-11-05).
 use super::*;
 use craft::ui::dialog::{DialogId, StandardPrompt};
-use photocraft_engine::actions_cmds::ActionStep;
-use photocraft_engine::atn_cmds::STOP_MESSAGE;
+use patronusphoto_engine::actions_cmds::ActionStep;
+use patronusphoto_engine::atn_cmds::STOP_MESSAGE;
 
 const MESSAGE: &str = "Check the mask before continuing";
 
-fn names(app: &PhotocraftApp) -> Vec<String> {
+fn names(app: &PatronusPhotoApp) -> Vec<String> {
     app.session.active().unwrap().doc.walk().iter().map(|(_, _, l)| l.name.clone()).filter(|n| n != "Background").collect()
 }
 
-pub(super) fn count(app: &PhotocraftApp, name: &str) -> usize {
+pub(super) fn count(app: &PatronusPhotoApp, name: &str) -> usize {
     names(app).iter().filter(|n| *n == name).count()
 }
 
 /// `Stop Test` = Prefix, Stop, Suffix, saved to `.atn` and loaded back, so the step and its dialog
 /// toggle come the way a recorded file brings them.
-pub(super) fn stop_app(allow: bool, with_dialog: bool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+pub(super) fn stop_app(allow: bool, with_dialog: bool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 8, "height": 6})).unwrap();
     let mut action = Action::new(
         "Stop Test",
@@ -33,14 +33,14 @@ pub(super) fn stop_app(allow: bool, with_dialog: bool) -> Box<PhotocraftApp> {
     if with_dialog {
         action.dialogs.insert(1);
     }
-    let (bytes, _) = photocraft_engine::atn_cmds::export("Stops", &[&action], &[], false).unwrap();
-    app.run("actions.load", json!({"data": photocraft_engine::paint::tile::b64_encode(&bytes)})).unwrap();
+    let (bytes, _) = patronusphoto_engine::atn_cmds::export("Stops", &[&action], &[], false).unwrap();
+    app.run("actions.load", json!({"data": patronusphoto_engine::paint::tile::b64_encode(&bytes)})).unwrap();
     assert_eq!(app.session.actions.list.actions()[0].dialogs.contains(&1), with_dialog);
     app
 }
 
 /// Grandparent and Parent each make a prefix layer, call the next one in, then make a suffix.
-fn nested_app(allow: bool) -> Box<PhotocraftApp> {
+fn nested_app(allow: bool) -> Box<PatronusPhotoApp> {
     let mut app = stop_app(allow, true);
     for (name, child) in [("Parent", "Stop Test"), ("Grandparent", "Parent")] {
         app.session
@@ -59,7 +59,7 @@ fn nested_app(allow: bool) -> Box<PhotocraftApp> {
     app
 }
 
-pub(super) fn assert_idle(app: &PhotocraftApp) {
+pub(super) fn assert_idle(app: &PatronusPhotoApp) {
     assert_eq!(app.session.actions.playing, 0);
     assert!(app.session.actions.playback_stack.is_empty());
     assert!(app.paused_playbacks.paused.is_empty());
@@ -67,19 +67,19 @@ pub(super) fn assert_idle(app: &PhotocraftApp) {
 }
 
 /// The open Stop message: the one standard prompt on the dialog host's stack.
-pub(super) fn stop_prompt(app: &PhotocraftApp) -> DialogId {
+pub(super) fn stop_prompt(app: &PatronusPhotoApp) -> DialogId {
     let host = &app.framework.dialogs;
     host.stack().ids().find(|id| host.get_by_id::<StandardPrompt>(*id).is_some()).expect("a Stop message is open")
 }
 
 /// How many standard prompts are open.
-fn prompts_open(app: &PhotocraftApp) -> usize {
+fn prompts_open(app: &PatronusPhotoApp) -> usize {
     let host = &app.framework.dialogs;
     host.stack().ids().filter(|id| host.get_by_id::<StandardPrompt>(*id).is_some()).count()
 }
 
 /// Answers dialog `id` through the host: Continue (the default button, `proceed`) or the dialog's Cancel.
-pub(super) fn answer(app: &mut PhotocraftApp, id: DialogId, proceed: bool) -> Result<(), String> {
+pub(super) fn answer(app: &mut PatronusPhotoApp, id: DialogId, proceed: bool) -> Result<(), String> {
     let ctx = app.ctx().clone();
     if proceed { crate::dialogs::confirm(app, &ctx, id) } else { crate::dialogs::cancel(app, &ctx, id) }
 }
@@ -274,7 +274,7 @@ fn a_filter_dialog_inside_a_called_action_continues_its_callers_after_ok() {
 }
 
 /// `If` makes Before, runs `Stop Test` when `condition` holds (`Other` when not), then makes After.
-fn conditional_app(condition: &str) -> Box<PhotocraftApp> {
+fn conditional_app(condition: &str) -> Box<PatronusPhotoApp> {
     let mut app = stop_app(true, true);
     app.session.actions.list.push(Action::new("Other", vec![ActionStep::new("layer.new.layer", json!({"name": "Other"}))])).unwrap();
     app.session

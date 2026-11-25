@@ -13,11 +13,11 @@ use craft::behavior::kurbo::{Point, Rect, Vec2};
 use craft::ui::canvas::Snap;
 use craft::ui::style::DataColor;
 use egui::Color32;
-use photocraft_doc::{DocId, LayerId};
-use photocraft_engine::layer_multi_cmds::move_targets;
-use photocraft_engine::snap::{layer_rect, target_rect_of};
+use patronusphoto_doc::{DocId, LayerId};
+use patronusphoto_engine::layer_multi_cmds::move_targets;
+use patronusphoto_engine::snap::{layer_rect, target_rect_of};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::app::doc_queries::MovingLayers;
 use crate::state::Tool;
 
@@ -32,7 +32,7 @@ struct Key {
     grid: Option<[u64; 2]>,
 }
 
-/// The last built targets, kept at `PhotocraftApp::snap_cache`.
+/// The last built targets, kept at `PatronusPhotoApp::snap_cache`.
 pub(crate) struct SnapCache {
     key: Key,
     targets: Arc<SnapTargets>,
@@ -41,12 +41,12 @@ pub(crate) struct SnapCache {
 /// Whether a drag now would run as the Move tool: the Move tool is selected, or Cmd is held with a
 /// tool that hands its press to the Move stand-in. Read before the press so the targets do not
 /// change at it.
-fn moves_as_move_tool(app: &PhotocraftApp) -> bool {
+fn moves_as_move_tool(app: &PatronusPhotoApp) -> bool {
     app.ui.tool == Tool::Move || (crate::canvas::tools::takes_command_stand_in(app.ui.tool) && craft::ui::runtime::pointer::frame(app.ctx()).mods.cmd)
 }
 
 /// The selected pixels move with the drag, so the selection is not a place to snap to (#6290).
-fn selection_moves(app: &PhotocraftApp) -> bool {
+fn selection_moves(app: &PatronusPhotoApp) -> bool {
     let pixels = moves_as_move_tool(app) && crate::move_ui::moves_selected_pixels_with(app, Tool::Move);
     let transform = app.ui.transform.as_ref().is_some_and(|t| crate::transform_tool::moves_selection(app, t));
     pixels || transform
@@ -56,7 +56,7 @@ fn selection_moves(app: &PhotocraftApp) -> bool {
 /// unless selected pixels float, what it moves whole (the layers linked to them and everything inside a group, so a
 /// group does not snap to its own layers' starting edges), the type layer being edited (a paragraph-box handle drag
 /// does not snap to the text it resizes, #6819) and the layers of the open Free Transform.
-fn moving_set(app: &PhotocraftApp) -> Vec<LayerId> {
+fn moving_set(app: &PatronusPhotoApp) -> Vec<LayerId> {
     let mut set = Vec::new();
     if moves_as_move_tool(app)
         && let Some(st) = app.session.active()
@@ -83,7 +83,7 @@ fn moving_set(app: &PhotocraftApp) -> Vec<LayerId> {
 }
 
 /// View › Snap To and View › Show › Smart Guides.
-fn options(app: &PhotocraftApp) -> SnapOptions {
+fn options(app: &PatronusPhotoApp) -> SnapOptions {
     let st = &app.ui.view.snap_to;
     let e = &app.ui.extras;
     let mut o = SnapOptions::default();
@@ -98,7 +98,7 @@ fn options(app: &PhotocraftApp) -> SnapOptions {
 }
 
 /// The grid: major spacing over the subdivisions, per axis, counted from the origin.
-fn grid(app: &PhotocraftApp, st: &photocraft_engine::DocState) -> (Point, Vec2) {
+fn grid(app: &PatronusPhotoApp, st: &patronusphoto_engine::DocState) -> (Point, Vec2) {
     let prefs = app.session.prefs();
     let g = &prefs.guides_grid_and_slices;
     let ppi = prefs.units_and_rulers.point_size.per_inch();
@@ -107,7 +107,7 @@ fn grid(app: &PhotocraftApp, st: &photocraft_engine::DocState) -> (Point, Vec2) 
     (Point::ORIGIN, Vec2::new(x, y))
 }
 
-fn build(st: &photocraft_engine::DocState, options: &SnapOptions, exclude: &[LayerId], grid: (Point, Vec2)) -> SnapTargets {
+fn build(st: &patronusphoto_engine::DocState, options: &SnapOptions, exclude: &[LayerId], grid: (Point, Vec2)) -> SnapTargets {
     let doc = &st.doc;
     let bounds = Rect::new(0.0, 0.0, doc.size.width as f64, doc.size.height as f64);
     let guides = doc.guides.vertical.iter().map(|g| (Axis::Y, *g)).chain(doc.guides.horizontal.iter().map(|g| (Axis::X, *g)));
@@ -137,7 +137,7 @@ fn build(st: &photocraft_engine::DocState, options: &SnapOptions, exclude: &[Lay
 
 /// The targets of document `idx` without the layers in `exclude`: the one target builder. The same
 /// `Arc` comes back while the document revision, the Snap To options, the grid and `exclude` stay.
-pub(crate) fn targets(app: &PhotocraftApp, idx: usize, exclude: &[LayerId]) -> Arc<SnapTargets> {
+pub(crate) fn targets(app: &PatronusPhotoApp, idx: usize, exclude: &[LayerId]) -> Arc<SnapTargets> {
     let Some(st) = app.session.documents().get(idx) else { return Arc::new(SnapTargets::new()) };
     let options = options(app);
     let grid = grid(app, st);
@@ -153,7 +153,7 @@ pub(crate) fn targets(app: &PhotocraftApp, idx: usize, exclude: &[LayerId]) -> A
 
 /// The canvas `Snap` of document `idx`: View › Snap To over its targets, without the layers a drag moves, on the
 /// pixel grid where `pixel_grid` says.
-pub(crate) fn snap(app: &PhotocraftApp, idx: usize) -> Snap {
+pub(crate) fn snap(app: &PatronusPhotoApp, idx: usize) -> Snap {
     let active = app.session.active_index() == Some(idx);
     let exclude = if active { moving_set(app) } else { Vec::new() };
     Snap::new(targets(app, idx, &exclude), options(app)).whole_pixels(active && pixel_grid(app))
@@ -163,7 +163,7 @@ pub(crate) fn snap(app: &PhotocraftApp, idx: usize) -> Snap {
 /// Transforms to Pixel Grid, for the vector tools' points (production `pixel_round`) and for an open Free Transform
 /// of shape layers or a path, moved or scaled (#5751). The transform box rounds only an upright box at least a unit
 /// wide.
-fn pixel_grid(app: &PhotocraftApp) -> bool {
+fn pixel_grid(app: &PatronusPhotoApp) -> bool {
     if !app.session.prefs().tools.snap_vector_tools_and_transforms_to_pixel_grid {
         return false;
     }
@@ -176,8 +176,10 @@ fn pixel_grid(app: &PhotocraftApp) -> bool {
     if t.selection || t.session.warp().is_some() || t.content_aware.is_some() || t.target.is_some() {
         return false;
     }
-    let shapes = |st: &photocraft_engine::DocState| {
-        crate::transform_tool::moving_layers(t).iter().all(|id| st.doc.layer(*id).is_some_and(|l| matches!(l.content, photocraft_doc::LayerContent::Shape(_))))
+    let shapes = |st: &patronusphoto_engine::DocState| {
+        crate::transform_tool::moving_layers(t)
+            .iter()
+            .all(|id| st.doc.layer(*id).is_some_and(|l| matches!(l.content, patronusphoto_doc::LayerContent::Shape(_))))
     };
     t.path.is_some() || app.session.active().is_some_and(shapes)
 }
@@ -186,12 +188,12 @@ fn pixel_grid(app: &PhotocraftApp) -> bool {
 /// which hold no pixels of their own: a group is the layers in it, whole even with a selection (it
 /// moves them whole, so clipping its pixel layers to the selection would frame less than moves). An
 /// artboard is its board, as the snap targets take it, since the whole board moves.
-pub(crate) fn tree_rect(doc: &photocraft_doc::Document, id: LayerId) -> Option<[f64; 4]> {
+pub(crate) fn tree_rect(doc: &patronusphoto_doc::Document, id: LayerId) -> Option<[f64; 4]> {
     let l = doc.layer(id)?;
     let b = if let Some(a) = l.artboard() {
         a.rect
     } else if l.is_group() {
-        photocraft_engine::transform_cmds::transform_bounds(doc, l)
+        patronusphoto_engine::transform_cmds::transform_bounds(doc, l)
     } else {
         return layer_rect(doc, id);
     };
@@ -200,8 +202,8 @@ pub(crate) fn tree_rect(doc: &photocraft_doc::Document, id: LayerId) -> Option<[
 
 /// The Smart Guides colour from Preferences › Guides, Grid & Slices; `None` when it does not parse
 /// (the guides' own colour).
-pub(crate) fn smart_guide_color(app: &PhotocraftApp) -> Option<DataColor> {
-    photocraft_engine::prefs::parse_hex(&app.session.prefs().guides_grid_and_slices.smart_guide_color)
+pub(crate) fn smart_guide_color(app: &PatronusPhotoApp) -> Option<DataColor> {
+    patronusphoto_engine::prefs::parse_hex(&app.session.prefs().guides_grid_and_slices.smart_guide_color)
         .map(|c| DataColor::new(Color32::from_rgb(c[0], c[1], c[2])))
 }
 

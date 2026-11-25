@@ -3,7 +3,7 @@
 
 use serde_json::{Map, Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use craft::menu::Row;
 
 /// Menu ids of installed plug-ins: `plugin.filter.<plug-in id>`.
@@ -22,8 +22,8 @@ pub(crate) fn registry_guard() -> std::sync::MutexGuard<'static, ()> {
 pub(crate) static REGISTRY: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 /// Inserts the installed plug-ins into Filter › Plug-ins, above "Install Plug-in…".
-pub fn rows(app: &PhotocraftApp, rows: &mut Vec<Row>) {
-    let plugins = photocraft_plugins::registry::list();
+pub fn rows(app: &PatronusPhotoApp, rows: &mut Vec<Row>) {
+    let plugins = patronusphoto_plugins::registry::list();
     let Some(at) = rows.iter().position(|r| r.command.id == "plugin.install") else { return };
     // `Row::path` is the untranslated English path from the command's engine spec: the bar groups
     // rows by it and translates only titles afterwards. Translating it here left the plug-in rows
@@ -49,20 +49,20 @@ pub fn rows(app: &PhotocraftApp, rows: &mut Vec<Row>) {
 }
 
 /// Enabled state of a plug-in menu item (`None` for other ids).
-pub fn is_enabled(app: &PhotocraftApp, id: &str) -> Option<bool> {
+pub fn is_enabled(app: &PatronusPhotoApp, id: &str) -> Option<bool> {
     let pid = id.strip_prefix(PREFIX)?;
-    Some(photocraft_plugins::registry::get(pid).is_some() && app.session.is_enabled("plugin.run"))
+    Some(patronusphoto_plugins::registry::get(pid).is_some() && app.session.is_enabled("plugin.run"))
 }
 
 /// Runs a plug-in menu item: straight away when it has no parameters (or params were given),
 /// else through its dialog. "Install Plug-in…" without params opens its path dialog.
-pub fn menu(app: &mut PhotocraftApp, id: &str, params: &Value) -> Option<Result<Value, String>> {
+pub fn menu(app: &mut PatronusPhotoApp, id: &str, params: &Value) -> Option<Result<Value, String>> {
     let given = params.as_object().is_some_and(|o| !o.is_empty());
     if id == "plugin.install" && !given {
         return Some(crate::filter_dialog::open(app, "plugin.install").map(|d| json!({"dialog": d.value().to_string()})));
     }
     let pid = id.strip_prefix(PREFIX)?;
-    let Some(plugin) = photocraft_plugins::registry::get(pid) else { return Some(Err(format!("no plug-in {pid:?} is installed"))) };
+    let Some(plugin) = patronusphoto_plugins::registry::get(pid) else { return Some(Err(format!("no plug-in {pid:?} is installed"))) };
     let m = plugin.manifest();
     if m.params.is_empty() || given {
         let mut p = params.as_object().cloned().unwrap_or_default();
@@ -82,7 +82,7 @@ mod tests {
     #[test]
     fn installed_plugins_appear_under_filter_plugins_and_run() {
         let _registry = registry_guard();
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         let ctx = app.ctx().clone();
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../plugins/tests/fixtures/invert.wasm");
         app.run("plugin.install", json!({"path": path})).unwrap();
@@ -95,7 +95,7 @@ mod tests {
         assert!(at("plugin.filter.org.photocraft.example.invert") < at("plugin.install"), "plug-ins sit above Install Plug-in…");
         app.run("file.new", json!({"width": 16, "height": 16})).unwrap();
         assert!(crate::menus::is_enabled(&app, "plugin.filter.org.photocraft.example.invert"));
-        let px = |app: &PhotocraftApp| app.session.active().unwrap().doc.layers[0].surface().unwrap().pixel(1, 1);
+        let px = |app: &PatronusPhotoApp| app.session.active().unwrap().doc.layers[0].surface().unwrap().pixel(1, 1);
         let before = px(&app);
         crate::menus::invoke(&mut app, &ctx, "plugin.filter.org.photocraft.example.invert", json!({})).unwrap();
         assert!((px(&app)[0] - (1.0 - before[0])).abs() < 1e-6);
@@ -115,7 +115,7 @@ mod tests {
         let _registry = registry_guard();
         let ja = crate::i18n::Lang::from_code("ja").expect("registered language");
         let _lang = crate::i18n::language_scope(ja);
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../plugins/tests/fixtures/invert.wasm");
         app.run("plugin.install", json!({"path": path})).unwrap();
         let rows = crate::menus::menu_rows(&app);

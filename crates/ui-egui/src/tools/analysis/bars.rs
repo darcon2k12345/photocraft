@@ -12,11 +12,11 @@ use craft::ui::display::{Divider, Text};
 use craft::ui::pickers::Select;
 use craft::ui::runtime::env::Label;
 use craft::ui::text::TextField;
-use photocraft_doc::Ruler;
+use patronusphoto_doc::Ruler;
 use serde_json::{Value, json};
 
 use super::{count_readout, note_alerts};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 use crate::panels::panel_docking;
 use crate::state::Tool;
@@ -43,7 +43,7 @@ pub(super) fn count_size_params(marker: f32, label: f32) -> Value {
 
 /// Draws the options bar of `tool` when it is one of the analysis tools; false for any other tool. With no document
 /// the bar is empty, so the host does not fall through to another tool's bar.
-pub(crate) fn options(app: &mut PhotocraftApp, ui: &mut egui::Ui, tool: Tool) -> bool {
+pub(crate) fn options(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, tool: Tool) -> bool {
     if !matches!(tool, Tool::Ruler | Tool::Count | Tool::Note | Tool::ColorSampler) {
         return false;
     }
@@ -58,13 +58,13 @@ pub(crate) fn options(app: &mut PhotocraftApp, ui: &mut egui::Ui, tool: Tool) ->
 }
 
 /// Puts a refusal on the status line.
-fn report(app: &mut PhotocraftApp, error: String) {
+fn report(app: &mut PatronusPhotoApp, error: String) {
     app.ui.status = error;
     app.ui.status_error = true;
 }
 
 /// Runs `command`; a refusal other than a cancelled dialog goes to the status line.
-fn run(app: &mut PhotocraftApp, command: &str, params: Value) {
+fn run(app: &mut PatronusPhotoApp, command: &str, params: Value) {
     if let Err(error) = app.run(command, params)
         && error != "cancelled"
     {
@@ -80,7 +80,7 @@ fn ruler_line(r: &Ruler) -> RulerLine {
     }
 }
 
-fn ruler(app: &mut PhotocraftApp, ui: &mut egui::Ui, doc: &photocraft_doc::Document) {
+fn ruler(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, doc: &patronusphoto_doc::Document) {
     let factor = doc.measurement.scale.factor();
     let can_straighten = app.session.is_enabled("image.analysis.straightenLayer");
     let line = doc.measurement.ruler.as_ref().map(ruler_line);
@@ -91,9 +91,9 @@ fn ruler(app: &mut PhotocraftApp, ui: &mut egui::Ui, doc: &photocraft_doc::Docum
     {
         // A hidden target layer answers with the reference's alert. Every refusal also reaches the status line: one
         // raised before the command runs (the automation gate) would otherwise leave a dead button (#12148).
-        if why == photocraft_engine::analysis_cmds::STRAIGHTEN_HIDDEN_ERROR {
-            let hidden = photocraft_engine::analysis_cmds::STRAIGHTEN_HIDDEN_ERROR;
-            // PLAN: assumed `dialogs::alerts::alert(app: &mut PhotocraftApp, message: &str)`.
+        if why == patronusphoto_engine::analysis_cmds::STRAIGHTEN_HIDDEN_ERROR {
+            let hidden = patronusphoto_engine::analysis_cmds::STRAIGHTEN_HIDDEN_ERROR;
+            // PLAN: assumed `dialogs::alerts::alert(app: &mut PatronusPhotoApp, message: &str)`.
             crate::dialogs::alerts::alert(app, tl!(hidden));
         }
         report(app, why);
@@ -103,14 +103,14 @@ fn ruler(app: &mut PhotocraftApp, ui: &mut egui::Ui, doc: &photocraft_doc::Docum
     }
 }
 
-fn count(app: &mut PhotocraftApp, ui: &mut egui::Ui, doc: &photocraft_doc::Document) {
+fn count(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, doc: &patronusphoto_doc::Document) {
     let m = &doc.measurement;
     Text::new(Label::from(crate::i18n::fmt(tl!("Count: {n}"), &[("n", &count_readout(m))]))).show(ui);
     Divider::vertical().show(ui);
     // Photoshop's order (#11765): group, eye, folder, trash, Clear, colour, Marker Size, Label Size. With no group the
     // sizes show what the next new group gets.
     let group = (!m.count_groups.is_empty()).then(|| m.active_count_group.min(m.count_groups.len() - 1));
-    let next = photocraft_doc::CountGroup::default();
+    let next = patronusphoto_doc::CountGroup::default();
     let g = group.map_or(&next, |gi| &m.count_groups[gi]);
     if let Some(gi) = group {
         let mut entries: Vec<Entry<GroupPick>> =
@@ -179,7 +179,7 @@ fn count(app: &mut PhotocraftApp, ui: &mut egui::Ui, doc: &photocraft_doc::Docum
     }
 }
 
-fn note(app: &mut PhotocraftApp, ui: &mut egui::Ui, doc: &photocraft_doc::Document) {
+fn note(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, doc: &patronusphoto_doc::Document) {
     TextField::new(Label::from(tl!("Author")), Bind::bound(&mut app.ui.analysis.note_author)).show(ui);
     let rgb = app.ui.analysis.note_color;
     if Swatch::new(Label::from(tl!("Color")), Srgba::from_rgb_array(rgb)).show(ui).clicked
@@ -200,7 +200,7 @@ fn note(app: &mut PhotocraftApp, ui: &mut egui::Ui, doc: &photocraft_doc::Docume
     }
 }
 
-fn sampler(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+fn sampler(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let n = app.session.active().map_or(0, |d| d.color_samplers.len());
     // One Sample Size setting, shared with the Eyedropper (#11732).
     // PLAN: assumed `SamplerOptions::show(ui)` returns an output with `clear_all: bool`.

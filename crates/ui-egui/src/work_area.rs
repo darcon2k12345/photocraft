@@ -1,6 +1,6 @@
 //! The part of the window the user can actually see and reach (#315).
 //!
-//! A window can be larger than its display: PhotoCraft opens at 1440 × 900 pt, which runs past
+//! A window can be larger than its display: Patronus Photo opens at 1440 × 900 pt, which runs past
 //! the bottom of a 1366 × 768 screen and under the Windows taskbar. The visible-part rules live in
 //! craft-window; [`fit_window`] fixes the cause at startup: a window that doesn't fit its monitor is
 //! maximized, which puts it in the work area (Photoshop opens maximized on small displays).

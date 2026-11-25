@@ -7,7 +7,7 @@ use craft::ui::patterns::presets::{HostedPresetManager, PresetEvent, PresetRow};
 use craft::ui::runtime::env::Label;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::dialogs::params::ParamFamily;
 
 /// The Preset Manager: the preset kind picked by its id, and the preset by its index in that kind's list.
@@ -31,7 +31,7 @@ fn actions_for(kind: &str) -> Vec<(Label, Option<Label>)> {
 }
 
 /// The presets of `kind`, one row per name, keyed by index.
-fn load_rows(app: &mut PhotocraftApp, kind: &str) -> Vec<PresetRow<usize>> {
+fn load_rows(app: &mut PatronusPhotoApp, kind: &str) -> Vec<PresetRow<usize>> {
     let names = app
         .session
         .execute("edit.presets.presetManager", json!({"kind": kind}))
@@ -43,7 +43,7 @@ fn load_rows(app: &mut PhotocraftApp, kind: &str) -> Vec<PresetRow<usize>> {
 }
 
 /// Opens the Preset Manager on Brushes.
-pub(crate) fn open_manager(app: &mut PhotocraftApp) -> DialogId {
+pub(crate) fn open_manager(app: &mut PatronusPhotoApp) -> DialogId {
     let mut manager = Manager::new(tl!("Preset Manager"), kinds(), "brushes".to_string());
     manager.rows(load_rows(app, "brushes"));
     manager.actions(actions_for("brushes"));
@@ -68,7 +68,7 @@ fn io_params() -> Vec<Param> {
 }
 
 /// Opens Export/Import Presets, set to export everything.
-pub(crate) fn open_io(app: &mut PhotocraftApp) -> DialogId {
+pub(crate) fn open_io(app: &mut PatronusPhotoApp) -> DialogId {
     let fields = DialogFields::from_pairs([
         ("action", FieldValue::Text("export".into())),
         ("brushes", FieldValue::Bool(true)),
@@ -82,14 +82,14 @@ pub(crate) fn open_io(app: &mut PhotocraftApp) -> DialogId {
 }
 
 /// Reads what the preset dialogs did since the last pass and runs it.
-pub(crate) fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
+pub(crate) fn take(app: &mut PatronusPhotoApp, _ctx: &egui::Context) {
     take_manager(app);
 }
 
 /// Export/Import Presets as a family of the parameter dialogs: OK runs the export or import.
 pub(crate) const PRESETS_FAMILY: ParamFamily = ParamFamily::new(|key| key == IO, run_io);
 
-fn take_manager(app: &mut PhotocraftApp) {
+fn take_manager(app: &mut PatronusPhotoApp) {
     let Some(manager) = app.framework.dialogs.get_mut::<Manager>() else { return };
     let taken = manager.take();
     let shown = manager.kind().clone();
@@ -124,14 +124,14 @@ fn take_manager(app: &mut PhotocraftApp) {
     }
 }
 
-fn run_io(app: &mut PhotocraftApp, _ctx: &egui::Context, result: ParamResult) {
+fn run_io(app: &mut PatronusPhotoApp, _ctx: &egui::Context, result: ParamResult) {
     if let Err(error) = confirm_io(app, &result.fields) {
         app.ui.status = error;
     }
 }
 
 /// OK on Export/Import Presets.
-fn confirm_io(app: &mut PhotocraftApp, f: &DialogFields) -> Result<Value, String> {
+fn confirm_io(app: &mut PatronusPhotoApp, f: &DialogFields) -> Result<Value, String> {
     let kinds: Vec<&str> = ["brushes", "customShapes", "tools"].into_iter().filter(|k| f.bool(k).unwrap_or(true)).collect();
     if f.text("action") == Some("import") {
         app.pick_file_bytes(move |app, name, bytes| {

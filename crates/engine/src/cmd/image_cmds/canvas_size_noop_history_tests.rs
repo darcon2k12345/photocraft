@@ -3,7 +3,7 @@
 //! step. The dialog's OK and a recorded action step dispatch `image.canvasSize`, so they share
 //! this behaviour.
 
-use photocraft_geom::Rect;
+use patronusphoto_geom::Rect;
 use serde_json::{Value, json};
 
 use crate::Session;

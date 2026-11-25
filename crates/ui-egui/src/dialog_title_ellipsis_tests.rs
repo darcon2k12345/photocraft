@@ -5,15 +5,15 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// Opens one dialog.
-type Open = fn(&mut PhotocraftApp);
+type Open = fn(&mut PatronusPhotoApp);
 
-fn harness() -> Harness<'static, Box<PhotocraftApp>> {
+fn harness() -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).with_max_steps(64).build_eframe(|cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, crate::theme::AppTheme::pro());
-        let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), Default::default());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, crate::theme::AppTheme::pro());
+        let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), Default::default());
         app.run("file.new", json!({"width": 200, "height": 120})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();
         app.run("select.all", json!({})).unwrap();

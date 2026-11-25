@@ -5,7 +5,7 @@
 //! `inspect`. The panel reports `ChannelsEvent`s; [`apply`] is the one map from an event to its command.
 
 use egui::RichText;
-use photocraft_engine::channel_cmds::{self, ChannelTarget};
+use patronusphoto_engine::channel_cmds::{self, ChannelTarget};
 use serde_json::{Value, json};
 
 // PLAN: assumed paths of the framework items (imaging channels, keymap, ui contract and runtime).
@@ -16,7 +16,7 @@ use craft::ui::menu::PanelRow;
 use craft::ui::primitives::textures::{ThumbnailOptions, Thumbnails};
 use craft::ui::runtime::commands::{CommandRef, CommandState};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::app::thumbs::ChannelThumbs;
 use crate::theme::Tokens;
 
@@ -45,7 +45,7 @@ impl Row {
 
     /// The `channel.target` reference a click records: a colour row by the mode's colour name,
     /// which a recorded action can save as Photoshop's component select (an index can't be).
-    fn target_reference(self, mode: photocraft_doc::ColorMode) -> Value {
+    fn target_reference(self, mode: patronusphoto_doc::ColorMode) -> Value {
         let names = channel_cmds::color_names(mode);
         match self {
             Row::QuickMask => json!("composite"),
@@ -56,14 +56,14 @@ impl Row {
 }
 
 struct RowPresentationContext<'a> {
-    doc: &'a photocraft_doc::Document,
-    view: &'a photocraft_engine::channel_cmds::ChannelView,
-    mode: photocraft_doc::ColorMode,
+    doc: &'a patronusphoto_doc::Document,
+    view: &'a patronusphoto_engine::channel_cmds::ChannelView,
+    mode: patronusphoto_doc::ColorMode,
     colors: usize,
     gray_view: bool,
     quick: bool,
     mask_targeted: bool,
-    masked: Option<&'a photocraft_doc::Layer>,
+    masked: Option<&'a patronusphoto_doc::Layer>,
 }
 
 struct RowPresentation {
@@ -74,7 +74,7 @@ struct RowPresentation {
 
 /// What clicking `row`'s eye asks for.
 fn eye_action(row: Row, visible: bool, gray_view: bool, layer_id: Option<u64>) -> (String, Value) {
-    let view_cmd = photocraft_engine::mask_view_cmds::ID.to_string();
+    let view_cmd = patronusphoto_engine::mask_view_cmds::ID.to_string();
     match row {
         // The mask's eye: the overlay on, or the mask view off.
         Row::LayerMask => (view_cmd, json!({ "layer": layer_id, "mode": if visible { "off" } else { "overlay" } })),
@@ -105,10 +105,10 @@ fn row_presentation(row: Row, context: &RowPresentationContext<'_>, mask_visible
 }
 
 /// The framework's Color Indicates setting for the document's.
-fn indicates(setting: photocraft_doc::ColorIndicates) -> channels::ColorIndicates {
+fn indicates(setting: patronusphoto_doc::ColorIndicates) -> channels::ColorIndicates {
     match setting {
-        photocraft_doc::ColorIndicates::MaskedAreas => channels::ColorIndicates::MaskedAreas,
-        photocraft_doc::ColorIndicates::SelectedAreas => channels::ColorIndicates::SelectedAreas,
+        patronusphoto_doc::ColorIndicates::MaskedAreas => channels::ColorIndicates::MaskedAreas,
+        patronusphoto_doc::ColorIndicates::SelectedAreas => channels::ColorIndicates::SelectedAreas,
     }
 }
 
@@ -133,17 +133,17 @@ fn row_kind(row: Row, context: &RowPresentationContext<'_>) -> ChannelKind {
 }
 
 /// The ⌥-click mask view of the active document: gray shows the mask alone (#196).
-fn gray_view(st: &photocraft_engine::DocState) -> bool {
-    photocraft_engine::mask_view_cmds::current(st).map(|v| v.mode) == Some(photocraft_engine::mask_view_cmds::MaskViewMode::Gray)
+fn gray_view(st: &patronusphoto_engine::DocState) -> bool {
+    patronusphoto_engine::mask_view_cmds::current(st).map(|v| v.mode) == Some(patronusphoto_engine::mask_view_cmds::MaskViewMode::Gray)
 }
 
 /// The rows of the active document in display order: Composite (not in Multichannel), the colour channels when
 /// there is more than one, the active layer's mask, the alpha and spot channels, Quick Mask. Empty without a document.
-pub(crate) fn rows(app: &PhotocraftApp) -> Vec<ChannelRow<Row>> {
+pub(crate) fn rows(app: &PatronusPhotoApp) -> Vec<ChannelRow<Row>> {
     let Some(st) = app.session.active() else { return Vec::new() };
     let doc = &st.doc;
     let view = &st.channel_view;
-    let mask_view = photocraft_engine::mask_view_cmds::current(st).map(|v| v.mode);
+    let mask_view = patronusphoto_engine::mask_view_cmds::current(st).map(|v| v.mode);
     let mode = doc.pixel_format().mode;
     let colors = mode.color_channels();
     let quick = doc.quick_mask.is_some();
@@ -151,7 +151,7 @@ pub(crate) fn rows(app: &PhotocraftApp) -> Vec<ChannelRow<Row>> {
     let mask_targeted = mask_row_targeted(masked.is_some(), app.ui.mask_target, view.target, quick);
     let context = RowPresentationContext { doc, view, mode, colors, gray_view: gray_view(st), quick, mask_targeted, masked };
     // Multichannel images are their ink channels only (no composite or colour rows).
-    let multichannel = doc.mode == photocraft_doc::ColorMode::Multichannel;
+    let multichannel = doc.mode == patronusphoto_doc::ColorMode::Multichannel;
     let mut keys = if multichannel { Vec::new() } else { vec![Row::Composite] };
     if colors > 1 && !multichannel {
         keys.extend((0..colors).map(Row::Color));
@@ -180,18 +180,18 @@ pub(crate) fn rows(app: &PhotocraftApp) -> Vec<ChannelRow<Row>> {
 }
 
 /// The layer whose mask the temporary mask row shows.
-fn masked_layer(app: &PhotocraftApp) -> Option<u64> {
+fn masked_layer(app: &PatronusPhotoApp) -> Option<u64> {
     let st = app.session.active()?;
     st.active_layer.and_then(|id| st.doc.layer(id)).filter(|l| l.mask.is_some()).map(|l| l.id.0)
 }
 
 /// Where the Rename Channel… command leaves the row (an `Option<Row>`) whose rename field the next pass opens.
 fn rename_request() -> egui::Id {
-    egui::Id::unique("photocraft.channels.rename")
+    egui::Id::unique("patronusphoto.channels.rename")
 }
 
 /// The Channels panel body.
-pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn show(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let ctx = ui.ctx().clone();
     if app.session.active().is_none() {
         let t = Tokens::get(&ctx);
@@ -200,7 +200,7 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
         return;
     }
     let rows = rows(app);
-    let thumbnails = Thumbnails::<Row>::in_context(&ctx, "photocraft.channels", ThumbnailOptions::new());
+    let thumbnails = Thumbnails::<Row>::in_context(&ctx, "patronusphoto.channels", ThumbnailOptions::new());
     let rename = ctx.data_mut(|d| d.remove_temp::<Option<Row>>(rename_request())).flatten();
     let events = {
         let Some(st) = app.session.active() else { return };
@@ -218,7 +218,7 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 
 /// Runs the engine command of `event`. `ctx` serves the commands that ask first (`menus::invoke`).
 // PLAN: the sheet's `apply(app, event)` has no context; `menus::invoke` needs one, so it is a parameter.
-pub(crate) fn apply(app: &mut PhotocraftApp, ctx: &egui::Context, event: ChannelsEvent<Row>) {
+pub(crate) fn apply(app: &mut PatronusPhotoApp, ctx: &egui::Context, event: ChannelsEvent<Row>) {
     match event {
         ChannelsEvent::Target { key, extend, .. } => target(app, key, extend),
         ChannelsEvent::Visibility(step) => {
@@ -249,14 +249,14 @@ pub(crate) fn apply(app: &mut PhotocraftApp, ctx: &egui::Context, event: Channel
 
 /// An eye set to `on`: the engine command takes the value the eye had before.
 // PLAN: `ChannelsEvent` variants are `#[non_exhaustive]`, so tests cannot build them; the event arms delegate to these functions.
-fn apply_visibility(app: &mut PhotocraftApp, key: Row, on: bool) {
+fn apply_visibility(app: &mut PatronusPhotoApp, key: Row, on: bool) {
     let Some(st) = app.session.active() else { return };
     let (cmd, params) = eye_action(key, !on, gray_view(st), masked_layer(app));
     let _ = app.run(&cmd, params);
 }
 
 /// A footer click. `rows` is the targeted row's key (empty without rows); Alt on New asks for the channel's options first.
-fn apply_footer(app: &mut PhotocraftApp, ctx: &egui::Context, button: ChannelsFooterButton, rows: &[Row], mods: Mods) {
+fn apply_footer(app: &mut PatronusPhotoApp, ctx: &egui::Context, button: ChannelsFooterButton, rows: &[Row], mods: Mods) {
     match button {
         ChannelsFooterButton::New if mods.alt => {
             let asked = crate::menus::invoke(app, ctx, "channel.new", json!({}));
@@ -274,13 +274,13 @@ fn apply_footer(app: &mut PhotocraftApp, ctx: &egui::Context, button: ChannelsFo
 }
 
 /// A row dropped on a footer button (or the button acting on the targeted row): the first of `rows` is acted on.
-fn apply_footer_drop(app: &mut PhotocraftApp, button: ChannelsFooterButton, rows: &[Row]) {
+fn apply_footer_drop(app: &mut PatronusPhotoApp, button: ChannelsFooterButton, rows: &[Row]) {
     if let Some(&key) = rows.first() {
         run_drop(app, key, button);
     }
 }
 
-fn report<T>(app: &mut PhotocraftApp, result: Result<T, String>) {
+fn report<T>(app: &mut PatronusPhotoApp, result: Result<T, String>) {
     if let Err(e) = result {
         app.ui.status = e;
         app.ui.status_error = true;
@@ -288,7 +288,7 @@ fn report<T>(app: &mut PhotocraftApp, result: Result<T, String>) {
 }
 
 /// A click on a row targets its channel; the mask row targets the layer mask, the composite and colour rows the pixels.
-fn target(app: &mut PhotocraftApp, key: Row, extend: bool) {
+fn target(app: &mut PatronusPhotoApp, key: Row, extend: bool) {
     let Some(mode) = app.session.active().map(|st| st.doc.pixel_format().mode) else { return };
     if key == Row::LayerMask {
         let _ = app.run("channel.target", json!({ "channel": "mask" }));
@@ -302,14 +302,14 @@ fn target(app: &mut PhotocraftApp, key: Row, extend: bool) {
     app.sync_mask_targets();
 }
 
-fn open_options(app: &mut PhotocraftApp, key: Row) {
+fn open_options(app: &mut PatronusPhotoApp, key: Row) {
     let _ = crate::channel_options_ui::open(app, &key.reference());
 }
 
 /// An alpha or spot row moved. `to` of the event counts the rows that remain once the moved row is out, over every
 /// row of the panel; `channel.move` counts alpha and spot channels only, so it is the number of moving rows among
 /// the first `to` remaining rows.
-fn reorder(app: &mut PhotocraftApp, edit: craft::behavior::value::EditEvent<craft::ui::contract::ReorderMove<Row>>) {
+fn reorder(app: &mut PatronusPhotoApp, edit: craft::behavior::value::EditEvent<craft::ui::contract::ReorderMove<Row>>) {
     use craft::behavior::value::EditEvent;
     let mv = match edit {
         EditEvent::Commit { after, .. } | EditEvent::Set { after, .. } => after,
@@ -329,7 +329,7 @@ fn reorder(app: &mut PhotocraftApp, edit: craft::behavior::value::EditEvent<craf
 fn drop_action(row: Row, name: &str, mask_layer: Option<u64>, on: ChannelsFooterButton) -> Option<(String, Value)> {
     match (on, row) {
         (ChannelsFooterButton::Delete, Row::Alpha(i)) => Some(("channel.delete".into(), json!({ "channel": i }))),
-        // `PhotocraftApp::run` asks "Apply mask to layer before removing?", like dropping the mask's Layers thumbnail.
+        // `PatronusPhotoApp::run` asks "Apply mask to layer before removing?", like dropping the mask's Layers thumbnail.
         (ChannelsFooterButton::Delete, Row::LayerMask) => Some(crate::mask_trash_prompt::drop_action(mask_layer?, crate::mask_thumbs_ui::MaskKind::Pixel)),
         (ChannelsFooterButton::Delete, _) => None,
         // The engine would name a mask's copy after the composite; Photoshop says "Layer 1 Mask copy".
@@ -342,7 +342,7 @@ fn drop_action(row: Row, name: &str, mask_layer: Option<u64>, on: ChannelsFooter
 }
 
 /// Runs what `button` does to `key`: a footer click on the targeted row, or the row dropped on it.
-fn run_drop(app: &mut PhotocraftApp, key: Row, button: ChannelsFooterButton) {
+fn run_drop(app: &mut PatronusPhotoApp, key: Row, button: ChannelsFooterButton) {
     let name = rows(app).into_iter().find(|r| r.key == key).map(|r| r.name).unwrap_or_default();
     if let Some((cmd, params)) = drop_action(key, &name, masked_layer(app), button) {
         let _ = app.run(&cmd, params);
@@ -350,7 +350,7 @@ fn run_drop(app: &mut PhotocraftApp, key: Row, button: ChannelsFooterButton) {
 }
 
 /// Runs a command of the set on `key`, the row it was opened on (the targeted row for the panel menu).
-fn run_command(app: &mut PhotocraftApp, ctx: &egui::Context, command: ChannelsCommands, key: Option<Row>) {
+fn run_command(app: &mut PatronusPhotoApp, ctx: &egui::Context, command: ChannelsCommands, key: Option<Row>) {
     // New Channel… and Merge Channels… ask first.
     match command {
         ChannelsCommands::NewChannel => {
@@ -428,18 +428,18 @@ fn mask_row_targeted(has_mask: bool, mask_target: bool, target: ChannelTarget, q
 }
 
 /// The layer mask row's name, "<layer> Mask", as Photoshop lists it.
-fn mask_row_name(layer: &photocraft_doc::Layer) -> String {
+fn mask_row_name(layer: &patronusphoto_doc::Layer) -> String {
     format!("{} Mask", layer.name)
 }
 
 /// The Channels entries of the panel menu: Photoshop's fixed list.
-pub(crate) fn panel_rows(_app: &PhotocraftApp) -> Vec<PanelRow> {
+pub(crate) fn panel_rows(_app: &PatronusPhotoApp) -> Vec<PanelRow> {
     channels::panel_rows()
 }
 
 /// The state of each command of the set: the framework's rule over the rows, with Merge Channels… waiting for
 /// enough grayscale documents of one size.
-pub(crate) fn command_states(app: &PhotocraftApp) -> Vec<(CommandRef, CommandState)> {
+pub(crate) fn command_states(app: &PatronusPhotoApp) -> Vec<(CommandRef, CommandState)> {
     let merge = crate::menus::is_enabled(app, "channel.merge");
     let rows = rows(app);
     // A composite of several colour channels, or several targeted rows, have nothing to duplicate; the gray composite
@@ -461,7 +461,7 @@ pub(crate) fn command_states(app: &PhotocraftApp) -> Vec<(CommandRef, CommandSta
 }
 
 /// Runs a fired command of the Channels set; false for another set's command.
-pub(crate) fn run_fired(app: &mut PhotocraftApp, ctx: &egui::Context, command: &CommandRef) -> bool {
+pub(crate) fn run_fired(app: &mut PatronusPhotoApp, ctx: &egui::Context, command: &CommandRef) -> bool {
     let Some(command) = ChannelsCommands::from_ref(command) else { return false };
     // The panel opens the rename field itself, so the command has no event: leave the request for the next pass.
     if command == ChannelsCommands::RenameChannel {

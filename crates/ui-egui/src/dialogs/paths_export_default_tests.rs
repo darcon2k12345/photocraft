@@ -8,13 +8,13 @@ use craft::ui::dialog::DialogId;
 use craft::ui::patterns::form_dialogs::{HostedParamDialog, ParamKind};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 const COMMAND: &str = "file.export.pathsToIllustrator";
 
 /// A document with a Work Path and two saved paths, "Curve A" and "Curve B".
-fn app_with_paths() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app_with_paths() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
     let path = |x: f64| json!({"subpaths": [{"closed": true, "knots": [[x, 10.0], [x + 40.0, 10.0], [x + 40.0, 50.0]]}]});
     for (name, x) in [("Curve A", 10.0), ("Curve B", 60.0), ("work", 110.0)] {
@@ -24,20 +24,20 @@ fn app_with_paths() -> Box<PhotocraftApp> {
 }
 
 /// Opens the dialog as the menu item does and returns its id.
-fn open_dialog(app: &mut PhotocraftApp) -> DialogId {
+fn open_dialog(app: &mut PatronusPhotoApp) -> DialogId {
     let ctx = app.ctx().clone();
     let r = super::file_ui::invoke(app, &ctx, COMMAND, &json!({})).unwrap().unwrap();
     serde_json::from_value(r["dialog"].clone()).expect("the menu opened the dialog")
 }
 
 /// The entry the open dialog `id` shows in its Paths dropdown.
-fn preselected(app: &PhotocraftApp, id: DialogId) -> Value {
+fn preselected(app: &PatronusPhotoApp, id: DialogId) -> Value {
     let dialog = app.framework.dialogs.get_by_id::<HostedParamDialog>(id).expect("the hosted form");
     dialog.fields().text("paths").map_or(Value::Null, |p| json!(p))
 }
 
 /// Opens the dialog, returns its preselected entry and cancels it.
-fn open(app: &mut PhotocraftApp) -> Value {
+fn open(app: &mut PatronusPhotoApp) -> Value {
     let id = open_dialog(app);
     let paths = preselected(app, id);
     let ctx = app.ctx().clone();
@@ -46,7 +46,7 @@ fn open(app: &mut PhotocraftApp) -> Value {
 }
 
 /// The Paths choice's option ids, in order.
-fn choices(app: &PhotocraftApp) -> Value {
+fn choices(app: &PatronusPhotoApp) -> Value {
     let rows = super::file_forms::paths_to_file_rows(app);
     let Some(ParamKind::Choice { options, .. }) = rows.iter().find(|p| p.key == "paths").map(|p| &p.kind) else { panic!("a Paths choice") };
     json!(options.iter().map(|(id, _)| id.as_str()).collect::<Vec<_>>())

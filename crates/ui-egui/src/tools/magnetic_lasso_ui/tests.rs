@@ -5,11 +5,11 @@ use craft::behavior::{Cursor, PaintedCursor};
 use craft::ui::primitives::ToolIcon;
 use craft::ui::runtime::{cursor, windows::WindowHost};
 use egui::Modifiers;
-use photocraft_geom::Rect;
+use patronusphoto_geom::Rect;
 use serde_json::json;
 
 use super::inspect;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::{ToolEvent, tool_event};
 use crate::guide_cursor_tests::{harness, hover};
 use crate::state::Tool;
@@ -17,8 +17,8 @@ use crate::state::Tool;
 const SQUARE: Rect = Rect::new(50, 40, 130, 110);
 
 /// A black 80×70 square on a white 200×150 document, the Magnetic Lasso, 100 % zoom.
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
     app.sync_views();
     app.session
@@ -35,13 +35,13 @@ fn app() -> Box<PhotocraftApp> {
     app
 }
 
-fn click(app: &mut PhotocraftApp, x: f64, y: f64, m: Modifiers) {
+fn click(app: &mut PatronusPhotoApp, x: f64, y: f64, m: Modifiers) {
     tool_event(app, ToolEvent::Down { x, y, pressure: 1.0 }, m);
     tool_event(app, ToolEvent::Up { x, y }, m);
 }
 
 /// The pointer moves (button up) along the polyline `pts` in 2 px steps, like a hand on a mouse.
-fn hover_along(app: &mut PhotocraftApp, pts: &[[f64; 2]]) {
+fn hover_along(app: &mut PatronusPhotoApp, pts: &[[f64; 2]]) {
     for w in pts.windows(2) {
         let len = (w[0][0] - w[1][0]).hypot(w[0][1] - w[1][1]);
         let n = (len / 2.0).ceil().max(1.0) as usize;
@@ -56,15 +56,15 @@ fn hover_along(app: &mut PhotocraftApp, pts: &[[f64; 2]]) {
 /// Around the square, 3 px outside its edges, back to just past the start.
 const AROUND: [[f64; 2]; 6] = [[52.0, 37.0], [133.0, 37.0], [133.0, 113.0], [47.0, 113.0], [47.0, 37.0], [52.0, 37.0]];
 
-fn coverage(app: &PhotocraftApp, x: i32, y: i32) -> f32 {
+fn coverage(app: &PatronusPhotoApp, x: i32, y: i32) -> f32 {
     app.session.active().unwrap().doc.selection.as_ref().map_or(0.0, |m| m.sample_channel(x, y, 0))
 }
 
-fn selected_area(app: &PhotocraftApp) -> f32 {
+fn selected_area(app: &PatronusPhotoApp) -> f32 {
     (0..150).flat_map(|y| (0..200).map(move |x| (x, y))).map(|(x, y)| coverage(app, x, y)).sum()
 }
 
-fn last_step(app: &PhotocraftApp) -> Option<String> {
+fn last_step(app: &PatronusPhotoApp) -> Option<String> {
     app.session.active().unwrap().history.entries().last().cloned()
 }
 

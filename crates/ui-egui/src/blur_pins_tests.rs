@@ -4,11 +4,11 @@ use craft::imaging::ui::{BlurKind, BlurPin, BlurPins, IrisShape, TiltBand};
 use craft::ui::patterns::form_dialogs::{DialogFields, FieldValue, HostedParamDialog};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::blur_pins::{COMMAND, IRIS, SPIN, initial, kind_of, pins_of, write_pins};
 
-fn app_with(selection: bool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app_with(selection: bool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
     if selection {
         app.run("select.rect", json!({"x": 100, "y": 50, "width": 200, "height": 100})).unwrap();

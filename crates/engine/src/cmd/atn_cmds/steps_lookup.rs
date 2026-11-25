@@ -60,12 +60,12 @@ fn params(d: &Descriptor) -> Option<Value> {
         items: d.items.iter().map(|(key, value)| (key.clone(), if key.is("LUT3DFileData") { D::RawData(Vec::new()) } else { value.clone() })).collect(),
     };
     Some(json!({
-        "data": photocraft_paint::tile::b64_encode(bytes),
+        "data": patronusphoto_paint::tile::b64_encode(bytes),
         "dataEncoding": "base64",
         "lutFormat": format,
         "fileName": file_name,
         "dither": dither,
-        "__atnColorLookup": photocraft_paint::tile::b64_encode(&template.to_bytes()),
+        "__atnColorLookup": patronusphoto_paint::tile::b64_encode(&template.to_bytes()),
     }))
 }
 
@@ -81,8 +81,8 @@ pub(super) fn to(_: &str, p: &Value) -> Option<Descriptor> {
     {
         return None;
     }
-    let mut d = Descriptor::from_bytes(&photocraft_paint::tile::b64_decode(jstr(p, ORIGINAL)?)?).ok()?;
-    let bytes = photocraft_paint::tile::b64_decode(jstr(p, "data")?)?;
+    let mut d = Descriptor::from_bytes(&patronusphoto_paint::tile::b64_decode(jstr(p, ORIGINAL)?)?).ok()?;
+    let bytes = patronusphoto_paint::tile::b64_decode(jstr(p, "data")?)?;
     if d.items.iter().filter(|(key, _)| key.is("LUT3DFileData")).count() != 1 {
         return None;
     }

@@ -7,14 +7,14 @@ use crate::state::Tool;
 use craft::behavior::{Cursor, CursorBadge, PaintedCursor};
 use craft::draw::ui::VectorMode;
 use egui::Modifiers;
-use photocraft_doc::vector::Path;
+use patronusphoto_doc::vector::Path;
 use serde_json::json;
 
-fn work_path(app: &PhotocraftApp) -> &Path {
+fn work_path(app: &PatronusPhotoApp) -> &Path {
     app.session.active().unwrap().doc.work_path.as_ref().unwrap()
 }
 
-fn drag(app: &mut PhotocraftApp, a: [f64; 2], b: [f64; 2]) {
+fn drag(app: &mut PatronusPhotoApp, a: [f64; 2], b: [f64; 2]) {
     testing::press(app, a, Modifiers::NONE);
     for i in 1..50 {
         let t = f64::from(i) / 50.0;
@@ -23,7 +23,7 @@ fn drag(app: &mut PhotocraftApp, a: [f64; 2], b: [f64; 2]) {
     testing::release(app, b, Modifiers::NONE);
 }
 
-fn shows_continue(app: &mut PhotocraftApp, point: [f64; 2]) -> bool {
+fn shows_continue(app: &mut PatronusPhotoApp, point: [f64; 2]) -> bool {
     testing::move_to(app, point, Modifiers::NONE);
     matches!(
         app.canvas_tools.last_response.as_ref().and_then(|response| response.cursor.as_ref()),
@@ -31,8 +31,8 @@ fn shows_continue(app: &mut PhotocraftApp, point: [f64; 2]) -> bool {
     )
 }
 
-fn with_open_work_path() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn with_open_work_path() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width":800,"height":600})).unwrap();
     app.sync_views();
     app.ui.tool = Tool::FreeformPen;

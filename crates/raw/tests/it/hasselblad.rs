@@ -2,8 +2,8 @@
 //! exact samples, metadata, the DefaultCrop area, and the unsupported and
 //! hostile variants.
 
-use photocraft_raw::testgen::{Hasselblad3frSpec, mosaic, scene};
-use photocraft_raw::*;
+use patronusphoto_raw::testgen::{Hasselblad3frSpec, mosaic, scene};
+use patronusphoto_raw::*;
 
 const RGGB: [u8; 4] = [0, 1, 1, 2];
 
@@ -134,7 +134,7 @@ fn truncated_strip_is_refused() {
     let mut b = spec().build();
     // The preview blob sits past the strip; cutting 60 bytes eats into the strip.
     b.truncate(b.len() - 60);
-    assert!(matches!(decode(&b, &Limits::default()), Err(photocraft_raw::RawError::Malformed(_))));
+    assert!(matches!(decode(&b, &Limits::default()), Err(patronusphoto_raw::RawError::Malformed(_))));
 }
 
 #[test]

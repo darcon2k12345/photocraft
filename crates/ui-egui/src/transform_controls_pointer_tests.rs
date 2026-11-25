@@ -2,28 +2,28 @@
 
 use craft::ui::dialog::DialogId;
 use egui::Modifiers;
-use photocraft_doc::LayerId;
-use photocraft_geom::Rect;
+use patronusphoto_doc::LayerId;
+use patronusphoto_geom::Rect;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing::{key, move_to, press, release};
 use crate::state::Tool;
 
 /// Sends a control request and returns its reply, through the canvas driver's control channel (`testing::control`).
-pub(crate) fn call(app: &mut PhotocraftApp, method: &str, params: Value) -> Value {
+pub(crate) fn call(app: &mut PatronusPhotoApp, method: &str, params: Value) -> Value {
     crate::canvas::testing::control(app, method, params)
 }
 
 /// `call` that asserts the reply is ok.
-pub(crate) fn accepted(app: &mut PhotocraftApp, method: &str, params: Value) {
+pub(crate) fn accepted(app: &mut PatronusPhotoApp, method: &str, params: Value) {
     let reply = call(app, method, params);
     assert_eq!(reply["ok"], true, "{method}: {reply}");
 }
 
 /// Two selected shapes share the measured controls frame (100,100)..(800,500).
-fn fixture() -> (Box<PhotocraftApp>, egui::Context, [LayerId; 2]) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn fixture() -> (Box<PatronusPhotoApp>, egui::Context, [LayerId; 2]) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 1000, "height": 700, "background": "white"})).unwrap();
     let mut layers = Vec::new();
     for rect in [[100, 100, 200, 100], [600, 400, 200, 100]] {
@@ -42,51 +42,51 @@ fn fixture() -> (Box<PhotocraftApp>, egui::Context, [LayerId; 2]) {
 }
 
 /// Every layer's bounds are its `old` bounds moved by the drag of 20 and 10 pixels.
-fn assert_translated(app: &PhotocraftApp, layers: [LayerId; 2], old: [Rect; 2], what: &str) {
+fn assert_translated(app: &PatronusPhotoApp, layers: [LayerId; 2], old: [Rect; 2], what: &str) {
     for (id, previous) in layers.into_iter().zip(old) {
         assert_eq!(bounds(app, id), previous.translate(20, 10), "{what}");
     }
 }
 
-fn bounds(app: &PhotocraftApp, id: LayerId) -> Rect {
+fn bounds(app: &PatronusPhotoApp, id: LayerId) -> Rect {
     let state = app.session.active().unwrap();
-    photocraft_engine::transform_cmds::transform_bounds(&state.doc, state.doc.layer(id).unwrap())
+    patronusphoto_engine::transform_cmds::transform_bounds(&state.doc, state.doc.layer(id).unwrap())
 }
 
-fn pointer(app: &mut PhotocraftApp, _ctx: &egui::Context, kind: &str, at: [f64; 2]) {
+fn pointer(app: &mut PatronusPhotoApp, _ctx: &egui::Context, kind: &str, at: [f64; 2]) {
     accepted(app, "ui.pointer", json!({"events": [{"kind": kind, "x": at[0], "y": at[1]}]}));
 }
 
-fn enter(app: &mut PhotocraftApp) {
+fn enter(app: &mut PatronusPhotoApp) {
     key(app, egui::Key::Enter, Modifiers::NONE);
 }
 
 /// The open session's box corners.
-fn quad(app: &PhotocraftApp) -> [[f64; 2]; 4] {
+fn quad(app: &PatronusPhotoApp) -> [[f64; 2]; 4] {
     app.ui.transform.as_ref().expect("a Free Transform session is open").session.quad().map(|p| [p.x, p.y])
 }
 
 /// The open session's reference point.
-fn pivot(app: &PhotocraftApp) -> [f64; 2] {
+fn pivot(app: &PatronusPhotoApp) -> [f64; 2] {
     let p = app.ui.transform.as_ref().expect("a Free Transform session is open").session.pivot();
     [p.x, p.y]
 }
 
-fn dialog_count(app: &PhotocraftApp) -> usize {
+fn dialog_count(app: &PatronusPhotoApp) -> usize {
     app.framework.dialogs.stack().ids().count()
 }
 
 /// The Color Picker's colour field, from the hosted dialog's `json_fields` as the host lists it.
-fn color_field(app: &PhotocraftApp, id: DialogId) -> Value {
+fn color_field(app: &PatronusPhotoApp, id: DialogId) -> Value {
     let open = app.framework.dialogs.open_dialogs().into_iter().find(|dialog| dialog.id == id).expect("the Color Picker is open");
     open.fields.expect("the Color Picker lists its fields")["color"].clone()
 }
 
-fn close_dialog(app: &mut PhotocraftApp, ctx: &egui::Context, id: DialogId) {
+fn close_dialog(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: DialogId) {
     assert!(app.framework.dialogs.cancel_by_id(ctx, id), "the dialog was open");
 }
 
-fn assert_one_transform(app: &PhotocraftApp, steps: usize) {
+fn assert_one_transform(app: &PatronusPhotoApp, steps: usize) {
     assert!(app.ui.transform.is_none(), "Enter closes Free Transform");
     let state = app.session.active().unwrap();
     assert_eq!(state.history.past_len(), steps + 1);
@@ -107,9 +107,9 @@ enum Opens {
 
 /// The bounds each of `old` takes under the homography that maps the open session's rectangle onto `preview`; both
 /// committed layer bounds follow it, so a translation or a one-layer rotation fails.
-fn bounds_under_preview(app: &PhotocraftApp, old: [Rect; 2], preview: [[f64; 2]; 4]) -> [[f64; 4]; 2] {
+fn bounds_under_preview(app: &PatronusPhotoApp, old: [Rect; 2], preview: [[f64; 2]; 4]) -> [[f64; 4]; 2] {
     let r = app.ui.transform.as_ref().unwrap().session.rect();
-    let homography = photocraft_algo::transform::Homography::rect_to_quad([r.x0, r.y0, r.x1, r.y1], preview).unwrap();
+    let homography = patronusphoto_algo::transform::Homography::rect_to_quad([r.x0, r.y0, r.x1, r.y1], preview).unwrap();
     old.map(|r| {
         [[r.x0, r.y0], [r.x1, r.y0], [r.x1, r.y1], [r.x0, r.y1]]
             .map(|[x, y]| homography.apply(f64::from(x), f64::from(y)))
@@ -351,7 +351,7 @@ fn move_pointer_still_samples_into_the_color_picker() {
 /// A full-window editor receives its own stroke instead of a Move or Free Transform gesture.
 #[test]
 fn move_pointer_still_reaches_the_liquify_workspace() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 120, "height": 80, "depth": 8})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     app.sync_views();
@@ -390,7 +390,7 @@ fn modal_dialogs_block_a_command_held_move_from_another_tool() {
 }
 
 /// The number of Smart Guide lines the tool host reported in its last pass.
-fn guide_lines(app: &PhotocraftApp) -> usize {
+fn guide_lines(app: &PatronusPhotoApp) -> usize {
     app.canvas_tools.last_response.as_ref().map_or(0, |response| response.snapped.len())
 }
 
@@ -424,8 +424,8 @@ fn color_picker_release_ends_an_ordinary_move_drag() {
 
 /// A 400 × 300 document with a target block at (300..350, 200..260) and the moving block at (40..90, 40..80), at
 /// 100 %, with Snap and Smart Guides on.
-fn snap_box() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn snap_box() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
     app.sync_views();
     app.ui.views[0].zoom = 1.0;
@@ -442,7 +442,7 @@ fn snap_box() -> Box<PhotocraftApp> {
     app
 }
 
-fn mover_bounds(app: &PhotocraftApp) -> Rect {
+fn mover_bounds(app: &PatronusPhotoApp) -> Rect {
     let st = app.session.active().unwrap();
     st.doc.layer(st.active_layer.unwrap()).unwrap().surface().unwrap().content_bounds()
 }
@@ -451,13 +451,13 @@ fn near(a: [f64; 2], b: [f64; 2]) -> bool {
     (a[0] - b[0]).abs() < 1e-3 && (a[1] - b[1]).abs() < 1e-3
 }
 
-fn assert_quad(app: &PhotocraftApp, expected: [[f64; 2]; 4], what: &str) {
+fn assert_quad(app: &PatronusPhotoApp, expected: [[f64; 2]; 4], what: &str) {
     let q = quad(app);
     assert!(q.iter().zip(&expected).all(|(a, b)| near(*a, *b)), "{what}: {q:?} != {expected:?}");
 }
 
 /// The app of `snap_box` with guides at x 110 and y 30 and the box of `menu` open.
-fn corner_guides(menu: &str) -> Box<PhotocraftApp> {
+fn corner_guides(menu: &str) -> Box<PatronusPhotoApp> {
     let mut app = snap_box();
     app.run("view.newGuide", json!({"orientation": "vertical", "position": 110})).unwrap();
     app.run("view.newGuide", json!({"orientation": "horizontal", "position": 30})).unwrap();
@@ -468,20 +468,20 @@ fn corner_guides(menu: &str) -> Box<PhotocraftApp> {
 
 /// Presses corner `index` off by `offset` with `down` held, then drags so the proposed corner is `end` with `moving`
 /// held; the pointer keeps its grab offset.
-fn move_corner(app: &mut PhotocraftApp, index: usize, offset: [f64; 2], end: [f64; 2], down: Modifiers, moving: Modifiers) {
+fn move_corner(app: &mut PatronusPhotoApp, index: usize, offset: [f64; 2], end: [f64; 2], down: Modifiers, moving: Modifiers) {
     let corner = quad(app)[index];
     press(app, [corner[0] + offset[0], corner[1] + offset[1]], down);
     move_to(app, [end[0] + offset[0], end[1] + offset[1]], moving);
 }
 
-fn free_transform(app: &mut PhotocraftApp, reference_point: bool) {
+fn free_transform(app: &mut PatronusPhotoApp, reference_point: bool) {
     app.ui.tool_options.transform.show_reference_point = reference_point;
     let app_ctx = app.ctx().clone();
     crate::menus::invoke(app, &app_ctx, "edit.freeTransform", json!({})).unwrap();
 }
 
 /// Press at `from`, drag to `to`, release; returns the reference point.
-fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2], mods: Modifiers) -> [f64; 2] {
+fn drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2], mods: Modifiers) -> [f64; 2] {
     press(app, from, mods);
     move_to(app, to, mods);
     release(app, to, mods);
@@ -577,7 +577,7 @@ fn a_snapped_distort_commits_one_undoable_transform() {
 #[test]
 fn free_transform_of_a_shape_keeps_whole_pixels() {
     for grid in [true, false] {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 1080, "height": 1080, "resolution": 72})).unwrap();
         app.run("prefs.set", json!({"path": "tools.snapVectorToolsAndTransformsToPixelGrid", "value": grid})).unwrap();
         app.sync_views();
@@ -613,7 +613,7 @@ fn free_transform_of_a_shape_keeps_whole_pixels() {
         assert_eq!(whole(q), grid, "grid {grid}: corner {q:?}");
         crate::transform_tool::commit(&mut app);
         let st = app.session.active().unwrap();
-        let photocraft_doc::LayerContent::Shape(sh) = &st.doc.layer(st.active_layer.unwrap()).unwrap().content else { panic!("a shape layer") };
+        let patronusphoto_doc::LayerContent::Shape(sh) = &st.doc.layer(st.active_layer.unwrap()).unwrap().content else { panic!("a shape layer") };
         let (x0, y0, x1, y1) = sh.path.control_bounds().unwrap();
         if grid {
             for v in [x0, y0, x1, y1] {

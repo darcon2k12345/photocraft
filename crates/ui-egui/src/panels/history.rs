@@ -5,16 +5,16 @@ use craft::behavior::IconId;
 use craft::ui::patterns::panels::{HistoryEvent, HistoryFooter, HistoryKey, HistoryPanel, HistoryRow};
 use craft::ui::primitives::textures::{ThumbSource, ThumbnailOptions, Thumbnails};
 
-use super::{HistorySource, PhotocraftApp, json};
+use super::{HistorySource, PatronusPhotoApp, json};
 use crate::app::thumbs::SnapshotThumbs;
 
-pub(super) fn history(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub(super) fn history(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let ctx = ui.ctx().clone();
     forget_stale_selection(app);
     let reveal = take(app);
-    let thumbnails = Thumbnails::<u64>::in_context(&ctx, "photocraft.history", ThumbnailOptions::new());
+    let thumbnails = Thumbnails::<u64>::in_context(&ctx, "patronusphoto.history", ThumbnailOptions::new());
     let events = {
-        let shown: &PhotocraftApp = app;
+        let shown: &PatronusPhotoApp = app;
         let st = shown.session.active();
         let rows: std::sync::Arc<[HistoryRow]> = st.map_or_else(|| Vec::new().into(), |st| shown.doc_queries.history_rows(&shown.session, st, || rows(st)));
         let thumbs = st.map(|st| SnapshotThumbs::new(shown, st.doc.id));
@@ -37,7 +37,7 @@ pub(super) fn history(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 /// The panel's rows: the snapshots first (the first is the document as opened), then the states
 /// oldest to newest ending with the current one, then the redo states, next redo first. A state's key is
 /// its row id, which stays when the states before it go.
-pub(crate) fn rows(st: &photocraft_engine::DocState) -> Vec<HistoryRow> {
+pub(crate) fn rows(st: &patronusphoto_engine::DocState) -> Vec<HistoryRow> {
     let mut rows: Vec<HistoryRow> = st.snapshots().iter().map(|snap| HistoryRow::snapshot(snap.id, snap.name.clone())).collect();
     let past = st.history.past_len();
     let labels = st.history.entries().into_iter().chain(st.history.redo_labels().map(str::to_string));
@@ -50,7 +50,7 @@ pub(crate) fn rows(st: &photocraft_engine::DocState) -> Vec<HistoryRow> {
 }
 
 /// The row shown selected: the selected snapshot, else the current state (Photoshop highlights one row).
-fn current_key(app: &PhotocraftApp) -> Option<HistoryKey> {
+fn current_key(app: &PatronusPhotoApp) -> Option<HistoryKey> {
     if let Some(id) = selected_snapshot(app) {
         return Some(HistoryKey::Snapshot(id));
     }
@@ -59,8 +59,8 @@ fn current_key(app: &PhotocraftApp) -> Option<HistoryKey> {
 }
 
 /// The row that is the History Brush's source.
-fn source_key(st: &photocraft_engine::DocState) -> Option<HistoryKey> {
-    match photocraft_engine::history_source_cmds::source(st)? {
+fn source_key(st: &patronusphoto_engine::DocState) -> Option<HistoryKey> {
+    match patronusphoto_engine::history_source_cmds::source(st)? {
         HistorySource::State(row) => st.history.row_id(row).map(HistoryKey::State),
         HistorySource::Snapshot(id) => Some(HistoryKey::Snapshot(id)),
     }
@@ -68,7 +68,7 @@ fn source_key(st: &photocraft_engine::DocState) -> Option<HistoryKey> {
 
 /// Which rows the trash takes (#5324): a snapshot always; a state never the oldest; a later (redo)
 /// state only with Allow Non-Linear History, when the engine offers it.
-pub(crate) fn can_delete(app: &PhotocraftApp, key: &HistoryKey) -> bool {
+pub(crate) fn can_delete(app: &PatronusPhotoApp, key: &HistoryKey) -> bool {
     let Some(st) = app.session.active() else { return false };
     match *key {
         HistoryKey::Snapshot(id) => st.snapshots().iter().any(|snap| snap.id == id),
@@ -82,7 +82,7 @@ pub(crate) fn can_delete(app: &PhotocraftApp, key: &HistoryKey) -> bool {
 }
 
 /// The footer buttons: with a snapshot selected the trash deletes it; otherwise it needs a past state.
-fn footer(app: &PhotocraftApp) -> HistoryFooter {
+fn footer(app: &PatronusPhotoApp) -> HistoryFooter {
     let Some(st) = app.session.active() else { return HistoryFooter::default() };
     HistoryFooter::default()
         .delete(selected_snapshot(app).is_some() || st.history.past_len() > 0)
@@ -94,12 +94,12 @@ fn footer(app: &PhotocraftApp) -> HistoryFooter {
 /// command.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct HistoryMark {
-    document: Option<photocraft_doc::DocId>,
+    document: Option<patronusphoto_doc::DocId>,
     spot: Option<HistorySpot>,
 }
 
 /// The active document and its history spot now.
-pub(crate) fn mark(app: &PhotocraftApp) -> HistoryMark {
+pub(crate) fn mark(app: &PatronusPhotoApp) -> HistoryMark {
     let st = app.session.active();
     HistoryMark { document: st.map(|st| st.doc.id), spot: st.map(history_spot) }
 }
@@ -109,7 +109,7 @@ pub(crate) fn mark(app: &PhotocraftApp) -> HistoryMark {
 /// draw, which scrolls it into view only if it is hidden (#5909). Other changes (a layer click, a
 /// channel eye) and a selected snapshot leave the list where the user put it. The command dispatch
 /// calls this beside `layer_reveal::file`.
-pub(crate) fn file(app: &mut PhotocraftApp, before: HistoryMark) {
+pub(crate) fn file(app: &mut PatronusPhotoApp, before: HistoryMark) {
     if before != mark(app) && selected_snapshot(app).is_none() {
         app.ui.history_reveal = current_key(app);
     }
@@ -117,14 +117,14 @@ pub(crate) fn file(app: &mut PhotocraftApp, before: HistoryMark) {
 
 /// The pending reveal, for the panel's draw. The first pass of a frame takes it, so a second pass in
 /// the same frame reveals nothing again, and a hidden panel reveals when it is shown again.
-pub(crate) fn take(app: &mut PhotocraftApp) -> Option<HistoryKey> {
+pub(crate) fn take(app: &mut PatronusPhotoApp) -> Option<HistoryKey> {
     app.ui.history_reveal.take()
 }
 
 /// Runs what the user did in the panel as engine commands. Rows that move the document and the footer's
 /// buttons wait while Free Transform is open: it owns Undo (`transform_tool::intercept`), and stepping
 /// the history under its box would leave it transforming pixels that changed.
-pub(crate) fn apply(app: &mut PhotocraftApp, event: HistoryEvent) {
+pub(crate) fn apply(app: &mut PatronusPhotoApp, event: HistoryEvent) {
     let Some(st) = app.session.active() else { return };
     let waits = app.ui.transform.is_some();
     let selected = selected_snapshot(app);
@@ -189,7 +189,7 @@ pub(crate) fn apply(app: &mut PhotocraftApp, event: HistoryEvent) {
             if waits {
                 return;
             }
-            if mods.alt || photocraft_engine::history_options_cmds::show_new_snapshot_dialog(&app.session) {
+            if mods.alt || patronusphoto_engine::history_options_cmds::show_new_snapshot_dialog(&app.session) {
                 crate::snapshot_dialog::open(app);
                 return;
             }
@@ -241,13 +241,13 @@ pub(crate) fn step_icon(step: &str) -> IconId {
 /// every step, also at the state limit, where the counts and a repeated name stay the same.
 pub(crate) type HistorySpot = (usize, Option<String>, usize, Option<usize>);
 
-fn history_spot(st: &photocraft_engine::DocState) -> HistorySpot {
+fn history_spot(st: &patronusphoto_engine::DocState) -> HistorySpot {
     let newest = st.history.past_len().checked_sub(1).and_then(|i| st.history.state(i)).map(|d| std::sync::Arc::as_ptr(&d) as usize);
     (st.history.past_len(), st.history.entries().pop(), st.history.redo_labels().count(), newest)
 }
 
 /// Select snapshot `id` at the history's current state, as a click on its row does (#5324).
-pub(crate) fn select_snapshot(app: &mut PhotocraftApp, id: u64) {
+pub(crate) fn select_snapshot(app: &mut PatronusPhotoApp, id: u64) {
     let Some(st) = app.session.active() else { return };
     app.ui.history_snapshot = Some((st.doc.id, id, history_spot(st)));
     // The command that made the state filed a reveal before the snapshot was selected; the list stays on the snapshot row.
@@ -257,7 +257,7 @@ pub(crate) fn select_snapshot(app: &mut PhotocraftApp, id: u64) {
 /// The selected snapshot: the one last clicked, while it still exists and the history is still at
 /// the state that click made. Any other step (an edit, Undo, a state row) deselects it, as in
 /// Photoshop.
-pub(crate) fn selected_snapshot(app: &PhotocraftApp) -> Option<u64> {
+pub(crate) fn selected_snapshot(app: &PatronusPhotoApp) -> Option<u64> {
     let st = app.session.active()?;
     let (doc, id, spot) = app.ui.history_snapshot.as_ref()?;
     (*doc == st.doc.id && *spot == history_spot(st) && st.snapshots().iter().any(|snap| snap.id == *id)).then_some(*id)
@@ -265,7 +265,7 @@ pub(crate) fn selected_snapshot(app: &PhotocraftApp) -> Option<u64> {
 
 /// Drops a selection that no longer holds, so the history returning to the same spot later does not
 /// bring it back.
-fn forget_stale_selection(app: &mut PhotocraftApp) {
+fn forget_stale_selection(app: &mut PatronusPhotoApp) {
     if app.ui.history_snapshot.is_some() && selected_snapshot(app).is_none() {
         app.ui.history_snapshot = None;
     }

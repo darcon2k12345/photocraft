@@ -4,13 +4,13 @@ use craft_psd::{
     atn::{self, AtnAction, AtnEvent, AtnFile, AtnItem},
     descriptor::{Class, Descriptor, Id, ReferenceItem, UnicodeString, Value as D},
 };
-use photocraft_doc::{LayerContent, LayerId};
-use photocraft_engine::{
+use patronusphoto_doc::{LayerContent, LayerId};
+use patronusphoto_engine::{
     Session,
     actions_cmds::{Action, ActionStep},
     atn_cmds,
 };
-use photocraft_geom::Rect;
+use patronusphoto_geom::Rect;
 use serde_json::{Value, json};
 
 const EVENT: &str = "perspectiveWarpTransform";
@@ -150,8 +150,8 @@ fn session(depth: u8) -> (Session, LayerId) {
         layer.name = "Facade".into();
         let surf = layer.surface_mut().unwrap();
         let fmt = surf.format();
-        surf.fill_rect(Rect::new(4, 4, 16, 20), &photocraft_raster::from_rgba(&fmt, [0.9, 0.2, 0.1, 1.0]));
-        surf.fill_rect(Rect::new(16, 4, 28, 20), &photocraft_raster::from_rgba(&fmt, [0.1, 0.2, 0.9, 1.0]));
+        surf.fill_rect(Rect::new(4, 4, 16, 20), &patronusphoto_raster::from_rgba(&fmt, [0.9, 0.2, 0.1, 1.0]));
+        surf.fill_rect(Rect::new(16, 4, 28, 20), &patronusphoto_raster::from_rgba(&fmt, [0.1, 0.2, 0.9, 1.0]));
         Ok(())
     })
     .unwrap();
@@ -206,5 +206,5 @@ fn active_smart_object_playback_matches_the_native_filter() {
     assert_eq!(actual.smart_filters.len(), 1);
     assert_eq!(actual.smart_filters[0].command, COMMAND);
     assert_eq!(actual.smart_filters[0].params["planes"], planes());
-    assert!(photocraft_io::smart_map::item_for_filter(&actual.smart_filters[0]).is_ok());
+    assert!(patronusphoto_io::smart_map::item_for_filter(&actual.smart_filters[0]).is_ok());
 }

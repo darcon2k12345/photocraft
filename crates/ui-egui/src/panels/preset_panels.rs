@@ -12,7 +12,7 @@ use serde_json::Value;
 #[cfg(test)]
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 pub(crate) mod clone_offsets;
 pub(crate) mod clone_source;
@@ -30,7 +30,7 @@ pub use tool_presets::select as select_tool_preset;
 pub struct PresetUi {
     /// Last clone preview position in its destination document; never restored into another session.
     #[serde(skip)]
-    pub clone_cursor: Option<(photocraft_doc::DocId, [f64; 2])>,
+    pub clone_cursor: Option<(patronusphoto_doc::DocId, [f64; 2])>,
     /// Selected preset per panel (by name / pattern id).
     pub selected: BTreeMap<String, String>,
     /// Tool Presets: Current Tool Only.
@@ -114,7 +114,7 @@ impl PresetUi {
 }
 
 /// Runs the engine command `id`; a failure goes to the status line.
-pub(crate) fn run(app: &mut PhotocraftApp, id: &str, p: Value) -> Option<Value> {
+pub(crate) fn run(app: &mut PatronusPhotoApp, id: &str, p: Value) -> Option<Value> {
     match app.run(id, p) {
         Ok(v) => Some(v),
         Err(e) => {

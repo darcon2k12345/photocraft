@@ -113,7 +113,7 @@ pub fn specs() -> Vec<CommandSpec> {
                 let (x, y) = (coord("x")?, coord("y")?);
                 let d = s.active().ok_or(EngineError::NoDocument)?;
                 // At i32::MAX the 1x1 rect saturates to empty: a pixel that far out is transparent.
-                let px = photocraft_compose::render(&d.doc, Rect::from_xywh(x, y, 1, 1)).px.first().copied().unwrap_or_default();
+                let px = patronusphoto_compose::render(&d.doc, Rect::from_xywh(x, y, 1, 1)).px.first().copied().unwrap_or_default();
                 Ok(json!(px))
             },
             journal: false,

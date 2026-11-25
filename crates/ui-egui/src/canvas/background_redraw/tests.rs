@@ -49,9 +49,9 @@ fn kept(doc: &Arc<Document>, bytes: usize) -> Kept {
 #[test]
 fn kept_composites_come_back_only_for_the_exact_state_and_stay_bounded() {
     use eframe::wgpu::TextureFormat::{Rgba8Unorm, Rgba16Float};
-    let mut a = Document::new("kept", photocraft_geom::Size::new(2000, 1500), photocraft_doc::ColorMode::Rgb, photocraft_doc::SampleType::U8);
-    let mut layer = photocraft_doc::Layer::raster("one", a.pixel_format());
-    if let photocraft_doc::LayerContent::Raster(s) = &mut layer.content {
+    let mut a = Document::new("kept", patronusphoto_geom::Size::new(2000, 1500), patronusphoto_doc::ColorMode::Rgb, patronusphoto_doc::SampleType::U8);
+    let mut layer = patronusphoto_doc::Layer::raster("one", a.pixel_format());
+    if let patronusphoto_doc::LayerContent::Raster(s) = &mut layer.content {
         s.fill_rect(Rect::new(0, 0, 300, 300), &[0.2, 0.4, 0.6, 1.0]);
     }
     a.layers.push(layer);
@@ -70,9 +70,9 @@ fn kept_composites_come_back_only_for_the_exact_state_and_stay_bounded() {
     // Any change to what the composite depends on misses.
     let hidden = changed(&|d| d.layers[0].visible = false);
     let faded = changed(&|d| d.layers[0].opacity = 0.5);
-    let multiplied = changed(&|d| d.layers[0].blend = photocraft_color::BlendMode::Multiply);
+    let multiplied = changed(&|d| d.layers[0].blend = patronusphoto_color::BlendMode::Multiply);
     let painted = changed(&|d| {
-        if let photocraft_doc::LayerContent::Raster(s) = &mut d.layers[0].content {
+        if let patronusphoto_doc::LayerContent::Raster(s) = &mut d.layers[0].content {
             s.fill_rect(Rect::new(10, 10, 11, 11), &[1.0, 0.0, 0.0, 1.0]);
         }
     });

@@ -2,7 +2,7 @@
 //! start, start, end, end), so the new anchor is smooth with handles and the neighbours keep
 //! their retracted handles.
 
-use photocraft_doc::{Path, Subpath};
+use patronusphoto_doc::{Path, Subpath};
 
 use super::*;
 

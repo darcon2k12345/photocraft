@@ -14,7 +14,7 @@
 //! and the order of every preset, built-ins included. A built-in that is renamed or moved to
 //! another group becomes the user's preset (built-ins are regenerated with their own group).
 
-use photocraft_paint::BrushPreset;
+use patronusphoto_paint::BrushPreset;
 use serde_json::{Value, json};
 
 use crate::commands::CommandSpec;

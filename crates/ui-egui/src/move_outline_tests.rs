@@ -3,19 +3,19 @@
 //! and follows its pixels.
 
 use craft::behavior::kurbo::{self, Shape};
-use photocraft_doc::LayerId;
-use photocraft_geom::Rect;
+use patronusphoto_doc::LayerId;
+use patronusphoto_geom::Rect;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::layer_edges;
 use crate::canvas::testing::{frame, move_to, press, release};
 use crate::state::{Tool, View};
 
 /// A 64×64 document with two painted layers: A covers (8..24)², B covers (40..56)². B is active,
 /// the Move tool (Auto-Select on) is current and View › Show › Layer Edges is on.
-fn app() -> (Box<PhotocraftApp>, LayerId, LayerId) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> (Box<PatronusPhotoApp>, LayerId, LayerId) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 64, "height": 64})).unwrap();
     app.sync_views();
     let mut ids = Vec::new();
@@ -52,7 +52,7 @@ fn app() -> (Box<PhotocraftApp>, LayerId, LayerId) {
 }
 
 /// The bounds of the Layer Edges outline of document 0.
-fn edges(app: &PhotocraftApp) -> Option<kurbo::Rect> {
+fn edges(app: &PatronusPhotoApp) -> Option<kurbo::Rect> {
     layer_edges(app, 0).map(|p| p.bounding_box())
 }
 
@@ -61,7 +61,7 @@ fn outline(r: Rect) -> Option<kurbo::Rect> {
     Some(kurbo::Rect::new(f64::from(r.x0), f64::from(r.y0), f64::from(r.x1), f64::from(r.y1)))
 }
 
-fn active(app: &PhotocraftApp) -> Option<LayerId> {
+fn active(app: &PatronusPhotoApp) -> Option<LayerId> {
     app.session.active().unwrap().active_layer
 }
 

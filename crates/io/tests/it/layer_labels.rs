@@ -1,9 +1,9 @@
-use photocraft_color::{ColorMode, SampleType};
-use photocraft_doc::{Document, LabelColor, Layer, Size};
+use patronusphoto_color::{ColorMode, SampleType};
+use patronusphoto_doc::{Document, LabelColor, Layer, Size};
 
 #[test]
 fn layer_labels_keep_the_psd_indices() {
-    use photocraft_io::blocks::{label_from_index, label_index};
+    use patronusphoto_io::blocks::{label_from_index, label_index};
     let labels = [
         LabelColor::None,
         LabelColor::Red,
@@ -38,8 +38,8 @@ fn layer_labels_psd_roundtrip_all_colors_and_depths() {
             group.label = color;
             doc.layers.push(group);
         }
-        let bytes = photocraft_io::export(&doc, "labels.psd", &Default::default()).unwrap().bytes;
-        let back = photocraft_io::import("labels.psd", &bytes).unwrap().document;
+        let bytes = patronusphoto_io::export(&doc, "labels.psd", &Default::default()).unwrap().bytes;
+        let back = patronusphoto_io::import("labels.psd", &bytes).unwrap().document;
         let labels = |d: &Document| d.walk().into_iter().map(|(_, _, l)| (l.name.clone(), l.label)).collect::<Vec<_>>();
         assert_eq!(labels(&back), labels(&doc), "{depth:?}");
         assert_eq!(back.depth, depth);

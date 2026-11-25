@@ -5,20 +5,20 @@
 //! The Smart Filters row carries the filter mask thumbnail: click it to paint the filter mask,
 //! ⌥-click to view it, ⇧-click to disable it (FILE-215-3).
 
-use photocraft_doc::{Document, Layer, LayerContent, LayerId, SmartObject};
+use patronusphoto_doc::{Document, Layer, LayerContent, LayerId, SmartObject};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The display name of a smart filter (its command's label without the ellipsis). A Photoshop
-/// filter PhotoCraft doesn't implement shows its own name and is marked as kept as is.
-pub(crate) fn filter_label(f: &photocraft_doc::SmartFilter) -> String {
+/// filter Patronus Photo doesn't implement shows its own name and is marked as kept as is.
+pub(crate) fn filter_label(f: &patronusphoto_doc::SmartFilter) -> String {
     let command = f.command.as_str();
-    if command == photocraft_engine::smart_cmds::UNSUPPORTED_FILTER {
+    if command == patronusphoto_engine::smart_cmds::UNSUPPORTED_FILTER {
         let name = f.params.get("name").and_then(Value::as_str).unwrap_or("Smart filter");
         return format!("{} (kept, not editable)", name.trim_end_matches("...").trim_end_matches('…'));
     }
-    photocraft_engine::commands::find(command)
+    patronusphoto_engine::commands::find(command)
         .map_or_else(|| command.rsplit('.').next().unwrap_or(command).to_string(), |c| tl!(c.label).trim_end_matches('…').to_string())
 }
 
@@ -38,7 +38,7 @@ pub(crate) fn filter_mask_click(l: &Layer, m: egui::Modifiers) -> Vec<(String, V
         return sm
             .filter_mask
             .is_some()
-            .then(|| (photocraft_engine::mask_view_cmds::ID.to_string(), json!({"layer": layer, "mode": mode, "mask": "filter"})))
+            .then(|| (patronusphoto_engine::mask_view_cmds::ID.to_string(), json!({"layer": layer, "mode": mode, "mask": "filter"})))
             .into_iter()
             .collect();
     }
@@ -58,7 +58,7 @@ pub(crate) fn filter_mask_click(l: &Layer, m: egui::Modifiers) -> Vec<(String, V
 pub(crate) type FilterDrag = (u64, Option<usize>);
 
 /// The Smart Filter row each document has selected on its own.
-pub(crate) type FilterPicks = std::collections::HashMap<photocraft_doc::DocId, FilterDrag>;
+pub(crate) type FilterPicks = std::collections::HashMap<patronusphoto_doc::DocId, FilterDrag>;
 
 /// The selected smart filter row, while its smart object is active and the filter still exists.
 pub(crate) fn selected(picks: &FilterPicks, doc: &Document, active: Option<LayerId>) -> Option<FilterDrag> {
@@ -76,13 +76,13 @@ pub(crate) fn selected(picks: &FilterPicks, doc: &Document, active: Option<Layer
 
 /// Selects a Smart Filter row of document `doc` on its own: `(smart object, filter index)`, `None`
 /// for the Smart Filters row.
-pub(crate) fn pick(picks: &mut FilterPicks, doc: photocraft_doc::DocId, row: FilterDrag) {
+pub(crate) fn pick(picks: &mut FilterPicks, doc: patronusphoto_doc::DocId, row: FilterDrag) {
     picks.insert(doc, row);
 }
 
 /// Forgets the selected smart filter row: its smart object's own row was clicked, the filter was
 /// deleted (its index would now name the next one) or the panel's filter hides its row.
-pub(crate) fn deselect(picks: &mut FilterPicks, doc: photocraft_doc::DocId) {
+pub(crate) fn deselect(picks: &mut FilterPicks, doc: patronusphoto_doc::DocId) {
     picks.remove(&doc);
 }
 
@@ -108,7 +108,7 @@ pub(crate) fn trash_action((layer, filter): FilterDrag) -> (String, Value) {
 /// The fired Delete command (Delete or Backspace, which the shortcut route has taken from the input) while a filter's
 /// row is selected removes that filter (the Smart Filters row: all of them), as the panel's Delete button does
 /// (#4751), instead of deleting the smart object or reaching Edit › Clear.
-pub(crate) fn keys(app: &mut PhotocraftApp) -> bool {
+pub(crate) fn keys(app: &mut PatronusPhotoApp) -> bool {
     // A text edit keeps its keys. Text fields and widgets that delete with these keys themselves
     // take them before the key reaches here (#1534).
     if app.ui.text_edit.is_some() {
@@ -132,11 +132,11 @@ pub(crate) fn keys(app: &mut PhotocraftApp) -> bool {
 
 /// Re-opens a smart filter's dialog with its recorded parameters; OK runs
 /// `layer.smartFilter.setParams` instead of adding another filter (see [`confirm_command`]).
-pub fn open_editor(app: &mut PhotocraftApp, ctx: &egui::Context, layer: u64, sm: &SmartObject, index: usize) {
+pub fn open_editor(app: &mut PatronusPhotoApp, ctx: &egui::Context, layer: u64, sm: &SmartObject, index: usize) {
     let Some(f) = sm.smart_filters.get(index) else { return };
     // Camera Raw has its own full-window dialog rather than a generic parameter form.
-    if f.command == photocraft_engine::lens_cmds::RAW {
-        if let Err(e) = crate::camera_raw_ui::open_smart_filter(app, ctx, photocraft_doc::LayerId(layer), index) {
+    if f.command == patronusphoto_engine::lens_cmds::RAW {
+        if let Err(e) = crate::camera_raw_ui::open_smart_filter(app, ctx, patronusphoto_doc::LayerId(layer), index) {
             app.ui.status = e;
             app.ui.status_error = true;
         }
@@ -144,21 +144,21 @@ pub fn open_editor(app: &mut PhotocraftApp, ctx: &egui::Context, layer: u64, sm:
     }
     // So has the Filter Gallery.
     if f.command == "filter.filterGallery" {
-        if let Err(e) = crate::gallery_ui::open_smart_filter(app, photocraft_doc::LayerId(layer), index) {
+        if let Err(e) = crate::gallery_ui::open_smart_filter(app, patronusphoto_doc::LayerId(layer), index) {
             app.ui.status = e;
             app.ui.status_error = true;
         }
         return;
     }
     // And Liquify, which re-opens with the filter's recorded strokes.
-    if f.command == photocraft_engine::distort_cmds::LIQUIFY {
-        if let Err(e) = crate::liquify_ui::open_smart_filter(app, ctx, photocraft_doc::LayerId(layer), index) {
+    if f.command == patronusphoto_engine::distort_cmds::LIQUIFY {
+        if let Err(e) = crate::liquify_ui::open_smart_filter(app, ctx, patronusphoto_doc::LayerId(layer), index) {
             app.ui.status = e;
             app.ui.status_error = true;
         }
         return;
     }
-    let target = match crate::smart_filter_dialog::target(app, photocraft_doc::LayerId(layer), index) {
+    let target = match crate::smart_filter_dialog::target(app, patronusphoto_doc::LayerId(layer), index) {
         Ok(target) => target,
         Err(e) => {
             crate::notices::error(app, e);
@@ -190,7 +190,7 @@ pub fn preview_command<'a>(key: &str, command: &'a str, captured: &Value) -> &'a
 }
 
 /// The command a confirmed filter dialog runs: smart-filter edits update the recorded filter.
-pub fn confirm_command(app: &PhotocraftApp, captured: &Value, command: String, params: Value) -> Result<(String, Value), String> {
+pub fn confirm_command(app: &PatronusPhotoApp, captured: &Value, command: String, params: Value) -> Result<(String, Value), String> {
     // One builder for the preview and for OK, so the two cannot differ.
     if crate::smart_filter_dialog::is_target(captured) {
         return crate::smart_filter_dialog::params_command(app, captured, &command, params);
@@ -203,12 +203,12 @@ mod editor_tests;
 
 #[cfg(test)]
 mod tests {
-    use photocraft_engine::Session;
+    use patronusphoto_engine::Session;
 
     use super::*;
     use crate::Services;
 
-    fn smart(app: &PhotocraftApp) -> (photocraft_doc::Layer, photocraft_doc::SmartObject) {
+    fn smart(app: &PatronusPhotoApp) -> (patronusphoto_doc::Layer, patronusphoto_doc::SmartObject) {
         let st = app.session.active().unwrap();
         let l = st.doc.layer(st.active_layer.unwrap()).unwrap().clone();
         let LayerContent::Smart(sm) = l.content.clone() else { panic!("not a smart object") };
@@ -219,7 +219,7 @@ mod tests {
     /// the layer mask, no rasterize prompt), and clicking the layer thumbnail goes back.
     #[test]
     fn the_filter_mask_thumbnail_targets_the_filter_mask() {
-        let mut app = PhotocraftApp::new(Session::new(), Services::default());
+        let mut app = PatronusPhotoApp::new(Session::new(), Services::default());
         app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();
         app.run("edit.fill", json!({"contents": "color", "color": "#ff0000"})).unwrap();
@@ -252,7 +252,7 @@ mod tests {
 
     #[test]
     fn selecting_the_filter_mask_replaces_a_layer_mask_view() {
-        let mut app = PhotocraftApp::new(Session::new(), Services::default());
+        let mut app = PatronusPhotoApp::new(Session::new(), Services::default());
         app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();
         app.run("edit.fill", json!({"contents": "color", "color": "#ff0000"})).unwrap();
@@ -267,7 +267,7 @@ mod tests {
         app.sync_views();
         assert!(app.filter_mask_targeted());
         assert!(!app.layer_mask_targeted());
-        assert!(photocraft_engine::mask_view_cmds::current(app.session.active().unwrap()).is_none());
+        assert!(patronusphoto_engine::mask_view_cmds::current(app.session.active().unwrap()).is_none());
         app.run("paint.stroke", json!({"points": [[8, 8]], "size": 6, "hardness": 1, "color": "#000000"})).unwrap();
         let st = app.session.active().unwrap();
         let layer = st.doc.layer(id).unwrap();
@@ -276,7 +276,7 @@ mod tests {
         assert_eq!(sm.filter_mask.as_ref().unwrap().value(8, 8), 0.0);
         app.run("view.layerMask", json!({"mode": "gray", "mask": "filter"})).unwrap();
         app.select_filter_mask_target(Some(id.0));
-        assert!(photocraft_engine::mask_view_cmds::current(app.session.active().unwrap()).unwrap().filter, "a matching filter-mask view stays open");
+        assert!(patronusphoto_engine::mask_view_cmds::current(app.session.active().unwrap()).unwrap().filter, "a matching filter-mask view stays open");
     }
 
     /// #5689: an Image › Adjustments recorded on a smart object (Brightness/Contrast…) opens its
@@ -284,14 +284,14 @@ mod tests {
     /// filter instead of stacking another.
     #[test]
     fn an_adjustment_smart_filter_opens_its_editor_and_updates_it() {
-        let mut s = photocraft_engine::Session::new();
+        let mut s = patronusphoto_engine::Session::new();
         s.execute("file.new", json!({"width": 64, "height": 48})).unwrap();
         s.execute("layer.new.layer", json!({})).unwrap();
         s.execute("edit.fill", json!({"contents": "black"})).unwrap();
         let id = s.execute("layer.smartObjects.convertToSmartObject", json!({})).unwrap()["layer"].as_u64().unwrap();
         s.execute("image.adjustments.brightnessContrast", json!({"brightness": 40, "contrast": -10})).unwrap();
-        let mut app = PhotocraftApp::new(s, crate::Services::default());
-        let sm = match &app.session.active().unwrap().doc.layer(photocraft_doc::LayerId(id)).unwrap().content {
+        let mut app = PatronusPhotoApp::new(s, crate::Services::default());
+        let sm = match &app.session.active().unwrap().doc.layer(patronusphoto_doc::LayerId(id)).unwrap().content {
             LayerContent::Smart(sm) => sm.clone(),
             other => panic!("expected a smart object, got {other:?}"),
         };
@@ -307,7 +307,7 @@ mod tests {
         let dialog = d.id;
         // OK updates the recorded filter (one history step), it does not add a second filter.
         crate::dialogs::testing::confirm(&mut app, dialog).unwrap();
-        let LayerContent::Smart(sm) = &app.session.active().unwrap().doc.layer(photocraft_doc::LayerId(id)).unwrap().content else {
+        let LayerContent::Smart(sm) = &app.session.active().unwrap().doc.layer(patronusphoto_doc::LayerId(id)).unwrap().content else {
             panic!("the layer stays a smart object");
         };
         assert_eq!(sm.smart_filters.len(), 1, "no filter was stacked");
@@ -320,15 +320,15 @@ mod tests {
     /// renders and reopens.
     #[test]
     fn a_selective_color_smart_filter_in_the_old_form_keeps_its_edit() {
-        let mut s = photocraft_engine::Session::new();
+        let mut s = patronusphoto_engine::Session::new();
         s.execute("file.new", json!({"width": 64, "height": 48})).unwrap();
         s.execute("layer.new.layer", json!({})).unwrap();
         s.execute("edit.fill", json!({"contents": "color", "color": "#2030c0"})).unwrap();
         let id = s.execute("layer.smartObjects.convertToSmartObject", json!({})).unwrap()["layer"].as_u64().unwrap();
         s.execute("image.adjustments.selectiveColor", json!({"colors": "blues", "cyan": 30, "relative": false})).unwrap();
-        let mut app = PhotocraftApp::new(s, crate::Services::default());
+        let mut app = PatronusPhotoApp::new(s, crate::Services::default());
         app.background_jobs = false;
-        let recorded = |app: &PhotocraftApp| match &app.session.active().unwrap().doc.layer(photocraft_doc::LayerId(id)).unwrap().content {
+        let recorded = |app: &PatronusPhotoApp| match &app.session.active().unwrap().doc.layer(patronusphoto_doc::LayerId(id)).unwrap().content {
             LayerContent::Smart(sm) => sm.clone(),
             other => panic!("expected a smart object, got {other:?}"),
         };
@@ -338,10 +338,10 @@ mod tests {
             .with_context(app.ctx().clone())
             .with_size(egui::vec2(1200.0, 900.0))
             .build_ui_state(|ui, app| crate::dialogs::run(app, ui), app);
-        PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+        PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
         let ctx = h.ctx.clone();
         // The open dialog's fields, whatever its type.
-        let fields_of = |app: &PhotocraftApp, dialog| match crate::adjust_dialog::hosted(app, dialog) {
+        let fields_of = |app: &PatronusPhotoApp, dialog| match crate::adjust_dialog::hosted(app, dialog) {
             Some(_) => crate::adjust_dialog::command_params(app, dialog),
             None => app.framework.dialogs.open_dialogs().into_iter().find(|d| d.id == dialog).and_then(|d| d.fields).unwrap(),
         };
@@ -363,8 +363,8 @@ mod tests {
         crate::dialogs::testing::confirm(h.state_mut(), dialog).unwrap();
         let sm = recorded(h.state());
         assert_eq!(sm.smart_filters.len(), 1, "no filter was stacked");
-        let photocraft_doc::Adjustment::SelectiveColor { relative, adjustments } =
-            photocraft_engine::adjust_cmds::selective_from_params(&sm.smart_filters[0].params, None).unwrap()
+        let patronusphoto_doc::Adjustment::SelectiveColor { relative, adjustments } =
+            patronusphoto_engine::adjust_cmds::selective_from_params(&sm.smart_filters[0].params, None).unwrap()
         else {
             panic!("Selective Color params");
         };
@@ -385,7 +385,7 @@ mod tests {
     /// the stack (as OK does) instead of stacking a second one.
     #[test]
     fn an_edited_smart_filter_previews_what_ok_gives() {
-        let mut s = photocraft_engine::Session::new();
+        let mut s = patronusphoto_engine::Session::new();
         s.execute("file.new", json!({"width": 64, "height": 48, "background": "#ffffff"})).unwrap();
         s.execute("layer.new.layer", json!({})).unwrap();
         s.execute("select.all", json!({})).unwrap();
@@ -393,9 +393,9 @@ mod tests {
         s.execute("select.deselect", json!({})).unwrap();
         let id = s.execute("layer.smartObjects.convertToSmartObject", json!({})).unwrap()["layer"].as_u64().unwrap();
         s.execute("filter.blur.gaussianBlur", json!({"radius": 1.0})).unwrap();
-        let mut app = PhotocraftApp::new(s, crate::Services::default());
+        let mut app = PatronusPhotoApp::new(s, crate::Services::default());
         app.background_jobs = false;
-        let smart = |app: &PhotocraftApp, doc: &Document| match &doc.layer(LayerId(id)).unwrap().content {
+        let smart = |app: &PatronusPhotoApp, doc: &Document| match &doc.layer(LayerId(id)).unwrap().content {
             LayerContent::Smart(sm) => sm.clone(),
             other => panic!("expected a smart object, got {other:?} ({})", app.ui.status),
         };
@@ -423,7 +423,7 @@ mod tests {
         crate::dialogs::testing::confirm(&mut app, dialog).unwrap();
         let doc = &app.session.active().unwrap().doc;
         assert_eq!(smart(&app, doc).smart_filters.len(), 1);
-        assert!(photocraft_compose::flatten(&shown).px == photocraft_compose::flatten(doc).px, "OK gives what the preview showed");
+        assert!(patronusphoto_compose::flatten(&shown).px == patronusphoto_compose::flatten(doc).px, "OK gives what the preview showed");
     }
 
     /// FILE-215-3: with the filter mask targeted, Move and Edit › Transform act on the smart object
@@ -431,7 +431,7 @@ mod tests {
     /// still edit the filter mask.
     #[test]
     fn only_filter_mask_edits_carry_the_filter_mask_target() {
-        let mut app = PhotocraftApp::new(Session::new(), Services::default());
+        let mut app = PatronusPhotoApp::new(Session::new(), Services::default());
         app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();
         app.run("edit.fill", json!({"contents": "color", "color": "#ff0000"})).unwrap();

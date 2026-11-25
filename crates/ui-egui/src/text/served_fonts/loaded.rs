@@ -62,27 +62,27 @@ impl Loaded {
                     .min_by_key(|(_, _, face)| face.weight.abs_diff(400))?;
                 let mut data = egui::FontData::from_blob(Arc::clone(&file.bytes), face.index);
                 data.tweak.set_baseline_fallback(true);
-                Some((format!("photocraft-host-font-{file_index}-{}", face.index), data))
+                Some((format!("patronusphoto-host-font-{file_index}-{}", face.index), data))
             })
             .collect()
     }
 }
 
 fn id() -> egui::Id {
-    egui::Id::unique("photocraft-loaded-host-fonts")
+    egui::Id::unique("patronusphoto-loaded-host-fonts")
 }
 
 /// Called only on successful host delivery, after its path and optional SRI were checked.
 /// Document-only families do not become UI fallbacks merely because a document uses them.
 pub(super) fn cache(ctx: &egui::Context, bytes: &[u8]) -> bool {
-    let families = photocraft_text::served::script_fallback_families();
+    let families = patronusphoto_text::served::script_fallback_families();
     ctx.data_mut(|d| d.get_temp_mut_or_default::<Loaded>(id()).add(bytes, &families))
 }
 
 /// Append to the app's primary faces, retaining language order on every theme/size rebuild.
 pub(crate) fn append<'a>(ctx: &egui::Context, mut fonts: UiFonts<'a>, language: &str) -> UiFonts<'a> {
-    let mut families = photocraft_text::served::script_fallback_families();
-    if let Some(preferred) = photocraft_text::served::fallback_for_language(language) {
+    let mut families = patronusphoto_text::served::script_fallback_families();
+    if let Some(preferred) = patronusphoto_text::served::fallback_for_language(language) {
         families.retain(|family| family != &preferred);
         families.insert(0, preferred);
     }

@@ -3,7 +3,7 @@
 //! The canvas runs `tool`/`drain` for `Family::Frame`. The Frame-target box is a framework `TransformBox`
 //! shown by `show`; a Content or Both press opens Free Transform and drives its box.
 use crate::{
-    PhotocraftApp,
+    PatronusPhotoApp,
     canvas::{
         document_display::CanvasHost,
         tools::{FamilyTool, ToolScope},
@@ -28,8 +28,8 @@ use craft::ui::display::Divider;
 use craft::ui::primitives::Draw;
 use craft::ui::text::NumberField;
 use egui::{Pos2, Stroke, StrokeKind};
-use photocraft_doc::{Frame, Layer, LayerContent, LayerId};
-use photocraft_geom::{Affine, Point, Rect};
+use patronusphoto_doc::{Frame, Layer, LayerContent, LayerId};
+use patronusphoto_geom::{Affine, Point, Rect};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::sync::Arc;
@@ -63,7 +63,7 @@ pub struct FrameToolUi {
     /// The polygon's sides.
     pub sides: u32,
     /// The stroke new frames take.
-    pub stroke: Option<photocraft_doc::ShapeStroke>,
+    pub stroke: Option<patronusphoto_doc::ShapeStroke>,
     /// The part of the selected frame the tool edits.
     pub target: Target,
     /// The selected frame's layer.
@@ -79,7 +79,7 @@ impl Default for FrameToolUi {
 }
 
 pub(crate) struct Preview {
-    doc: Arc<photocraft_doc::Document>,
+    doc: Arc<patronusphoto_doc::Document>,
     revision: u64,
     key: u64,
 }
@@ -133,47 +133,47 @@ impl FrameTool {
     }
 }
 
-pub fn selected(app: &PhotocraftApp) -> Option<&Layer> {
+pub fn selected(app: &PatronusPhotoApp) -> Option<&Layer> {
     let st = app.session.active()?;
-    let id = photocraft_engine::frame_cmds::frame_of(&st.doc, st.active_layer?)?;
+    let id = patronusphoto_engine::frame_cmds::frame_of(&st.doc, st.active_layer?)?;
     st.doc.layer(id)
 }
-fn path_visible(doc: &photocraft_doc::Document, path: &[usize]) -> bool {
+fn path_visible(doc: &patronusphoto_doc::Document, path: &[usize]) -> bool {
     (1..=path.len()).all(|n| path.get(..n).and_then(|p| doc.layer_at(p)).is_some_and(|l| l.visible))
 }
-fn visible(app: &PhotocraftApp, id: LayerId) -> bool {
+fn visible(app: &PatronusPhotoApp, id: LayerId) -> bool {
     app.session.active().is_some_and(|st| st.doc.path_of(id).is_some_and(|p| path_visible(&st.doc, &p)))
 }
-fn content_layer(app: &PhotocraftApp, r: [i64; 4]) -> Option<u64> {
+fn content_layer(app: &PatronusPhotoApp, r: [i64; 4]) -> Option<u64> {
     let st = app.session.active()?;
     st.doc.walk().into_iter().rev().find_map(|(path, _, l)| {
         if !matches!(l.content, LayerContent::Raster(_) | LayerContent::Smart(_)) || st.doc.is_background(l.id) || !path_visible(&st.doc, &path) {
             return None;
         }
         let locks = st.doc.effective_locks(l.id);
-        if locks.position || locks.all || photocraft_engine::frame_cmds::frame_of(&st.doc, l.id).is_some() {
+        if locks.position || locks.all || patronusphoto_engine::frame_cmds::frame_of(&st.doc, l.id).is_some() {
             return None;
         }
-        let b = photocraft_engine::transform_cmds::transform_bounds(&st.doc, l);
+        let b = patronusphoto_engine::transform_cmds::transform_bounds(&st.doc, l);
         (!b.is_empty() && i64::from(b.x0) < r[2] && r[0] < i64::from(b.x1) && i64::from(b.y0) < r[3] && r[1] < i64::from(b.y1)).then_some(l.id.0)
     })
 }
 #[cfg(test)]
 mod content_pick_tests;
 
-fn report(app: &mut PhotocraftApp, r: Result<Value, String>) {
+fn report(app: &mut PatronusPhotoApp, r: Result<Value, String>) {
     if let Err(e) = r {
         app.ui.status = e;
         app.ui.status_error = true;
     }
 }
-pub(crate) fn select(app: &mut PhotocraftApp, id: LayerId, target: Target) {
+pub(crate) fn select(app: &mut PatronusPhotoApp, id: LayerId, target: Target) {
     let r = select_result(app, id, target);
     if let Err(e) = r {
         report(app, Err(e));
     }
 }
-pub(crate) fn select_result(app: &mut PhotocraftApp, id: LayerId, target: Target) -> Result<(), String> {
+pub(crate) fn select_result(app: &mut PatronusPhotoApp, id: LayerId, target: Target) -> Result<(), String> {
     let child = app.session.active().and_then(|st| st.doc.layer(id)).and_then(|l| l.children()).and_then(|c| c.first()).map(|l| l.id);
     let layer = if target == Target::Content { child.unwrap_or(id) } else { id };
     app.run("layer.select", json!({"layer":layer.0}))?;
@@ -184,7 +184,7 @@ pub(crate) fn select_result(app: &mut PhotocraftApp, id: LayerId, target: Target
     app.ui.selected_path = None;
     Ok(())
 }
-pub(crate) fn target(app: &PhotocraftApp, l: &Layer) -> Target {
+pub(crate) fn target(app: &PatronusPhotoApp, l: &Layer) -> Target {
     if app.ui.frame_tool.selected != Some(l.id.0) {
         if app.session.active().is_some_and(|st| st.active_layer != Some(l.id)) { Target::Content } else { Target::Frame }
     } else {
@@ -210,14 +210,14 @@ fn kind_of(shape: &str) -> ShapeKind {
         _ => ShapeKind::Rectangle,
     }
 }
-fn shape_params(app: &PhotocraftApp, r: [i64; 4]) -> Value {
+fn shape_params(app: &PatronusPhotoApp, r: [i64; 4]) -> Value {
     let [x, y, x1, y1] = r;
     let shape = current_shape(&app.ui.frame_tool);
     let mut p = json!({"x":x,"y":y,"width":x1.saturating_sub(x),"height":y1.saturating_sub(y),"shape":shape,"sides":app.ui.frame_tool.sides.clamp(3,100)});
     if shape == "custom" {
         let name = app.ui.presets_ui.shape();
-        if let Some(sh) = photocraft_engine::presets::shapes::all_groups(&app.session).iter().flat_map(|g| &g.items).find(|s| s.name == name) {
-            p["path"] = photocraft_engine::vector_cmds::path_json(&sh.path);
+        if let Some(sh) = patronusphoto_engine::presets::shapes::all_groups(&app.session).iter().flat_map(|g| &g.items).find(|s| s.name == name) {
+            p["path"] = patronusphoto_engine::vector_cmds::path_json(&sh.path);
         }
     }
     if let Some(s) = &app.ui.frame_tool.stroke {
@@ -227,7 +227,7 @@ fn shape_params(app: &PhotocraftApp, r: [i64; 4]) -> Value {
 }
 fn on_border(f: &Frame, p: [f64; 2], zoom: f64) -> bool {
     let path = f.outline();
-    photocraft_vector::flatten::flatten_path(&path, 0.5 / zoom.max(0.01)).iter().any(|line| {
+    patronusphoto_vector::flatten::flatten_path(&path, 0.5 / zoom.max(0.01)).iter().any(|line| {
         let segments = line.pts.windows(2).filter_map(|s| Some((*s.first()?, *s.get(1)?)));
         let closing = line.closed.then(|| Some((*line.pts.last()?, *line.pts.first()?))).flatten();
         segments.chain(closing).any(|((ax, ay), (bx, by))| {
@@ -241,9 +241,9 @@ fn on_border(f: &Frame, p: [f64; 2], zoom: f64) -> bool {
 fn inside(f: &Frame, p: [f64; 2]) -> bool {
     let (x, y) = (p[0].floor() as i32, p[1].floor() as i32);
     let (Some(x1), Some(y1)) = (x.checked_add(1), y.checked_add(1)) else { return false };
-    photocraft_vector::path_coverage(&f.outline(), Rect::new(x, y, x1, y1)).first().is_some_and(|v| *v > 0.0)
+    patronusphoto_vector::path_coverage(&f.outline(), Rect::new(x, y, x1, y1)).first().is_some_and(|v| *v > 0.0)
 }
-pub(crate) fn frame_at(app: &PhotocraftApp, p: [f64; 2]) -> Option<LayerId> {
+pub(crate) fn frame_at(app: &PatronusPhotoApp, p: [f64; 2]) -> Option<LayerId> {
     let st = app.session.active()?;
     let zoom = f64::from(app.point_zoom());
     st.doc
@@ -278,21 +278,21 @@ fn frame_affine(b: &BoxState) -> Affine {
     Affine { m: [q1.x - q0.x, q1.y - q0.y, q3.x - q0.x, q3.y - q0.y, q0.x, q0.y] }
 }
 /// The frame's first child's bounds as a box.
-fn child_box(app: &PhotocraftApp, id: LayerId) -> Option<BoxState> {
+fn child_box(app: &PatronusPhotoApp, id: LayerId) -> Option<BoxState> {
     let st = app.session.active()?;
     let child = st.doc.layer(id)?.children()?.first()?;
-    let b = photocraft_engine::transform_cmds::transform_frame(&st.doc, child);
+    let b = patronusphoto_engine::transform_cmds::transform_frame(&st.doc, child);
     Some(BoxState::from_rect(KRect::new(f64::from(b.x0), f64::from(b.y0), f64::from(b.x1), f64::from(b.y1))))
 }
 
 /// The preview's transform of frame `id`, while a gesture shows one for the current revision.
-fn shown_transform(app: &PhotocraftApp, id: LayerId) -> Option<Affine> {
+fn shown_transform(app: &PatronusPhotoApp, id: LayerId) -> Option<Affine> {
     let st = app.session.active()?;
     let p = app.frame_preview.as_ref().filter(|p| p.doc.id == st.doc.id && p.revision == st.revision)?;
     p.doc.layer(id)?.frame.as_ref().map(|f| f.transform)
 }
 
-fn update_preview(app: &mut PhotocraftApp, layer: LayerId, proposed: Affine) {
+fn update_preview(app: &mut PatronusPhotoApp, layer: LayerId, proposed: Affine) {
     let Some(st) = app.session.active() else {
         app.frame_preview = None;
         return;
@@ -307,12 +307,12 @@ fn update_preview(app: &mut PhotocraftApp, layer: LayerId, proposed: Affine) {
                 return;
             }
         }
-        photocraft_engine::frame_cmds::refresh(l);
+        patronusphoto_engine::frame_cmds::refresh(l);
     }
     let key = app.frame_preview.as_ref().map_or(1, |p| p.key.wrapping_add(1));
     app.frame_preview = Some(Preview { doc: Arc::new(shown), revision, key });
 }
-pub(crate) fn display_doc(app: &mut PhotocraftApp, idx: usize) -> Option<(Arc<photocraft_doc::Document>, u64)> {
+pub(crate) fn display_doc(app: &mut PatronusPhotoApp, idx: usize) -> Option<(Arc<patronusphoto_doc::Document>, u64)> {
     let live = app.ui.transform.as_ref().filter(|t| frame_transform(t)).map(|t| (t.id, t.layer, transformed_frame(app, t)));
     if let Some((id, layer, transform)) = live {
         let transform = transform.ok()?;
@@ -331,7 +331,7 @@ pub(crate) fn display_doc(app: &mut PhotocraftApp, idx: usize) -> Option<(Arc<ph
             let mut doc = (*st.doc).clone();
             let l = doc.layer_mut(LayerId(layer))?;
             l.frame.as_mut()?.transform = transform;
-            photocraft_engine::frame_cmds::refresh(l);
+            patronusphoto_engine::frame_cmds::refresh(l);
             app.frame_preview = Some(Preview { doc: Arc::new(doc), revision: st.revision, key });
         }
     }
@@ -340,7 +340,7 @@ pub(crate) fn display_doc(app: &mut PhotocraftApp, idx: usize) -> Option<(Arc<ph
     (app.ui.tool == Tool::Frame && st.doc.id == p.doc.id && st.revision == p.revision).then(|| (p.doc.clone(), (1 << 57) | p.key))
 }
 /// Drops the live preview (a tool change, a reset).
-pub fn clear(app: &mut PhotocraftApp) {
+pub fn clear(app: &mut PatronusPhotoApp) {
     app.frame_preview = None;
 }
 
@@ -357,7 +357,7 @@ enum Pressed {
 }
 
 /// The Frame tool's press rules: the double-click toggle, target selection, and what each target does.
-fn press_rule(app: &mut PhotocraftApp, at: KPoint, clicks: u32, reach: f64, style: &ConstrainStyle, mods: Mods) -> Pressed {
+fn press_rule(app: &mut PatronusPhotoApp, at: KPoint, clicks: u32, reach: f64, style: &ConstrainStyle, mods: Mods) -> Pressed {
     app.frame_preview = None;
     if !at.x.is_finite() || !at.y.is_finite() || at.x.abs() > 600_000.0 || at.y.abs() > 600_000.0 {
         app.ui.status = tl!("Frame coordinates must be finite and within 600000 pixels").into();
@@ -442,7 +442,7 @@ fn content_part(state: &BoxState, at: KPoint, reach: f64, reference_point: bool)
 }
 
 /// A drag of the open Free Transform's box, as the box's own gesture: Begin at the first move, then Updates.
-fn drag_content(app: &mut PhotocraftApp, c: &mut ContentPress, to: KPoint, mods: Mods, time: f64) {
+fn drag_content(app: &mut PatronusPhotoApp, c: &mut ContentPress, to: KPoint, mods: Mods, time: f64) {
     let Some(t) = app.ui.transform.as_mut() else { return };
     let next = box_drag(&c.origin, &c.last, c.part, c.start, to, mods, &BoxRules::default());
     if !c.begun {
@@ -455,7 +455,7 @@ fn drag_content(app: &mut PhotocraftApp, c: &mut ContentPress, to: KPoint, mods:
 }
 
 /// The release of a content press: the box's Commit (when it moved) and the automatic commit of the session.
-fn release_content(app: &mut PhotocraftApp, c: &ContentPress, to: KPoint, mods: Mods) {
+fn release_content(app: &mut PatronusPhotoApp, c: &ContentPress, to: KPoint, mods: Mods) {
     if !c.begun {
         // A click moved nothing: the session its press opened ends with the press, as the release of any press that
         // opened one. The untouched box closes without a step.
@@ -470,7 +470,7 @@ fn release_content(app: &mut PhotocraftApp, c: &ContentPress, to: KPoint, mods: 
     crate::transform_tool::auto_commit(app, &edits);
 }
 
-fn cancel_content(app: &mut PhotocraftApp, c: &ContentPress, reason: CancelReason, time: f64) {
+fn cancel_content(app: &mut PatronusPhotoApp, c: &ContentPress, reason: CancelReason, time: f64) {
     if c.begun
         && let Some(t) = app.ui.transform.as_mut()
     {
@@ -481,7 +481,7 @@ fn cancel_content(app: &mut PhotocraftApp, c: &ContentPress, reason: CancelReaso
 }
 
 /// Arrow keys respect which thumbnail is selected; Shift moves ten document pixels. A run is one step.
-fn nudge(app: &mut PhotocraftApp, dx: f64, dy: f64, mods: Mods, now: f64) -> bool {
+fn nudge(app: &mut PatronusPhotoApp, dx: f64, dy: f64, mods: Mods, now: f64) -> bool {
     if app.ui.tool != Tool::Frame || app.ui.transform.is_some() || mods.cmd || mods.ctrl || mods.alt {
         return false;
     }
@@ -516,7 +516,7 @@ pub(crate) fn tool<'a>(scope: &'a ToolScope<'a>, state: &'a mut FrameTool, _host
 }
 
 /// Makes the frames the shape drag committed this pass.
-pub(crate) fn drain(app: &mut PhotocraftApp, state: &mut FrameTool, _response: &ToolHostResponse) {
+pub(crate) fn drain(app: &mut PatronusPhotoApp, state: &mut FrameTool, _response: &ToolHostResponse) {
     for event in state.draw.take_events() {
         let ShapeDragEvent::Draw(EditEvent::Commit { after, .. }) = event else { continue };
         make_frame(app, after.bounds());
@@ -524,7 +524,7 @@ pub(crate) fn drain(app: &mut PhotocraftApp, state: &mut FrameTool, _response: &
 }
 
 /// Makes a frame in the drawn box, around the active layer's image when the box overlaps it, and selects it.
-fn make_frame(app: &mut PhotocraftApp, b: KRect) {
+fn make_frame(app: &mut PatronusPhotoApp, b: KRect) {
     let r = [b.x0, b.y0, b.x1, b.y1].map(|v| v.round() as i64);
     if r[2] <= r[0] || r[3] <= r[1] {
         return;
@@ -665,8 +665,8 @@ impl CanvasTool for FramePass<'_> {
 
 // ---- the canvas body ----
 
-fn paint_path(painter: &egui::Painter, view: &craft::behavior::CanvasView, path: &photocraft_doc::Path, stroke: Stroke) {
-    for line in photocraft_vector::flatten::flatten_path(path, 0.5 / view.zoom.max(0.01)) {
+fn paint_path(painter: &egui::Painter, view: &craft::behavior::CanvasView, path: &patronusphoto_doc::Path, stroke: Stroke) {
+    for line in patronusphoto_vector::flatten::flatten_path(path, 0.5 / view.zoom.max(0.01)) {
         let mut points: Vec<Pos2> = line.pts.iter().map(|&(x, y)| view.to_screen(KPoint::new(x, y))).collect();
         if line.closed
             && let Some(first) = points.first().copied()
@@ -684,7 +684,7 @@ fn paint_handle(p: &egui::Painter, at: Pos2, t: &Tokens) {
 
 /// Shows the Frame tool's marks in the canvas body: placeholders of empty frames for every tool, and for the Frame
 /// tool the selected frame's outline with its box (Frame target), its image's bounds (Content) or its outline (Both).
-pub(crate) fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui, rect: egui::Rect) {
+pub(crate) fn show(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, rect: egui::Rect) {
     let Some(view) = crate::canvas::document_display::active_view(app) else { return };
     let t = Tokens::get(ui.ctx());
     let painter = ui.painter().clone();
@@ -762,7 +762,7 @@ pub(crate) fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui, rect: egui::Rect)
 
 // ---- the options bar ----
 
-pub fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui, tool: Tool) -> bool {
+pub fn options_bar(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, tool: Tool) -> bool {
     if tool != Tool::Frame {
         return false;
     }
@@ -823,7 +823,7 @@ mod tests;
 pub(crate) fn frame_transform(t: &FreeTransform) -> bool {
     t.target.as_ref().and_then(|v| v.get("frame")).and_then(Value::as_u64) == Some(t.layer)
 }
-pub(crate) fn transformed_frame(app: &PhotocraftApp, t: &FreeTransform) -> Result<Affine, String> {
+pub(crate) fn transformed_frame(app: &PatronusPhotoApp, t: &FreeTransform) -> Result<Affine, String> {
     if t.session.warp().is_some() {
         return Err(tl!("A frame supports affine transforms; select its image to warp it").into());
     }

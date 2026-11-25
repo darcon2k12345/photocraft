@@ -6,7 +6,7 @@ use craft::ui::patterns::form_dialogs::ParamResult;
 use craft::ui::runtime::env::Label;
 use serde_json::{Map, Value};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The command id of the dialog.
 pub(crate) const COMMAND: &str = "file.scripts.imageProcessor";
@@ -34,7 +34,7 @@ pub(crate) fn nest(map: &mut Map<String, Value>) {
 /// Whether the Image Processor on the source `source` waits for the open Free Transform: document sources read
 /// committed pixels, not the pending preview; Folder processing stays usable. The command (`run_command_at_depth`)
 /// and the dialog's OK ([`check`]) both refuse by it.
-pub(crate) fn waits_for_transform(app: &PhotocraftApp, source: Option<&str>) -> bool {
+pub(crate) fn waits_for_transform(app: &PatronusPhotoApp, source: Option<&str>) -> bool {
     app.ui.transform.is_some()
         && match source {
             Some("open") => true,
@@ -45,7 +45,7 @@ pub(crate) fn waits_for_transform(app: &PhotocraftApp, source: Option<&str>) -> 
 
 /// The `ParamFamily::check` of the dialog: OK is refused, and the dialog stays open, while a document source waits for
 /// the open Free Transform or no file type is ticked.
-pub(crate) fn check(app: &mut PhotocraftApp, result: &ParamResult) -> Result<(), Label> {
+pub(crate) fn check(app: &mut PatronusPhotoApp, result: &ParamResult) -> Result<(), Label> {
     if waits_for_transform(app, result.fields.text("source")) {
         return Err(Label::from(tl!("Commit or cancel the transform first")));
     }

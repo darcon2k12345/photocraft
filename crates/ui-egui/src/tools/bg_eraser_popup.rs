@@ -14,8 +14,8 @@ use craft::ui::display::Icon;
 use craft::ui::form::SliderField;
 use craft::ui::pickers::Select;
 use craft::ui::primitives::IconSpec;
-use photocraft_engine::BrushSettings;
-use photocraft_engine::paint::Control;
+use patronusphoto_engine::BrushSettings;
+use patronusphoto_engine::paint::Control;
 
 /// The pen selects' entries, as stored.
 pub const OFF: &str = "off";

@@ -3,10 +3,10 @@ use craft::behavior::CanvasView;
 use craft::behavior::kurbo::Point;
 use craft::ui::dialog::DialogId;
 use egui_kittest::Harness;
-use photocraft_color::{Color, PixelFormat};
-use photocraft_compose::Buffer;
-use photocraft_compose::adjust::{Transfer, apply_depth};
-use photocraft_doc::{Document, Size};
+use patronusphoto_color::{Color, PixelFormat};
+use patronusphoto_compose::Buffer;
+use patronusphoto_compose::adjust::{Transfer, apply_depth};
+use patronusphoto_doc::{Document, Size};
 use serde_json::{Value, json};
 
 use crate::adjust_dialog::HostedAdjustDialog as Hosted;
@@ -41,7 +41,7 @@ fn clipping_matches_the_levels_result() {
     let channels = [lv(10.0, 1.0, 240.0), LevelsChannel::default(), lv(60.0, 1.0, 120.0)];
     let adj = levels(master.clone(), channels.clone());
     for depth in DEPTHS {
-        let quantum = photocraft_compose::adjustment_quantum(depth);
+        let quantum = patronusphoto_compose::adjustment_quantum(depth);
         for v in samples(depth) {
             let result: [f32; 3] = if depth == SampleType::U16 {
                 std::array::from_fn(|c| levels_q(&master, levels_q(&channels[c], v, quantum), quantum))
@@ -95,7 +95,7 @@ fn thresholds_agree_with_classify() {
     for adj in &cases {
         let Adjustment::Levels { master, per_channel, .. } = adj else { panic!("Levels") };
         for depth in DEPTHS {
-            let quantum = photocraft_compose::adjustment_quantum(depth);
+            let quantum = patronusphoto_compose::adjustment_quantum(depth);
             let thr = thresholds(adj, depth).unwrap();
             let keys: Vec<u16> = match depth {
                 SampleType::U8 => (0..=255u16).map(|n| n * 257).collect(),
@@ -188,14 +188,14 @@ fn hostile_settings_do_not_panic() {
     assert!(thresholds(&cmyk, SampleType::U8).is_none());
     assert!(thresholds(&Adjustment::Invert, SampleType::U8).is_none());
     for params in [json!({"inBlack": 1e9, "inWhite": -5, "gamma": 0}), json!({"red": {"gamma": 100, "inWhite": 0}}), json!({"inBlack": "x"})] {
-        if let Ok(adj) = photocraft_engine::adjust_params::from_params("levels", &params, None, ColorMode::Rgb) {
+        if let Ok(adj) = patronusphoto_engine::adjust_params::from_params("levels", &params, None, ColorMode::Rgb) {
             let _ = thresholds(&adj, SampleType::U16);
         }
     }
 }
 
 /// A 16×8 document: the background's red channel ramps 0..1 left to right, green is 0.5, blue 1.
-fn ramp_app(mode: ColorMode, depth: SampleType) -> Box<PhotocraftApp> {
+fn ramp_app(mode: ColorMode, depth: SampleType) -> Box<PatronusPhotoApp> {
     let mut doc = Document::with_background("t", Size::new(16, 8), mode, depth, Color::rgba(1.0, 1.0, 1.0, 1.0));
     let gray = mode == ColorMode::Grayscale;
     if let Some(s) = doc.layers[0].surface_mut() {
@@ -204,19 +204,19 @@ fn ramp_app(mode: ColorMode, depth: SampleType) -> Box<PhotocraftApp> {
         s.write_region(Rect::new(0, 0, 16, 8), &data);
     }
     let target = doc.layers[0].id;
-    let mut session = photocraft_engine::Session::new();
+    let mut session = patronusphoto_engine::Session::new();
     session.add_document(doc, None);
     session.select_layer(target).unwrap();
-    PhotocraftApp::new(session, crate::Services::default())
+    PatronusPhotoApp::new(session, crate::Services::default())
 }
 
 /// The hosted Levels dialog `id` names.
-fn hosted(app: &mut PhotocraftApp, id: DialogId) -> &mut Hosted {
+fn hosted(app: &mut PatronusPhotoApp, id: DialogId) -> &mut Hosted {
     app.framework.dialogs.get_mut_by_id::<Hosted>(id).expect("the hosted Levels dialog is open")
 }
 
 /// Opens Levels with the keys of `params` written over its settings and the clipping display at `end`.
-fn open_levels(app: &mut PhotocraftApp, params: Value, end: Option<LevelsClip>) -> DialogId {
+fn open_levels(app: &mut PatronusPhotoApp, params: Value, end: Option<LevelsClip>) -> DialogId {
     let id = crate::adjust_dialog::open(app, "image.adjustments.levels").unwrap();
     let mode = app.session.active().unwrap().doc.mode;
     let cx = ValueCx::new(mode, Value::Null);
@@ -239,7 +239,7 @@ fn view(zoom: f32) -> CanvasView {
 
 /// [`paint`] in a frame of its own (so its mesh doesn't spill into a later frame's shapes), then
 /// the colours of the blocks it shows.
-fn paint_view(app: &mut PhotocraftApp, ctx: &egui::Context, xf: &CanvasView) -> Option<Vec<Color32>> {
+fn paint_view(app: &mut PatronusPhotoApp, ctx: &egui::Context, xf: &CanvasView) -> Option<Vec<Color32>> {
     let mut out = ctx.run_ui(egui::RawInput::default(), |ui| {
         let painter = egui::Painter::new(ui.ctx().clone(), egui::LayerId::background(), egui::Rect::EVERYTHING);
         paint(app, ui.ctx(), &painter, xf, 0);
@@ -293,13 +293,13 @@ fn a_huge_display_grows_the_blocks() {
 }
 
 /// The main canvas's view of the 16×8 document at 10 device pixels per pixel.
-fn main_view(app: &mut PhotocraftApp) -> crate::state::View {
+fn main_view(app: &mut PatronusPhotoApp) -> crate::state::View {
     app.sync_views();
     crate::state::View { zoom: 10.0, center: [8.0, 4.0], pending: Vec::new(), ..app.ui.views[0].clone() }
 }
 
 /// The shapes of one 160×80 canvas frame of document 0 in `view`.
-fn canvas_frame(ctx: &egui::Context, app: &mut PhotocraftApp, view: &crate::state::View, primary: bool) -> Vec<egui::epaint::ClippedShape> {
+fn canvas_frame(ctx: &egui::Context, app: &mut PatronusPhotoApp, view: &crate::state::View, primary: bool) -> Vec<egui::epaint::ClippedShape> {
     // An extra document window is its own canvas (a window id in its host), so the framework keeps its paint apart from the main one's.
     let host = CanvasHost { window: (!primary).then_some(1), ..CanvasHost::main(0) };
     let mut out = ctx.run_ui(egui::RawInput::default(), |ui| {
@@ -395,9 +395,9 @@ fn paint_shows_the_target_clipping_for_the_view() {
 #[test]
 fn ineligible_documents_show_no_display() {
     for mode in ["cmyk", "lab"] {
-        let mut session = photocraft_engine::Session::new();
+        let mut session = patronusphoto_engine::Session::new();
         session.execute("file.new", json!({"width": 8, "height": 8, "mode": mode})).unwrap();
-        let mut app = PhotocraftApp::new(session, crate::Services::default());
+        let mut app = PatronusPhotoApp::new(session, crate::Services::default());
         open_levels(&mut app, json!({}), Some(LevelsClip::Shadows));
         assert!(request(&app, 0).is_none(), "{mode}");
     }
@@ -440,7 +440,7 @@ fn a_running_job_holds_the_display() {
             |_, ()| Ok(json!({})),
         )
         .unwrap();
-    let photocraft_engine::jobs::Started::Job(job) = started else { panic!("ran inline") };
+    let patronusphoto_engine::jobs::Started::Job(job) = started else { panic!("ran inline") };
     assert!(app.session.has_jobs());
     assert!(paint_view(&mut app, &ctx, &view(10.0)).is_none());
     assert!(app.levels_clipping.is_none(), "no scan and no texture while the job runs");
@@ -480,18 +480,18 @@ fn smart_filter_levels_show_no_display() {
     assert!(app.levels_clipping.is_none(), "the cache goes");
 }
 
-fn dialog_harness(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
+fn dialog_harness(app: Box<PatronusPhotoApp>) -> Harness<'static, Box<PatronusPhotoApp>> {
     let h = Harness::builder()
         .with_context(app.ctx().clone())
         .with_size(egui::vec2(1200.0, 900.0))
         .with_step_dt(1.0 / 60.0)
         .build_ui_state(|ui, app| crate::dialogs::run(app, ui), app);
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     h
 }
 
 /// The `clipping` field of the first open dialog as automation lists it: `"shadows"`, `"highlights"` or `None`.
-fn clipping(h: &Harness<'static, Box<PhotocraftApp>>) -> Option<Value> {
+fn clipping(h: &Harness<'static, Box<PatronusPhotoApp>>) -> Option<Value> {
     let dialogs = h.state().framework.dialogs.open_dialogs();
     dialogs.first().and_then(|d| d.fields.as_ref()).map(|fields| fields["clipping"].clone()).filter(|clip| !clip.is_null())
 }

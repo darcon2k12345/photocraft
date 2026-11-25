@@ -9,11 +9,11 @@ use craft::ui::text::TextField;
 use serde_json::json;
 
 use super::{note_alerts, show_note_options};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::history_keys;
 
 /// The panel body: the shown note's author and text, previous and next buttons with the position, and delete.
-pub(crate) fn body(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub(crate) fn body(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let (n, note) = match app.session.active() {
         Some(d) => (d.doc.notes.len(), Some(&d.doc.notes)),
         None => (0, None),

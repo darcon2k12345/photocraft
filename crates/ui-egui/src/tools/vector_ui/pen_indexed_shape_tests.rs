@@ -8,12 +8,12 @@ use egui::Modifiers;
 use egui::accesskit::Role;
 use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
-use photocraft_doc::{ColorMode, LayerContent, LayerId, Path};
+use patronusphoto_doc::{ColorMode, LayerContent, LayerId, Path};
 use serde_json::{Value, json};
 
 use craft::draw::ui::VectorMode;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing;
 use crate::state::Tool;
 use crate::tools::brush_refusal::brush_refusal_alert_tests::alerts;
@@ -24,12 +24,12 @@ const INDEXED_ALERT: &str = "Could not use the pen tool because it does not work
 
 /// The options bar of `tool` (the bar follows `app.ui.tool`, as in the app) on a document made of
 /// `doc` params, with `tool` active.
-fn bar(tool: Tool, doc: Value) -> Harness<'static, Box<PhotocraftApp>> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn bar(tool: Tool, doc: Value) -> Harness<'static, Box<PatronusPhotoApp>> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", doc).unwrap();
     app.ui.tool = tool;
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 400.0)).with_context(app.ctx().clone()).build_ui_state(
-        |ui, app: &mut Box<PhotocraftApp>| {
+        |ui, app: &mut Box<PatronusPhotoApp>| {
             let tool = app.ui.tool;
             ui.horizontal(|ui| super::options_bar(app, ui, tool));
         },
@@ -40,37 +40,37 @@ fn bar(tool: Tool, doc: Value) -> Harness<'static, Box<PhotocraftApp>> {
 }
 
 /// The Pen options bar on a 200 × 200 8-bit RGB document.
-fn pen_bar() -> Harness<'static, Box<PhotocraftApp>> {
+fn pen_bar() -> Harness<'static, Box<PatronusPhotoApp>> {
     bar(Tool::Pen, json!({"width": 200, "height": 200}))
 }
 
 /// The same document converted to Indexed Color, as an opened Indexed GIF is.
-fn to_indexed(h: &mut Harness<'static, Box<PhotocraftApp>>) {
+fn to_indexed(h: &mut Harness<'static, Box<PatronusPhotoApp>>) {
     h.state_mut().run("image.mode.indexedColor", json!({"palette": "exact", "forced": "none", "dither": "none"})).unwrap();
     h.run_steps(2);
     assert_eq!(h.state().session.active().unwrap().doc.mode, ColorMode::Indexed, "the document is Indexed Color");
 }
 
 /// `tool`'s options bar on an Indexed Color document.
-fn indexed_bar(tool: Tool) -> Harness<'static, Box<PhotocraftApp>> {
+fn indexed_bar(tool: Tool) -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut h = bar(tool, json!({"width": 200, "height": 200}));
     to_indexed(&mut h);
     h
 }
 
 /// The Pen-family mode dropdown: the one showing a Pen mode.
-fn dropdown<'a>(h: &'a Harness<'static, Box<PhotocraftApp>>) -> egui_kittest::Node<'a> {
+fn dropdown<'a>(h: &'a Harness<'static, Box<PatronusPhotoApp>>) -> egui_kittest::Node<'a> {
     let modes = ["Shape", "Path"];
     h.query_all_by_role(Role::ComboBox).find(|n| n.value().is_some_and(|v| modes.contains(&v.as_str()))).expect("the mode dropdown")
 }
 
 /// The mode the dropdown shows.
-fn shown_mode(h: &Harness<'static, Box<PhotocraftApp>>) -> String {
+fn shown_mode(h: &Harness<'static, Box<PatronusPhotoApp>>) -> String {
     dropdown(h).value().expect("the mode dropdown shows its mode")
 }
 
 /// Clicks the mode dropdown and picks its `entry`, as a hand does.
-fn pick_mode(h: &mut Harness<'static, Box<PhotocraftApp>>, entry: &str) {
+fn pick_mode(h: &mut Harness<'static, Box<PatronusPhotoApp>>, entry: &str) {
     let at = dropdown(h).rect().center();
     crate::layers_panel_nodes::click(h, at, Modifiers::NONE);
     let item = h.get_by_role_and_label(Role::ListBoxOption, entry);
@@ -80,17 +80,17 @@ fn pick_mode(h: &mut Harness<'static, Box<PhotocraftApp>>, entry: &str) {
 }
 
 /// Whether the options bar's Make: Shape button is greyed.
-fn shape_button_disabled(h: &Harness<'static, Box<PhotocraftApp>>) -> bool {
+fn shape_button_disabled(h: &Harness<'static, Box<PatronusPhotoApp>>) -> bool {
     h.get_by_role_and_label(Role::Button, "Shape").accesskit_node().is_disabled()
 }
 
 /// Clicks the options bar's Make: Shape button.
-fn click_shape_button(h: &mut Harness<'static, Box<PhotocraftApp>>) {
+fn click_shape_button(h: &mut Harness<'static, Box<PatronusPhotoApp>>) {
     h.get_by_role_and_label(Role::Button, "Shape").click();
 }
 
 /// Clicks a closed square with the Pen: four corners and the click back on the first anchor.
-fn square(h: &mut Harness<'static, Box<PhotocraftApp>>) {
+fn square(h: &mut Harness<'static, Box<PatronusPhotoApp>>) {
     let app = h.state_mut();
     for (x, y) in [(20.0, 20.0), (120.0, 20.0), (120.0, 120.0), (20.0, 120.0)] {
         testing::click(app, [x, y], Modifiers::NONE);
@@ -100,20 +100,20 @@ fn square(h: &mut Harness<'static, Box<PhotocraftApp>>) {
 }
 
 /// The Path-mode Work Path the last `square` made.
-fn work_path(h: &Harness<'static, Box<PhotocraftApp>>) -> Path {
+fn work_path(h: &Harness<'static, Box<PatronusPhotoApp>>) -> Path {
     h.state().session.active().unwrap().doc.work_path.clone().expect("a work path")
 }
 
-fn steps(h: &Harness<'static, Box<PhotocraftApp>>) -> usize {
+fn steps(h: &Harness<'static, Box<PatronusPhotoApp>>) -> usize {
     h.state().session.active().unwrap().history.past_len()
 }
 
-fn layers(h: &Harness<'static, Box<PhotocraftApp>>) -> usize {
+fn layers(h: &Harness<'static, Box<PatronusPhotoApp>>) -> usize {
     h.state().session.active().unwrap().doc.layers.len()
 }
 
 /// The document's shape layers, as (layer, path).
-fn shapes(h: &Harness<'static, Box<PhotocraftApp>>) -> Vec<(LayerId, Path)> {
+fn shapes(h: &Harness<'static, Box<PatronusPhotoApp>>) -> Vec<(LayerId, Path)> {
     let st = h.state().session.active().unwrap();
     st.doc
         .walk()

@@ -9,7 +9,7 @@ use craft::ui::patterns::form_dialogs::{DialogFields, Param, ParamDialog, ParamK
 use craft::ui::runtime::env::Label;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::dialogs::params;
 
 /// The dialog's key.
@@ -22,19 +22,19 @@ pub(crate) fn owns(key: &str) -> bool {
 
 /// Opens the dialog for a new group, pre-filled with the name the next group gets
 /// ("Count Group N", N = the groups so far + 1, as `count.newGroup` names it).
-pub fn open_new(app: &mut PhotocraftApp) -> Option<DialogId> {
+pub fn open_new(app: &mut PatronusPhotoApp) -> Option<DialogId> {
     let n = app.session.active()?.doc.measurement.count_groups.len();
     let name = format!("{} {}", tl!("Count Group"), n + 1);
     Some(open(app, json!({"mode": "new"}), name))
 }
 
 /// Opens the dialog to rename count group `group`, pre-filled with its name.
-pub fn open_rename(app: &mut PhotocraftApp, group: usize) -> Option<DialogId> {
+pub fn open_rename(app: &mut PatronusPhotoApp, group: usize) -> Option<DialogId> {
     let name = app.session.active()?.doc.measurement.count_groups.get(group)?.name.clone();
     Some(open(app, json!({"mode": "rename", "group": group}), name))
 }
 
-fn open(app: &mut PhotocraftApp, mut captured: Value, name: String) -> DialogId {
+fn open(app: &mut PatronusPhotoApp, mut captured: Value, name: String) -> DialogId {
     // The document activation that opened it: the group index and the default name mean something only there. A
     // switch to another document (and back, or a reopened one with a reused id) makes a new activation.
     captured["gen"] = json!(app.session.active_generation());
@@ -49,7 +49,7 @@ fn open(app: &mut PhotocraftApp, mut captured: Value, name: String) -> DialogId 
 
 /// Refuses OK once the dialog is out of date: another document has been activated since it opened, or (renaming)
 /// the document has changed at all, which can move the group it targets. Nothing is named or renamed then.
-pub(crate) fn check(app: &mut PhotocraftApp, result: &ParamResult) -> Result<(), Label> {
+pub(crate) fn check(app: &mut PatronusPhotoApp, result: &ParamResult) -> Result<(), Label> {
     let captured = params::captured(app, &result.key);
     let same_activation = captured.get("gen").and_then(Value::as_u64) == Some(app.session.active_generation());
     let renaming = captured.get("mode").and_then(Value::as_str) == Some("rename");
@@ -70,7 +70,7 @@ pub(crate) fn command(captured: &Value, fields: &DialogFields) -> (&'static str,
 }
 
 /// OK: runs the command; an engine refusal goes to the status line.
-pub(crate) fn run(app: &mut PhotocraftApp, _ctx: &egui::Context, result: ParamResult) {
+pub(crate) fn run(app: &mut PatronusPhotoApp, _ctx: &egui::Context, result: ParamResult) {
     let (id, params) = command(&params::captured(app, &result.key), &result.fields);
     let outcome = app.run(id, params);
     crate::dialogs::alerts::report(app, outcome);

@@ -2411,7 +2411,6 @@ dependencies = [
 [[package]]
 name = "craft-update"
 version = "0.1.0"
-source = "git+https://github.com/storytold/craft-libs?rev=683fe06031224725b913c8ad3697d8e8bfec6c90#683fe06031224725b913c8ad3697d8e8bfec6c90"
 dependencies = [
  "chrono",
  "craft-host",
@@ -6187,6 +6186,537 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2ee67f1008b1ba2321834326597b8e186293b049a023cdef258527550b9935b4"
 
 [[package]]
+name = "patronusphoto"
+version = "0.23.2"
+dependencies = [
+ "arboard",
+ "async-io",
+ "base64 0.22.1",
+ "blake3",
+ "chrono",
+ "clap",
+ "core-graphics2",
+ "craft",
+ "craft-cms",
+ "craft-image-codecs",
+ "craft-svg",
+ "craft-update",
+ "craft-xml",
+ "eframe",
+ "egui",
+ "egui_kittest",
+ "fmv-macos-events",
+ "futures-lite",
+ "log",
+ "objc2 0.6.5",
+ "objc2-app-kit 0.3.2",
+ "objc2-foundation 0.3.2",
+ "open",
+ "patronusphoto-automation",
+ "patronusphoto-color",
+ "patronusphoto-compose",
+ "patronusphoto-doc",
+ "patronusphoto-engine",
+ "patronusphoto-format",
+ "patronusphoto-geom",
+ "patronusphoto-io",
+ "patronusphoto-raster",
+ "patronusphoto-tablet",
+ "patronusphoto-ui-egui",
+ "plist",
+ "rfd",
+ "ron",
+ "rustix 1.1.5",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "winit",
+ "winresource",
+ "winsafe",
+ "wl-clipboard-rs",
+ "x11rb",
+ "xcap",
+ "zbus",
+]
+
+[[package]]
+name = "patronusphoto-algo"
+version = "0.23.2"
+dependencies = [
+ "craft",
+ "craft-metadata",
+ "criterion",
+ "patronusphoto-color",
+ "patronusphoto-geom",
+ "patronusphoto-raster",
+ "patronusphoto-testkit",
+ "rayon",
+ "rustfft",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "patronusphoto-automation"
+version = "0.23.2"
+dependencies = [
+ "base64 0.23.1",
+ "cap-std",
+ "clap",
+ "craft",
+ "craft-image-codecs",
+ "craft-psd",
+ "getrandom 0.3.4",
+ "patronusphoto-color",
+ "patronusphoto-compose",
+ "patronusphoto-doc",
+ "patronusphoto-engine",
+ "patronusphoto-format",
+ "patronusphoto-geom",
+ "patronusphoto-gpu",
+ "patronusphoto-io",
+ "patronusphoto-raster",
+ "patronusphoto-raw",
+ "pollster 1.0.1",
+ "rmcp",
+ "rustix 1.1.5",
+ "schemars",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "wgpu",
+]
+
+[[package]]
+name = "patronusphoto-cli"
+version = "0.23.2"
+dependencies = [
+ "clap",
+ "clap_complete",
+ "clap_mangen",
+ "craft",
+ "craft-cms",
+ "craft-image-codecs",
+ "craft-psd",
+ "patronusphoto-automation",
+ "patronusphoto-doc",
+ "patronusphoto-engine",
+ "patronusphoto-format",
+ "patronusphoto-io",
+ "patronusphoto-raster",
+ "patronusphoto-raw",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+ "winresource",
+ "xtask",
+]
+
+[[package]]
+name = "patronusphoto-color"
+version = "0.23.2"
+dependencies = [
+ "craft-cms",
+ "serde",
+]
+
+[[package]]
+name = "patronusphoto-compose"
+version = "0.23.2"
+dependencies = [
+ "craft-cms",
+ "criterion",
+ "patronusphoto-color",
+ "patronusphoto-doc",
+ "patronusphoto-geom",
+ "patronusphoto-paint",
+ "patronusphoto-raster",
+ "patronusphoto-vector",
+ "proptest",
+ "rayon",
+]
+
+[[package]]
+name = "patronusphoto-doc"
+version = "0.23.2"
+dependencies = [
+ "craft-tracked",
+ "craft-ui-macros",
+ "patronusphoto-color",
+ "patronusphoto-geom",
+ "patronusphoto-raster",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "patronusphoto-engine"
+version = "0.23.2"
+dependencies = [
+ "base64 0.22.1",
+ "blake3",
+ "chrono",
+ "craft",
+ "craft-affinity",
+ "craft-cms",
+ "craft-file-formats",
+ "craft-image-codecs",
+ "craft-pcraft-format",
+ "craft-print",
+ "craft-psd",
+ "craft-xml",
+ "exr",
+ "flate2",
+ "patronusphoto-algo",
+ "patronusphoto-color",
+ "patronusphoto-compose",
+ "patronusphoto-doc",
+ "patronusphoto-format",
+ "patronusphoto-geom",
+ "patronusphoto-io",
+ "patronusphoto-ipp",
+ "patronusphoto-ops",
+ "patronusphoto-paint",
+ "patronusphoto-plugins",
+ "patronusphoto-raster",
+ "patronusphoto-raw",
+ "patronusphoto-testkit",
+ "patronusphoto-text",
+ "patronusphoto-vector",
+ "png 0.18.1",
+ "rayon",
+ "same-file",
+ "semver",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "wat",
+ "web-time",
+ "winsafe",
+]
+
+[[package]]
+name = "patronusphoto-format"
+version = "0.23.2"
+dependencies = [
+ "blake3",
+ "craft-image-codecs",
+ "craft-pcraft-bundle",
+ "craft-pcraft-format",
+ "craft-zip",
+ "crc32fast",
+ "exacl",
+ "flate2",
+ "libc",
+ "patronusphoto-color",
+ "patronusphoto-doc",
+ "patronusphoto-geom",
+ "patronusphoto-raster",
+ "proptest",
+ "rustix 1.1.5",
+ "ruzstd",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "winsafe",
+]
+
+[[package]]
+name = "patronusphoto-geom"
+version = "0.23.2"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "patronusphoto-gpu"
+version = "0.23.2"
+dependencies = [
+ "bytemuck",
+ "craft-cms",
+ "half",
+ "log",
+ "patronusphoto-algo",
+ "patronusphoto-color",
+ "patronusphoto-compose",
+ "patronusphoto-doc",
+ "patronusphoto-geom",
+ "patronusphoto-raster",
+ "patronusphoto-vector",
+ "pollster 1.0.1",
+ "rayon",
+ "thiserror 2.0.21",
+ "wgpu",
+]
+
+[[package]]
+name = "patronusphoto-io"
+version = "0.23.2"
+dependencies = [
+ "blake3",
+ "craft",
+ "craft-affinity",
+ "craft-cms",
+ "craft-crs",
+ "craft-docpath",
+ "craft-file-formats",
+ "craft-image-codecs",
+ "craft-kra",
+ "craft-ora",
+ "craft-pdf",
+ "craft-pdn",
+ "craft-psd",
+ "craft-svg",
+ "craft-tiff",
+ "craft-xcf",
+ "craft-xml",
+ "crc32fast",
+ "flate2",
+ "kurbo 0.13.1",
+ "lopdf",
+ "miniz_oxide 0.9.1",
+ "patronusphoto-algo",
+ "patronusphoto-color",
+ "patronusphoto-compose",
+ "patronusphoto-doc",
+ "patronusphoto-format",
+ "patronusphoto-geom",
+ "patronusphoto-paint",
+ "patronusphoto-raster",
+ "patronusphoto-raw",
+ "patronusphoto-testkit",
+ "patronusphoto-text",
+ "patronusphoto-vector",
+ "png 0.18.1",
+ "proptest",
+ "serde_json",
+ "thiserror 2.0.21",
+ "ttf-parser",
+ "zune-core",
+ "zune-jpegxl",
+]
+
+[[package]]
+name = "patronusphoto-ipp"
+version = "0.23.2"
+dependencies = [
+ "craft-ipp",
+]
+
+[[package]]
+name = "patronusphoto-oil-round-proof"
+version = "0.23.2"
+dependencies = [
+ "patronusphoto-algo",
+ "rayon",
+]
+
+[[package]]
+name = "patronusphoto-ops"
+version = "0.23.2"
+dependencies = [
+ "patronusphoto-doc",
+]
+
+[[package]]
+name = "patronusphoto-paint"
+version = "0.23.2"
+dependencies = [
+ "base64 0.23.1",
+ "craft-cms",
+ "patronusphoto-color",
+ "patronusphoto-geom",
+ "patronusphoto-raster",
+ "rayon",
+ "rustc-hash 2.1.3",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "patronusphoto-plugins"
+version = "0.23.2"
+dependencies = [
+ "patronusphoto-color",
+ "patronusphoto-geom",
+ "patronusphoto-raster",
+ "rayon",
+ "rustix 1.1.5",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "wasmi",
+ "wat",
+]
+
+[[package]]
+name = "patronusphoto-raster"
+version = "0.23.2"
+dependencies = [
+ "crc32fast",
+ "lz4_flex",
+ "patronusphoto-color",
+ "patronusphoto-geom",
+ "proptest",
+ "rayon",
+ "rustix 1.1.5",
+ "serde",
+ "sysinfo",
+ "winsafe",
+]
+
+[[package]]
+name = "patronusphoto-raw"
+version = "0.23.2"
+dependencies = [
+ "craft-image-codecs",
+ "craft-raw",
+ "flate2",
+ "image",
+ "patronusphoto-raw",
+ "rayon",
+ "zune-core",
+ "zune-jpegxl",
+]
+
+[[package]]
+name = "patronusphoto-tablet"
+version = "0.23.2"
+dependencies = [
+ "block2 0.6.2",
+ "log",
+ "objc2 0.6.5",
+ "objc2-app-kit 0.3.2",
+ "objc2-core-graphics",
+ "objc2-foundation 0.3.2",
+ "windows",
+ "wintab",
+ "wintab-sys",
+ "x11rb",
+]
+
+[[package]]
+name = "patronusphoto-testkit"
+version = "0.23.2"
+dependencies = [
+ "memory-stats",
+ "serde_json",
+ "wgpu",
+]
+
+[[package]]
+name = "patronusphoto-text"
+version = "0.23.2"
+dependencies = [
+ "base64 0.23.1",
+ "craft",
+ "craft-plist",
+ "craft-psd",
+ "flate2",
+ "parley",
+ "patronusphoto-color",
+ "patronusphoto-doc",
+ "patronusphoto-geom",
+ "patronusphoto-raster",
+ "rayon",
+ "skrifa 0.47.0",
+]
+
+[[package]]
+name = "patronusphoto-ui-egui"
+version = "0.23.2"
+dependencies = [
+ "base64 0.23.1",
+ "chrono",
+ "craft",
+ "craft-file-formats",
+ "craft-i18n",
+ "craft-image-codecs",
+ "craft-print",
+ "craft-psd",
+ "eframe",
+ "egui",
+ "egui_extras",
+ "egui_kittest",
+ "log",
+ "patronusphoto-algo",
+ "patronusphoto-color",
+ "patronusphoto-compose",
+ "patronusphoto-doc",
+ "patronusphoto-engine",
+ "patronusphoto-format",
+ "patronusphoto-geom",
+ "patronusphoto-gpu",
+ "patronusphoto-io",
+ "patronusphoto-paint",
+ "patronusphoto-plugins",
+ "patronusphoto-raster",
+ "patronusphoto-raw",
+ "patronusphoto-testkit",
+ "patronusphoto-text",
+ "patronusphoto-vector",
+ "rayon",
+ "rustc-hash 2.1.3",
+ "serde",
+ "serde_json",
+ "sys-locale",
+ "tempfile",
+ "toml",
+ "web-time",
+ "winsafe",
+]
+
+[[package]]
+name = "patronusphoto-vector"
+version = "0.23.2"
+dependencies = [
+ "patronusphoto-color",
+ "patronusphoto-doc",
+ "patronusphoto-geom",
+ "patronusphoto-raster",
+ "rayon",
+]
+
+[[package]]
+name = "patronusphoto-web"
+version = "0.23.2"
+dependencies = [
+ "craft-image-codecs",
+ "craft-psd",
+ "eframe",
+ "egui",
+ "js-sys",
+ "log",
+ "patronusphoto-doc",
+ "patronusphoto-engine",
+ "patronusphoto-io",
+ "patronusphoto-paint",
+ "patronusphoto-raster",
+ "patronusphoto-ui-egui",
+ "rfd",
+ "serde_json",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+]
+
+[[package]]
+name = "patronusphoto-web-boot"
+version = "0.23.2"
+dependencies = [
+ "flate2",
+ "js-sys",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+]
+
+[[package]]
 name = "pem"
 version = "3.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6318,537 +6848,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c6fd9027e2d9319be6349febd1db4e8d02aa544921200c9b777720ac34a3aa89"
 dependencies = [
  "siphasher",
-]
-
-[[package]]
-name = "photocraft"
-version = "0.23.1"
-dependencies = [
- "arboard",
- "async-io",
- "base64 0.22.1",
- "blake3",
- "chrono",
- "clap",
- "core-graphics2",
- "craft",
- "craft-cms",
- "craft-image-codecs",
- "craft-svg",
- "craft-update",
- "craft-xml",
- "eframe",
- "egui",
- "egui_kittest",
- "fmv-macos-events",
- "futures-lite",
- "log",
- "objc2 0.6.5",
- "objc2-app-kit 0.3.2",
- "objc2-foundation 0.3.2",
- "open",
- "photocraft-automation",
- "photocraft-color",
- "photocraft-compose",
- "photocraft-doc",
- "photocraft-engine",
- "photocraft-format",
- "photocraft-geom",
- "photocraft-io",
- "photocraft-raster",
- "photocraft-tablet",
- "photocraft-ui-egui",
- "plist",
- "rfd",
- "ron",
- "rustix 1.1.5",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.21",
- "winit",
- "winresource",
- "winsafe",
- "wl-clipboard-rs",
- "x11rb",
- "xcap",
- "zbus",
-]
-
-[[package]]
-name = "photocraft-algo"
-version = "0.23.1"
-dependencies = [
- "craft",
- "craft-metadata",
- "criterion",
- "photocraft-color",
- "photocraft-geom",
- "photocraft-raster",
- "photocraft-testkit",
- "rayon",
- "rustfft",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "photocraft-automation"
-version = "0.23.1"
-dependencies = [
- "base64 0.23.1",
- "cap-std",
- "clap",
- "craft",
- "craft-image-codecs",
- "craft-psd",
- "getrandom 0.3.4",
- "photocraft-color",
- "photocraft-compose",
- "photocraft-doc",
- "photocraft-engine",
- "photocraft-format",
- "photocraft-geom",
- "photocraft-gpu",
- "photocraft-io",
- "photocraft-raster",
- "photocraft-raw",
- "pollster 1.0.1",
- "rmcp",
- "rustix 1.1.5",
- "schemars",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
- "tokio",
- "wgpu",
-]
-
-[[package]]
-name = "photocraft-cli"
-version = "0.23.1"
-dependencies = [
- "clap",
- "clap_complete",
- "clap_mangen",
- "craft",
- "craft-cms",
- "craft-image-codecs",
- "craft-psd",
- "photocraft-automation",
- "photocraft-doc",
- "photocraft-engine",
- "photocraft-format",
- "photocraft-io",
- "photocraft-raster",
- "photocraft-raw",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.21",
- "tokio",
- "winresource",
- "xtask",
-]
-
-[[package]]
-name = "photocraft-color"
-version = "0.23.1"
-dependencies = [
- "craft-cms",
- "serde",
-]
-
-[[package]]
-name = "photocraft-compose"
-version = "0.23.1"
-dependencies = [
- "craft-cms",
- "criterion",
- "photocraft-color",
- "photocraft-doc",
- "photocraft-geom",
- "photocraft-paint",
- "photocraft-raster",
- "photocraft-vector",
- "proptest",
- "rayon",
-]
-
-[[package]]
-name = "photocraft-doc"
-version = "0.23.1"
-dependencies = [
- "craft-tracked",
- "craft-ui-macros",
- "photocraft-color",
- "photocraft-geom",
- "photocraft-raster",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "photocraft-engine"
-version = "0.23.1"
-dependencies = [
- "base64 0.22.1",
- "blake3",
- "chrono",
- "craft",
- "craft-affinity",
- "craft-cms",
- "craft-file-formats",
- "craft-image-codecs",
- "craft-pcraft-format",
- "craft-print",
- "craft-psd",
- "craft-xml",
- "exr",
- "flate2",
- "photocraft-algo",
- "photocraft-color",
- "photocraft-compose",
- "photocraft-doc",
- "photocraft-format",
- "photocraft-geom",
- "photocraft-io",
- "photocraft-ipp",
- "photocraft-ops",
- "photocraft-paint",
- "photocraft-plugins",
- "photocraft-raster",
- "photocraft-raw",
- "photocraft-testkit",
- "photocraft-text",
- "photocraft-vector",
- "png 0.18.1",
- "rayon",
- "same-file",
- "semver",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.21",
- "wat",
- "web-time",
- "winsafe",
-]
-
-[[package]]
-name = "photocraft-format"
-version = "0.23.1"
-dependencies = [
- "blake3",
- "craft-image-codecs",
- "craft-pcraft-bundle",
- "craft-pcraft-format",
- "craft-zip",
- "crc32fast",
- "exacl",
- "flate2",
- "libc",
- "photocraft-color",
- "photocraft-doc",
- "photocraft-geom",
- "photocraft-raster",
- "proptest",
- "rustix 1.1.5",
- "ruzstd",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
- "winsafe",
-]
-
-[[package]]
-name = "photocraft-geom"
-version = "0.23.1"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "photocraft-gpu"
-version = "0.23.1"
-dependencies = [
- "bytemuck",
- "craft-cms",
- "half",
- "log",
- "photocraft-algo",
- "photocraft-color",
- "photocraft-compose",
- "photocraft-doc",
- "photocraft-geom",
- "photocraft-raster",
- "photocraft-vector",
- "pollster 1.0.1",
- "rayon",
- "thiserror 2.0.21",
- "wgpu",
-]
-
-[[package]]
-name = "photocraft-io"
-version = "0.23.1"
-dependencies = [
- "blake3",
- "craft",
- "craft-affinity",
- "craft-cms",
- "craft-crs",
- "craft-docpath",
- "craft-file-formats",
- "craft-image-codecs",
- "craft-kra",
- "craft-ora",
- "craft-pdf",
- "craft-pdn",
- "craft-psd",
- "craft-svg",
- "craft-tiff",
- "craft-xcf",
- "craft-xml",
- "crc32fast",
- "flate2",
- "kurbo 0.13.1",
- "lopdf",
- "miniz_oxide 0.9.1",
- "photocraft-algo",
- "photocraft-color",
- "photocraft-compose",
- "photocraft-doc",
- "photocraft-format",
- "photocraft-geom",
- "photocraft-paint",
- "photocraft-raster",
- "photocraft-raw",
- "photocraft-testkit",
- "photocraft-text",
- "photocraft-vector",
- "png 0.18.1",
- "proptest",
- "serde_json",
- "thiserror 2.0.21",
- "ttf-parser",
- "zune-core",
- "zune-jpegxl",
-]
-
-[[package]]
-name = "photocraft-ipp"
-version = "0.23.1"
-dependencies = [
- "craft-ipp",
-]
-
-[[package]]
-name = "photocraft-oil-round-proof"
-version = "0.23.1"
-dependencies = [
- "photocraft-algo",
- "rayon",
-]
-
-[[package]]
-name = "photocraft-ops"
-version = "0.23.1"
-dependencies = [
- "photocraft-doc",
-]
-
-[[package]]
-name = "photocraft-paint"
-version = "0.23.1"
-dependencies = [
- "base64 0.23.1",
- "craft-cms",
- "photocraft-color",
- "photocraft-geom",
- "photocraft-raster",
- "rayon",
- "rustc-hash 2.1.3",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "photocraft-plugins"
-version = "0.23.1"
-dependencies = [
- "photocraft-color",
- "photocraft-geom",
- "photocraft-raster",
- "rayon",
- "rustix 1.1.5",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
- "wasmi",
- "wat",
-]
-
-[[package]]
-name = "photocraft-raster"
-version = "0.23.1"
-dependencies = [
- "crc32fast",
- "lz4_flex",
- "photocraft-color",
- "photocraft-geom",
- "proptest",
- "rayon",
- "rustix 1.1.5",
- "serde",
- "sysinfo",
- "winsafe",
-]
-
-[[package]]
-name = "photocraft-raw"
-version = "0.23.1"
-dependencies = [
- "craft-image-codecs",
- "craft-raw",
- "flate2",
- "image",
- "photocraft-raw",
- "rayon",
- "zune-core",
- "zune-jpegxl",
-]
-
-[[package]]
-name = "photocraft-tablet"
-version = "0.23.1"
-dependencies = [
- "block2 0.6.2",
- "log",
- "objc2 0.6.5",
- "objc2-app-kit 0.3.2",
- "objc2-core-graphics",
- "objc2-foundation 0.3.2",
- "windows",
- "wintab",
- "wintab-sys",
- "x11rb",
-]
-
-[[package]]
-name = "photocraft-testkit"
-version = "0.23.1"
-dependencies = [
- "memory-stats",
- "serde_json",
- "wgpu",
-]
-
-[[package]]
-name = "photocraft-text"
-version = "0.23.1"
-dependencies = [
- "base64 0.23.1",
- "craft",
- "craft-plist",
- "craft-psd",
- "flate2",
- "parley",
- "photocraft-color",
- "photocraft-doc",
- "photocraft-geom",
- "photocraft-raster",
- "rayon",
- "skrifa 0.47.0",
-]
-
-[[package]]
-name = "photocraft-ui-egui"
-version = "0.23.1"
-dependencies = [
- "base64 0.23.1",
- "chrono",
- "craft",
- "craft-file-formats",
- "craft-i18n",
- "craft-image-codecs",
- "craft-print",
- "craft-psd",
- "eframe",
- "egui",
- "egui_extras",
- "egui_kittest",
- "log",
- "photocraft-algo",
- "photocraft-color",
- "photocraft-compose",
- "photocraft-doc",
- "photocraft-engine",
- "photocraft-format",
- "photocraft-geom",
- "photocraft-gpu",
- "photocraft-io",
- "photocraft-paint",
- "photocraft-plugins",
- "photocraft-raster",
- "photocraft-raw",
- "photocraft-testkit",
- "photocraft-text",
- "photocraft-vector",
- "rayon",
- "rustc-hash 2.1.3",
- "serde",
- "serde_json",
- "sys-locale",
- "tempfile",
- "toml",
- "web-time",
- "winsafe",
-]
-
-[[package]]
-name = "photocraft-vector"
-version = "0.23.1"
-dependencies = [
- "photocraft-color",
- "photocraft-doc",
- "photocraft-geom",
- "photocraft-raster",
- "rayon",
-]
-
-[[package]]
-name = "photocraft-web"
-version = "0.23.1"
-dependencies = [
- "craft-image-codecs",
- "craft-psd",
- "eframe",
- "egui",
- "js-sys",
- "log",
- "photocraft-doc",
- "photocraft-engine",
- "photocraft-io",
- "photocraft-paint",
- "photocraft-raster",
- "photocraft-ui-egui",
- "rfd",
- "serde_json",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
-]
-
-[[package]]
-name = "photocraft-web-boot"
-version = "0.23.1"
-dependencies = [
- "flate2",
- "js-sys",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
 ]
 
 [[package]]
@@ -10817,7 +10816,7 @@ checksum = "ec7a2a501ed189703dba8b08142f057e887dfc4b2cc4db2d343ac6376ba3e0b9"
 
 [[package]]
 name = "xtask"
-version = "0.23.1"
+version = "0.23.2"
 dependencies = [
  "chrono",
  "craft",

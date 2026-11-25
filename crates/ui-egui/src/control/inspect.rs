@@ -1,4 +1,4 @@
-use super::{PhotocraftApp, Value, json};
+use super::{PatronusPhotoApp, Value, json};
 use crate::canvas_tool_menu::{CanvasToolMenu, MenuKind};
 use craft::ui::contract::Entry;
 
@@ -15,7 +15,7 @@ fn entry_json(entry: &Entry<String>) -> Value {
 
 /// The agent link for `ui.inspect`: its status (`port`, `launchFlags`, `error`), the suite's
 /// `AI-MCP` flag (`mcpFlag`) and the ArtCraft Launcher's switch (`launcher`).
-fn agent_link_json(app: &PhotocraftApp) -> Value {
+fn agent_link_json(app: &PatronusPhotoApp) -> Value {
     let status = app.services.agent_link.as_ref().map(|link| link.status().clone()).unwrap_or_default();
     let switch = app.services.agent_switch.as_ref();
     let mut v = json!(status);
@@ -28,12 +28,12 @@ fn agent_link_json(app: &PhotocraftApp) -> Value {
 
 /// The open canvas context menu's rows for `ui.state`: the spelling suggestions first (type edit
 /// menu over a misspelled word), then the menu's own rows, in the order the menu shows them.
-fn context_entries(app: &PhotocraftApp, menu: &CanvasToolMenu) -> Vec<Value> {
+fn context_entries(app: &PatronusPhotoApp, menu: &CanvasToolMenu) -> Vec<Value> {
     crate::canvas_tool_menu::entries(app, menu).iter().map(entry_json).collect()
 }
 
 /// The painting tools' Shift+right-click menu: the current mode, the labels `ui.context.choose` takes and the rows.
-fn brush_mode_menu(app: &PhotocraftApp, menu: &CanvasToolMenu) -> Value {
+fn brush_mode_menu(app: &PatronusPhotoApp, menu: &CanvasToolMenu) -> Value {
     use crate::brush_mode_menu as m;
     let tool = app.ui.tool;
     let plain = matches!(menu.kind, MenuKind::BrushMode { plain: true });
@@ -49,7 +49,7 @@ fn brush_mode_menu(app: &PhotocraftApp, menu: &CanvasToolMenu) -> Value {
 
 /// The last pass's rect of each canvas and hosted dialog, as `[x0, y0, x1, y1]` in screen points. An id
 /// the framework reports no rect for (absent, behind the modal, no area) is left out.
-fn rects(app: &PhotocraftApp, ctx: &egui::Context) -> Value {
+fn rects(app: &PatronusPhotoApp, ctx: &egui::Context) -> Value {
     use craft::ui::runtime::access::bounds;
     let rect = |id: egui::Id| bounds(ctx, id).map(|r| json!([r.min.x, r.min.y, r.max.x, r.max.y]));
     let mut out = serde_json::Map::new();
@@ -68,12 +68,12 @@ fn rects(app: &PhotocraftApp, ctx: &egui::Context) -> Value {
 
 /// The key `rects` stores hosted dialog `id` under: the id `dialogs` lists it by, so the unsaved-changes prompt is
 /// [`crate::discard_ui::CONTROL_ID`] there too (#15544), any other dialog its host id.
-pub(super) fn dialog_key(app: &PhotocraftApp, id: egui::Id) -> String {
+pub(super) fn dialog_key(app: &PatronusPhotoApp, id: egui::Id) -> String {
     if crate::discard_ui::host_id(app) == Some(id) { crate::discard_ui::CONTROL_ID.to_string() } else { id.value().to_string() }
 }
 
 /// The notices posted since the last pass and the toast cards on screen in every window.
-fn notices(app: &PhotocraftApp, ctx: &egui::Context) -> Value {
+fn notices(app: &PatronusPhotoApp, ctx: &egui::Context) -> Value {
     let mut all: Vec<Value> = app.ui.notices.iter().map(|notice| serde_json::to_value(notice).unwrap_or_default()).collect();
     all.extend(craft::ui::runtime::toast::snapshot(ctx).into_iter().map(|(window, card)| {
         json!({
@@ -88,7 +88,7 @@ fn notices(app: &PhotocraftApp, ctx: &egui::Context) -> Value {
 }
 
 /// Snapshot of everything on screen, addressable by id.
-pub fn inspect(app: &PhotocraftApp, ctx: &egui::Context) -> Value {
+pub fn inspect(app: &PatronusPhotoApp, ctx: &egui::Context) -> Value {
     let screen = ctx.content_rect();
     // The framework host's dialogs in their one stack order (top last).
     let mut dialogs = craft::automation::dialogs::inspect(&app.framework.dialogs);
@@ -109,8 +109,8 @@ pub fn inspect(app: &PhotocraftApp, ctx: &egui::Context) -> Value {
     let picker = &app.ui.brush_picker_state;
     json!({
         "window": {"width": screen.width(), "height": screen.height(), "pixelsPerPoint": ctx.pixels_per_point()},
-        "scratch": photocraft_raster::spill::stats(),
-        "memory": photocraft_raster::memory::stats(),
+        "scratch": patronusphoto_raster::spill::stats(),
+        "memory": patronusphoto_raster::memory::stats(),
         "tool": app.ui.tool,
         "toolOptions": app.ui.tool_options,
         "artboardTool": app.ui.artboard_tool,
@@ -184,13 +184,13 @@ pub fn inspect(app: &PhotocraftApp, ctx: &egui::Context) -> Value {
         "updatesOpen": app.ui.updates_open,
         "updates": {
             "supported": cfg!(not(target_arch = "wasm32")),
-            "currentVersion": photocraft_engine::build_info::VERSION,
+            "currentVersion": patronusphoto_engine::build_info::VERSION,
             "status": crate::updates_ui::status_message(app),
         },
         "gpuFallbackNotice": app.ui.gpu_fallback_notice,
         "frame": app.frame,
-        "session": photocraft_engine::inspect::session(&app.session),
-        "document": app.session.active().map(photocraft_engine::inspect::document),
+        "session": patronusphoto_engine::inspect::session(&app.session),
+        "document": app.session.active().map(patronusphoto_engine::inspect::document),
         "perf": {
             "fps": app.fps,
             "timings": app.perf,

@@ -2,7 +2,7 @@ use crate::cmd::{Adjustment, CommandSpec, Value, destructive_adjust};
 
 /// Image › Adjustments › Desaturate: Hue/Saturation with saturation at -100.
 pub(crate) fn desaturate_adjustment() -> Adjustment {
-    Adjustment::HueSaturation { hue: 0.0, saturation: -100.0, lightness: 0.0, colorize: false, ranges: photocraft_doc::adjust::HueRange::defaults() }
+    Adjustment::HueSaturation { hue: 0.0, saturation: -100.0, lightness: 0.0, colorize: false, ranges: patronusphoto_doc::adjust::HueRange::defaults() }
 }
 
 /// Image menu: Desaturate.

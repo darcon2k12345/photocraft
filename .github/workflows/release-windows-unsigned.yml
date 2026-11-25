@@ -1,0 +1,82 @@
+# Builds the Windows installer (MSI) and portable zip for PdfCraft on a GitHub-hosted runner and
+# publishes them, with a SHA256SUMS.txt, as a release in this repository.
+#
+# This is what the launcher (photocraft-launcher / the app's own update check) installs from:
+# assets named photocraft-<version>-windows-x64.msi, each with a checksum.
+#
+# UNSIGNED: packaging/windows/package.ps1 skips code signing when no signing secrets are set, so
+# Windows SmartScreen will warn on first run. Add a signing certificate to sign.ps1's secrets to fix that.
+#
+# Run it by hand: Actions > Release (Windows, unsigned) > Run workflow, giving the release tag.
+# The tag must match the version in Cargo.toml ([workspace.package] version), e.g. v0.23.2.
+name: Release (Windows, unsigned)
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, matching the Cargo.toml version (e.g. v0.23.2). Created if missing."
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    timeout-minutes: 90
+    runs-on: windows-latest
+    env:
+      TAG: ${{ inputs.tag }}
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check the tag matches the version
+        shell: pwsh
+        run: |
+          $version = ((cargo metadata --no-deps --format-version 1 | ConvertFrom-Json).packages | Where-Object { $_.name -eq 'patronusphoto' }).version
+          if ($env:TAG.TrimStart('v') -ne $version) { throw "Tag $env:TAG does not match the Cargo.toml version $version" }
+          "Releasing $version"
+      - name: Rust toolchain
+        shell: pwsh
+        run: |
+          rustup toolchain install stable --profile minimal --target x86_64-pc-windows-msvc
+          rustup default stable
+          rustc --version
+      - name: Install the pinned packaging toolchain
+        shell: pwsh
+        run: |
+          $tools = Join-Path $env:RUNNER_TEMP 'wix'
+          dotnet tool install --tool-path $tools wix --version 5.0.2
+          if ($LASTEXITCODE -ne 0) { throw 'WiX installation failed.' }
+          $tools >> $env:GITHUB_PATH
+          $policy = Get-Content -Raw -LiteralPath packaging/windows/install-policy.json | ConvertFrom-Json
+          foreach ($extension in @($policy.extensions)) {
+            & (Join-Path $tools 'wix.exe') extension add -g "WixToolset.$extension.wixext/5.0.2"
+            if ($LASTEXITCODE -ne 0) { throw "WiX extension $extension installation failed." }
+          }
+      - name: Build the installer and portable zip
+        shell: pwsh
+        run: ./packaging/windows/package.ps1 -Arch x64
+      - name: Checksums
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem dist/release -File | Where-Object { $_.Extension -in '.msi', '.zip' }
+          if (-not ($files | Where-Object { $_.Extension -eq '.msi' })) { throw 'no MSI was produced' }
+          $lines = foreach ($f in $files) { "$((Get-FileHash $f.FullName -Algorithm SHA256).Hash.ToLower())  $($f.Name)" }
+          [IO.File]::WriteAllText((Join-Path (Resolve-Path dist/release) 'SHA256SUMS.txt'), (($lines -join "`n") + "`n"))
+          Get-Content dist/release/SHA256SUMS.txt
+      - name: Publish the release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view $env:TAG 2>$null
+          if ($LASTEXITCODE -ne 0) { gh release create $env:TAG --title $env:TAG --notes "Unsigned Windows build." }
+          $assets = Get-ChildItem dist/release -File | Where-Object { $_.Extension -in '.msi', '.zip' -or $_.Name -eq 'SHA256SUMS.txt' }
+          gh release upload $env:TAG ($assets | ForEach-Object FullName) --clobber

@@ -8,7 +8,7 @@
 //! method of [`MoveRun`] never reads `app.canvas_tools.mover` through the app.
 
 use super::{FamilyTool, ToolScope};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::document_display::CanvasHost;
 use crate::state::Tool;
 use craft::behavior::geometry::{ConstrainStyle, Directions, MoveGesture};
@@ -18,7 +18,7 @@ use craft::keymap::{Chord, Key, Mods};
 use craft::ui::canvas::{CanvasTool, ToolAction, ToolClaims, ToolContext, ToolKey, ToolPath, ToolPointer};
 use craft::ui::primitives::{Draw, PaintShape, StrokeColor, StrokeWidth};
 use craft::ui::runtime::env::Label;
-use photocraft_engine::float_cmds::Floating;
+use patronusphoto_engine::float_cmds::Floating;
 use serde_json::json;
 
 /// What a press of the Move tool started.
@@ -110,8 +110,8 @@ pub(crate) fn tool<'a>(scope: &'a ToolScope<'a>, state: &'a mut MoveTool, _host:
 /// ↩ drops pixels left floating by a move.
 const DROP_KEYS: &[Chord] = &[Chord::plain(Key::Enter)];
 
-fn floating(app: &PhotocraftApp) -> bool {
-    app.session.active().is_some_and(|st| photocraft_engine::float_cmds::floating(st).is_some())
+fn floating(app: &PatronusPhotoApp) -> bool {
+    app.session.active().is_some_and(|st| patronusphoto_engine::float_cmds::floating(st).is_some())
 }
 
 pub(crate) struct MoveRun<'a> {
@@ -120,48 +120,48 @@ pub(crate) struct MoveRun<'a> {
 }
 
 /// Auto-Select's pick moved the active layer: the Layers panel's reveal honours it (`layer_reveal`).
-fn note_move_pick(app: &mut PhotocraftApp, active_before: Option<photocraft_doc::LayerId>) {
+fn note_move_pick(app: &mut PatronusPhotoApp, active_before: Option<patronusphoto_doc::LayerId>) {
     let active_after = app.session.active().and_then(|st| st.active_layer);
     if active_after != active_before {
         app.move_pick = active_after.map(|id| (id, app.session.active_layer_changes()));
     }
 }
 
-fn covers(sel: &photocraft_raster::Surface, p: [f64; 2]) -> bool {
+fn covers(sel: &patronusphoto_raster::Surface, p: [f64; 2]) -> bool {
     let mut v = [0.0f32];
     sel.read_pixel(p[0].floor() as i32, p[1].floor() as i32, &mut v);
     v[0] > 0.0
 }
 
-fn inside_selection(app: &PhotocraftApp, p: [f64; 2]) -> bool {
+fn inside_selection(app: &PatronusPhotoApp, p: [f64; 2]) -> bool {
     app.session.active().and_then(|st| st.doc.selection.as_ref()).is_some_and(|sel| covers(sel, p))
 }
 
-fn rect4(r: photocraft_geom::Rect) -> [f64; 4] {
+fn rect4(r: patronusphoto_geom::Rect) -> [f64; 4] {
     [f64::from(r.x0), f64::from(r.y0), f64::from(r.x1), f64::from(r.y1)]
 }
 
 /// The box of what a drag moves, where it is at the press: the selected pixels' outline (the float's
 /// piece once cut), else the union of the frames of what moves: a group carries its layers and linked layers go
 /// along.
-fn moving_box(app: &PhotocraftApp, pixels: bool) -> Option<[f64; 4]> {
+fn moving_box(app: &PatronusPhotoApp, pixels: bool) -> Option<[f64; 4]> {
     let st = app.session.active()?;
     if pixels {
         let sel = st.doc.selection.as_ref()?;
-        let b = match photocraft_engine::float_cmds::floating(st) {
+        let b = match patronusphoto_engine::float_cmds::floating(st) {
             Some(f) => f.parts.outline().unwrap_or(sel).content_bounds().translate(f.offset.0, f.offset.1),
             None => sel.content_bounds(),
         };
         return (!b.is_empty()).then(|| rect4(b));
     }
-    photocraft_engine::layer_multi_cmds::move_targets(&st.doc, st.selected_layers())
+    patronusphoto_engine::layer_multi_cmds::move_targets(&st.doc, st.selected_layers())
         .into_iter()
         .filter_map(|id| crate::snap_ui::tree_rect(&st.doc, id))
         .reduce(|a, b| [a[0].min(b[0]), a[1].min(b[1]), a[2].max(b[2]), a[3].max(b[3])])
 }
 
 /// The press: Auto-Select's pick, the refusals, then the kind of drag it starts.
-fn press_at(app: &mut PhotocraftApp, p: [f64; 2], mods: Mods, style: ConstrainStyle) -> (ToolAction, Option<Run>) {
+fn press_at(app: &mut PatronusPhotoApp, p: [f64; 2], mods: Mods, style: ConstrainStyle) -> (ToolAction, Option<Run>) {
     // The Cmd stand-in for a painting tool, or the Move tool itself.
     let standing_in = app.ui.tool != Tool::Move;
     // A selection tool's ⌘ press that moves the layer is refused on a locked layer before any pick or marquee
@@ -170,14 +170,14 @@ fn press_at(app: &mut PhotocraftApp, p: [f64; 2], mods: Mods, style: ConstrainSt
     if standing_in && super::family(app.ui.tool) == super::Family::Selection && crate::move_lock::blocked(app, true) {
         return (ToolAction::Claimed, Some(Run::plain(Kind::Refused, p)));
     }
-    let marquee = |app: &mut PhotocraftApp, add: bool, auto: bool, clear: bool| {
+    let marquee = |app: &mut PatronusPhotoApp, add: bool, auto: bool, clear: bool| {
         // PLAN: assumed `move_box::begin(app, p, add, move_auto_select, clear_on_empty)` as today.
         crate::move_box::begin(app, p, add, auto, clear);
         (ToolAction::Claimed, Some(Run::plain(Kind::Marquee, p)))
     };
     let pixels_now = crate::move_ui::moves_selected_pixels_with(app, Tool::Move);
     // A press that doesn't drag the floating piece drops it first.
-    if !pixels_now && app.session.active().is_some_and(|st| photocraft_engine::float_cmds::floating(st).is_some()) {
+    if !pixels_now && app.session.active().is_some_and(|st| patronusphoto_engine::float_cmds::floating(st).is_some()) {
         let _ = app.run("select.drop", json!({}));
     }
     // PLAN: `multiple_color_target` lives in `canvas/strokes.rs`; its owner may move it.
@@ -219,7 +219,7 @@ fn press_at(app: &mut PhotocraftApp, p: [f64; 2], mods: Mods, style: ConstrainSt
             let locked_hit = !auto
                 && probe.as_ref().ok().and_then(|v| v["layer"].as_u64()).is_some_and(|id| {
                     app.session.active().is_some_and(|st| {
-                        let id = photocraft_doc::LayerId(id);
+                        let id = patronusphoto_doc::LayerId(id);
                         let locks = st.doc.effective_locks(id);
                         locks.position || locks.all || st.doc.is_background(id)
                     })
@@ -242,7 +242,7 @@ fn press_at(app: &mut PhotocraftApp, p: [f64; 2], mods: Mods, style: ConstrainSt
     // With a selection: cut the selected pixels (⌥ copies them) and drag them as a floating piece,
     // from anywhere.
     if crate::move_ui::moves_selected_pixels_with(app, Tool::Move) {
-        let before = app.session.active().and_then(photocraft_engine::float_cmds::floating).cloned();
+        let before = app.session.active().and_then(patronusphoto_engine::float_cmds::floating).cloned();
         if !crate::move_ui::float_selected_for_drag(app, mods.alt) {
             return (ToolAction::Done, None);
         }
@@ -265,7 +265,7 @@ fn press_at(app: &mut PhotocraftApp, p: [f64; 2], mods: Mods, style: ConstrainSt
 /// (`readout`), the readout; the release applies its last sample without one.
 /// A pass applies only its own pointer sample, so a second pass of a frame moves the offset to
 /// the sample it is given and never re-applies an earlier one.
-fn follow(run: &mut Run, app: &mut PhotocraftApp, pointer: &ToolPointer, cx: &mut ToolContext<'_>, readout: bool) {
+fn follow(run: &mut Run, app: &mut PatronusPhotoApp, pointer: &ToolPointer, cx: &mut ToolContext<'_>, readout: bool) {
     let Some(space) = cx.space() else { return };
     let Some(gesture) = run.gesture.as_mut() else { return };
     let zoom = space.view.zoom;

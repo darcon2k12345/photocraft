@@ -12,18 +12,18 @@ use egui::CursorIcon;
 use egui_kittest::Harness;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
-fn capslock_harness() -> Harness<'static, Box<PhotocraftApp>> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn capslock_harness() -> Harness<'static, Box<PatronusPhotoApp>> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
     app.run("tools.setBrush", json!({"brush": {"size": 40, "hardness": 1.0}})).unwrap();
     app.sync_views();
     app.ui.extras.rulers = false;
     app.ui.tool = Tool::Brush;
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(egui::vec2(900.0, 600.0)).build_ui_state(
-        |ui, app: &mut Box<PhotocraftApp>| {
+        |ui, app: &mut Box<PatronusPhotoApp>| {
             let ctx = ui.ctx().clone();
             if !ctx.fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 return;
@@ -32,7 +32,7 @@ fn capslock_harness() -> Harness<'static, Box<PhotocraftApp>> {
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     h.run_steps(4);
     // 100 %: one document pixel per point; the pointer hovers the canvas centre.
     let v = &mut h.state_mut().ui.views[0];
@@ -63,7 +63,7 @@ struct CursorFp {
     shapes: Vec<egui::epaint::ClippedShape>,
 }
 
-fn fp(h: &Harness<'_, Box<PhotocraftApp>>) -> CursorFp {
+fn fp(h: &Harness<'_, Box<PatronusPhotoApp>>) -> CursorFp {
     let out = h.output();
     CursorFp {
         icon: out.platform_output.cursor_icon,
@@ -74,12 +74,12 @@ fn fp(h: &Harness<'_, Box<PhotocraftApp>>) -> CursorFp {
 
 /// Caps Lock reaches the tool host from the runtime's injected Caps Lock (`WindowHost`), which the
 /// frame reads in place of the platform's.
-fn caps(h: &mut Harness<'_, Box<PhotocraftApp>>, on: bool) {
+fn caps(h: &mut Harness<'_, Box<PatronusPhotoApp>>, on: bool) {
     WindowHost::of(&h.ctx).set_caps_lock(Some(on));
     h.run_steps(2);
 }
 
-fn other(h: &mut Harness<'_, Box<PhotocraftApp>>, value: &str) {
+fn other(h: &mut Harness<'_, Box<PatronusPhotoApp>>, value: &str) {
     h.state_mut().run("prefs.set", json!({"path": "cursors.other", "value": value})).unwrap();
     h.run_steps(2);
 }

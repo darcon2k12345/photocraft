@@ -6,9 +6,9 @@ mod fixture;
 
 use craft_affinity::synth::Method;
 use fixture::{Marker, document};
-use photocraft_doc::{LayerContent, LayerId};
-use photocraft_engine::{Session, file_cmds::open_bytes_as};
-use photocraft_geom::{Point, Rect};
+use patronusphoto_doc::{LayerContent, LayerId};
+use patronusphoto_engine::{Session, file_cmds::open_bytes_as};
+use patronusphoto_geom::{Point, Rect};
 use serde_json::json;
 
 fn state(s: &Session, id: LayerId) -> (Rect, Point) {

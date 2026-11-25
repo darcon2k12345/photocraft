@@ -51,8 +51,8 @@ fn render_tiled_with_alloc<A: BufferAlloc + Sync>(doc: &Document, rect: Rect, ti
     let tile = tile.max(1);
     // Lab documents mix Normal blending in CIELAB, as Photoshop does (psblend::LAB_MIX); 32-bit
     // documents don't clip Add / Divide or Hue / Saturation / Color / Luminosity at 1 (psblend::HDR).
-    let lab = doc.mode == photocraft_color::ColorMode::Lab;
-    let hdr = doc.depth == photocraft_color::SampleType::F32;
+    let lab = doc.mode == patronusphoto_color::ColorMode::Lab;
+    let hdr = doc.depth == patronusphoto_color::SampleType::F32;
     // CMYK layers are read through the document's own CMYK profile (thread-local scope).
     let cmyk = cmyk_space(doc);
     let cmyk = cmyk.as_ref();
@@ -73,16 +73,16 @@ fn render_tiled_with_alloc<A: BufferAlloc + Sync>(doc: &Document, rect: Rect, ti
     }
     cx.set_fx_clip(rect);
     if i64::from(rect.width()) <= i64::from(tile) && i64::from(rect.height()) <= i64::from(tile) {
-        return photocraft_color::convert::with_cmyk_space(cmyk, || -> Result<_, A::Error> {
+        return patronusphoto_color::convert::with_cmyk_space(cmyk, || -> Result<_, A::Error> {
             let mut buf = multichannel::backdrop_with(doc, rect, alloc)?;
             in_blend_space(lab, hdr, || composite_stack_at_with(&doc.layers, &mut buf, cx, advanced::Scope::ROOT, alloc))?;
             Ok(buf)
         });
     }
     // Effect maps are built once, here, before any tile needs them (#276).
-    prepare_effects_with(&doc.layers, rect, cx, alloc, |f| photocraft_color::convert::with_cmyk_space(cmyk, || in_blend_space(lab, hdr, f)))?;
+    prepare_effects_with(&doc.layers, rect, cx, alloc, |f| patronusphoto_color::convert::with_cmyk_space(cmyk, || in_blend_space(lab, hdr, f)))?;
     let run = |t: Rect| {
-        photocraft_color::convert::with_cmyk_space(cmyk, || -> Result<_, A::Error> {
+        patronusphoto_color::convert::with_cmyk_space(cmyk, || -> Result<_, A::Error> {
             let mut b = multichannel::backdrop_with(doc, t, alloc)?;
             in_blend_space(lab, hdr, || composite_stack_at_with(&doc.layers, &mut b, cx, advanced::Scope::ROOT, alloc))?;
             Ok(b)
@@ -160,13 +160,13 @@ pub(crate) fn in_blend_space<R>(lab: bool, hdr: bool, f: impl FnOnce() -> R) -> 
 }
 
 /// The document's own CMYK profile for reading its CMYK pixels (`None`: not a CMYK document,
-/// untagged, or the built-in coated CMYK). Enter it with `photocraft_color::convert::with_cmyk_space`
+/// untagged, or the built-in coated CMYK). Enter it with `patronusphoto_color::convert::with_cmyk_space`
 /// around code that converts the document's CMYK pixels or colours to RGB.
-pub fn cmyk_space(doc: &Document) -> Option<std::sync::Arc<photocraft_color::convert::CmykSpace>> {
-    if doc.mode != photocraft_color::ColorMode::Cmyk {
+pub fn cmyk_space(doc: &Document) -> Option<std::sync::Arc<patronusphoto_color::convert::CmykSpace>> {
+    if doc.mode != patronusphoto_color::ColorMode::Cmyk {
         return None;
     }
-    photocraft_color::convert::CmykSpace::for_profile(doc.icc_profile.as_ref())
+    patronusphoto_color::convert::CmykSpace::for_profile(doc.icc_profile.as_ref())
 }
 
 /// Pixels per band of [`render_bands`] (a 14000 px wide band is ~600 rows, ~130 MB of f32).
@@ -179,7 +179,7 @@ pub const BAND_PIXELS: u64 = 8 << 20;
 pub enum RenderBandsError<E> {
     /// The compositor could not reserve or size one of its RGBA buffers. Earlier complete bands
     /// may already have been delivered to the sink.
-    Allocation(photocraft_raster::AllocationError),
+    Allocation(patronusphoto_raster::AllocationError),
     /// The caller's sink rejected a completed band.
     Sink(E),
 }
@@ -255,12 +255,12 @@ pub fn band_rows_for(width: u32, requested: i32) -> i32 {
 /// where its layers mix on their inks (#2220). Otherwise the composite goes back to CMYK through
 /// the document's own profile, the one its layers were read through. A Lab document of plain
 /// layers is composited in its L, a and b ([`native_lab::flatten_lab`]).
-pub fn flatten_to_surface(doc: &Document, fmt: photocraft_color::PixelFormat, background: Option<[f32; 3]>) -> Surface {
+pub fn flatten_to_surface(doc: &Document, fmt: patronusphoto_color::PixelFormat, background: Option<[f32; 3]>) -> Surface {
     composite_to_surface(doc, doc.bounds(), fmt, background)
 }
 
 /// [`flatten_to_surface`] over `rect` only (the rest of the surface stays empty).
-pub fn composite_to_surface(doc: &Document, rect: Rect, fmt: photocraft_color::PixelFormat, background: Option<[f32; 3]>) -> Surface {
+pub fn composite_to_surface(doc: &Document, rect: Rect, fmt: patronusphoto_color::PixelFormat, background: Option<[f32; 3]>) -> Surface {
     let paper = background.is_some_and(|bg| bg == [1.0; 3]);
     if (background.is_none() || paper)
         && let Some(s) = native::flatten_cmyk(doc, rect, fmt, paper)
@@ -273,7 +273,7 @@ pub fn composite_to_surface(doc: &Document, rect: Rect, fmt: photocraft_color::P
         return s;
     }
     let space = cmyk_space(doc);
-    let to_cmyk = fmt.mode == photocraft_color::ColorMode::Cmyk && doc.mode == photocraft_color::ColorMode::Cmyk;
+    let to_cmyk = fmt.mode == patronusphoto_color::ColorMode::Cmyk && doc.mode == patronusphoto_color::ColorMode::Cmyk;
     if to_cmyk && cmyk::renders_inks(doc) {
         return composite_inks_to_surface(doc, rect, fmt, background, space.as_ref());
     }
@@ -287,18 +287,18 @@ pub fn composite_to_surface(doc: &Document, rect: Rect, fmt: photocraft_color::P
             Some(bg) => band.over_background(bg),
             None => band,
         };
-        let mut data = photocraft_raster::scratch::take(band.px.len() * n, 0.0f32);
-        photocraft_color::convert::with_cmyk_space(space.as_ref(), || {
+        let mut data = patronusphoto_raster::scratch::take(band.px.len() * n, 0.0f32);
+        patronusphoto_color::convert::with_cmyk_space(space.as_ref(), || {
             for (p, out) in band.px.iter().zip(data.chunks_exact_mut(n)) {
                 if fmt.alpha && (p[3] <= 0.0 || p[3].is_nan()) && empty.len() == n {
                     out.copy_from_slice(&empty);
                 } else {
-                    photocraft_raster::from_rgba_into(&fmt, *p, out);
+                    patronusphoto_raster::from_rgba_into(&fmt, *p, out);
                 }
             }
         });
         s.write_region(band.rect, &data);
-        photocraft_raster::scratch::give(data);
+        patronusphoto_raster::scratch::give(data);
         Ok(())
     });
     s.prune();
@@ -306,7 +306,7 @@ pub fn composite_to_surface(doc: &Document, rect: Rect, fmt: photocraft_color::P
 }
 
 /// One CMYK pixel's output channels into `data`: its inks (over `paper` when given) and alpha.
-fn push_ink_pixel(data: &mut Vec<f32>, p: &[f32; 5], paper: Option<[f32; 4]>, fmt: photocraft_color::PixelFormat, empty: &[f32]) {
+fn push_ink_pixel(data: &mut Vec<f32>, p: &[f32; 5], paper: Option<[f32; 4]>, fmt: patronusphoto_color::PixelFormat, empty: &[f32]) {
     if paper.is_none() && fmt.alpha && (p[4] <= 0.0 || p[4].is_nan()) && empty.len() == fmt.channels() {
         data.extend_from_slice(empty);
         return;
@@ -326,17 +326,18 @@ fn push_ink_pixel(data: &mut Vec<f32>, p: &[f32; 5], paper: Option<[f32; 4]>, fm
 fn composite_inks_to_surface(
     doc: &Document,
     rect: Rect,
-    fmt: photocraft_color::PixelFormat,
+    fmt: patronusphoto_color::PixelFormat,
     background: Option<[f32; 3]>,
-    space: Option<&std::sync::Arc<photocraft_color::convert::CmykSpace>>,
+    space: Option<&std::sync::Arc<patronusphoto_color::convert::CmykSpace>>,
 ) -> Surface {
     let mut s = Surface::new(fmt);
     let n = fmt.channels();
     let empty = s.default_pixel();
     let mut data = Vec::new();
     // White paper is no ink; another background colour goes through the profile.
-    let paper = background
-        .map(|bg| if bg == [1.0; 3] { [0.0; 4] } else { photocraft_color::convert::with_cmyk_space(space, || photocraft_color::convert::rgb_to_cmyk(bg)) });
+    let paper = background.map(|bg| {
+        if bg == [1.0; 3] { [0.0; 4] } else { patronusphoto_color::convert::with_cmyk_space(space, || patronusphoto_color::convert::rgb_to_cmyk(bg)) }
+    });
     let _ = cmyk::render_cmyk_bands(doc, rect, 0, |band| -> Result<(), ()> {
         data.clear();
         data.reserve(band.px.len() * n);
@@ -369,10 +370,10 @@ pub fn render_layer(layer: &Layer, rect: Rect) -> Buffer {
         &Ctx {
             canvas: rect,
             transfer: adjust::Transfer::Srgb,
-            light: photocraft_doc::GlobalLight::default(),
+            light: patronusphoto_doc::GlobalLight::default(),
             patterns: &patterns,
-            mode: photocraft_color::ColorMode::Rgb,
-            depth: photocraft_color::SampleType::F32,
+            mode: patronusphoto_color::ColorMode::Rgb,
+            depth: patronusphoto_color::SampleType::F32,
             vector_masks: RenderVectorMasks::default(),
             fx_maps: Default::default(),
             fx_clip: Default::default(),
@@ -401,10 +402,10 @@ pub fn render_layer_in(doc: &Document, layer: &Layer, rect: Rect) -> Buffer {
     let patterns = pattern::PreparedPatterns::new(&doc.patterns, pattern::PREPARED_PATTERN_BYTES).in_mode(doc.pixel_format().mode);
     // A lone layer: a deep knockout reveals transparency, not the document's Background.
     let cx = Ctx { doc: None, ..Ctx::for_doc(doc, &patterns) };
-    let lab = doc.mode == photocraft_color::ColorMode::Lab;
-    let hdr = doc.depth == photocraft_color::SampleType::F32;
+    let lab = doc.mode == patronusphoto_color::ColorMode::Lab;
+    let hdr = doc.depth == patronusphoto_color::SampleType::F32;
     let cmyk = cmyk_space(doc);
-    photocraft_color::convert::with_cmyk_space(cmyk.as_ref(), || {
+    patronusphoto_color::convert::with_cmyk_space(cmyk.as_ref(), || {
         let mut buf = Buffer::transparent(rect);
         in_blend_space(lab, hdr, || composite_stack_at(std::slice::from_ref(layer), &mut buf, &cx, advanced::Scope::ROOT));
         buf
@@ -415,10 +416,10 @@ pub fn render_layer_in(doc: &Document, layer: &Layer, rect: Rect) -> Buffer {
 pub fn composite_to_surface_with_interrupt(
     doc: &Document,
     rect: Rect,
-    fmt: photocraft_color::PixelFormat,
+    fmt: patronusphoto_color::PixelFormat,
     background: Option<[f32; 3]>,
-    ctl: &photocraft_raster::Interrupt,
-) -> Result<Surface, photocraft_raster::Cancelled> {
+    ctl: &patronusphoto_raster::Interrupt,
+) -> Result<Surface, patronusphoto_raster::Cancelled> {
     ctl.check()?;
     let mut out = Surface::new(fmt);
     let rows = band_rows_for(rect.width(), 64);
@@ -441,9 +442,9 @@ pub fn composite_to_surface_with_interrupt(
 #[cfg(test)]
 mod fallible_bands_tests {
     use super::*;
-    use photocraft_color::{Color, ColorMode, SampleType};
-    use photocraft_doc::{Document, Fill, Knockout, Layer, LayerContent};
-    use photocraft_geom::Size;
+    use patronusphoto_color::{Color, ColorMode, SampleType};
+    use patronusphoto_doc::{Document, Fill, Knockout, Layer, LayerContent};
+    use patronusphoto_geom::Size;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     struct FailBufferAt {
@@ -474,7 +475,7 @@ mod fallible_bands_tests {
         fn scalar_filled(&self, rect: Rect, value: f32) -> Result<Vec<f32>, Self::Error> {
             self.attempt()?;
             let len = (rect.width() as usize).checked_mul(rect.height() as usize).ok_or(usize::MAX)?;
-            photocraft_raster::scratch::try_take(len, value).ok_or(usize::MAX)
+            patronusphoto_raster::scratch::try_take(len, value).ok_or(usize::MAX)
         }
     }
 
@@ -488,15 +489,15 @@ mod fallible_bands_tests {
 
     fn outlined_effect_document() -> Document {
         let mut doc = Document::new("fallible outlined effect", Size::new(512, 256), ColorMode::Rgb, SampleType::U8);
-        let path = photocraft_doc::vector::Path {
-            subpaths: vec![photocraft_doc::vector::Subpath::polygon(&[(12.0, 12.0), (60.0, 12.0), (60.0, 60.0), (12.0, 60.0)])],
+        let path = patronusphoto_doc::vector::Path {
+            subpaths: vec![patronusphoto_doc::vector::Subpath::polygon(&[(12.0, 12.0), (60.0, 12.0), (60.0, 60.0), (12.0, 60.0)])],
             ..Default::default()
         };
-        let mut cache = photocraft_doc::Surface::new(photocraft_color::PixelFormat::RGBA8);
+        let mut cache = patronusphoto_doc::Surface::new(patronusphoto_color::PixelFormat::RGBA8);
         cache.fill_rect(Rect::new(12, 12, 60, 60), &[0.0, 0.0, 0.0, 1.0]);
-        let shape = photocraft_doc::vector::ShapeLayer { path, fill: Some(Fill::Solid(Color::BLACK)), cache: Some(cache), ..Default::default() };
+        let shape = patronusphoto_doc::vector::ShapeLayer { path, fill: Some(Fill::Solid(Color::BLACK)), cache: Some(cache), ..Default::default() };
         let mut layer = Layer::new("outlined shape", LayerContent::Shape(shape));
-        layer.effects.items.push(photocraft_doc::Effect::default_drop_shadow());
+        layer.effects.items.push(patronusphoto_doc::Effect::default_drop_shadow());
         doc.layers.push(layer);
         doc
     }
@@ -553,7 +554,7 @@ mod fallible_bands_tests {
         let mut doc = Document::new("fallible effect shape", Size::new(512, 256), ColorMode::Rgb, SampleType::U8);
         let fill = Layer::new("group fill", LayerContent::Fill(Fill::Solid(Color::BLACK)));
         let mut layer = Layer::group("styled group", vec![fill]);
-        layer.effects.items.push(photocraft_doc::Effect::default_drop_shadow());
+        layer.effects.items.push(patronusphoto_doc::Effect::default_drop_shadow());
         doc.layers.push(layer);
         let patterns = pattern::PreparedPatterns::new(&doc.patterns, pattern::PREPARED_PATTERN_BYTES).in_mode(doc.pixel_format().mode);
         let cx = Ctx::for_doc(&doc, &patterns);

@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::preset_panels::{PresetUi, run, tool_presets};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// A row of a preset browser: a folder by name, or a preset by its key in the panel (a pattern id, a style name).
@@ -85,12 +85,12 @@ fn panel_rows(presets: &PresetUi, panel: PresetPanel, folders: &[Folder]) -> Vec
 const THUMB_RANGE: TileZoom = TileZoom::bounded(20.0 / 48.0, 2.0, 6.0 / 48.0, 40.0 / 48.0);
 
 /// Where preset drops are accepted: the active canvas's content rect, rulers excluded; nothing with no document.
-pub(crate) fn canvas_drop_rect(app: &PhotocraftApp) -> Rect {
+pub(crate) fn canvas_drop_rect(app: &PatronusPhotoApp) -> Rect {
     crate::canvas::document_display::active_view(app).map_or(Rect::NOTHING, |view| view.rect)
 }
 
 /// Where preset drops land: the canvas proper, rulers excluded, on the canvas's layer.
-fn canvas_zone(app: &PhotocraftApp) -> DropZone {
+fn canvas_zone(app: &PatronusPhotoApp) -> DropZone {
     DropZone::new(app.last_canvas_layer, canvas_drop_rect(app))
 }
 
@@ -188,7 +188,7 @@ fn c32(c: [f32; 4]) -> Color32 {
 /// A 64×64 swatch of `pattern`. Only the pixels the swatch shows are read: a pattern file can declare a padded source
 /// of any size, and reading it whole to pick 4096 of its pixels is gigabytes of floats. Tiles smaller than the swatch
 /// repeat; larger ones are shown shrunk.
-fn pattern_image(pattern: &photocraft_doc::Pattern) -> ColorImage {
+fn pattern_image(pattern: &patronusphoto_doc::Pattern) -> ColorImage {
     const S: u32 = 64;
     let (w, h) = (pattern.width.max(1), pattern.height.max(1));
     let format = pattern.surface.format();
@@ -198,19 +198,19 @@ fn pattern_image(pattern: &photocraft_doc::Pattern) -> ColorImage {
         for x in 0..S {
             let sx = ((x as f32 * step) as u32) % w;
             let sy = ((y as f32 * step) as u32) % h;
-            let px = pattern.surface.read_region(photocraft_geom::Rect::from_xywh(sx as i32, sy as i32, 1, 1));
-            image.pixels[(y * S + x) as usize] = c32(photocraft_raster::to_rgba(&format, &px));
+            let px = pattern.surface.read_region(patronusphoto_geom::Rect::from_xywh(sx as i32, sy as i32, 1, 1));
+            image.pixels[(y * S + x) as usize] = c32(patronusphoto_raster::to_rgba(&format, &px));
         }
     }
     image
 }
 
 /// The cached texture of `pattern`'s swatch.
-pub(crate) fn pattern_texture(ctx: &egui::Context, pattern: &photocraft_doc::Pattern) -> egui::TextureId {
+pub(crate) fn pattern_texture(ctx: &egui::Context, pattern: &patronusphoto_doc::Pattern) -> egui::TextureId {
     TextureCache::texture(ctx, ("pattern", pattern.id.clone()), || pattern_image(pattern))
 }
 
-fn paint_pattern(cx: &ContentPainterCx, rect: Rect, pattern: &photocraft_doc::Pattern) {
+fn paint_pattern(cx: &ContentPainterCx, rect: Rect, pattern: &patronusphoto_doc::Pattern) {
     cx.picture(pattern_texture(cx.painter.ctx(), pattern), rect, Rect::from_min_max(Pos2::ZERO, pos2(1.0, 1.0)), 0.0);
 }
 
@@ -225,7 +225,7 @@ fn paint_gradient(cx: &ContentPainterCx, rect: Rect, stops: &[(f32, [f32; 4])]) 
 
 /// Window › Gradients: a click selects the gradient for the Gradient tool, a double click or a drop on the canvas
 /// applies it.
-pub fn gradients_panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn gradients_panel(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let (fg, bg) = (app.session.tools.foreground, app.session.tools.background);
     let groups = app.session.presets.gradients.clone();
     // PLAN: the current-gradient strip above the browser needs a painter component; the browser's selected row shows it.
@@ -249,11 +249,11 @@ pub fn gradients_panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 
 /// Window › Patterns: the library's patterns in the panel's folders. A click selects, a double click or a drop on
 /// the canvas fills with the pattern.
-pub fn patterns_panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn patterns_panel(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     // Until the preset store has loaded the saved patterns, their folder entries would look deleted: don't prune
     // them yet.
     if app.services.preset_store.is_none() {
-        photocraft_engine::presets::patterns::sync(&mut app.session);
+        patronusphoto_engine::presets::patterns::sync(&mut app.session);
     }
     let library = app.session.patterns.items.clone();
     let folders: Vec<Folder> = app
@@ -288,15 +288,15 @@ pub fn patterns_panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 const STYLES_HEIGHT: f32 = 300.0;
 
 /// The 64×64 thumbnail of `preset`, drawn over `session`'s patterns.
-pub(crate) fn style_image(session: &photocraft_engine::Session, preset: &photocraft_engine::presets::styles::StylePreset) -> ColorImage {
+pub(crate) fn style_image(session: &patronusphoto_engine::Session, preset: &patronusphoto_engine::presets::styles::StylePreset) -> ColorImage {
     const S: u32 = 64;
-    let px = photocraft_engine::presets::styles::thumbnail(session, preset, S);
+    let px = patronusphoto_engine::presets::styles::thumbnail(session, preset, S);
     ColorImage::from_rgba_unmultiplied([S as usize, S as usize], &px)
 }
 
 /// Window › Styles: a click applies the style to the selected layers (Shift adds its effects), a drop on the canvas
 /// applies it to the active layer.
-pub fn styles_panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn styles_panel(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let groups = app.session.presets.styles.clone();
     let folders = style_folders(app);
     let rows = panel_rows(&app.ui.presets_ui, STYLES, &folders);
@@ -313,7 +313,7 @@ pub fn styles_panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 }
 
 /// The Styles folders: each style group with its styles, keyed and named by the style's name.
-fn style_folders(app: &PhotocraftApp) -> Vec<Folder> {
+fn style_folders(app: &PatronusPhotoApp) -> Vec<Folder> {
     let groups = &app.session.presets.styles;
     groups
         .iter()
@@ -330,7 +330,7 @@ fn style_files(any: bool, export: Option<PresetExport>) -> PresetFiles<'static, 
 }
 
 /// What the Styles panel menu is built from: whether any style exists, the selected style and the browser's view.
-fn styles_menu_facts(app: &PhotocraftApp) -> (bool, Option<PresetKey>, PresetView) {
+fn styles_menu_facts(app: &PatronusPhotoApp) -> (bool, Option<PresetKey>, PresetView) {
     let any = app.session.presets.styles.iter().any(|group| !group.items.is_empty());
     let selected = app.ui.presets_ui.selected.get(STYLES.id).cloned().map(PresetKey::Item);
     let view = app.ui.presets_ui.browsers.get(STYLES.id).map_or(PresetView::Grid, |state| state.view);
@@ -339,14 +339,14 @@ fn styles_menu_facts(app: &PhotocraftApp) -> (bool, Option<PresetKey>, PresetVie
 
 /// The rows of the Styles panel menu: the framework's `PresetPanelMenu` rows. Save… writes the selected style, else
 /// every style.
-pub(crate) fn styles_rows(app: &PhotocraftApp) -> Vec<PanelRow> {
+pub(crate) fn styles_rows(app: &PatronusPhotoApp) -> Vec<PanelRow> {
     let (any, selected, view) = styles_menu_facts(app);
     let files = style_files(any, None);
     PresetPanelMenu::new(view).new_group(true).files(&files).selected(selected.as_ref()).rows()
 }
 
 /// The state of each command `styles_rows` offers, read from the same rows so the two lists cannot drift.
-pub(crate) fn styles_states(app: &PhotocraftApp) -> Vec<(CommandRef, CommandState)> {
+pub(crate) fn styles_states(app: &PatronusPhotoApp) -> Vec<(CommandRef, CommandState)> {
     let (any, selected, view) = styles_menu_facts(app);
     let files = style_files(any, None);
     let menu = PresetPanelMenu::new(view).new_group(true).files(&files).selected(selected.as_ref());
@@ -365,7 +365,7 @@ pub(crate) fn styles_states(app: &PhotocraftApp) -> Vec<(CommandRef, CommandStat
 }
 
 /// Runs a Styles panel menu command; `false` when `cmd` is not one of its commands.
-pub(crate) fn styles_run(app: &mut PhotocraftApp, ctx: &egui::Context, cmd: &CommandRef) -> bool {
+pub(crate) fn styles_run(app: &mut PatronusPhotoApp, ctx: &egui::Context, cmd: &CommandRef) -> bool {
     let Some(command) = PresetCommands::from_ref(cmd) else { return false };
     let (any, selected, view) = styles_menu_facts(app);
     let files = style_files(any, None);
@@ -401,13 +401,13 @@ pub(crate) fn styles_run(app: &mut PhotocraftApp, ctx: &egui::Context, cmd: &Com
 
 /// The `.asl` of the `selected` style, else of every style, through `style.presets.exportAsl`, suggested as the
 /// style's name (or "Styles") without path-illegal characters; with the number of styles it holds.
-fn export_styles(app: &mut PhotocraftApp, selected: Option<&PresetKey>) -> Option<(PresetExport, u64)> {
+fn export_styles(app: &mut PatronusPhotoApp, selected: Option<&PresetKey>) -> Option<(PresetExport, u64)> {
     let name = match selected {
         Some(PresetKey::Item(name)) => Some(name.as_str()),
         _ => None,
     };
     let reply = run(app, "style.presets.exportAsl", name.map_or_else(|| json!({}), |name| json!({"styles": [name]})))?;
-    let bytes = reply["data"].as_str().and_then(photocraft_engine::paint::tile::b64_decode)?;
+    let bytes = reply["data"].as_str().and_then(patronusphoto_engine::paint::tile::b64_decode)?;
     let stem: String = name.unwrap_or("Styles").chars().filter(|c| !matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|')).collect();
     let stem = if stem.trim().is_empty() { "Styles" } else { stem.trim() };
     Some((PresetExport::new(format!("{stem}.asl"), bytes), reply["count"].as_u64().unwrap_or(0)))
@@ -415,7 +415,7 @@ fn export_styles(app: &mut PhotocraftApp, selected: Option<&PresetKey>) -> Optio
 
 /// Runs a Styles file request: Load… imports the picked style library, Save… writes the export (`count` styles) where
 /// the user picks.
-fn style_file(app: &mut PhotocraftApp, request: PresetFileRequest, count: u64) -> Result<Value, String> {
+fn style_file(app: &mut PatronusPhotoApp, request: PresetFileRequest, count: u64) -> Result<Value, String> {
     match request {
         PresetFileRequest::Open { extensions, .. } => {
             let extensions: Vec<&str> = extensions.iter().map(String::as_str).collect();
@@ -446,9 +446,9 @@ fn names_of(folders: &[Folder]) -> Vec<String> {
 
 /// The 64×64 raster of a shape: its coverage as the alpha of a mid grey, which reads on a light and a dark panel
 /// (`ContentPainterCx::picture` takes no tint).
-pub(crate) fn shape_image(shape: &photocraft_engine::presets::shapes::ShapePreset) -> ColorImage {
+pub(crate) fn shape_image(shape: &patronusphoto_engine::presets::shapes::ShapePreset) -> ColorImage {
     const S: u32 = 64;
-    let coverage = photocraft_engine::presets::shapes::thumbnail(&shape.path, S);
+    let coverage = patronusphoto_engine::presets::shapes::thumbnail(&shape.path, S);
     ColorImage::new(
         [S as usize, S as usize],
         coverage.iter().map(|a| Color32::from_rgba_unmultiplied(150, 150, 150, (a.clamp(0.0, 1.0) * 255.0).round() as u8)).collect(),
@@ -456,18 +456,18 @@ pub(crate) fn shape_image(shape: &photocraft_engine::presets::shapes::ShapePrese
 }
 
 /// The texture cache key of a shape's raster: its name and size of path.
-fn shape_key(shape: &photocraft_engine::presets::shapes::ShapePreset) -> (&'static str, String, usize) {
+fn shape_key(shape: &patronusphoto_engine::presets::shapes::ShapePreset) -> (&'static str, String, usize) {
     ("shape", shape.name.clone(), shape.path.subpaths.iter().map(|s| s.knots.len()).sum())
 }
 
-fn shape_texture(ctx: &egui::Context, shape: &photocraft_engine::presets::shapes::ShapePreset) -> egui::TextureId {
+fn shape_texture(ctx: &egui::Context, shape: &patronusphoto_engine::presets::shapes::ShapePreset) -> egui::TextureId {
     TextureCache::texture(ctx, shape_key(shape), || shape_image(shape))
 }
 
 /// Window › Shapes: a click picks the shape for the Custom Shape tool, a double click places it, and a drop on the
 /// canvas places it where it lands.
-pub fn shapes_panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
-    let groups = photocraft_engine::presets::shapes::all_groups(&app.session);
+pub fn shapes_panel(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
+    let groups = patronusphoto_engine::presets::shapes::all_groups(&app.session);
     let folders: Vec<Folder> = groups
         .iter()
         .map(|group| Folder { name: group.name.clone(), items: group.items.iter().map(|shape| (shape.name.clone(), shape.name.clone())).collect() })
@@ -483,7 +483,7 @@ pub fn shapes_panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     apply(app, ui.ctx(), SHAPES, &names_of(&folders), &keys, events);
 }
 
-fn shape_fill(app: &PhotocraftApp) -> Value {
+fn shape_fill(app: &PatronusPhotoApp) -> Value {
     let f = app.session.tools.foreground;
     let q = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
     if app.ui.tool_options.shape_fill { json!(format!("#{:02x}{:02x}{:02x}", q(f[0]), q(f[1]), q(f[2]))) } else { Value::Null }
@@ -491,7 +491,7 @@ fn shape_fill(app: &PhotocraftApp) -> Value {
 
 /// The `shape.presets.place` params of `key`: at its default place, or in a square centred on the document point under
 /// the drop at `at`.
-fn shape_place(app: &PhotocraftApp, key: &str, at: Option<Pos2>) -> Value {
+fn shape_place(app: &PatronusPhotoApp, key: &str, at: Option<Pos2>) -> Value {
     let mut params = json!({"preset": key, "fill": shape_fill(app)});
     if let Some(pos) = at
         && let (Some(c), Some(d)) = (crate::canvas::document_display::doc_point_at(app, pos), app.session.active())
@@ -523,11 +523,11 @@ fn keep_picker_state(presets: &mut PresetUi, id: &str, state: PresetState<String
 }
 
 /// Options-bar shape picker for the Custom Shape tool.
-pub fn shape_picker(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn shape_picker(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     const GROUP: &str = "group:";
     const ID: &str = "shapePicker";
     let ctx = ui.ctx().clone();
-    let groups = photocraft_engine::presets::shapes::all_groups(&app.session);
+    let groups = patronusphoto_engine::presets::shapes::all_groups(&app.session);
     let mut rows: Vec<PresetRow<String>> = Vec::new();
     for group in &groups {
         rows.push(PresetRow::group(format!("{GROUP}{}", group.name), group.name.clone(), 0));
@@ -549,10 +549,10 @@ pub fn shape_picker(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 }
 
 /// Custom Shape tool drag: places the selected shape in the dragged rect (⇧ keeps proportions).
-pub fn finish_custom_shape(app: &mut PhotocraftApp, rect: [f64; 4], keep: bool, fill: Value, stroke: Value) {
+pub fn finish_custom_shape(app: &mut PatronusPhotoApp, rect: [f64; 4], keep: bool, fill: Value, stroke: Value) {
     let name = app.ui.presets_ui.shape().to_string();
     let r = run(app, "shape.presets.place", json!({"preset": name, "rect": rect, "keepAspect": keep, "fill": fill, "stroke": stroke}));
-    if r.is_none() && !photocraft_engine::presets::shapes::all_groups(&app.session).iter().any(|g| g.items.iter().any(|s| s.name == name)) {
+    if r.is_none() && !patronusphoto_engine::presets::shapes::all_groups(&app.session).iter().any(|g| g.items.iter().any(|s| s.name == name)) {
         let template = "No custom shape \"{name}\": pick one in the options bar or Window › Shapes";
         app.ui.status = crate::i18n::fmt(tl!(template), &[("name", &name)]);
     }
@@ -562,7 +562,7 @@ pub fn finish_custom_shape(app: &mut PhotocraftApp, rect: [f64; 4], keep: bool, 
 
 /// Window › Tool Presets: a click applies the preset's tool and options. Current Tool Only lists the current tool's
 /// presets.
-pub fn tool_presets_panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn tool_presets_panel(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let only = app.ui.presets_ui.current_tool_only;
     let current = app.ui.tool;
     let rows: Vec<PresetRow<PresetKey>> = app
@@ -665,7 +665,7 @@ pub(crate) fn act(panel: PresetPanel, event: &PresetEvent<PresetKey>, rows: &[Pr
 
 /// `panel`'s own handling of the events that use a preset (and, for Tool Presets, of New): Patterns select and fill,
 /// Styles apply, Gradients select and apply, Shapes pick and place, Tool Presets apply.
-fn panel_act(app: &PhotocraftApp, panel: PresetPanel, event: &PresetEvent<PresetKey>) -> Option<Act> {
+fn panel_act(app: &PatronusPhotoApp, panel: PresetPanel, event: &PresetEvent<PresetKey>) -> Option<Act> {
     if panel.id == TOOL_PRESETS.id && matches!(event, PresetEvent::Footer(PresetFooterEvent::New)) {
         return Some(Act::Run(format!("{}.new", panel.prefix), tool_presets::new_params(app, app.ui.tool)));
     }
@@ -692,7 +692,7 @@ fn panel_act(app: &PhotocraftApp, panel: PresetPanel, event: &PresetEvent<Preset
 
 /// Runs `events` for `panel`, in order, and keeps the panel's selection and folder order. `rows` are the keys of the
 /// rows the browser showed, which the events' positions count in.
-fn apply(app: &mut PhotocraftApp, ctx: &egui::Context, panel: PresetPanel, names: &[String], rows: &[PresetKey], events: Vec<PresetEvent<PresetKey>>) {
+fn apply(app: &mut PatronusPhotoApp, ctx: &egui::Context, panel: PresetPanel, names: &[String], rows: &[PresetKey], events: Vec<PresetEvent<PresetKey>>) {
     for event in events {
         let selected = app.ui.presets_ui.selected.get(panel.id).cloned();
         let Some(act) = panel_act(app, panel, &event).or_else(|| act(panel, &event, rows, selected.as_deref())) else { continue };
@@ -720,7 +720,7 @@ fn apply(app: &mut PhotocraftApp, ctx: &egui::Context, panel: PresetPanel, names
 
 /// What a command's reply changes in the panel: the selection follows a rename, a delete clears it, a new group and a
 /// new preset open their rename.
-fn after(app: &mut PhotocraftApp, ctx: &egui::Context, panel: PresetPanel, event: &PresetEvent<PresetKey>, reply: &Value) {
+fn after(app: &mut PatronusPhotoApp, ctx: &egui::Context, panel: PresetPanel, event: &PresetEvent<PresetKey>, reply: &Value) {
     let ui = &mut app.ui.presets_ui;
     match event {
         PresetEvent::Rename { key: PresetKey::Item(key), text, .. } if ui.selected.get(panel.id) == Some(key) => {
@@ -748,7 +748,7 @@ fn after(app: &mut PhotocraftApp, ctx: &egui::Context, panel: PresetPanel, event
 
 /// The library's patterns as picker rows, each with its swatch and its name as the tooltip. The pattern picker and the
 /// dialogs' pattern lists show these.
-pub(crate) fn pattern_rows(app: &PhotocraftApp, ctx: &egui::Context) -> Vec<PresetRow<String>> {
+pub(crate) fn pattern_rows(app: &PatronusPhotoApp, ctx: &egui::Context) -> Vec<PresetRow<String>> {
     app.session
         .patterns
         .items
@@ -765,7 +765,7 @@ pub(crate) fn pattern_rows(app: &PhotocraftApp, ctx: &egui::Context) -> Vec<Pres
 
 /// Photoshop's pattern picker: a swatch of the library pattern `selected` (an id) that opens the library's swatches,
 /// each named in its tooltip. Returns the id of a newly picked pattern.
-pub(crate) fn pattern_picker(app: &mut PhotocraftApp, ui: &mut egui::Ui, selected: &str) -> Option<String> {
+pub(crate) fn pattern_picker(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, selected: &str) -> Option<String> {
     const ID: &str = "patternPicker";
     let rows = pattern_rows(app, ui.ctx());
     let mut value = Some(selected.to_string()).filter(|id| app.session.patterns.items.iter().any(|pattern| &pattern.id == id));

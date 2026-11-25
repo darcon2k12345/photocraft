@@ -6,14 +6,14 @@
 use egui::Modifiers;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::{ToolEvent, tool_event};
 use crate::state::Tool;
 
 /// An 80×40 document at `depth` bits, red on the left half and blue on the right, foreground
 /// green and background blue, with the Color Replacement tool picked (12 px, hard, no smoothing).
-fn app(depth: u32) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app(depth: u32) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 80, "height": 40, "background": "#ff0000", "depth": depth})).unwrap();
     fill(&mut app, [40, 0, 40, 40], "#0000ff");
     app.run("tools.setColors", json!({"foreground": "#00ff00", "background": "#0000ff"})).unwrap();
@@ -25,18 +25,18 @@ fn app(depth: u32) -> Box<PhotocraftApp> {
     app
 }
 
-fn fill(app: &mut PhotocraftApp, [x, y, width, height]: [i32; 4], color: &str) {
+fn fill(app: &mut PatronusPhotoApp, [x, y, width, height]: [i32; 4], color: &str) {
     app.run("select.rect", json!({"x": x, "y": y, "width": width, "height": height})).unwrap();
     app.run("edit.fill", json!({"color": color})).unwrap();
     app.run("select.deselect", json!({})).unwrap();
 }
 
-fn rgba(app: &PhotocraftApp, x: i32, y: i32) -> [f32; 4] {
+fn rgba(app: &PatronusPhotoApp, x: i32, y: i32) -> [f32; 4] {
     let st = app.session.active().unwrap();
     st.doc.layer(st.active_layer.unwrap()).unwrap().surface().unwrap().rgba(x, y)
 }
 
-fn drag(app: &mut PhotocraftApp, pts: &[(f64, f64)]) {
+fn drag(app: &mut PatronusPhotoApp, pts: &[(f64, f64)]) {
     let m = Modifiers::NONE;
     let (x, y) = pts[0];
     tool_event(app, ToolEvent::Down { x, y, pressure: 1.0 }, m);

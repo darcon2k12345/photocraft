@@ -6,14 +6,14 @@ use craft::ui::bars::{Bar, BarKind, StatusMessage, StatusReadout};
 use craft::ui::contract::{Bind, ShowContainer as _};
 use craft::ui::runtime::commands::CommandRef;
 
-use super::{PhotocraftApp, chrome_ui};
+use super::{PatronusPhotoApp, chrome_ui};
 
 // ----------------------------------------------------------------------------- status bar
 
 /// The status bar, in the shell's status slot: the zoom readout of the active document and the latest status
 /// message, and at the far end the render-path note, the background redraw and the background jobs' progress with
 /// Cancel (#210).
-pub fn status_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn status_bar(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let values = chrome_ui::status_values(app);
     let item = chrome_ui::status_item(&app.ui.chrome);
     let document = app.session.active().map(|st| Size::new(st.doc.size.width as f64, st.doc.size.height as f64));

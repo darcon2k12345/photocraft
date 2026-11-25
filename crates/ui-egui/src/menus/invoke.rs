@@ -3,7 +3,7 @@ use craft::menu::{LANGUAGE_COMMAND, LanguageChoice, THEME_COMMAND, ThemeChoice};
 // PLAN: assumed facade paths `craft::keymap::CommandRef` and `craft::ui::dialog::DialogId`.
 use craft::ui::dialog::DialogId;
 
-use super::{DOCUMENT_ITEM, PhotocraftApp, Value, json};
+use super::{DOCUMENT_ITEM, PatronusPhotoApp, Value, json};
 
 /// The reply of a command that opened a dialog: the id in the form `ui.dialog.open` and `ui.inspect` use.
 fn dialog_reply(id: DialogId) -> Value {
@@ -11,7 +11,7 @@ fn dialog_reply(id: DialogId) -> Value {
 }
 
 /// The open Free Transform as the control protocol reports it, `null` without one.
-fn transform_reply(app: &PhotocraftApp) -> Value {
+fn transform_reply(app: &PatronusPhotoApp) -> Value {
     json!({"transform": app.ui.transform.as_ref().map(crate::state::FreeTransform::record)})
 }
 
@@ -69,7 +69,7 @@ fn keeps_box_drag(id: &str) -> bool {
 }
 
 /// Run a command id from any source (menu, shortcut, palette, automation).
-pub fn invoke(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, params: Value) -> Result<Value, String> {
+pub fn invoke(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: &str, params: Value) -> Result<Value, String> {
     // The regions that ran before it in this pass show its change in the next one.
     app.commands_run += 1;
     ctx.request_repaint();
@@ -100,10 +100,10 @@ pub fn invoke(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, params: Va
 }
 
 /// Layer › New › Convert to Frame without params: asks for the frame's name and size first.
-fn frame_convert_dialog(app: &mut PhotocraftApp, id: &str) -> Result<Value, String> {
+fn frame_convert_dialog(app: &mut PatronusPhotoApp, id: &str) -> Result<Value, String> {
     let st = app.session.active().ok_or("no document")?;
     let layer = st.active_layer.and_then(|id| st.doc.layer(id)).ok_or("select a shape or type layer")?;
-    let b = photocraft_engine::transform_cmds::transform_frame(&st.doc, layer);
+    let b = patronusphoto_engine::transform_cmds::transform_frame(&st.doc, layer);
     let mut fixed = serde_json::Map::new();
     fixed.insert("layer".into(), json!(layer.id.0));
     let dialog = crate::filter_dialog::open_with_spec(app, id, tl!("New Frame"), r#"{"name":text,"width":1..300000=100,"height":1..300000=100}"#, fixed);
@@ -115,7 +115,7 @@ fn frame_convert_dialog(app: &mut PhotocraftApp, id: &str) -> Result<Value, Stri
 }
 
 /// [`invoke`] without the unsaved-changes prompt, for once the user has already answered it.
-fn invoke_early_commands(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, params: &Value) -> Option<Result<Value, String>> {
+fn invoke_early_commands(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: &str, params: &Value) -> Option<Result<Value, String>> {
     if let Some(tool) = crate::tool_shortcuts::tool(id) {
         crate::tool_memory::select(app, tool);
         // The tool's own brush now, not at the next frame, so a paint command right after uses
@@ -130,7 +130,7 @@ fn invoke_early_commands(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str,
         return Some(crate::updates_ui::check(app, ctx, params.clone()));
     }
     // Layer › Copy CSS: the engine writes the CSS, the clipboard is the shell's (#9372).
-    if id == photocraft_engine::layer_css_cmds::ID {
+    if id == patronusphoto_engine::layer_css_cmds::ID {
         return Some(app.run(id, params.clone()).inspect(|r| {
             if let Some(css) = r.get("css").and_then(Value::as_str) {
                 ctx.copy_text(css.to_string());
@@ -200,7 +200,7 @@ fn invoke_early_commands(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str,
     None
 }
 
-fn invoke_shell_commands(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, params: &Value) -> Option<Result<Value, String>> {
+fn invoke_shell_commands(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: &str, params: &Value) -> Option<Result<Value, String>> {
     // View/Window/Type shell items, and dialogs/pickers in front of File commands.
     // Edit › Preferences, Keyboard Shortcuts, Color Settings and other Edit dialogs.
     if let Some(r) = crate::prefs_ui::invoke(app, ctx, id, params) {
@@ -238,7 +238,7 @@ fn invoke_shell_commands(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str,
         return Some(invoke(app, ctx, alias, params.clone()));
     }
     // The four commands the framework's workspace set owns keep their menu ids on this path.
-    let owned = photocraft_engine::prefs::theme_ids::command_id(id);
+    let owned = patronusphoto_engine::prefs::theme_ids::command_id(id);
     if owned != id
         && let Some(result) = crate::workspace_ui::run_command(app, ctx, &CommandRef::with_params(owned, params.clone()))
     {
@@ -252,7 +252,7 @@ fn invoke_shell_commands(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str,
 
 /// The commands the shell answers itself before the engine (File › Open and Save with the
 /// dialogs they ask, loading a path as a selection, …); `Ok(None)` for any other.
-fn invoke_file_commands(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, params: &Value) -> Result<Option<Value>, String> {
+fn invoke_file_commands(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: &str, params: &Value) -> Result<Option<Value>, String> {
     let result = match id {
         // ⌘↩ / Ctrl+Enter (#306): load the path selected in the Paths panel (or the one being
         // drawn) as a selection.
@@ -273,8 +273,8 @@ fn invoke_file_commands(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, 
         "layer.renameLayer" if params.get("name").is_none() => {
             let st = app.session.active().ok_or("no document")?;
             let id = params.get("layer").and_then(Value::as_u64).or(st.active_layer.map(|l| l.0)).ok_or("no active layer")?;
-            st.doc.layer(photocraft_doc::LayerId(id)).ok_or("no such layer")?;
-            app.layers_rename = Some(photocraft_doc::LayerId(id));
+            st.doc.layer(patronusphoto_doc::LayerId(id)).ok_or("no such layer")?;
+            app.layers_rename = Some(patronusphoto_doc::LayerId(id));
             Ok(Value::Null)
         }
         "layer.duplicate" if params.as_object().is_none_or(|o| o.is_empty()) => crate::duplicate_layer_ui::open(app).map(dialog_reply),
@@ -305,7 +305,7 @@ fn invoke_file_commands(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, 
             app.pick_file_bytes_filtered(&["csv", "txt"], move |app, _name, bytes| {
                 app.refocus(doc)?;
                 let text = data_sets_text(bytes)?;
-                let r = photocraft_engine::import_data_sets_text(&mut app.session, &text, &params).map_err(|e| e.to_string());
+                let r = patronusphoto_engine::import_data_sets_text(&mut app.session, &text, &params).map_err(|e| e.to_string());
                 app.sync_views();
                 r
             })
@@ -317,7 +317,7 @@ fn invoke_file_commands(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, 
             match params.get("path").and_then(Value::as_str) {
                 Some(path) => app.save_as_with(Some(path.to_string()), choices),
                 None => {
-                    let own = app.session.active().and_then(|d| d.path.clone().map(|p| (photocraft_engine::file_cmds::holds_at(&d.doc, &p), p, d)));
+                    let own = app.session.active().and_then(|d| d.path.clone().map(|p| (patronusphoto_engine::file_cmds::holds_at(&d.doc, &p), p, d)));
                     match own {
                         Some((true, path, d)) => {
                             // Another app changed the file since it was opened or saved: ask first (#6596).
@@ -325,9 +325,9 @@ fn invoke_file_commands(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, 
                             crate::disk_change_prompt::intercept(app, doc, &path, false, crate::FormatChoices::default())
                                 .unwrap_or_else(|| app.save_in_place(path, crate::FormatChoices::default()))
                         }
-                        Some((false, path, d)) if photocraft_engine::file_cmds::saves_in_place(&path) => {
+                        Some((false, path, d)) if patronusphoto_engine::file_cmds::saves_in_place(&path) => {
                             // Its own file is layered but can't hold what the document has now.
-                            let losses = photocraft_engine::file_cmds::losses_at(&d.doc, &path);
+                            let losses = patronusphoto_engine::file_cmds::losses_at(&d.doc, &path);
                             let name = crate::file_open::display_name(&path);
                             let title = crate::i18n::fmt(tl!("{name} can't keep everything in this document"), &[("name", name.as_str())]);
                             let mut lines = losses;
@@ -392,7 +392,7 @@ fn invoke_file_commands(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, 
 }
 
 /// Dispatch UI actions and dialogs, falling back to the engine for other commands.
-pub(crate) fn invoke_unguarded(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, params: Value) -> Result<Value, String> {
+pub(crate) fn invoke_unguarded(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: &str, params: Value) -> Result<Value, String> {
     // File › Save and the unsaved-changes prompt's Save write from here without `run`: they must
     // not write Apply Data Set's Preview either. The dialog shows it again on the next frame.
     crate::panels::apply_data_set_ui::end_preview(app);
@@ -435,8 +435,8 @@ pub(crate) fn invoke_unguarded(app: &mut PhotocraftApp, ctx: &egui::Context, id:
         }
         "layer.smartFilter.blendingOptions" if params.get("blend").is_none() && params.get("opacity").is_none() => {
             let st = app.session.active().ok_or("no document open")?;
-            let layer = params.get("layer").and_then(Value::as_u64).map(photocraft_doc::LayerId).or(st.active_layer).ok_or("no layer selected")?;
-            let Some(photocraft_doc::LayerContent::Smart(sm)) = st.doc.layer(layer).map(|l| &l.content) else {
+            let layer = params.get("layer").and_then(Value::as_u64).map(patronusphoto_doc::LayerId).or(st.active_layer).ok_or("no layer selected")?;
+            let Some(patronusphoto_doc::LayerContent::Smart(sm)) = st.doc.layer(layer).map(|l| &l.content) else {
                 return Err("the layer is not a Smart Object".into());
             };
             let index = match params.get("index") {
@@ -481,7 +481,7 @@ pub(crate) fn invoke_unguarded(app: &mut PhotocraftApp, ctx: &egui::Context, id:
         // New Group button): Photoshop's New Group dialog. Explicit params run the engine directly,
         // and Group Layers (⌘G) never asks.
         _ if crate::new_group_ui::fronts(id) && params.as_object().is_none_or(|o| o.is_empty()) => {
-            if let Some(Err(why)) = photocraft_engine::commands::find(id).map(|c| (c.enabled)(&app.session)) {
+            if let Some(Err(why)) = patronusphoto_engine::commands::find(id).map(|c| (c.enabled)(&app.session)) {
                 return Err(why);
             }
             Ok(dialog_reply(crate::new_group_ui::open(app, id)))
@@ -494,7 +494,7 @@ pub(crate) fn invoke_unguarded(app: &mut PhotocraftApp, ctx: &egui::Context, id:
             let mask = app.layer_mask_targeted();
             let st = app.session.active().ok_or("no document is open")?;
             let channel = match st.channel_view.target {
-                photocraft_engine::channel_cmds::ChannelTarget::Alpha(i) => json!(i),
+                patronusphoto_engine::channel_cmds::ChannelTarget::Alpha(i) => json!(i),
                 _ if st.doc.quick_mask.is_some() => json!("quickMask"),
                 _ if mask => json!("mask"),
                 _ => return Err("target an alpha or spot channel, or a layer mask, first".into()),
@@ -511,7 +511,7 @@ pub(crate) fn invoke_unguarded(app: &mut PhotocraftApp, ctx: &egui::Context, id:
         // Channels › Merge Channels… without params: its dialog, which picks the mode and the
         // documents (with params: the engine).
         crate::dialogs::merge_channels_ui::COMMAND if params.as_object().is_none_or(|o| o.is_empty()) => {
-            if let Some(Err(why)) = photocraft_engine::commands::find(id).map(|c| (c.enabled)(&app.session)) {
+            if let Some(Err(why)) = patronusphoto_engine::commands::find(id).map(|c| (c.enabled)(&app.session)) {
                 return Err(why);
             }
             let dialog = crate::dialogs::merge_channels_ui::open(app).ok_or("no document is open")?;
@@ -529,7 +529,7 @@ pub(crate) fn invoke_unguarded(app: &mut PhotocraftApp, ctx: &egui::Context, id:
         "select.colorRange" if params.as_object().is_none_or(|o| o.is_empty()) => crate::color_range_ui::open(app).map(dialog_reply),
         // Layer › New Fill Layer › Pattern… from the menu: the Pattern Fill dialog (with params:
         // the engine directly).
-        photocraft_engine::pattern_fill_cmds::CREATE if params.as_object().is_none_or(|o| o.is_empty()) => {
+        patronusphoto_engine::pattern_fill_cmds::CREATE if params.as_object().is_none_or(|o| o.is_empty()) => {
             Ok(dialog_reply(crate::pattern_fill_ui::open_new(app)?))
         }
         // Edit › Fill… from the menu or its shortcuts: the Fill dialog (with params: the engine).
@@ -559,8 +559,12 @@ pub(crate) fn invoke_unguarded(app: &mut PhotocraftApp, ctx: &egui::Context, id:
                     let v = &app.ui.views[i];
                     let pz = app.point_zoom();
                     let (hw, hh) = (app.last_canvas_rect.width() / 2.0 / pz / app.ui.view.display_aspect(), app.last_canvas_rect.height() / 2.0 / pz);
-                    let r =
-                        photocraft_geom::Rect::new((v.center[0] - hw) as i32, (v.center[1] - hh) as i32, (v.center[0] + hw) as i32, (v.center[1] + hh) as i32);
+                    let r = patronusphoto_geom::Rect::new(
+                        (v.center[0] - hw) as i32,
+                        (v.center[1] - hh) as i32,
+                        (v.center[0] + hw) as i32,
+                        (v.center[1] + hh) as i32,
+                    );
                     !clip.bounds.intersect(&r).is_empty()
                 });
             let p = match app.session.active_index() {
@@ -588,7 +592,8 @@ pub(crate) fn invoke_unguarded(app: &mut PhotocraftApp, ctx: &egui::Context, id:
         // An id no arm took and the engine does not know belongs to a framework command set (panel commands,
         // workspace commands, `actionsPanel.*`).
         _ => {
-            if photocraft_engine::commands::find(id).is_none() && crate::app::framework::run_command(app, ctx, &CommandRef::with_params(id, params.clone())) {
+            if patronusphoto_engine::commands::find(id).is_none() && crate::app::framework::run_command(app, ctx, &CommandRef::with_params(id, params.clone()))
+            {
                 return Ok(Value::Null);
             }
             app.run(id, params)
@@ -603,11 +608,11 @@ pub(super) fn data_sets_text(bytes: Vec<u8>) -> Result<String, String> {
     String::from_utf8(bytes).map_err(|e| format!("the data set file is not valid UTF-8: {e}"))
 }
 
-fn open_path(app: &mut PhotocraftApp, path: &str) -> Result<Value, String> {
+fn open_path(app: &mut PatronusPhotoApp, path: &str) -> Result<Value, String> {
     app.open_path(path).map(|w| json!({"warnings": w}))
 }
 
-fn invoke_export_command(app: &mut PhotocraftApp, id: &str, params: &Value) -> Result<Option<Result<Value, String>>, String> {
+fn invoke_export_command(app: &mut PatronusPhotoApp, id: &str, params: &Value) -> Result<Option<Result<Value, String>>, String> {
     let result = match id {
         "file.export.exportAs" => Some(Ok(json!({"dialog": crate::export_dialog::open(app)?.value()}))),
         "file.export.quickExportAsPng" => Some(crate::export_dialog::quick_export_png(app)),
@@ -646,7 +651,7 @@ fn invoke_export_command(app: &mut PhotocraftApp, id: &str, params: &Value) -> R
     Ok(result)
 }
 
-fn invoke_type_command(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, params: &Value) -> Option<Result<Value, String>> {
+fn invoke_type_command(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: &str, params: &Value) -> Option<Result<Value, String>> {
     match id {
         "type.increaseSize" | "type.decreaseSize" | "type.increaseSizeMore" | "type.decreaseSizeMore"
             if params.as_object().is_none_or(|object| object.is_empty()) =>
@@ -693,7 +698,7 @@ fn invoke_type_command(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, p
     }
 }
 
-fn type_command_target(app: &PhotocraftApp) -> Option<Value> {
+fn type_command_target(app: &PatronusPhotoApp) -> Option<Value> {
     let (layer, range) = crate::type_tool::target(app)?;
     let mut params = json!({"layer": layer});
     if let Some(range) = range {
@@ -705,7 +710,7 @@ fn type_command_target(app: &PhotocraftApp) -> Option<Value> {
     Some(params)
 }
 
-fn invoke_view_command(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, params: &Value) -> Option<Result<Value, String>> {
+fn invoke_view_command(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: &str, params: &Value) -> Option<Result<Value, String>> {
     match id {
         // The canvas's view commands (zoom, fits, 100%, 200%, Print Size, the rotate rows): asked of the active
         // document's canvas, which runs them in its next pass as it runs their chords.
@@ -790,7 +795,7 @@ fn invoke_view_command(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, p
 }
 
 /// Appearance › Sync with System, a theme in a mode, or the next mode.
-fn theme_command(app: &mut PhotocraftApp, ctx: &egui::Context, params: &Value) -> Result<Value, String> {
+fn theme_command(app: &mut PatronusPhotoApp, ctx: &egui::Context, params: &Value) -> Result<Value, String> {
     match ThemeChoice::from_command(&CommandRef::with_params(THEME_COMMAND, params.clone())) {
         Some(ThemeChoice::System) => {
             app.run("prefs.set", json!({"path": "interface.appearanceMode", "value": "auto"}))?;
@@ -810,7 +815,7 @@ fn theme_command(app: &mut PhotocraftApp, ctx: &egui::Context, params: &Value) -
 }
 
 /// A Language row: Automatic or a language code.
-fn language_command(app: &mut PhotocraftApp, params: &Value) -> Result<Value, String> {
+fn language_command(app: &mut PatronusPhotoApp, params: &Value) -> Result<Value, String> {
     let code = match LanguageChoice::from_command(&CommandRef::with_params(LANGUAGE_COMMAND, params.clone())) {
         Some(LanguageChoice::Automatic) => "auto".to_string(),
         // Serbian was `sr` before the catalogs moved to craft-i18n; old scripts still switch.
@@ -824,7 +829,7 @@ fn language_command(app: &mut PhotocraftApp, params: &Value) -> Result<Value, St
     app.run("prefs.set", json!({"values": {"interface.language": code}}))
 }
 
-fn invoke_window_command(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, params: &Value) -> Option<Result<Value, String>> {
+fn invoke_window_command(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: &str, params: &Value) -> Option<Result<Value, String>> {
     match id {
         "window.newWindowForDocument" => Some((|| {
             let doc = app.session.active_index().ok_or("no document")?;
@@ -866,7 +871,7 @@ fn invoke_window_command(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str,
 
 /// Pointer-dependent shell command; pixel picking and selection remain engine commands. A gesture in progress needs
 /// no clause here: the tool host owns presses while it runs.
-fn select_layer_under_cursor(app: &mut PhotocraftApp, ctx: &egui::Context) -> Result<Value, String> {
+fn select_layer_under_cursor(app: &mut PatronusPhotoApp, ctx: &egui::Context) -> Result<Value, String> {
     if app.brush_resize.active() {
         return Ok(json!({"layer": null}));
     }

@@ -35,7 +35,7 @@ pub use craft::imaging::raw::{GradeWheel as Wheel, MAX_CURVE_POINTS, RawDevelopS
 // crates/gpu/tests/it/camera_raw.rs and examples/bench_camera_raw.rs (spatial(p) is a free function now), dialogs-w51's
 // camera_raw_gpu.rs `CameraRawGpu::develop` (takes the inputs beside `p`), crates/io/src/camera_raw_xmp.rs (`vignette_style` is the
 // framework's `VignetteStyle` enum, not a string). Owner: tools-w28 / dialogs-w51 / the io set.
-/// What one develop reads besides the settings. PhotoCraft sets these per job (the proxy's scale, the document's
+/// What one develop reads besides the settings. Patronus Photo sets these per job (the proxy's scale, the document's
 /// transfer curve), so they are not part of the settings the workspace edits and the commands store.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DevelopInputs {

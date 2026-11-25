@@ -6,11 +6,11 @@ use craft::ui::display::Divider;
 use craft::ui::pickers::Select;
 
 use super::check;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// The members of the active tool when it is one of the navigation tools.
-pub(super) fn members(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub(super) fn members(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     match app.ui.tool {
         Tool::Move => move_members(app, ui),
         Tool::Eyedropper => crate::eyedropper_ui::options(app, ui),
@@ -20,7 +20,7 @@ pub(super) fn members(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 }
 
 /// Auto-Select, its target, Show Transform Controls, then the align strip.
-fn move_members(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+fn move_members(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let o = &mut app.ui.tool_options;
     check(ui, tl!("Auto-Select:"), &mut o.move_auto_select);
     let targets = [Entry::new("group".to_owned(), tl!("Group").to_owned()), Entry::new("layer".to_owned(), tl!("Layer").to_owned())];
@@ -33,7 +33,7 @@ fn move_members(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 
 /// The navigation choices the bar edits: the preferences and the tools' own options, as the framework's
 /// [`NavigationOptions`].
-fn navigation_options(app: &PhotocraftApp) -> NavigationOptions {
+fn navigation_options(app: &PatronusPhotoApp) -> NavigationOptions {
     let general = &app.session.prefs().general;
     let mut options = NavigationOptions::default();
     options.zoom_resizes_windows = general.zoom_resizes_windows;
@@ -46,7 +46,7 @@ fn navigation_options(app: &PhotocraftApp) -> NavigationOptions {
 /// Zoom, Rotate View and Hand on the framework's `NavigateBar`. The bar edits a copy of the active document's view,
 /// which goes back to the document when a field changed it. Its 100 %, Fit Screen and Fill Screen buttons are view
 /// commands the canvas runs.
-fn view_members(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+fn view_members(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let tool = app.ui.tool;
     let mut options = navigation_options(app);
     let before = options;
@@ -80,7 +80,7 @@ fn view_members(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 }
 
 /// Gives document `index` the bar's `view` when a field edited it this pass.
-fn write_view(app: &mut PhotocraftApp, index: usize, view: &craft::behavior::CanvasView, edited: bool) {
+fn write_view(app: &mut PatronusPhotoApp, index: usize, view: &craft::behavior::CanvasView, edited: bool) {
     if !edited {
         return;
     }

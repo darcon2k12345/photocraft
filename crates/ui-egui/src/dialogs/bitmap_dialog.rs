@@ -12,7 +12,7 @@
 use craft::ui::patterns::form_dialogs::{DialogFields, FieldValue, NumberUnit, Param, ParamKind};
 use craft::ui::runtime::env::UnitKind;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 pub(crate) const COMMAND: &str = "image.mode.bitmap";
 
@@ -35,15 +35,15 @@ const METHODS: [(&str, &str); 5] = [
 const SHAPES: [(&str, &str); 6] =
     [("round", "Round"), ("diamond", "Diamond"), ("ellipse", "Ellipse"), ("line", "Line"), ("square", "Square"), ("cross", "Cross")];
 
-fn input_resolution(app: &PhotocraftApp) -> f64 {
+fn input_resolution(app: &PatronusPhotoApp) -> f64 {
     app.session.active().map_or(72.0, |d| f64::from(d.doc.resolution_dpi))
 }
 
 /// Open defaults: Output starts at the document's resolution (Input, as in Photoshop), Custom
 /// Pattern at the Patterns panel's pattern.
-pub(crate) fn defaults(app: &PhotocraftApp, f: &mut DialogFields) {
+pub(crate) fn defaults(app: &PatronusPhotoApp, f: &mut DialogFields) {
     f.set("resolution", FieldValue::Number(input_resolution(app)));
-    match photocraft_engine::pattern_cmds::resolve(&app.session, "") {
+    match patronusphoto_engine::pattern_cmds::resolve(&app.session, "") {
         Some(p) => f.set("pattern", FieldValue::Text(p.id.to_string())),
         None => {
             f.remove("pattern");
@@ -52,7 +52,7 @@ pub(crate) fn defaults(app: &PhotocraftApp, f: &mut DialogFields) {
 }
 
 /// The dialog's rows. The filter dialog's opener gives the dialog the Custom Pattern rows.
-pub(crate) fn params(app: &PhotocraftApp) -> Vec<Param> {
+pub(crate) fn params(app: &PatronusPhotoApp) -> Vec<Param> {
     let input = input_resolution(app);
     let choice = |list: &[(&'static str, &'static str)]| -> Vec<(String, craft::ui::runtime::env::Label)> {
         list.iter().map(|(id, l)| (id.to_string(), tl!(l).into())).collect()

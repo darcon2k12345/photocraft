@@ -6,10 +6,10 @@ use craft::ui::contract::{Bind, BodyCx, Entry, Remember as _, Trigger};
 use craft::ui::menu::Menu;
 use craft::ui::tabs::{DocumentTab, DocumentTabs, DocumentTabsEvent, DocumentTabsOutput};
 use egui::{Pos2, Response};
-use photocraft_doc::DocId;
-use photocraft_engine::jobs::JobId;
+use patronusphoto_doc::DocId;
+use patronusphoto_engine::jobs::JobId;
 
-use super::{PhotocraftApp, fmt_zoom, mode_label};
+use super::{PatronusPhotoApp, fmt_zoom, mode_label};
 use crate::file_open::DropTo;
 use serde_json::json;
 
@@ -28,13 +28,13 @@ pub(crate) enum DocTab {
 struct TabMenu(Option<(DocId, Pos2)>);
 
 /// The index of document `id` in the session's document list.
-pub(crate) fn document_index(app: &PhotocraftApp, id: DocId) -> Option<usize> {
+pub(crate) fn document_index(app: &PatronusPhotoApp, id: DocId) -> Option<usize> {
     app.session.documents().iter().position(|st| st.doc.id == id)
 }
 
 /// The body of the canvas panel's tabs region: the strip, what the user did on it, and the tab menu a right click
 /// asked for.
-pub(super) fn strip(app: &mut PhotocraftApp, ui: &mut egui::Ui, cx: &mut BodyCx<'_>) {
+pub(super) fn strip(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, cx: &mut BodyCx<'_>) {
     let ctx = ui.ctx().clone();
     let out = tabs(app, ui);
     let response = out.response.clone();
@@ -46,7 +46,7 @@ pub(super) fn strip(app: &mut PhotocraftApp, ui: &mut egui::Ui, cx: &mut BodyCx<
 
 /// The tab strip: a tab per docked document, in document order, then one per file still opening. The tab of the
 /// document the main canvas shows is selected, or the opening file whose progress is shown.
-pub(super) fn tabs(app: &PhotocraftApp, ui: &mut egui::Ui) -> DocumentTabsOutput<DocTab> {
+pub(super) fn tabs(app: &PatronusPhotoApp, ui: &mut egui::Ui) -> DocumentTabsOutput<DocTab> {
     let docs = app.session.documents();
     let mut tabs: Vec<DocumentTab<DocTab>> = docked_document_indices(app)
         .into_iter()
@@ -72,7 +72,7 @@ pub(super) fn tabs(app: &PhotocraftApp, ui: &mut egui::Ui) -> DocumentTabsOutput
 
 /// Applies what the user did on the strip this pass. The strip reports only the input its own pass received, so a
 /// second pass of a frame applies nothing twice. Returns the tab menu a right click asked for.
-pub(super) fn apply(app: &mut PhotocraftApp, ctx: &egui::Context, out: DocumentTabsOutput<DocTab>) -> Option<(DocId, Pos2)> {
+pub(super) fn apply(app: &mut PatronusPhotoApp, ctx: &egui::Context, out: DocumentTabsOutput<DocTab>) -> Option<(DocId, Pos2)> {
     let mut menu = None;
     // A Move-tool drag over a tab turns into a layer transfer to that document (`layer_transfer`).
     if let Some(DocTab::Doc(id)) = out.hovered
@@ -117,14 +117,14 @@ pub(super) fn apply(app: &mut PhotocraftApp, ctx: &egui::Context, out: DocumentT
 }
 
 /// The guarded close shared by the tab strip and a tiled document's title.
-pub(super) fn close_document(app: &mut PhotocraftApp, ctx: &egui::Context, id: DocId) {
+pub(super) fn close_document(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: DocId) {
     if let Some(index) = document_index(app, id) {
         let _ = crate::menus::invoke(app, ctx, "file.close", json!({"document": index}));
     }
 }
 
 /// A chosen tab: a document tab shows that document, an opening tab its progress.
-fn show_tab(app: &mut PhotocraftApp, tab: DocTab) {
+fn show_tab(app: &mut PatronusPhotoApp, tab: DocTab) {
     match tab {
         DocTab::Doc(id) => {
             if let Some(i) = document_index(app, id) {
@@ -138,7 +138,7 @@ fn show_tab(app: &mut PhotocraftApp, tab: DocTab) {
 
 /// A dragged document tab now sits before `before` (last when `None` or an opening file's tab): `document.move` to
 /// the matching place in the document list, floating documents keeping theirs.
-fn reorder(app: &mut PhotocraftApp, ctx: &egui::Context, moved: &[DocTab], before: Option<DocTab>) {
+fn reorder(app: &mut PatronusPhotoApp, ctx: &egui::Context, moved: &[DocTab], before: Option<DocTab>) {
     let Some(from) = moved.iter().find_map(|tab| match tab {
         DocTab::Doc(id) => document_index(app, *id),
         DocTab::Opening(_) => None,
@@ -159,7 +159,7 @@ fn reorder(app: &mut PhotocraftApp, ctx: &egui::Context, moved: &[DocTab], befor
 }
 
 /// Runs a tab command through the menus' guarded path; a refusal goes to the status line.
-fn run(app: &mut PhotocraftApp, ctx: &egui::Context, id: &'static str, params: serde_json::Value) {
+fn run(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: &'static str, params: serde_json::Value) {
     if let Err(e) = crate::menus::invoke(app, ctx, id, params) {
         app.ui.status = e;
         app.ui.status_error = true;
@@ -168,7 +168,7 @@ fn run(app: &mut PhotocraftApp, ctx: &egui::Context, id: &'static str, params: s
 
 /// The tab menu for the document a right click (or the menu key) named, at the place the request gave. It closes
 /// when an entry runs, when it is dismissed and when its document is gone.
-fn tab_menu(app: &mut PhotocraftApp, ui: &mut egui::Ui, cx: &mut BodyCx<'_>, strip: &Response) {
+fn tab_menu(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, cx: &mut BodyCx<'_>, strip: &Response) {
     let Some((id, at)) = cx.keep::<TabMenu>().0 else { return };
     let Some(index) = document_index(app, id) else {
         cx.keep::<TabMenu>().0 = None;
@@ -221,8 +221,8 @@ pub(crate) fn tab_context_items(doc: DocId, index: usize, count: usize, has_path
 /// Photoshop's tab title: "name @ 50% (Layer 1, RGB/8)" at `zoom` percent, with "(Layer 1, Layer Mask/8)" when the
 /// mask is targeted and "(Quick Mask/8)" in Quick Mask mode; the Background layer's name is omitted. The tab's
 /// modified mark shows unsaved changes, so the text carries none.
-pub(crate) fn tab_title_at(app: &PhotocraftApp, i: usize, zoom: f32) -> String {
-    use photocraft_engine::channel_cmds::ChannelTarget;
+pub(crate) fn tab_title_at(app: &PatronusPhotoApp, i: usize, zoom: f32) -> String {
+    use patronusphoto_engine::channel_cmds::ChannelTarget;
     let Some(st) = app.session.documents().get(i) else { return String::new() };
     // Quick Mask mode targets the mask, not the layer (see `paint_target`): painting and Free
     // Transform change the red overlay, so the tab says so, as Photoshop's does.
@@ -244,19 +244,19 @@ pub(crate) fn tab_title_at(app: &PhotocraftApp, i: usize, zoom: f32) -> String {
 
 /// The document's name as its tab and window title show it: "© name" when File Info marks it
 /// Copyrighted, as Photoshop does (#13821).
-pub(crate) fn titled_name(app: &PhotocraftApp, st: &photocraft_engine::DocState) -> String {
+pub(crate) fn titled_name(app: &PatronusPhotoApp, st: &patronusphoto_engine::DocState) -> String {
     let copyrighted = app.doc_queries.copyrighted(&app.session, st);
     format!("{}{}", if copyrighted { "\u{a9} " } else { "" }, st.doc.name)
 }
 
 /// The documents with a tab in the main window, in document order: every one not floating in its own window.
-pub(super) fn docked_document_indices(app: &PhotocraftApp) -> Vec<usize> {
+pub(super) fn docked_document_indices(app: &PatronusPhotoApp) -> Vec<usize> {
     app.session.documents().iter().enumerate().filter(|(_, st)| !crate::view_cmds::document_is_floating(app, st.doc.id)).map(|(i, _)| i).collect()
 }
 
 /// The document the main window's single canvas shows: the active one, or the first docked one while the active
 /// document floats.
-pub(super) fn main_canvas_document(app: &PhotocraftApp) -> Option<usize> {
+pub(super) fn main_canvas_document(app: &PatronusPhotoApp) -> Option<usize> {
     let active = app.session.active()?;
     if !crate::view_cmds::document_is_floating(app, active.doc.id) {
         return app.session.active_index();

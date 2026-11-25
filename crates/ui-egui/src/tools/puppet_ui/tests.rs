@@ -1,7 +1,7 @@
 use super::*;
 
-fn paint_app(width: u32, height: u32, fill: Rect) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn paint_app(width: u32, height: u32, fill: Rect) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.session.execute("file.new", json!({"width": width, "height": height, "depth": 8})).unwrap();
     app.session.execute("layer.new.layer", json!({})).unwrap();
     app.session
@@ -14,27 +14,27 @@ fn paint_app(width: u32, height: u32, fill: Rect) -> Box<PhotocraftApp> {
     app
 }
 
-fn puppet_app() -> Box<PhotocraftApp> {
+fn puppet_app() -> Box<PatronusPhotoApp> {
     let mut app = paint_app(100, 80, Rect::new(20, 30, 80, 50));
     let ctx = app.ctx().clone();
     begin(&mut app, &ctx, "edit.puppetWarp").unwrap();
     app
 }
 
-fn past_len(app: &PhotocraftApp) -> usize {
+fn past_len(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.past_len()
 }
 
-fn pins_of(app: &PhotocraftApp) -> Vec<Pin> {
+fn pins_of(app: &PatronusPhotoApp) -> Vec<Pin> {
     app.distort.puppet.as_ref().unwrap().warp.pins().to_vec()
 }
 
-fn dsts(app: &PhotocraftApp) -> Vec<[f64; 2]> {
+fn dsts(app: &PatronusPhotoApp) -> Vec<[f64; 2]> {
     pins_of(app).iter().map(|p| xy(p.at)).collect()
 }
 
 /// Places a pin on the mesh where it shows at `on` and holds it at `to`, as one session step.
-fn add_pin(app: &mut PhotocraftApp, on: [f64; 2], to: [f64; 2]) {
+fn add_pin(app: &mut PatronusPhotoApp, on: [f64; 2], to: [f64; 2]) {
     let s = app.distort.puppet.as_ref().unwrap();
     let rest = s.solver.mesh().rest_of(point(on)).expect("on the mesh");
     let before = s.warp.pins().to_vec();
@@ -43,7 +43,7 @@ fn add_pin(app: &mut PhotocraftApp, on: [f64; 2], to: [f64; 2]) {
     session_apply(app, PinEdit::replace(&before, after, "Add Pin")).unwrap();
 }
 
-fn command_z(app: &mut PhotocraftApp, modifiers: egui::Modifiers) {
+fn command_z(app: &mut PatronusPhotoApp, modifiers: egui::Modifiers) {
     let ctx = app.ctx().clone();
     let event = egui::Event::Key { key: egui::Key::Z, physical_key: None, pressed: true, repeat: false, modifiers };
     let input = egui::RawInput { events: vec![event], ..Default::default() };
@@ -105,7 +105,7 @@ fn deleting_the_last_pin_restores_the_rest_mesh_and_an_empty_commit_is_not_an_ed
     assert_eq!(past_len(&app), past);
 }
 
-fn long_puppet(mode: PinMode, density: PinDensity) -> Box<PhotocraftApp> {
+fn long_puppet(mode: PinMode, density: PinDensity) -> Box<PatronusPhotoApp> {
     let mut app = paint_app(1000, 300, Rect::new(40, 180, 960, 220));
     let ctx = app.ctx().clone();
     begin(&mut app, &ctx, "edit.puppetWarp").unwrap();
@@ -121,7 +121,7 @@ fn long_puppet(mode: PinMode, density: PinDensity) -> Box<PhotocraftApp> {
 
 #[test]
 fn preview_matches_the_canonical_deformation_and_the_committed_layer() {
-    use photocraft_algo::puppet::{deform, render};
+    use patronusphoto_algo::puppet::{deform, render};
     for mode in [PinMode::Rigid, PinMode::Normal, PinMode::Distort] {
         for density in [PinDensity::Fewer, PinDensity::Normal, PinDensity::More] {
             let mut app = long_puppet(mode, density);
@@ -140,7 +140,7 @@ fn preview_matches_the_canonical_deformation_and_the_committed_layer() {
             assert_eq!(mesh.order, canonical_order.iter().map(|&t| t as u32).collect::<Vec<_>>());
             // The engine's interpolation isolates geometry from GPU texture sampling.
             let expected =
-                render(&s.solver.surface, s.solver.bounds, &s.solver.puppet_mesh, &canonical, &canonical_order, photocraft_algo::transform::Interp::Bicubic);
+                render(&s.solver.surface, s.solver.bounds, &s.solver.puppet_mesh, &canonical, &canonical_order, patronusphoto_algo::transform::Interp::Bicubic);
             let layer = s.layer;
             let past = past_len(&app);
             commit(&mut app);

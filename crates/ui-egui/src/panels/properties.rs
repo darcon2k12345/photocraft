@@ -8,10 +8,10 @@ use craft::ui::contract::{Bind, Props as _, Show as _, Sizing, clicked};
 use craft::ui::patterns::panels::Inspector;
 use craft::ui::primitives::IconSpec;
 
-use photocraft_doc::{Layer, LayerContent, LayerId};
+use patronusphoto_doc::{Layer, LayerContent, LayerId};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 pub(super) mod adjustments;
 
@@ -57,7 +57,7 @@ fn kind_label(layer: &Layer) -> String {
 /// thumbnail is targeted, and an adjustment layer's controls. The target (document, active layer,
 /// mask targets, the layer the panel was opened for) keys the inspector, so a field's typing or
 /// scrub state stays with its layer.
-pub(super) fn panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub(super) fn panel(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let inspector = Inspector::new(tl!("Properties")).empty(tl!("No properties"));
     let Some(st) = app.session.active() else {
         inspector.show(ui, |_, _| {});
@@ -102,7 +102,7 @@ pub(super) fn panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 }
 
 /// The document's properties, with Align and Distribute above them while several layers are selected.
-fn document_body(app: &mut PhotocraftApp, ui: &mut egui::Ui, selected: usize) {
+fn document_body(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, selected: usize) {
     if selected > 1 {
         crate::layer_props_ui::selection_align(ui);
     }
@@ -110,7 +110,7 @@ fn document_body(app: &mut PhotocraftApp, ui: &mut egui::Ui, selected: usize) {
 }
 
 /// The controls of the active layer by kind. A frame comes before the kind sections.
-fn layer_body(app: &mut PhotocraftApp, ui: &mut egui::Ui, layer: &Layer) {
+fn layer_body(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, layer: &Layer) {
     if let LayerContent::Adjustment(adj) = &layer.content {
         adjustment_controls(app, ui, layer.id, adj);
     } else if layer.artboard().is_some() {
@@ -126,8 +126,8 @@ fn layer_body(app: &mut PhotocraftApp, ui: &mut egui::Ui, layer: &Layer) {
 /// An adjustment layer's controls: its scope, its editor, its visibility and Reset. The scope comes
 /// first so it stays reachable before tall editors (#5231); adjustment layers affect the stack by
 /// default and clipping limits them to their base.
-fn adjustment_controls(app: &mut PhotocraftApp, ui: &mut egui::Ui, id: LayerId, adj: &photocraft_doc::Adjustment) {
-    let layer = |app: &PhotocraftApp| app.session.active().and_then(|s| s.doc.layer(id).map(|l| (l.clipped, l.visible)));
+fn adjustment_controls(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, id: LayerId, adj: &patronusphoto_doc::Adjustment) {
+    let layer = |app: &PatronusPhotoApp| app.session.active().and_then(|s| s.doc.layer(id).map(|l| (l.clipped, l.visible)));
     if let Some((clipped, _)) = layer(app)
         && let Some(&on) = Switch::new(Bind::given(clipped)).label(tl!("Clip to layer below")).show(ui).events.committed()
     {
@@ -154,7 +154,7 @@ fn adjustment_controls(app: &mut PhotocraftApp, ui: &mut egui::Ui, id: LayerId, 
 mod tests {
     use egui_kittest::Harness;
     use egui_kittest::kittest::Queryable;
-    use photocraft_doc::LayerId;
+    use patronusphoto_doc::LayerId;
 
     use super::*;
 
@@ -163,7 +163,7 @@ mod tests {
     /// align the selection: the Background stays, the other layer lines up with it.
     #[test]
     fn background_in_a_multiple_selection_keeps_align_and_distribute() {
-        let mut s = photocraft_engine::Session::new();
+        let mut s = patronusphoto_engine::Session::new();
         s.execute("file.new", json!({"width": 300, "height": 200})).unwrap();
         let bg = s.active().unwrap().doc.layers[0].id.0;
         let block = s.execute("layer.new.layer", json!({"name": "Block"})).unwrap()["layer"].as_u64().unwrap();
@@ -172,7 +172,7 @@ mod tests {
         s.execute("select.deselect", json!({})).unwrap();
         // Background alone: the Document properties only.
         s.execute("layer.select", json!({"layer": bg})).unwrap();
-        let mut app = PhotocraftApp::new(s, crate::Services::default());
+        let mut app = PatronusPhotoApp::new(s, crate::Services::default());
         // The Move tool's options bar has its own Align buttons: a tool without them leaves the Properties panel's the only ones.
         app.ui.tool = crate::state::Tool::Brush;
         let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(egui::vec2(1440.0, 900.0)).with_max_steps(64).build_eframe(move |_cc| app);

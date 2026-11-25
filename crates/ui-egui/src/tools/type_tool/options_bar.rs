@@ -1,10 +1,10 @@
 use super::defaults::{target, target_doc};
-use super::{LayerId, PhotocraftApp, byte_of, fonts, insertion_style, json, text_layer, values};
+use super::{LayerId, PatronusPhotoApp, byte_of, fonts, insertion_style, json, text_layer, values};
 use craft::text::ui::type_bar::TypeBar;
 
 /// Photoshop's Type options bar: the members of the type tool, shown inside the host's options `Bar`, which adds
 /// the commit and cancel buttons while a type session is open.
-pub fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn options_bar(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let character = values::bar_character_values(app);
     let paragraph = values::paragraph_values(app);
     let families = fonts::families();
@@ -39,7 +39,7 @@ pub fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 
 /// Character and paragraph style at the selection, caret, or first run of selected layers.
 /// The paragraph at a collapsed caret is the caret's, as the options bar and Paragraph panel show it.
-pub(crate) fn styles_at(app: &PhotocraftApp) -> Option<(photocraft_doc::text::CharStyle, photocraft_doc::text::ParagraphStyle)> {
+pub(crate) fn styles_at(app: &PatronusPhotoApp) -> Option<(patronusphoto_doc::text::CharStyle, patronusphoto_doc::text::ParagraphStyle)> {
     let (layer, range) = target(app)?;
     let t = text_layer(&target_doc(app)?.doc, LayerId(layer))?;
     let at = range.map_or_else(|| app.ui.text_edit.as_ref().map_or(0, |ed| byte_of(&t.text, ed.caret.saturating_sub(1))), |r| byte_of(&t.text, r[0]));
@@ -67,7 +67,7 @@ pub(crate) fn styles_at(app: &PhotocraftApp) -> Option<(photocraft_doc::text::Ch
 
 /// Kerning shown for the target: at a collapsed caret, the pair before it (Photoshop's
 /// Character panel); else the style at the selection.
-pub(super) fn kerning_at(app: &PhotocraftApp) -> Option<(photocraft_doc::text::Kerning, f32)> {
+pub(super) fn kerning_at(app: &PatronusPhotoApp) -> Option<(patronusphoto_doc::text::Kerning, f32)> {
     let ed = app.ui.text_edit.as_ref().filter(|e| e.caret == e.anchor && e.caret > 0)?;
     let st = app.session.active()?;
     let t = text_layer(&st.doc, LayerId(ed.layer))?;

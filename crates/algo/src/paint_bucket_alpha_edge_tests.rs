@@ -5,9 +5,9 @@
 //! cases: Tolerance 0 gives the same edge as Tolerance 32, and an opaque seed's fringe on a grey
 //! ramp keeps its values.
 
-use photocraft_color::{PixelFormat, blend::BlendMode};
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use patronusphoto_color::{PixelFormat, blend::BlendMode};
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::Surface;
 
 use crate::paint::{FillMode, bucket_fill_inks};
 use crate::selection::rgba8_image;

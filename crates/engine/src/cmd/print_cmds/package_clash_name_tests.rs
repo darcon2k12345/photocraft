@@ -4,7 +4,7 @@
 use super::*;
 
 fn tmp(name: &str) -> String {
-    let d = std::env::temp_dir().join(format!("photocraft-pkgclash-{}-{name}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("patronusphoto-pkgclash-{}-{name}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).unwrap();
     d.to_string_lossy().replace('\\', "/")
@@ -57,7 +57,7 @@ fn linked_paths(d: &Document) -> Vec<String> {
 
 /// The first pixel's RGB of an image file.
 fn first_rgb(path: &str) -> [u8; 3] {
-    let img = photocraft_codecs::decode(&std::fs::read(path).unwrap()).unwrap();
+    let img = patronusphoto_codecs::decode(&std::fs::read(path).unwrap()).unwrap();
     let d = img.data();
     [d[0], d[1], d[2]]
 }
@@ -153,7 +153,7 @@ fn each_layer_points_at_its_own_copy_and_keeps_its_colour() {
     place(&mut s, &a);
     place(&mut s, &b);
     let r = package(&mut s, &dir);
-    let back = photocraft_io::import("Clash.pcraft", &std::fs::read(r["document"].as_str().unwrap()).unwrap()).unwrap().document;
+    let back = patronusphoto_io::import("Clash.pcraft", &std::fs::read(r["document"].as_str().unwrap()).unwrap()).unwrap().document;
     let packed = linked_paths(&back);
     let original = linked_paths(&s.active().unwrap().doc);
     assert_eq!(packed.len(), 2);

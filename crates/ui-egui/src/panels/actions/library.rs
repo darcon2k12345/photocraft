@@ -13,7 +13,7 @@ use craft::ui::runtime::env::Env;
 use craft::ui::runtime::words::CommonWords;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::dialogs::alerts;
 
 const CLEAR_ALL: &str = "actions.clearAll";
@@ -23,7 +23,7 @@ const UNDO: &str = "actions.undoLibrary";
 
 /// The largest Actions file Replace reads: its bytes travel base64-encoded in the command's
 /// params, which stay well under the engine's import limit.
-const MAX_PICKED_BYTES: u64 = photocraft_engine::preset_import_cmds::MAX_FILE_BYTES / 7 * 3;
+const MAX_PICKED_BYTES: u64 = patronusphoto_engine::preset_import_cmds::MAX_FILE_BYTES / 7 * 3;
 
 /// When a question was asked and under which authorization.
 #[derive(Clone, Copy)]
@@ -34,13 +34,13 @@ struct Asked {
 }
 
 impl Asked {
-    fn now(app: &PhotocraftApp) -> Self {
+    fn now(app: &PatronusPhotoApp) -> Self {
         let gate = app.session.authorize.or(if app.automation_input { app.services.automation_authorize } else { None });
         Asked { revision: app.session.actions.list.revision(), gate, automated: app.automation_input || gate.is_some() }
     }
 
     /// The asking authorization and the current one both allow `command` with `params`.
-    fn authorize(&self, app: &PhotocraftApp, command: &str, params: &Value) -> Result<(), String> {
+    fn authorize(&self, app: &PatronusPhotoApp, command: &str, params: &Value) -> Result<(), String> {
         super::authorize_owned(app, command, params, self.gate, self.automated)
     }
 }
@@ -65,7 +65,7 @@ fn command(prompt: &LibraryPrompt) -> &'static str {
 
 /// Refuses a library change while the library is still loading, or a recording or playback holds
 /// one of its actions (a Step by Step wait, a paused menu item editor or Check Spelling).
-pub(crate) fn idle(app: &PhotocraftApp, command: &str) -> Result<(), String> {
+pub(crate) fn idle(app: &PatronusPhotoApp, command: &str) -> Result<(), String> {
     super::suspended_guard(app, command)?;
     if app.services.preset_store.is_some() {
         return Err(tl!("Wait for the Actions library to load.").into());
@@ -80,7 +80,7 @@ pub(crate) fn idle(app: &PhotocraftApp, command: &str) -> Result<(), String> {
 }
 
 /// Clear All Actions: asks first.
-pub(super) fn clear_all(app: &mut PhotocraftApp) -> Result<Value, String> {
+pub(super) fn clear_all(app: &mut PatronusPhotoApp) -> Result<Value, String> {
     idle(app, CLEAR_ALL)?;
     let asked = Asked::now(app);
     asked.authorize(app, CLEAR_ALL, &json!({"confirm": true}))?;
@@ -89,7 +89,7 @@ pub(super) fn clear_all(app: &mut PhotocraftApp) -> Result<Value, String> {
 
 /// Reset Actions…: asks whether the starting sets replace the list (OK) or join it (Append). The
 /// question opens when either answer is allowed; the chosen one is checked again on the answer.
-pub(super) fn reset(app: &mut PhotocraftApp) -> Result<Value, String> {
+pub(super) fn reset(app: &mut PatronusPhotoApp) -> Result<Value, String> {
     idle(app, RESET)?;
     let asked = Asked::now(app);
     let allowed = |mode: &str| asked.authorize(app, RESET, &json!({"confirm": true, "mode": mode}));
@@ -101,7 +101,7 @@ pub(super) fn reset(app: &mut PhotocraftApp) -> Result<Value, String> {
 
 /// Replace Actions…: picks one `.atn` file, reads and counts it, then asks. The list stays as it
 /// is until OK.
-pub(super) fn replace(app: &mut PhotocraftApp) -> Result<Value, String> {
+pub(super) fn replace(app: &mut PatronusPhotoApp) -> Result<Value, String> {
     idle(app, REPLACE)?;
     let asked = Asked::now(app);
     let mut request = PickRequest::open("actions").filter("Actions", &["atn"]);
@@ -117,7 +117,8 @@ pub(super) fn replace(app: &mut PhotocraftApp) -> Result<Value, String> {
             Picked::Paths(paths) => {
                 let path = paths.into_iter().next().ok_or(crate::file_dialog::CANCELLED)?.to_string_lossy().into_owned();
                 asked.authorize(app, REPLACE, &json!({"confirm": true, "path": path}))?;
-                let bytes = photocraft_format::read_file_limited(std::path::Path::new(&path), MAX_PICKED_BYTES).map_err(|error| format!("{path}: {error}"))?;
+                let bytes =
+                    patronusphoto_format::read_file_limited(std::path::Path::new(&path), MAX_PICKED_BYTES).map_err(|error| format!("{path}: {error}"))?;
                 (path.clone(), bytes, Some(path))
             }
             Picked::Contents(files) => {
@@ -130,16 +131,16 @@ pub(super) fn replace(app: &mut PhotocraftApp) -> Result<Value, String> {
         if bytes.len() as u64 > MAX_PICKED_BYTES {
             return Err(tl!("The Actions file is too large.").into());
         }
-        let data = json!({"confirm": true, "data": photocraft_engine::paint::tile::b64_encode(&bytes)});
+        let data = json!({"confirm": true, "data": patronusphoto_engine::paint::tile::b64_encode(&bytes)});
         asked.authorize(app, REPLACE, &data)?;
-        let count = photocraft_engine::atn_cmds::validate_replacement(&bytes)?;
+        let count = patronusphoto_engine::atn_cmds::validate_replacement(&bytes)?;
         let prompt = LibraryPrompt::replace(count, crate::file_open::display_name(&name));
         ask(app, Held { prompt, asked, path, data: Some(data) })
     })
 }
 
 /// Opens the question for `held`. Another open question is answered first.
-fn ask(app: &mut PhotocraftApp, held: Held) -> Result<Value, String> {
+fn ask(app: &mut PatronusPhotoApp, held: Held) -> Result<Value, String> {
     let env = Env::of_root(app.ctx());
     let prompt = held.prompt.prompt(&env.words::<ActionsWords>(), &env.words::<CommonWords>());
     match alerts::open_prompt(app, prompt.tag(held)) {
@@ -150,7 +151,7 @@ fn ask(app: &mut PhotocraftApp, held: Held) -> Result<Value, String> {
 
 /// The `PROMPTS` row of the library questions: OK (or Reset's Append) runs the held command and
 /// reports a refusal on the status bar. `false` for another family's answer.
-pub(crate) fn answer(app: &mut PhotocraftApp, _ctx: &egui::Context, answer: &mut PromptAnswer) -> bool {
+pub(crate) fn answer(app: &mut PatronusPhotoApp, _ctx: &egui::Context, answer: &mut PromptAnswer) -> bool {
     let Some(held) = answer.take_tag::<Held>() else { return false };
     let append = match answer.choice {
         PromptChoice::Proceed => false,
@@ -164,7 +165,7 @@ pub(crate) fn answer(app: &mut PhotocraftApp, _ctx: &egui::Context, answer: &mut
 }
 
 /// Runs the held command when the list is unchanged and both authorizations allow it.
-fn confirm(app: &mut PhotocraftApp, held: Held, append: bool) -> Result<Value, String> {
+fn confirm(app: &mut PatronusPhotoApp, held: Held, append: bool) -> Result<Value, String> {
     let command = command(&held.prompt);
     idle(app, command)?;
     if app.session.actions.list.revision() != held.asked.revision {
@@ -194,7 +195,7 @@ fn confirm(app: &mut PhotocraftApp, held: Held, append: bool) -> Result<Value, S
 
 /// The Edit › Undo label while Undo reaches the last library change: no Pen point, transform or
 /// crop box step and no newer document edit comes first, and nothing holds the library.
-pub(crate) fn edit_undo_label(app: &PhotocraftApp) -> Option<&'static str> {
+pub(crate) fn edit_undo_label(app: &PatronusPhotoApp) -> Option<&'static str> {
     if crate::vector_ui::pen_can_undo(app)
         || crate::transform_tool::is_enabled(app, "edit.undo").is_some()
         || crate::crop_ui::is_enabled(app, "edit.undo").is_some()
@@ -202,10 +203,10 @@ pub(crate) fn edit_undo_label(app: &PhotocraftApp) -> Option<&'static str> {
     {
         return None;
     }
-    photocraft_engine::actions_edit_cmds::undo_library_label(&app.session)
+    patronusphoto_engine::actions_edit_cmds::undo_library_label(&app.session)
 }
 
 /// Edit › Undo of the last library change, through the command's own authorization.
-pub(crate) fn undo(app: &mut PhotocraftApp) -> Result<Value, String> {
+pub(crate) fn undo(app: &mut PatronusPhotoApp) -> Result<Value, String> {
     app.run(UNDO, json!({}))
 }

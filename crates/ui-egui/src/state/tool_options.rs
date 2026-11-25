@@ -49,12 +49,12 @@ pub struct ToolOptions {
     /// true = "Classic gradient" (paints the pixels).
     pub gradient_classic: bool,
     /// Blend mode used by both live and classic gradient drags.
-    pub gradient_blend_mode: photocraft_color::BlendMode,
+    pub gradient_blend_mode: patronusphoto_color::BlendMode,
     pub fill_opacity: f32,
     /// Paint Bucket fill source: false = Foreground colour, true = Pattern (Patterns panel selection).
     pub bucket_fill_pattern: bool,
     /// Paint Bucket › Mode (any layer mode; Clear is `bucket_clear`).
-    pub bucket_blend_mode: photocraft_color::BlendMode,
+    pub bucket_blend_mode: patronusphoto_color::BlendMode,
     /// Paint Bucket › Mode: Clear, which erases the filled area (see `brush_clear`).
     pub bucket_clear: bool,
     /// Type tool: family, style name, size (pt), anti-aliasing and paragraph alignment.
@@ -114,7 +114,7 @@ pub struct ToolOptions {
     pub protect_detail: bool,
     pub finger_painting: bool,
     /// Smudge › Mode (#12959): Normal, Darken, Lighten, Hue, Saturation, Color or Luminosity.
-    pub smudge_mode: photocraft_color::BlendMode,
+    pub smudge_mode: patronusphoto_color::BlendMode,
     /// Quick Selection enhance edge.
     pub enhance_edge: bool,
     /// Pen: a work path or a shape layer.
@@ -140,8 +140,8 @@ pub struct ToolOptions {
     pub shape_stroke: crate::shape_stroke_ui::StrokeOptions,
     /// Shape tools: the gradient the next shape's fill / stroke takes (the swatches' Gradient
     /// tab) instead of the foreground / background colour; `None` = the colour.
-    pub shape_fill_gradient: Option<photocraft_doc::Fill>,
-    pub shape_stroke_gradient: Option<photocraft_doc::Fill>,
+    pub shape_fill_gradient: Option<patronusphoto_doc::Fill>,
+    pub shape_stroke_gradient: Option<patronusphoto_doc::Fill>,
     pub corner_radius: f32,
     /// Shape tools' Align Edges: snap the drawn shape's box to whole pixels. On by default; the
     /// Triangle tool shows it, enabled in Shape mode only (#13370); the other shape tools always snap.
@@ -183,7 +183,7 @@ pub struct ToolOptions {
     pub marquee_width: f32,
     #[serde(default = "one")]
     pub marquee_height: f32,
-    /// The unit Fixed Size's Width and Height show (a [`photocraft_engine::prefs::Unit`] name,
+    /// The unit Fixed Size's Width and Height show (a [`patronusphoto_engine::prefs::Unit`] name,
     /// picked by right-clicking them); the size itself stays in pixels (#7910).
     #[serde(default = "default_marquee_unit")]
     pub marquee_unit: String,
@@ -436,10 +436,10 @@ impl Default for ToolOptions {
             gradient_reverse: false,
             gradient_dither: true,
             gradient_classic: false,
-            gradient_blend_mode: photocraft_color::BlendMode::Normal,
+            gradient_blend_mode: patronusphoto_color::BlendMode::Normal,
             fill_opacity: 100.0,
             bucket_fill_pattern: false,
-            bucket_blend_mode: photocraft_color::BlendMode::Normal,
+            bucket_blend_mode: patronusphoto_color::BlendMode::Normal,
             bucket_clear: false,
             type_font: "Inter".into(),
             type_style: "Regular".into(),
@@ -472,7 +472,7 @@ impl Default for ToolOptions {
             strength: 50.0,
             protect_detail: true,
             finger_painting: false,
-            smudge_mode: photocraft_color::BlendMode::Normal,
+            smudge_mode: patronusphoto_color::BlendMode::Normal,
             enhance_edge: false,
             vector_mode: VectorMode::Path,
             pen_path_op: default_pen_path_op(),

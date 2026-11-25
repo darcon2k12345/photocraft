@@ -1,25 +1,25 @@
 use super::*;
 use egui::{Pos2, RawInput, Rect, vec2};
-use photocraft_engine::Session;
+use patronusphoto_engine::Session;
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(Session::new(), crate::Services::default());
     app.run("file.new", json!({"width":100,"height":80})).unwrap();
     app.sync_views();
     app.ui.tool = Tool::Brush;
     app
 }
 
-fn open(app: &mut PhotocraftApp) {
+fn open(app: &mut PatronusPhotoApp) {
     let ctx = app.ctx().clone();
     crate::menus::invoke(app, &ctx, "ui.symmetryTransform", json!({})).unwrap();
 }
 
-fn is_valid(app: &PhotocraftApp) -> bool {
+fn is_valid(app: &PatronusPhotoApp) -> bool {
     app.ui.symmetry_transform.as_ref().is_some_and(|t| valid(app, t))
 }
 
-fn canvas_pass(app: &mut PhotocraftApp, focused: bool) {
+fn canvas_pass(app: &mut PatronusPhotoApp, focused: bool) {
     let ctx = app.ctx().clone();
     let rect = Rect::from_min_size(Pos2::ZERO, vec2(500.0, 400.0));
     ctx.run_ui(RawInput { focused, screen_rect: Some(rect), ..Default::default() }, |ui| canvas_controls(ui, app, rect)).textures_delta.clear();

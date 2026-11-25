@@ -2,14 +2,14 @@
 //! The menu controls are exercised separately from the existing engine's decoded outputs.
 
 use egui_kittest::kittest::Queryable;
-use photocraft_codecs::{ChannelLayout, EncodeOptions, Format, Image};
-use photocraft_ui_egui::control::{ControlRequest, Reply, handle};
-use photocraft_ui_egui::{PhotocraftApp, menus};
+use patronusphoto_codecs::{ChannelLayout, EncodeOptions, Format, Image};
+use patronusphoto_ui_egui::control::{ControlRequest, Reply, handle};
+use patronusphoto_ui_egui::{PatronusPhotoApp, menus};
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-type Harness = egui_kittest::Harness<'static, Box<PhotocraftApp>>;
+type Harness = egui_kittest::Harness<'static, Box<PatronusPhotoApp>>;
 
 /// The open form's values as `ui.inspect` lists the top dialog's fields.
 fn form_fields(h: &mut Harness) -> Value {
@@ -21,8 +21,8 @@ fn form_fields(h: &mut Harness) -> Value {
 
 fn harness() -> Harness {
     let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1100.0, 760.0)).with_max_steps(64).build_eframe(|cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), Default::default());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), Default::default());
         app.session.prefs.edit(|p| p.interface.language = "en".into());
         app.run("file.new", json!({"width": 8, "height": 8, "background": "white"})).unwrap();
         app.run("actions.record", json!({"name": "Invert"})).unwrap();
@@ -41,7 +41,7 @@ fn open(h: &mut Harness, command: &str) {
 }
 
 fn evidence(h: &mut Harness, name: &str) {
-    if let Some(dir) = std::env::var_os("PHOTOCRAFT_BATCH_EVIDENCE_DIR") {
+    if let Some(dir) = std::env::var_os("PATRONUSPHOTO_BATCH_EVIDENCE_DIR") {
         std::fs::create_dir_all(&dir).unwrap();
         h.render().expect("offscreen UI render").save(Path::new(&dir).join(format!("{name}.png"))).unwrap();
     }
@@ -108,7 +108,7 @@ struct Scratch(PathBuf);
 impl Scratch {
     fn new() -> Self {
         let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
-        let path = std::env::temp_dir().join(format!("photocraft-batch-options-{}-{now}", std::process::id()));
+        let path = std::env::temp_dir().join(format!("patronusphoto-batch-options-{}-{now}", std::process::id()));
         std::fs::create_dir_all(&path).unwrap();
         Self(path)
     }
@@ -135,8 +135,8 @@ fn existing_engine_batch_and_image_processor_support_webp_quality() {
     let dir = Scratch::new();
     let input = dir.0.join("owned-pattern.png");
     let source = pattern();
-    std::fs::write(&input, photocraft_codecs::encode(&source, Format::Png, &EncodeOptions::default()).unwrap()).unwrap();
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    std::fs::write(&input, patronusphoto_codecs::encode(&source, Format::Png, &EncodeOptions::default()).unwrap()).unwrap();
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 8, "height": 8})).unwrap();
     let doc = app.session.active().unwrap().doc.clone();
     let revision = app.session.active().unwrap().revision;
@@ -156,7 +156,7 @@ fn existing_engine_batch_and_image_processor_support_webp_quality() {
             let path = result["files"][0].as_str().unwrap();
             assert!(path.ends_with(".webp"));
             let bytes = std::fs::read(path).unwrap();
-            let decoded = photocraft_codecs::decode_as(Format::WebP, &bytes).unwrap();
+            let decoded = patronusphoto_codecs::decode_as(Format::WebP, &bytes).unwrap();
             assert_eq!(decoded.dimensions(), (64, 48));
             assert_eq!(decoded.layout(), ChannelLayout::Rgb);
             if quality.is_null() && prefix == "batch" {
@@ -181,7 +181,7 @@ fn batch_naming_controls_export_the_requested_names_and_reset_on_cancel() {
     let output = dir.0.join("output");
     std::fs::create_dir(&input).unwrap();
     let source = pattern();
-    let bytes = photocraft_codecs::encode(&source, Format::Png, &EncodeOptions::default()).unwrap();
+    let bytes = patronusphoto_codecs::encode(&source, Format::Png, &EncodeOptions::default()).unwrap();
     for name in ["first.png", "second.png"] {
         std::fs::write(input.join(name), &bytes).unwrap();
     }
@@ -216,7 +216,7 @@ fn batch_naming_controls_export_the_requested_names_and_reset_on_cancel() {
     let expected: Vec<_> = source.data().iter().map(|v| 255 - v).collect();
     for name in ["007_first.png", "008_second.png"] {
         let bytes = std::fs::read(output.join(name)).expect("dialog naming reaches the exporter");
-        let decoded = photocraft_codecs::decode_as(Format::Png, &bytes).unwrap();
+        let decoded = patronusphoto_codecs::decode_as(Format::Png, &bytes).unwrap();
         assert_eq!(decoded.data(), expected, "the recorded Invert action still runs");
     }
     assert!(!output.join("first.png").exists());
@@ -229,7 +229,7 @@ fn batch_default_quality_keeps_lossless_webp_and_existing_jpeg_bytes() {
     let input = dir.0.join("input");
     std::fs::create_dir(&input).unwrap();
     let original = pattern();
-    std::fs::write(input.join("owned-pattern.png"), photocraft_codecs::encode(&original, Format::Png, &EncodeOptions::default()).unwrap()).unwrap();
+    std::fs::write(input.join("owned-pattern.png"), patronusphoto_codecs::encode(&original, Format::Png, &EncodeOptions::default()).unwrap()).unwrap();
     let mut h = harness();
     for format in ["webp", "jpg"] {
         let output = dir.0.join(format!("ui-default-{format}"));
@@ -249,7 +249,7 @@ fn batch_default_quality_keeps_lossless_webp_and_existing_jpeg_bytes() {
         h.get_by_label("OK").click();
         h.run_steps(5);
         let result = std::fs::read(output.join(format!("owned-pattern.{format}"))).unwrap();
-        let mut session = photocraft_engine::Session::new();
+        let mut session = patronusphoto_engine::Session::new();
         let r = session
             .execute("file.automate.batch", json!({"input": input, "output": reference, "steps": [["image.adjustments.invert", {}]], "format": format}))
             .unwrap();
@@ -260,7 +260,7 @@ fn batch_default_quality_keeps_lossless_webp_and_existing_jpeg_bytes() {
             "{format}: UI default equals the command's existing unset quality"
         );
         if format == "webp" {
-            let decoded = photocraft_codecs::decode_as(Format::WebP, &result).unwrap();
+            let decoded = patronusphoto_codecs::decode_as(Format::WebP, &result).unwrap();
             let expected: Vec<u8> = original.data().iter().map(|v| 255 - v).collect();
             assert_eq!(decoded.data(), expected, "default WebP remains lossless after the recorded action");
         }

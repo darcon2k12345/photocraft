@@ -1,10 +1,10 @@
 //! The coverage of a selection or mask surface, served to the framework tracer
-//! (`craft::imaging::trace::outline`) and to `SelectionOverlay`: the one PhotoCraft mask adapter.
+//! (`craft::imaging::trace::outline`) and to `SelectionOverlay`: the one Patronus Photo mask adapter.
 
 use craft::imaging::trace::{MaskRect, MaskSource};
-use photocraft_raster::Surface;
+use patronusphoto_raster::Surface;
 
-/// A coverage mask over a PhotoCraft `Surface` (channel 0, 0 unselected to 1 selected).
+/// A coverage mask over a Patronus Photo `Surface` (channel 0, 0 unselected to 1 selected).
 pub(crate) struct SurfaceMask<'a> {
     surface: &'a Surface,
     revision: u64,

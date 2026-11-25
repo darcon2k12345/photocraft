@@ -1,7 +1,7 @@
 //! Artboard from Layers adds one history step named "New Artboard From Layers" (#14578).
 
 use super::*;
-use photocraft_geom::Rect;
+use patronusphoto_geom::Rect;
 
 /// 100 x 80 RGB at `depth` with a pixel layer "Red" holding a square at 10,10 to 30,30.
 fn session(depth: u32) -> Session {
@@ -10,7 +10,7 @@ fn session(depth: u32) -> Session {
     s.edit("Red", |doc, active| {
         let fmt = doc.pixel_format();
         let mut l = Layer::raster("Red", fmt);
-        l.surface_mut().unwrap().fill_rect(Rect::new(10, 10, 30, 30), &photocraft_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 1.0]));
+        l.surface_mut().unwrap().fill_rect(Rect::new(10, 10, 30, 30), &patronusphoto_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 1.0]));
         let id = doc.insert_above(None, l);
         *active = Some(id);
         Ok(id)

@@ -45,7 +45,7 @@ with `__`. Automation sets them through `DialogHost::set_json_field`.
 |---|---|
 | `ParamFamily` | `owns`, `run`, and optional `check`, `listing`, `footer`, `cancel`, `document` |
 | `PARAM_FAMILIES` | Every family in match order; the generic filter family is last and owns every engine command |
-| `open_param(app, key, fields, captured, build)` | Opens the dialog with history, remembered values under `photocraft.<key>` and the active document's canvas for droppers; `captured` is the per-open state the family reads with `params::captured` and `take` drops |
+| `open_param(app, key, fields, captured, build)` | Opens the dialog with history, remembered values under `patronusphoto.<key>` and the active document's canvas for droppers; `captured` is the per-open state the family reads with `params::captured` and `take` drops |
 | `answer_held` | Runs a family's `check` on a held OK and answers the dialog; a refusal shows under the rows |
 | `answer_requests` | Colour rows open the Color Picker as a child (`color_picker_ui::open_for_request`) and its OK comes back through `answer_for`; Browse rows pick through `host.files()`; droppers arm through `canvas_input`; files rows ask the family's `listing`; footer buttons go to `footer` |
 
@@ -56,14 +56,14 @@ the dialogs whose family reports a closed document from the captured value.
 ### Remembered values
 
 A parameter dialog remembers its values in the `remembered` settings section under
-`photocraft.<key>` (`Remembered`). `move_memories(prefs, host)` runs once before the first frame and
+`patronusphoto.<key>` (`Remembered`). `move_memories(prefs, host)` runs once before the first frame and
 moves the old `Preferences.dialogs` entries there. It applies three parts in order:
 
 1. **Keep**: the keys the engine reads (`ui.layersPanelOptions`, `file.print`, the Save for Web
    memory) and every don't-show-again key.
 2. **Route**: a key a library crate names (`filter.cameraRaw.scope`, `image.adjustments.<kind>`,
    `shape.create.<kind>`).
-3. **Generic**: every other entry moves to `photocraft.<key>`, nulls dropped.
+3. **Generic**: every other entry moves to `patronusphoto.<key>`, nulls dropped.
 
 ### Command routing
 

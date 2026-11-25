@@ -1,7 +1,7 @@
-use photocraft_color::convert::{linear_to_srgb, srgb_to_lab};
-use photocraft_color::{Color, ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{Adjustment, Document, Layer, LayerContent, Size};
-use photocraft_raster::Surface;
+use patronusphoto_color::convert::{linear_to_srgb, srgb_to_lab};
+use patronusphoto_color::{Color, ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::{Adjustment, Document, Layer, LayerContent, Size};
+use patronusphoto_raster::Surface;
 
 use super::{Transfer, apply_depth, apply_in};
 use crate::{Buffer, Rect, flatten_to_surface};

@@ -5,7 +5,7 @@
 //! and a merge the engine refuses keeps the dialog open with the reason. The merge is the engine's
 //! `channel.merge`, which closes the sources; agents call it directly with params (#11451).
 //!
-//! The dialog names documents by their [`photocraft_doc::DocId`], not their tab index: work that
+//! The dialog names documents by their [`patronusphoto_doc::DocId`], not their tab index: work that
 //! runs while it is open (a script moving or closing a document) can shift the indices, and OK
 //! must merge, and close, the documents that were picked. They are looked up again at OK.
 //!
@@ -15,11 +15,11 @@
 use craft::ui::dialog::DialogId;
 use craft::ui::patterns::form_dialogs::{DialogFields, FieldValue, Param, ParamDialog, ParamKind, ParamResult};
 use craft::ui::runtime::env::Label;
-use photocraft_doc::ColorMode;
-use photocraft_engine::channel_cmds;
+use patronusphoto_doc::ColorMode;
+use patronusphoto_engine::channel_cmds;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::dialogs::params;
 
 pub const COMMAND: &str = "channel.merge";
@@ -54,7 +54,7 @@ fn modes(count: usize) -> Vec<(String, &'static str)> {
 
 /// The documents that can be merged, by document id and name: the open grayscale ones of the
 /// active document's size, the active one first, as the engine picks them without params.
-fn sources(app: &PhotocraftApp) -> Vec<Source> {
+fn sources(app: &PatronusPhotoApp) -> Vec<Source> {
     let Some(active) = app.session.active() else { return Vec::new() };
     let docs = app.session.documents();
     let fits = |i: usize| docs.get(i).filter(|d| d.doc.mode == ColorMode::Grayscale && d.doc.size == active.doc.size);
@@ -110,7 +110,7 @@ fn problem(sources: &[Source], f: &DialogFields) -> Option<&'static str> {
 
 /// The picked documents' current tab indices, looked up by id; refused (English, for `tl!`)
 /// when one was closed, or is no longer a grayscale document of the others' size.
-fn resolve(app: &PhotocraftApp, sources: &[Source], f: &DialogFields) -> Result<Vec<usize>, &'static str> {
+fn resolve(app: &PatronusPhotoApp, sources: &[Source], f: &DialogFields) -> Result<Vec<usize>, &'static str> {
     if let Some(why) = problem(sources, f) {
         return Err(why);
     }
@@ -123,7 +123,7 @@ fn resolve(app: &PhotocraftApp, sources: &[Source], f: &DialogFields) -> Result<
 
 /// The `channel.merge` params for the dialog's values: the mode and the picked documents' current
 /// indices, one per channel.
-pub fn params(app: &PhotocraftApp, sources: &[Source], f: &DialogFields) -> Result<Value, String> {
+pub fn params(app: &PatronusPhotoApp, sources: &[Source], f: &DialogFields) -> Result<Value, String> {
     let documents = resolve(app, sources, f).map_err(str::to_string)?;
     Ok(json!({ "mode": mode_field(f), "documents": documents }))
 }
@@ -154,7 +154,7 @@ fn build(sources: Vec<Source>) -> impl for<'b> Fn(&'b mut DialogFields) -> Param
 }
 
 /// Opens Merge Channels, or `None` without a document.
-pub fn open(app: &mut PhotocraftApp) -> Option<DialogId> {
+pub fn open(app: &mut PatronusPhotoApp) -> Option<DialogId> {
     app.session.active()?;
     let sources = sources(app);
     let fields = open_fields(&sources);
@@ -165,14 +165,14 @@ pub fn open(app: &mut PhotocraftApp) -> Option<DialogId> {
 
 /// The held OK's check: resolves the picks (a document closed or changed while the dialog was
 /// open is refused) and runs the merge. The engine's refusal is the reason the dialog shows.
-pub fn check(app: &mut PhotocraftApp, result: &ParamResult) -> Result<(), Label> {
+pub fn check(app: &mut PatronusPhotoApp, result: &ParamResult) -> Result<(), Label> {
     let sources = sources_of(&params::captured(app, &result.key));
     let merge = params(app, &sources, &result.fields).map_err(Label::from)?;
     app.run(COMMAND, merge).map(drop).map_err(Label::from)
 }
 
 /// OK: the merge ran in [`check`], so nothing is left to do.
-pub fn run(_app: &mut PhotocraftApp, _ctx: &egui::Context, _result: ParamResult) {}
+pub fn run(_app: &mut PatronusPhotoApp, _ctx: &egui::Context, _result: ParamResult) {}
 
 #[cfg(test)]
 mod tests {
@@ -180,40 +180,40 @@ mod tests {
 
     use super::*;
 
-    fn app(docs: usize) -> Box<PhotocraftApp> {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    fn app(docs: usize) -> Box<PatronusPhotoApp> {
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         for _ in 0..docs {
             app.run("file.new", json!({"width": 8, "height": 8, "mode": "grayscale"})).unwrap();
         }
         app
     }
 
-    fn id(app: &PhotocraftApp, index: usize) -> u64 {
+    fn id(app: &PatronusPhotoApp, index: usize) -> u64 {
         app.session.documents()[index].doc.id.0
     }
 
-    fn values(app: &PhotocraftApp, dialog: DialogId) -> DialogFields {
+    fn values(app: &PatronusPhotoApp, dialog: DialogId) -> DialogFields {
         app.framework.dialogs.get_by_id::<HostedParamDialog>(dialog).expect("the dialog is open").fields().clone()
     }
 
-    fn is_open(app: &PhotocraftApp) -> bool {
+    fn is_open(app: &PatronusPhotoApp) -> bool {
         app.framework.dialogs.is_open::<HostedParamDialog>()
     }
 
-    fn pick(app: &mut PhotocraftApp, dialog: DialogId, channel: usize, doc: u64) {
+    fn pick(app: &mut PatronusPhotoApp, dialog: DialogId, channel: usize, doc: u64) {
         let ctx = app.ctx().clone();
         app.framework.dialogs.set_json_field(&ctx, dialog, &channel_key(channel), json!(doc.to_string())).unwrap();
     }
 
     /// The merged document's first pixel as 8-bit RGB.
-    fn merged_pixel(app: &PhotocraftApp) -> [u8; 3] {
+    fn merged_pixel(app: &PatronusPhotoApp) -> [u8; 3] {
         let doc = &app.session.active().unwrap().doc;
-        let px = photocraft_compose::render(doc, doc.bounds()).px[0];
+        let px = patronusphoto_compose::render(doc, doc.bounds()).px[0];
         [px[0], px[1], px[2]].map(|v| (v * 255.0).round() as u8)
     }
 
     /// Three grayscale documents filled black, mid gray and white, then the active one is `active`.
-    fn shaded(active: usize) -> Box<PhotocraftApp> {
+    fn shaded(active: usize) -> Box<PatronusPhotoApp> {
         let mut app = app(3);
         for (i, gray) in ["#000000", "#808080", "#ffffff"].into_iter().enumerate() {
             app.session.set_active(i);
@@ -236,7 +236,7 @@ mod tests {
         assert_eq!(f.text("mode"), Some("rgb"));
         assert_eq!(picks(&f), ids, "one each, none repeated");
         assert_eq!(params(&app, &offered, &f).unwrap(), json!({"mode": "rgb", "documents": [2, 0, 1]}));
-        assert!(open(&mut PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default())).is_none());
+        assert!(open(&mut PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default())).is_none());
     }
 
     /// A document picked for two channels greys OK with the reason; a refused OK keeps the dialog

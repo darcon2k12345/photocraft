@@ -10,23 +10,23 @@ use egui::vec2;
 use egui_kittest::Harness;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The app under a window, as a frame runs it.
-pub(crate) type AppHarness = Harness<'static, Box<PhotocraftApp>>;
+pub(crate) type AppHarness = Harness<'static, Box<PatronusPhotoApp>>;
 
-pub(crate) fn app() -> Box<PhotocraftApp> {
-    PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default())
+pub(crate) fn app() -> Box<PatronusPhotoApp> {
+    PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default())
 }
 
 /// `app` with the hosted dialogs run each frame, the way the app's frame runs them (their pumps included).
-pub(crate) fn harness(app: Box<PhotocraftApp>) -> AppHarness {
+pub(crate) fn harness(app: Box<PatronusPhotoApp>) -> AppHarness {
     let ctx = app.ctx().clone();
     let mut h = Harness::builder()
         .with_size(vec2(1400.0, 900.0))
         .with_step_dt(1.0 / 60.0)
         .with_context(ctx)
-        .build_ui_state(|ui, app: &mut Box<PhotocraftApp>| crate::dialogs::run(app, ui), app);
+        .build_ui_state(|ui, app: &mut Box<PatronusPhotoApp>| crate::dialogs::run(app, ui), app);
     h.run_steps(2);
     h
 }
@@ -39,12 +39,12 @@ pub(crate) fn open(h: &mut AppHarness) -> DialogId {
 }
 
 /// The settings the open dialog `id` shows, by their serde keys.
-pub(crate) fn fields(app: &PhotocraftApp, id: DialogId) -> Value {
+pub(crate) fn fields(app: &PatronusPhotoApp, id: DialogId) -> Value {
     app.framework.dialogs.open_dialogs().into_iter().find(|d| d.id == id).and_then(|d| d.fields).expect("the New Document dialog is open")
 }
 
 /// The settings the open dialog `id` shows.
-pub(crate) fn options(app: &PhotocraftApp, id: DialogId) -> DocumentOptions {
+pub(crate) fn options(app: &PatronusPhotoApp, id: DialogId) -> DocumentOptions {
     serde_json::from_value(fields(app, id)).expect("the dialog's fields are its settings")
 }
 
@@ -78,7 +78,7 @@ fn create(h: &mut AppHarness, edit: impl FnOnce(&mut DocumentOptions)) -> Dialog
 #[test]
 fn new_document_starts_from_the_last_settings() {
     let mut h = harness(app());
-    // The first time: PhotoCraft's defaults (1920 × 1080, 72 ppi).
+    // The first time: Patronus Photo's defaults (1920 × 1080, 72 ppi).
     let first = h.state_mut().new_document_options();
     assert_eq!((first.size, first.pixels_per_inch, first.name.as_str()), (PixelSize::new(1920, 1080), 72.0, "Untitled-1"));
     create(&mut h, |o| {
@@ -158,7 +158,7 @@ fn created_documents_fill_the_recent_category() {
     let recent = h.state().session.presets.recent_documents.clone();
     assert_eq!(recent.iter().map(|r| (r.width, r.unit.as_str())).collect::<Vec<_>>(), [(1920, "px"), (640, "in")]);
     // The settings are kept with the preferences.
-    let mut restarted = photocraft_engine::Session::new();
+    let mut restarted = patronusphoto_engine::Session::new();
     restarted.load_prefs_json(&h.state().session.prefs_to_json()).unwrap();
     assert_eq!(restarted.presets.recent_documents, recent);
     // The list the dialog opens with (its bound `recent`) holds every setting of each entry.

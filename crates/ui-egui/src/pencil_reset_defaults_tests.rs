@@ -5,21 +5,21 @@
 use egui::Modifiers;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::{ToolEvent, tool_event};
 use crate::control::{ControlRequest, handle};
 use crate::state::Tool;
 
 /// Creates a test app with a 200x200 document.
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 200, "height": 200})).unwrap();
     app.sync_views();
     app
 }
 
 /// Dispatches a control request and syncs document views.
-fn control(app: &mut PhotocraftApp, method: &str, params: Value) {
+fn control(app: &mut PatronusPhotoApp, method: &str, params: Value) {
     let ctx = app.ctx().clone();
     let (req, _rx) = ControlRequest::new(method, params);
     let _ = handle(app, &ctx, &req);
@@ -27,21 +27,21 @@ fn control(app: &mut PhotocraftApp, method: &str, params: Value) {
 }
 
 /// Switches to `tool` and synchronizes its remembered brush.
-fn pick(app: &mut PhotocraftApp, tool: Tool) {
+fn pick(app: &mut PatronusPhotoApp, tool: Tool) {
     app.ui.tool = tool;
     crate::paint_mouse::sync_tool_brush(app);
     app.sync_views();
 }
 
 /// Scrambles the active brush tip and pressure overrides away from defaults.
-fn scramble(app: &mut PhotocraftApp) {
+fn scramble(app: &mut PatronusPhotoApp) {
     let b = &mut app.session.tools.brush;
     (b.size, b.hardness, b.spacing, b.angle, b.roundness) = (42.0, 0.3, 0.6, 25.0, 0.5);
     (b.pressure_size, b.pressure_opacity) = (true, true);
 }
 
 /// Asserts that `brush.get` reports the Pencil's 1 px hard round default tip.
-fn assert_pencil_tip(app: &mut PhotocraftApp) {
+fn assert_pencil_tip(app: &mut PatronusPhotoApp) {
     let b = app.run("brush.get", json!({})).unwrap();
     let tip = ["size", "hardness", "angle", "roundness", "spacing"].map(|k| (b[k].as_f64().unwrap() * 1e4).round() / 1e4);
     assert_eq!(tip, [1.0, 1.0, 0.0, 1.0, 0.25], "{b}");
@@ -50,7 +50,7 @@ fn assert_pencil_tip(app: &mut PhotocraftApp) {
 }
 
 /// The options-bar brush chip reads the live brush's rounded size: `"1"` for the Pencil's tip.
-fn chip_shows_one(app: &PhotocraftApp) -> bool {
+fn chip_shows_one(app: &PatronusPhotoApp) -> bool {
     app.session.tools.brush.size.round() == 1.0
 }
 
@@ -110,7 +110,7 @@ fn a_default_click_at_100_2_paints_only_pixel_100_100() {
     tool_event(&mut a, ToolEvent::Up { x: 100.2, y: 100.2 }, Modifiers::NONE);
     let st = a.session.active().unwrap();
     let surf = st.doc.layer(st.active_layer.unwrap()).unwrap().surface().unwrap();
-    assert_eq!(surf.content_bounds(), photocraft_geom::Rect::new(100, 100, 101, 101));
+    assert_eq!(surf.content_bounds(), patronusphoto_geom::Rect::new(100, 100, 101, 101));
     assert_eq!(surf.rgba(100, 100)[3], 1.0);
 }
 

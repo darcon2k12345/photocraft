@@ -1,5 +1,5 @@
 //! #200: PSD export must write tagged blocks that re-parse strictly. Third-party files
-//! re-saved by PhotoCraft had `soLD` data under the `PlLd` key, global blocks padded only
+//! re-saved by Patronus Photo had `soLD` data under the `PlLd` key, global blocks padded only
 //! to even, a layer info body not padded to 4 and, in PSB, `cinf`/`lnkE` read and written
 //! with 4-byte lengths; psd-tools rejected or misaligned all of them.
 
@@ -8,7 +8,7 @@ use crate::common;
 use craft_psd::descriptor::{Descriptor, VersionedDescriptor};
 use craft_psd::testgen;
 use craft_psd::{Compression, LayerRecord, PsdFile, TaggedBlock, Version};
-use photocraft_io::*;
+use patronusphoto_io::*;
 
 /// `PlLd` data per the Adobe spec ("Placed Layer"): `plcL`, version 3, Pascal uuid, page,
 /// total pages, anti-alias policy, layer type, 8 transform doubles, warp version, warp
@@ -115,12 +115,12 @@ fn global_blocks_are_padded_to_four() {
 
 #[test]
 fn deep_documents_pad_the_layer_info_block() {
-    for depth in [photocraft_color::SampleType::U16, photocraft_color::SampleType::F32] {
-        let mut d = photocraft_doc::Document::new("d", photocraft_geom::Size::new(5, 3), photocraft_color::ColorMode::Rgb, depth);
+    for depth in [patronusphoto_color::SampleType::U16, patronusphoto_color::SampleType::F32] {
+        let mut d = patronusphoto_doc::Document::new("d", patronusphoto_geom::Size::new(5, 3), patronusphoto_color::ColorMode::Rgb, depth);
         let fmt = d.pixel_format();
         // Odd sizes so the unpadded layer info length is not a multiple of 4.
-        d.layers.push(common::raster("a", fmt, photocraft_geom::Rect::new(0, 0, 5, 3), 1, true));
-        d.layers.push(common::raster("b", fmt, photocraft_geom::Rect::new(1, 1, 3, 1), 2, true));
+        d.layers.push(common::raster("a", fmt, patronusphoto_geom::Rect::new(0, 0, 5, 3), 1, true));
+        d.layers.push(common::raster("b", fmt, patronusphoto_geom::Rect::new(1, 1, 3, 1), 2, true));
         let out = export(&d, "out.psd", &ExportOptions::default()).unwrap().bytes;
         assert_eq!(common::strict_block_errors(&out), Vec::<String>::new(), "{depth:?}");
     }

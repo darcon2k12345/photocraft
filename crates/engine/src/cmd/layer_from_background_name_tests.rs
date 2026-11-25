@@ -11,12 +11,12 @@
 //! support: top-level layer names only, compared exactly, as `next_layer_name` compares them. The
 //! group case is asked about on the issue.
 
-use photocraft_doc::LayerId;
+use patronusphoto_doc::LayerId;
 use serde_json::json;
 
 use crate::Session;
 
-fn doc(s: &Session) -> &photocraft_doc::Document {
+fn doc(s: &Session) -> &patronusphoto_doc::Document {
     &s.active().unwrap().doc
 }
 

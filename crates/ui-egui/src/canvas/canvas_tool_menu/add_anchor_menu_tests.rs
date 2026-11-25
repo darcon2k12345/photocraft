@@ -14,7 +14,7 @@ use serde_json::json;
 use super::delete_anchor_menu_tests::{assert_top_entry, right_clicked, saved, setup, steps};
 use super::tests::{harness, right_click, screen_of};
 use super::{PEN_MENU, rows};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing;
 use crate::state::Tool;
 
@@ -22,7 +22,7 @@ const TOOL: Tool = Tool::AddAnchorPoint;
 
 /// The Add Anchor Point tool with ⌘ held (its temporary Direct Selection) clicks `anchors`: the
 /// first with ⌘, the rest with ⌘⇧.
-fn with_selected(anchors: &[[f64; 2]]) -> Box<PhotocraftApp> {
+fn with_selected(anchors: &[[f64; 2]]) -> Box<PatronusPhotoApp> {
     let mut app = setup(TOOL);
     for (i, at) in anchors.iter().copied().enumerate() {
         let mods = if i == 0 { Modifiers::COMMAND } else { Modifiers::COMMAND | Modifiers::SHIFT };
@@ -32,7 +32,7 @@ fn with_selected(anchors: &[[f64; 2]]) -> Box<PhotocraftApp> {
     app
 }
 
-fn right_click_at(app: Box<PhotocraftApp>, at: [f32; 2]) -> Harness<'static, Box<PhotocraftApp>> {
+fn right_click_at(app: Box<PatronusPhotoApp>, at: [f32; 2]) -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut h = harness(app);
     let p = screen_of(h.state(), at);
     right_click(&mut h, p, Modifiers::NONE);
@@ -41,7 +41,7 @@ fn right_click_at(app: Box<PhotocraftApp>, at: [f32; 2]) -> Harness<'static, Box
 }
 
 /// The Fill, Stroke and transform rows of the open menu read `labels`, and none of the others.
-fn assert_rows(h: &Harness<'static, Box<PhotocraftApp>>, labels: [&str; 3]) {
+fn assert_rows(h: &Harness<'static, Box<PatronusPhotoApp>>, labels: [&str; 3]) {
     const ALL: [&str; 9] = [
         "Fill Path…",
         "Fill Subpath…",

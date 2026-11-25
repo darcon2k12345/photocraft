@@ -1,5 +1,5 @@
 //! The remaining panel commands compose with the same definitions, journal and ATN boundary.
-use photocraft_engine::{
+use patronusphoto_engine::{
     Session,
     actions_cmds::{Action, ActionColor, ActionList, ActionStep},
     actions_edit_cmds, atn_cmds,
@@ -212,7 +212,7 @@ fn names(s: &Session) -> Vec<String> {
 #[test]
 fn load_actions_waits_for_a_running_recording_or_playback() {
     let mut s = session();
-    let during = photocraft_paint::tile::b64_encode(&set_bytes("Mid take", "MidLoaded"));
+    let during = patronusphoto_paint::tile::b64_encode(&set_bytes("Mid take", "MidLoaded"));
     s.execute("actions.record", json!({"name":"Rec"})).unwrap();
     let error = s.execute("actions.load", json!({"data":during.clone()})).unwrap_err().to_string();
     assert!(error.contains("recording"), "{error}");
@@ -224,7 +224,7 @@ fn load_actions_waits_for_a_running_recording_or_playback() {
     assert!(played["failed"]["error"].as_str().unwrap().contains("playing"), "{played}");
     assert!(!names(&s).iter().any(|name| name == "MidLoaded"), "nothing loaded during the playback");
     // Idle again: the same bytes load.
-    let idle_bytes = photocraft_paint::tile::b64_encode(&set_bytes("Incoming", "Loaded"));
+    let idle_bytes = patronusphoto_paint::tile::b64_encode(&set_bytes("Incoming", "Loaded"));
     s.execute("actions.load", json!({"data":idle_bytes})).unwrap();
     assert!(names(&s).iter().any(|name| name == "Loaded"), "{:?}", names(&s));
 }

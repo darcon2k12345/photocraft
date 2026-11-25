@@ -289,8 +289,8 @@ pub const CONDITIONS: &[&str] = &[
 /// Whether `condition` holds for the active document and layer. Layer conditions are false
 /// without a document or an active layer; `isOpen` is whether a document is open.
 pub fn evaluate(s: &Session, condition: &str) -> Result<bool> {
-    use photocraft_color::ColorMode;
-    use photocraft_doc::LayerContent;
+    use patronusphoto_color::ColorMode;
+    use patronusphoto_doc::LayerContent;
     if !CONDITIONS.contains(&condition) {
         return Err(bad("actions.conditional", format!("unknown condition `{condition}` ({})", CONDITIONS.join("|"))));
     }
@@ -312,9 +312,9 @@ pub fn evaluate(s: &Session, condition: &str) -> Result<bool> {
         "modeIsIndexed" => doc.mode == ColorMode::Indexed,
         "modeIsDuotone" => doc.mode == ColorMode::Duotone,
         "modeIsMultichannel" => doc.mode == ColorMode::Multichannel,
-        "depth8" => doc.depth == photocraft_color::SampleType::U8,
-        "depth16" => doc.depth == photocraft_color::SampleType::U16,
-        "depth32" => doc.depth == photocraft_color::SampleType::F32,
+        "depth8" => doc.depth == patronusphoto_color::SampleType::U8,
+        "depth16" => doc.depth == patronusphoto_color::SampleType::U16,
+        "depth32" => doc.depth == patronusphoto_color::SampleType::F32,
         "unsaved" => d.is_dirty(),
         "hasSelection" => doc.selection.is_some(),
         // More than a lone Background: any layer that isn't the background.
@@ -383,7 +383,7 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Reset Actions…",
             menu: &[],
             shortcut: None,
-            params: r#"{"confirm":true,"mode":"replace"|"append"} → {set,appended,actions:[names]}. Restores the PhotoCraft Basics set; appended beside a set of that name it gets a numbered name."#,
+            params: r#"{"confirm":true,"mode":"replace"|"append"} → {set,appended,actions:[names]}. Restores the Patronus Photo Basics set; appended beside a set of that name it gets a numbered name."#,
             enabled: library_commands::enabled,
             run: library_commands::reset,
             journal: false,

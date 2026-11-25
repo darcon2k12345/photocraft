@@ -6,8 +6,8 @@ use serde_json::json;
 use super::*;
 
 /// A 200 × 100 document with three notes, the second one selected, and the Note tool.
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
     for (x, author) in [(10, "A"), (60, "B"), (110, "C")] {
         app.run("notes.add", json!({"x": x, "y": 20, "author": author})).unwrap();
@@ -17,15 +17,15 @@ fn app() -> Box<PhotocraftApp> {
     app
 }
 
-fn notes(app: &PhotocraftApp) -> usize {
+fn notes(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().doc.notes.len()
 }
 
-fn steps(app: &PhotocraftApp) -> usize {
+fn steps(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.past_len()
 }
 
-fn prompt(app: &PhotocraftApp) -> Option<egui::Id> {
+fn prompt(app: &PatronusPhotoApp) -> Option<egui::Id> {
     crate::dialogs::alerts::prompt_tagged::<NoteQuestion>(app)
 }
 

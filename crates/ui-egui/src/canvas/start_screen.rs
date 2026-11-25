@@ -1,4 +1,4 @@
-//! The Home screen: the framework start page with PhotoCraft's recent files, links and drop hint, and the Home rule
+//! The Home screen: the framework start page with Patronus Photo's recent files, links and drop hint, and the Home rule
 //! the options bar's button, the rail's Home link and `window.home` share.
 
 use craft::behavior::IconId;
@@ -6,7 +6,7 @@ use craft::ui::contract::Bind;
 use craft::ui::runtime::env::Label;
 use craft::ui::shell::{StartAction, StartLink, StartScreen};
 
-use super::PhotocraftApp;
+use super::PatronusPhotoApp;
 
 /// Recent files listed on the Home screen.
 const HOME_RECENT: usize = 11;
@@ -17,7 +17,7 @@ const HOME_CARD_ZOOM: f32 = 1.65;
 
 /// The Home screen in the document area. The recent list is empty on the web, which has no paths to reopen, and with
 /// Show Home Recent Files off.
-pub(super) fn start_screen(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub(super) fn start_screen(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let ctx = ui.ctx().clone();
     let show_recent = !cfg!(target_arch = "wasm32") && app.session.prefs().interface.show_home_recent_files;
     let recent = if show_recent { crate::home_recent_ui::recent_files(app, HOME_RECENT) } else { Vec::new() };
@@ -57,7 +57,7 @@ pub(super) fn start_screen(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 
 /// Shows a recent file selected in the system file manager; a failure goes to the status line, as the other open
 /// errors do. The start screen offers Show in Folder only where the platform can reveal a file.
-fn reveal(app: &mut PhotocraftApp, path: &std::path::Path) {
+fn reveal(app: &mut PatronusPhotoApp, path: &std::path::Path) {
     #[cfg(not(target_arch = "wasm32"))]
     if let Err(e) = craft::platform::open::reveal(path) {
         app.ui.status = e;
@@ -79,16 +79,16 @@ fn links() -> [StartLink; 2] {
 /// The community pages, at the bottom of the Home rail.
 fn footer_links() -> [StartLink; 3] {
     [
-        StartLink::url(tl!("Website"), Some(IconId::new("link")), crate::links::APP_PAGE),
+        StartLink::url(tl!("Releases"), Some(IconId::new("link")), crate::links::APP_PAGE),
         // A speech bubble and a chain link, as the rail showed before the framework move (#15449).
-        StartLink::url(tl!("Discord"), Some(IconId::new("note")), crate::links::DISCORD),
+        StartLink::url(tl!("Community"), Some(IconId::new("note")), crate::links::DISCORD),
         StartLink::url(tl!("GitHub"), Some(IconId::new("link_layers")), crate::links::GITHUB),
     ]
 }
 
 /// Shows Home over the open documents, or leaves it for them: the rule of the options bar's Home button, the Home
 /// rail's Home link and `window.home`. With no document open there is nothing behind Home, so it does nothing.
-pub(crate) fn toggle_home(app: &mut PhotocraftApp) {
+pub(crate) fn toggle_home(app: &mut PatronusPhotoApp) {
     let documents = app.session.documents().len();
     if documents == 0 {
         return;

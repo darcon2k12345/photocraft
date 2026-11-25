@@ -1,9 +1,9 @@
 use super::*;
 use crate::canvas::{ToolEvent, tool_event};
 use egui_kittest::kittest::Queryable;
-use photocraft_doc::LayerId;
+use patronusphoto_doc::LayerId;
 
-fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2]) {
+fn drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2]) {
     let m = egui::Modifiers::NONE;
     // The frame's handles take presses from the pass that drew them: the state a test set is shown first.
     crate::canvas::testing::frame(app);
@@ -12,7 +12,7 @@ fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2]) {
     tool_event(app, ToolEvent::Up { x: to[0], y: to[1] }, m);
 }
 
-fn click(app: &mut PhotocraftApp, at: [f64; 2]) {
+fn click(app: &mut PatronusPhotoApp, at: [f64; 2]) {
     let m = egui::Modifiers::NONE;
     crate::canvas::testing::frame(app);
     tool_event(app, ToolEvent::Down { x: at[0], y: at[1], pressure: 1.0 }, m);
@@ -20,13 +20,13 @@ fn click(app: &mut PhotocraftApp, at: [f64; 2]) {
 }
 
 /// Two clicks at one point inside the double-click time.
-fn double_click(app: &mut PhotocraftApp, at: [f64; 2]) {
+fn double_click(app: &mut PatronusPhotoApp, at: [f64; 2]) {
     click(app, at);
     click(app, at);
 }
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width":400,"height":300})).unwrap();
     app.sync_views();
     app.ui.extras.snap = false;
@@ -35,7 +35,7 @@ fn app() -> Box<PhotocraftApp> {
 }
 
 /// Adds a red raster layer under the next frame's drawn rect and makes it the active layer.
-fn add_photo(app: &mut PhotocraftApp, w: i32, h: i32) -> LayerId {
+fn add_photo(app: &mut PatronusPhotoApp, w: i32, h: i32) -> LayerId {
     app.session
         .edit("Photo", |doc, active| {
             let mut l = Layer::raster("Photo", doc.pixel_format());
@@ -49,23 +49,23 @@ fn add_photo(app: &mut PhotocraftApp, w: i32, h: i32) -> LayerId {
 }
 
 /// The document area on the app's own context, for tests that need the canvas body.
-fn harness(app: Box<PhotocraftApp>) -> egui_kittest::Harness<'static, Box<PhotocraftApp>> {
+fn harness(app: Box<PatronusPhotoApp>) -> egui_kittest::Harness<'static, Box<PatronusPhotoApp>> {
     let ctx = app.ctx().clone();
     let mut h = egui_kittest::Harness::builder()
         .with_context(ctx)
         .with_step_dt(1.0 / 60.0)
         .with_size(egui::vec2(1000., 700.))
-        .build_ui_state(|ui, app: &mut Box<PhotocraftApp>| crate::canvas::document_area(app, ui), app);
+        .build_ui_state(|ui, app: &mut Box<PatronusPhotoApp>| crate::canvas::document_area(app, ui), app);
 
     h.run_steps(4);
     h
 }
 
-fn screen_at(h: &egui_kittest::Harness<'_, Box<PhotocraftApp>>, x: f64, y: f64) -> Pos2 {
+fn screen_at(h: &egui_kittest::Harness<'_, Box<PatronusPhotoApp>>, x: f64, y: f64) -> Pos2 {
     crate::canvas::document_display::active_view(h.state()).unwrap().to_screen(KPoint::new(x, y))
 }
 
-fn press_drag(h: &mut egui_kittest::Harness<'_, Box<PhotocraftApp>>, from: Pos2, to: Pos2) {
+fn press_drag(h: &mut egui_kittest::Harness<'_, Box<PatronusPhotoApp>>, from: Pos2, to: Pos2) {
     let mods = egui::Modifiers::NONE;
     h.event(egui::Event::PointerMoved(from));
     h.step();
@@ -138,7 +138,7 @@ fn free_transform_on_the_frame_thumbnail_previews_and_commits_only_the_clip() {
     let frame = selected(&app).unwrap().id;
     let original = app.session.active().unwrap().doc.layer(source).unwrap().clone();
     let ctx = app.ctx().clone();
-    let set_box = |app: &mut PhotocraftApp, to: KRect| {
+    let set_box = |app: &mut PatronusPhotoApp, to: KRect| {
         let t = app.ui.transform.as_mut().unwrap();
         let before = *t.session.state();
         let edit = EditEvent::set(Mixed::Same(before), BoxState::from_rect(to), Arc::from("Transform"), None);
@@ -244,7 +244,7 @@ fn overhanging_content_handles_start_transform_and_cancel() {
     let st = app.session.active().unwrap();
     let frame = selected(&app).unwrap();
     let child = frame.children().unwrap().first().unwrap();
-    let b = photocraft_engine::transform_cmds::transform_frame(&st.doc, child);
+    let b = patronusphoto_engine::transform_cmds::transform_frame(&st.doc, child);
     assert!(b.x0 < 20, "image must overhang the frame: {b:?}");
     let entries = st.history.entries();
     for (x, y) in [(f64::from(b.x0), f64::from(b.y0)), (f64::from(b.x0), f64::from(b.y0 + b.y1) / 2.)] {

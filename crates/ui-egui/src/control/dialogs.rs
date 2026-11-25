@@ -10,12 +10,12 @@ use serde_json::{Value, json};
 
 use super::params::{err, ok};
 use super::{ControlRequest, Reply};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 use super::dispatch::wait_param;
 
 /// One opener: reads its own params and returns the opened id or the refusal text.
-type Opener = fn(&mut PhotocraftApp, &egui::Context, &Value) -> Result<DialogId, String>;
+type Opener = fn(&mut PatronusPhotoApp, &egui::Context, &Value) -> Result<DialogId, String>;
 
 /// The `ui.dialog.open` kinds. Production also accepts the capitalised spellings (`NewDocument`, `About`,
 /// `ColorPicker`, `LayerStyle`, `Command`); [`open`] lowercases the first letter before the lookup.
@@ -30,7 +30,7 @@ pub(crate) const KINDS: &[(&str, Opener)] = &[
     ("deleteCropPreset", |app, _, _| crate::crop_presets::open_delete(app).ok_or_else(|| "no crop presets are saved".to_string())),
     ("command", |app, _, p| {
         let Some(cmd) = p.get("command").and_then(Value::as_str) else { return Err("command dialogs need `command`".into()) };
-        let label = photocraft_engine::commands::find(cmd).map(|c| c.label).unwrap_or(cmd);
+        let label = patronusphoto_engine::commands::find(cmd).map(|c| c.label).unwrap_or(cmd);
         crate::dialogs::open_command_dialog(app, cmd, label)
     }),
     ("newSnapshot", |app, _, _| crate::snapshot_dialog::open(app).ok_or_else(|| "no document is open".to_string())),
@@ -51,7 +51,7 @@ pub(crate) const KINDS: &[(&str, Opener)] = &[
     }),
 ];
 
-fn open_about(app: &mut PhotocraftApp, _ctx: &egui::Context, p: &Value) -> Result<DialogId, String> {
+fn open_about(app: &mut PatronusPhotoApp, _ctx: &egui::Context, p: &Value) -> Result<DialogId, String> {
     use craft::ui::patterns::form_dialogs::AboutTab;
     let tab = match p.get("tab").and_then(Value::as_str) {
         None | Some("about") => AboutTab::About,
@@ -63,7 +63,7 @@ fn open_about(app: &mut PhotocraftApp, _ctx: &egui::Context, p: &Value) -> Resul
 }
 
 /// The colour picker kind: a text style's colour, a Layer Style effect's colour, or the foreground or background.
-fn open_color_picker(app: &mut PhotocraftApp, _ctx: &egui::Context, p: &Value) -> Result<DialogId, String> {
+fn open_color_picker(app: &mut PatronusPhotoApp, _ctx: &egui::Context, p: &Value) -> Result<DialogId, String> {
     let s = |key: &str| p.get(key).and_then(Value::as_str);
     if let Some(style) = p.get("textStyle") {
         if ["parent", "effect", "field", "target"].iter().any(|key| p.get(*key).is_some()) {
@@ -107,15 +107,15 @@ fn open_color_picker(app: &mut PhotocraftApp, _ctx: &egui::Context, p: &Value) -
 
 // ---- the dialog and its fields ----
 
-fn host(app: &PhotocraftApp) -> &craft::ui::dialog::DialogHost {
+fn host(app: &PatronusPhotoApp) -> &craft::ui::dialog::DialogHost {
     &app.framework.dialogs
 }
 
-fn fields_of(app: &PhotocraftApp, id: DialogId) -> Value {
+fn fields_of(app: &PatronusPhotoApp, id: DialogId) -> Value {
     host(app).open_dialogs().into_iter().find(|d| d.id == id).and_then(|d| d.fields).unwrap_or(Value::Null)
 }
 
-fn key_of(app: &PhotocraftApp, id: DialogId) -> Option<String> {
+fn key_of(app: &PatronusPhotoApp, id: DialogId) -> Option<String> {
     host(app).open_dialogs().into_iter().find(|d| d.id == id).and_then(|d| d.key)
 }
 
@@ -126,7 +126,7 @@ pub(crate) enum Which {
     /// The dialog's `OpenDialog.key`.
     Key(&'static str),
     /// A test on the app and the dialog id.
-    Is(fn(&PhotocraftApp, DialogId) -> bool),
+    Is(fn(&PatronusPhotoApp, DialogId) -> bool),
 }
 
 /// Builds the framework field pairs from the dialog's current `json_fields` and a production value.
@@ -147,24 +147,24 @@ pub(crate) struct FieldKey {
     pub with: Option<FieldBuilder>,
 }
 
-fn is_prompt<T: std::any::Any>(app: &PhotocraftApp, id: DialogId) -> bool {
+fn is_prompt<T: std::any::Any>(app: &PatronusPhotoApp, id: DialogId) -> bool {
     crate::dialogs::alerts::prompt_tagged::<T>(app) == Some(id)
 }
 
-fn is_unsaved(app: &PhotocraftApp, id: DialogId) -> bool {
+fn is_unsaved(app: &PatronusPhotoApp, id: DialogId) -> bool {
     host(app).get_by_id::<craft::ui::dialog::UnsavedChangesDialog>(id).is_some()
 }
 
 /// Whether confirming dialog `id` answers the unsaved-changes prompt with Save.
-pub(crate) fn is_save_answer(app: &PhotocraftApp, id: DialogId) -> bool {
+pub(crate) fn is_save_answer(app: &PatronusPhotoApp, id: DialogId) -> bool {
     is_unsaved(app, id) && fields_of(app, id)["choice"] == "save"
 }
 
-fn is_profile(app: &PhotocraftApp, id: DialogId) -> bool {
+fn is_profile(app: &PatronusPhotoApp, id: DialogId) -> bool {
     host(app).get_by_id::<craft::color_ui::ui::ProfileMismatchDialog>(id).is_some()
 }
 
-fn is_color_picker(app: &PhotocraftApp, id: DialogId) -> bool {
+fn is_color_picker(app: &PatronusPhotoApp, id: DialogId) -> bool {
     // PLAN: assumed facade path of `ColorPickerDialog`.
     host(app).get_by_id::<craft::color_ui::ui::ColorPickerDialog>(id).is_some()
 }
@@ -175,7 +175,7 @@ fn export_scale(_: &Value, v: &Value) -> Vec<(String, Value)> {
 }
 
 /// The mask-trash prompt of a vector mask (the layer-mask prompt has the same tag type, other answers).
-fn is_vector_trash(app: &PhotocraftApp, id: DialogId) -> bool {
+fn is_vector_trash(app: &PatronusPhotoApp, id: DialogId) -> bool {
     host(app).get_by_id::<craft::ui::dialog::StandardPrompt>(id).is_some_and(|prompt| matches!(prompt.kind(), craft::ui::dialog::PromptKind::TrashVectorMask))
 }
 
@@ -202,7 +202,7 @@ fn dont_save_all(_: &Value, _: &Value) -> Vec<(String, Value)> {
 /// A blend label such as "Multiply" to the Blend row's id; a string `parse_blend` refuses passes through so the
 /// row refuses it.
 fn blend_id(value: &Value) -> Value {
-    value.as_str().and_then(photocraft_engine::commands::parse_blend).map(|mode| json!(mode.key().to_string())).unwrap_or_else(|| value.clone())
+    value.as_str().and_then(patronusphoto_engine::commands::parse_blend).map(|mode| json!(mode.key().to_string())).unwrap_or_else(|| value.clone())
 }
 
 // PLAN: the framework field ids `mode` (Fill, Stroke) and `blend` (Smart Filter) are assumed (dialogs-w22 by request).
@@ -284,7 +284,7 @@ pub(crate) const FIELD_KEYS: &[FieldKey] = &[
 
 /// What `ui.dialog.set` sets for a production `field` and `value`: the rows' pairs, or the field unchanged (a
 /// parameter dialog's keys are the engine's).
-pub(crate) fn map_request(app: &PhotocraftApp, id: DialogId, field: &str, value: Value) -> Vec<(String, Value)> {
+pub(crate) fn map_request(app: &PatronusPhotoApp, id: DialogId, field: &str, value: Value) -> Vec<(String, Value)> {
     let key = key_of(app, id);
     let current = fields_of(app, id);
     for row in FIELD_KEYS {
@@ -324,7 +324,7 @@ fn hex_as_color(current: &Value, field: &str, value: Value) -> Value {
 }
 
 /// The command a hosted dialog's confirm is judged as, with its params; `None` when it runs no command.
-fn command_of(app: &PhotocraftApp, id: DialogId, choice: &str) -> Option<(String, Value)> {
+fn command_of(app: &PatronusPhotoApp, id: DialogId, choice: &str) -> Option<(String, Value)> {
     if is_unsaved(app, id) {
         return if choice == "cancel" { None } else { crate::discard_ui::pending_command(app) };
     }
@@ -339,7 +339,7 @@ fn command_of(app: &PhotocraftApp, id: DialogId, choice: &str) -> Option<(String
 
 /// The command a hosted parameter dialog stands for, with its values: the dialog's key, when the key is a command (an
 /// engine command or a shell one such as `file.save`). Automation is judged for it when the dialog is confirmed.
-pub(crate) fn hosted_command(app: &PhotocraftApp, id: DialogId) -> Option<(String, Value)> {
+pub(crate) fn hosted_command(app: &PatronusPhotoApp, id: DialogId) -> Option<(String, Value)> {
     let key = key_of(app, id)?;
     (host(app).get_by_id::<craft::ui::patterns::form_dialogs::HostedParamDialog>(id).is_some() && crate::menus::is_live(&key))
         .then(|| (key, fields_of(app, id)))
@@ -348,7 +348,7 @@ pub(crate) fn hosted_command(app: &PhotocraftApp, id: DialogId) -> Option<(Strin
 // ---- ui.dialog.* ----
 
 /// Answers `ui.dialog.{open, set, confirm, cancel, apply}`; `None` for any other method.
-pub(crate) fn method(app: &mut PhotocraftApp, ctx: &egui::Context, req: &ControlRequest) -> Option<Reply> {
+pub(crate) fn method(app: &mut PatronusPhotoApp, ctx: &egui::Context, req: &ControlRequest) -> Option<Reply> {
     let p = &req.params;
     if req.method == "ui.dialog.open" {
         return Some(open(app, ctx, p));
@@ -385,7 +385,7 @@ pub(crate) fn method(app: &mut PhotocraftApp, ctx: &egui::Context, req: &Control
     })
 }
 
-fn open(app: &mut PhotocraftApp, ctx: &egui::Context, p: &Value) -> Reply {
+fn open(app: &mut PatronusPhotoApp, ctx: &egui::Context, p: &Value) -> Reply {
     let kind = p.get("kind").and_then(Value::as_str).unwrap_or("");
     let mut chars = kind.chars();
     let normal: String = chars.next().map(|c| c.to_lowercase().chain(chars).collect()).unwrap_or_default();
@@ -396,7 +396,7 @@ fn open(app: &mut PhotocraftApp, ctx: &egui::Context, p: &Value) -> Reply {
     }
 }
 
-fn set(app: &mut PhotocraftApp, ctx: &egui::Context, id: DialogId, p: &Value) -> Reply {
+fn set(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: DialogId, p: &Value) -> Reply {
     let Some(field) = p.get("field").and_then(Value::as_str) else { return err("need `dialog` and `field`") };
     if host(app).open_dialogs().iter().any(|d| d.parent == Some(id)) {
         return err("confirm or cancel the color picker first");
@@ -433,7 +433,7 @@ fn set(app: &mut PhotocraftApp, ctx: &egui::Context, id: DialogId, p: &Value) ->
     ok(Value::Null)
 }
 
-fn confirm(app: &mut PhotocraftApp, ctx: &egui::Context, id: DialogId, p: &Value) -> Reply {
+fn confirm(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: DialogId, p: &Value) -> Reply {
     let choice = p.get("choice").and_then(Value::as_str);
     if let Some(choice) = choice {
         for (field, value) in map_request(app, id, "choice", json!(choice)) {
@@ -464,7 +464,7 @@ fn confirm(app: &mut PhotocraftApp, ctx: &egui::Context, id: DialogId, p: &Value
     })
 }
 
-fn apply(app: &mut PhotocraftApp, id: DialogId) -> Reply {
+fn apply(app: &mut PatronusPhotoApp, id: DialogId) -> Reply {
     if key_of(app, id).as_deref() == Some("preferences") {
         return Reply::from_result(crate::prefs_ui::apply_window(app));
     }
@@ -474,7 +474,7 @@ fn apply(app: &mut PhotocraftApp, id: DialogId) -> Reply {
 // ---- hosted workspaces ----
 
 /// A hosted workspace's `describe(app)`.
-type DescribeFn = fn(&PhotocraftApp) -> Option<Value>;
+type DescribeFn = fn(&PatronusPhotoApp) -> Option<Value>;
 
 /// The `describe(app)` of each hosted workspace, by its dialog key (L-21). Facts that live in app data stay in the
 /// module's adapter; this table only merges them into the workspace's `json_fields`.
@@ -483,12 +483,12 @@ const DESCRIBE: &[(&str, DescribeFn)] = &[
     ("edit.contentAwareFill", crate::caf_ui::describe),
     ("filter.liquify", crate::liquify_ui::describe),
     ("filter.filterGallery", crate::gallery_ui::describe),
-    (photocraft_engine::lens_cmds::WIDE, crate::wide_angle_ui::describe),
+    (patronusphoto_engine::lens_cmds::WIDE, crate::wide_angle_ui::describe),
     ("filter.vanishingPoint", crate::vp_ui::describe),
     ("filter.cameraRaw", |app| Some(crate::camera_raw_ui::describe(app))),
 ];
 
-fn workspace_reply(app: &PhotocraftApp, key: &str, id: DialogId) -> Value {
+fn workspace_reply(app: &PatronusPhotoApp, key: &str, id: DialogId) -> Value {
     let mut reply = fields_of(app, id);
     if !reply.is_object() {
         reply = json!({});
@@ -502,14 +502,14 @@ fn workspace_reply(app: &PhotocraftApp, key: &str, id: DialogId) -> Value {
 
 /// Runs the preview jobs of the open workspace to completion, then one pass of results, so the request's reply
 /// shows the finished preview.
-fn wait_preview(app: &mut PhotocraftApp, ctx: &egui::Context) {
+fn wait_preview(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     /// How long a request waits for the jobs on the framework's lanes.
     const WAIT: std::time::Duration = std::time::Duration::from_secs(30);
     craft::ui::runtime::pending::finish_jobs(ctx, WAIT);
     crate::dialogs::take_results(app, ctx);
 }
 
-fn apply_field(app: &mut PhotocraftApp, ctx: &egui::Context, id: DialogId, field: &str, value: &Value) -> Result<(), String> {
+fn apply_field(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: DialogId, field: &str, value: &Value) -> Result<(), String> {
     for (field, value) in map_request(app, id, field, value.clone()) {
         app.framework.dialogs.set_json_field(ctx, id, &field, value)?;
     }
@@ -519,7 +519,7 @@ fn apply_field(app: &mut PhotocraftApp, ctx: &egui::Context, id: DialogId, field
 /// A `{ui:{…}}` request on the open hosted workspace `key`: the keys apply in order with `commit` and `cancel` last (a
 /// JSON object keeps no order of its own), each key is applied or refused on its own (the error names every refused key; the others stay
 /// applied), and the reply is the workspace's fields with its `describe` facts.
-pub(crate) fn workspace_ui(app: &mut PhotocraftApp, ctx: &egui::Context, key: &str, ui: &Value) -> Result<Value, String> {
+pub(crate) fn workspace_ui(app: &mut PatronusPhotoApp, ctx: &egui::Context, key: &str, ui: &Value) -> Result<Value, String> {
     let Some(id) = host(app).open_dialogs().into_iter().find(|d| d.key.as_deref() == Some(key)).map(|d| d.id) else {
         return Err(format!("`{key}` is not open"));
     };

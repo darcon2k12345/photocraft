@@ -4,12 +4,12 @@
 
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// A 200 × 120 document with a type layer "Hello" active and the Rectangular Marquee chosen.
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 120})).unwrap();
     app.sync_views();
     app.run("type.create", json!({"x": 20, "y": 60, "text": "Hello", "size": 36})).unwrap();
@@ -17,12 +17,12 @@ fn app() -> Box<PhotocraftApp> {
     app
 }
 
-fn type_bounds(app: &PhotocraftApp) -> photocraft_geom::Rect {
+fn type_bounds(app: &PatronusPhotoApp) -> patronusphoto_geom::Rect {
     let st = app.session.active().unwrap();
     st.doc.layer(st.active_layer.unwrap()).unwrap().surface().unwrap().content_bounds()
 }
 
-fn select_left_half(app: &mut PhotocraftApp) {
+fn select_left_half(app: &mut PatronusPhotoApp) {
     let b = type_bounds(app);
     app.run("select.rect", json!({"x": b.x0, "y": b.y0, "width": b.width() / 2, "height": b.height()})).unwrap();
 }
@@ -78,7 +78,7 @@ fn free_transform_with_a_selection_frames_and_moves_the_whole_type_layer() {
     let moved = type_bounds(&app);
     assert!(moved.x0.abs_diff(whole.x0 + 10) <= 1 && moved.width().abs_diff(whole.width()) <= 1, "{whole:?} -> {moved:?}");
     let st = app.session.active().unwrap();
-    assert!(matches!(st.doc.layer(id).unwrap().content, photocraft_doc::LayerContent::Text(_)), "still editable type");
+    assert!(matches!(st.doc.layer(id).unwrap().content, patronusphoto_doc::LayerContent::Text(_)), "still editable type");
 }
 
 /// ⌘-drag (distort) and ⌘⌥⇧-drag (perspective) of a corner on editable type scale like a plain
@@ -87,7 +87,7 @@ fn free_transform_with_a_selection_frames_and_moves_the_whole_type_layer() {
 #[test]
 fn distort_and_perspective_corner_drags_scale_editable_type() {
     use crate::canvas::{ToolEvent, tool_event};
-    let quad = |app: &PhotocraftApp| app.ui.transform.as_ref().unwrap().session.quad().map(|p| [p.x, p.y]);
+    let quad = |app: &PatronusPhotoApp| app.ui.transform.as_ref().unwrap().session.quad().map(|p| [p.x, p.y]);
     let cmd = egui::Modifiers::COMMAND;
     for mods in [cmd, cmd | egui::Modifiers::ALT | egui::Modifiers::SHIFT] {
         let mut app = app();
@@ -105,6 +105,6 @@ fn distort_and_perspective_corner_drags_scale_editable_type() {
         crate::transform_tool::commit(&mut app);
         assert_eq!(app.ui.status, "", "{mods:?}");
         let st = app.session.active().unwrap();
-        assert!(matches!(st.doc.layer(st.active_layer.unwrap()).unwrap().content, photocraft_doc::LayerContent::Text(_)), "still editable type");
+        assert!(matches!(st.doc.layer(st.active_layer.unwrap()).unwrap().content, patronusphoto_doc::LayerContent::Text(_)), "still editable type");
     }
 }

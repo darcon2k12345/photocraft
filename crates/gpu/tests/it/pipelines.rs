@@ -9,10 +9,10 @@
 //!
 //! The Windows CI runners have no GPU: their adapter is WARP over DX12, so this runs FXC there.
 
-use photocraft_color::{Color, ColorMode, SampleType};
-use photocraft_doc::Document;
-use photocraft_geom::Size;
-use photocraft_gpu::{Compositor, render_to_vec};
+use patronusphoto_color::{Color, ColorMode, SampleType};
+use patronusphoto_doc::Document;
+use patronusphoto_geom::Size;
+use patronusphoto_gpu::{Compositor, render_to_vec};
 
 use crate::GPU_LOCK;
 

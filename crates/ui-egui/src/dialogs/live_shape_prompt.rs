@@ -7,9 +7,9 @@ use craft::ui::dialog::{PromptAnswer, PromptChoice, StandardPrompt};
 use serde_json::Value;
 
 use super::alerts;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::direct_select::{DirectSelection, PathRef};
-use photocraft_doc::{LayerContent, LayerId};
+use patronusphoto_doc::{LayerContent, LayerId};
 
 /// Its "Don't show again", under `Preferences::dialogs`.
 pub const PREF: &str = "path.deleteAnchor.liveShape";
@@ -27,7 +27,7 @@ pub(crate) struct LiveShapeAsk {
 }
 
 /// Whether `r` is a live shape layer, such as a rectangle from the Rectangle tool in Shape mode.
-fn is_live(app: &PhotocraftApp, r: PathRef) -> bool {
+fn is_live(app: &PatronusPhotoApp, r: PathRef) -> bool {
     let PathRef::Layer(id) = r else { return false };
     app.session.active().and_then(|st| st.doc.layer(LayerId(id))).is_some_and(|layer| matches!(&layer.content, LayerContent::Shape(sh) if sh.live.is_some()))
 }
@@ -35,7 +35,7 @@ fn is_live(app: &PhotocraftApp, r: PathRef) -> bool {
 /// Ask before `path.deleteAnchor` with `params` runs on `r`. True when the question is open (or
 /// already was), so the caller stops; false when the deletion goes ahead: `r` is not a live shape
 /// or "Don't show again" was ticked.
-pub fn ask(app: &mut PhotocraftApp, r: PathRef, params: &Value) -> bool {
+pub fn ask(app: &mut PatronusPhotoApp, r: PathRef, params: &Value) -> bool {
     let PathRef::Layer(layer) = r else { return false };
     let Some((document, revision)) = app.session.active().map(|st| (st.doc.id.0, st.revision)) else { return false };
     if !is_live(app, r) || alerts::dismissed(app, PREF) {
@@ -54,7 +54,7 @@ pub fn ask(app: &mut PhotocraftApp, r: PathRef, params: &Value) -> bool {
 
 /// The `PROMPTS` entry: Yes deletes the anchor in one "Delete Anchor Point" step and keeps a ticked
 /// "Don't show again"; No changes nothing. `false` for another family's answer.
-pub(crate) fn answer(app: &mut PhotocraftApp, _ctx: &egui::Context, answer: &mut PromptAnswer) -> bool {
+pub(crate) fn answer(app: &mut PatronusPhotoApp, _ctx: &egui::Context, answer: &mut PromptAnswer) -> bool {
     let Some(ask) = answer.take_tag::<LiveShapeAsk>() else { return false };
     if answer.choice != PromptChoice::Proceed {
         return true;
@@ -67,7 +67,7 @@ pub(crate) fn answer(app: &mut PhotocraftApp, _ctx: &egui::Context, answer: &mut
     true
 }
 
-fn confirm(app: &mut PhotocraftApp, ask: LiveShapeAsk) -> Result<(), String> {
+fn confirm(app: &mut PatronusPhotoApp, ask: LiveShapeAsk) -> Result<(), String> {
     if app.session.active().map(|st| (st.doc.id.0, st.revision)) != Some((ask.document, ask.revision)) {
         return Err(tl!("No anchor to delete").into());
     }

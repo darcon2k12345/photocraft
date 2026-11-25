@@ -9,17 +9,17 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::{Tool, ToolOptions};
 
-fn bar(tool: Tool) -> Harness<'static, Box<PhotocraftApp>> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn bar(tool: Tool) -> Harness<'static, Box<PatronusPhotoApp>> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 80, "height": 80})).unwrap();
     app.ui.tool = tool;
     crate::theme::install_fonts(app.ctx());
     crate::theme::apply(app.ctx(), &crate::theme::AppTheme::pro());
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(vec2(1800.0, 300.0)).with_step_dt(1.0 / 60.0).build_ui_state(
-        move |ui, app: &mut Box<PhotocraftApp>| {
+        move |ui, app: &mut Box<PatronusPhotoApp>| {
             crate::panels::options_bar(app, ui);
             // The alert a field raises is a hosted dialog, drawn by the dialog host.
             crate::dialogs::run(app, ui);
@@ -31,12 +31,12 @@ fn bar(tool: Tool) -> Harness<'static, Box<PhotocraftApp>> {
 }
 
 /// The messages of the open framework alerts.
-fn alerts(h: &Harness<'static, Box<PhotocraftApp>>) -> Vec<String> {
+fn alerts(h: &Harness<'static, Box<PatronusPhotoApp>>) -> Vec<String> {
     h.state().framework.dialogs.open_dialogs().iter().filter_map(|d| d.fields.as_ref()?.get("message")?.as_str().map(str::to_string)).collect()
 }
 
 /// Types `text` into the number field named `name` and commits it with Enter.
-fn type_into(h: &mut Harness<'static, Box<PhotocraftApp>>, name: &str, text: &str) {
+fn type_into(h: &mut Harness<'static, Box<PatronusPhotoApp>>, name: &str, text: &str) {
     h.query_all_by_role(Role::SpinButton)
         .find(|n| n.accesskit_node().label().as_deref().is_some_and(|l| l.trim_end_matches(':') == name))
         .unwrap_or_else(|| panic!("the {name} field"))
@@ -51,8 +51,8 @@ fn type_into(h: &mut Harness<'static, Box<PhotocraftApp>>, name: &str, text: &st
 
 #[test]
 fn options_bar_fields_that_alert_past_their_range() {
-    type Read = fn(&PhotocraftApp) -> f32;
-    let o = |a: &PhotocraftApp| -> ToolOptions { a.ui.tool_options.clone() };
+    type Read = fn(&PatronusPhotoApp) -> f32;
+    let o = |a: &PatronusPhotoApp| -> ToolOptions { a.ui.tool_options.clone() };
     let _ = o;
     // (tool, field, typed, kept, alerts)
     let rows: [(Tool, &str, &str, f32, bool, Read); 11] = [

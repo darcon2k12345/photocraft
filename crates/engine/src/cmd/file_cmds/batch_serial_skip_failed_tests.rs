@@ -5,15 +5,15 @@ use super::*;
 fn tmp(name: &str) -> String {
     static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
     let id = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let d = std::env::temp_dir().join(format!("photocraft-batch-serial-{}-{name}-{id}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("patronusphoto-batch-serial-{}-{name}-{id}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).unwrap();
     d.to_string_lossy().into_owned()
 }
 
 fn write_png(path: &str) {
-    let img = photocraft_codecs::Image::from_u8(4, 4, photocraft_codecs::ChannelLayout::Rgb, vec![200; 48]).unwrap();
-    let bytes = photocraft_codecs::encode(&img, photocraft_codecs::Format::Png, &Default::default()).unwrap();
+    let img = patronusphoto_codecs::Image::from_u8(4, 4, patronusphoto_codecs::ChannelLayout::Rgb, vec![200; 48]).unwrap();
+    let bytes = patronusphoto_codecs::encode(&img, patronusphoto_codecs::Format::Png, &Default::default()).unwrap();
     std::fs::write(path, bytes).unwrap();
 }
 

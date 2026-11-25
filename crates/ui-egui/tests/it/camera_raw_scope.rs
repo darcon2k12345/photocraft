@@ -4,27 +4,27 @@
 //! region scope, the persisted scope settings and the hover sample.
 use egui::{Pos2, pos2, vec2};
 use egui_kittest::Harness;
-use photocraft_ui_egui::{PhotocraftApp, camera_raw_ui, control, theme::AppTheme};
+use patronusphoto_ui_egui::{PatronusPhotoApp, camera_raw_ui, control, theme::AppTheme};
 use serde_json::{Value, json};
 
-fn menu(app: &mut PhotocraftApp, ctx: &egui::Context, p: Value) -> Result<Value, String> {
+fn menu(app: &mut PatronusPhotoApp, ctx: &egui::Context, p: Value) -> Result<Value, String> {
     camera_raw_ui::menu(app, ctx, "filter.cameraRaw", &p).ok_or("missing handler")?
 }
-fn inspect(h: &Harness<'_, Box<PhotocraftApp>>) -> Value {
+fn inspect(h: &Harness<'_, Box<PatronusPhotoApp>>) -> Value {
     control::inspect(h.state(), &h.ctx)["cameraRaw"].clone()
 }
 
 /// A harness whose document `prepare` sets up before Camera Raw opens on it.
-fn harness(theme: AppTheme, prepare: impl FnOnce(&mut PhotocraftApp) + 'static) -> Harness<'static, Box<PhotocraftApp>> {
+fn harness(theme: AppTheme, prepare: impl FnOnce(&mut PatronusPhotoApp) + 'static) -> Harness<'static, Box<PatronusPhotoApp>> {
     app_harness(theme, true, prepare)
 }
 /// [`harness`], with Camera Raw opened at the start or left for the test's first request. A develop is only
 /// delivered when the app's own frame runs, which is what a harness steps.
-fn app_harness(theme: AppTheme, open: bool, prepare: impl FnOnce(&mut PhotocraftApp) + 'static) -> Harness<'static, Box<PhotocraftApp>> {
+fn app_harness(theme: AppTheme, open: bool, prepare: impl FnOnce(&mut PatronusPhotoApp) + 'static) -> Harness<'static, Box<PatronusPhotoApp>> {
     let shown = theme.clone();
     let mut h = Harness::builder().with_step_dt(1.0 / 60.0).with_size(vec2(1200.0, 800.0)).build_eframe(move |cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, shown.clone());
-        let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), Default::default());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, shown.clone());
+        let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), Default::default());
         app.set_theme(&cc.egui_ctx, shown);
         prepare(&mut app);
         if open {
@@ -43,7 +43,7 @@ fn app_harness(theme: AppTheme, open: bool, prepare: impl FnOnce(&mut Photocraft
     }
     h
 }
-fn fixture(theme: AppTheme) -> Harness<'static, Box<PhotocraftApp>> {
+fn fixture(theme: AppTheme) -> Harness<'static, Box<PatronusPhotoApp>> {
     harness(theme, |app| {
         app.run("file.new", json!({"width":64,"height":48})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();
@@ -55,7 +55,7 @@ fn fixture(theme: AppTheme) -> Harness<'static, Box<PhotocraftApp>> {
 /// starts its first develop a pass or two after it opens, and the queue runs it when a request
 /// finishes it, as the agent entry point's `waitPreview` does: the frame holds no histogram until
 /// then.
-fn settle(h: &mut Harness<'_, Box<PhotocraftApp>>) {
+fn settle(h: &mut Harness<'_, Box<PatronusPhotoApp>>) {
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
     h.run_steps(2);
     loop {
@@ -77,7 +77,7 @@ fn settle(h: &mut Harness<'_, Box<PhotocraftApp>>) {
 
 /// A request, then the develop it asks for. The reply describes the open dialog; a request that closed it
 /// answers with its own reply.
-fn request(h: &mut Harness<'_, Box<PhotocraftApp>>, p: Value) -> Result<Value, String> {
+fn request(h: &mut Harness<'_, Box<PatronusPhotoApp>>, p: Value) -> Result<Value, String> {
     let ctx = h.ctx.clone();
     let reply = menu(h.state_mut(), &ctx, p)?;
     if inspect(h).is_null() {
@@ -87,7 +87,7 @@ fn request(h: &mut Harness<'_, Box<PhotocraftApp>>, p: Value) -> Result<Value, S
     Ok(inspect(h))
 }
 /// A harness on a `width` x `height` document filled with `color`, Camera Raw closed.
-fn plain_app(width: u32, height: u32, color: &'static str) -> Harness<'static, Box<PhotocraftApp>> {
+fn plain_app(width: u32, height: u32, color: &'static str) -> Harness<'static, Box<PatronusPhotoApp>> {
     app_harness(AppTheme::pro(), false, move |app| {
         app.run("file.new", json!({"width":width,"height":height})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();
@@ -97,7 +97,7 @@ fn plain_app(width: u32, height: u32, color: &'static str) -> Harness<'static, B
 
 /// Moves the pointer across the window until it is over the picture, and returns where and the
 /// readout the workspace reports there.
-fn hover_over_picture(h: &mut Harness<'_, Box<PhotocraftApp>>) -> (Pos2, Value) {
+fn hover_over_picture(h: &mut Harness<'_, Box<PatronusPhotoApp>>) -> (Pos2, Value) {
     for y in [400.0, 300.0, 500.0] {
         for x in (100..1100).step_by(25) {
             let at = pos2(x as f32, y);
@@ -144,7 +144,7 @@ fn invalid_mixed_controller_requests_leave_dialog_preferences_and_document_uncha
     assert_eq!(document_steps(&h), history, "settings edits are not document edits");
 }
 
-fn document_steps(h: &Harness<'_, Box<PhotocraftApp>>) -> usize {
+fn document_steps(h: &Harness<'_, Box<PatronusPhotoApp>>) -> usize {
     h.state().session.active().unwrap().history.past_len()
 }
 

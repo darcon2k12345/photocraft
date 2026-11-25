@@ -1,11 +1,11 @@
-//! Layer style libraries (`.asl`) ⇄ PhotoCraft styles.
+//! Layer style libraries (`.asl`) ⇄ Patronus Photo styles.
 //!
 //! The container is parsed by [`craft_psd::asl`]. Each style's `Lefx` is the same effects
 //! tree as a layer's `lfx2` block ([`crate::effects_map`]); `blendOptions` ("Include Layer
 //! Blending Options") carries the blend mode, opacity and fill opacity; the file's patterns feed
 //! the styles' Pattern Overlays, pattern strokes and bevel textures.
 //!
-//! What PhotoCraft doesn't model (an effect kind it doesn't know, advanced blending keys, an
+//! What Patronus Photo doesn't model (an effect kind it doesn't know, advanced blending keys, an
 //! effects scale other than 100 %) is left out with a warning naming the style, and the rest of
 //! the file still imports.
 
@@ -13,14 +13,14 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 
 use craft_psd::asl::{self, AslFile};
 use craft_psd::descriptor::{Descriptor, Id, Value};
-use photocraft_color::BlendMode;
-use photocraft_doc::{Effect, FxPaint, Pattern};
+use patronusphoto_color::BlendMode;
+use patronusphoto_doc::{Effect, FxPaint, Pattern};
 
 use crate::blocks::{enum_of, get_desc, num};
 use crate::effects_map::{blend_from_id, blend_value, effects_descriptor, effects_from_descriptor, is_known_effects_key};
 use crate::pattern_map::{from_psd, to_psd_patterns};
 
-/// One style as PhotoCraft keeps it.
+/// One style as Patronus Photo keeps it.
 #[derive(Clone, Debug, PartialEq)]
 pub struct AslStyle {
     /// Unique within the file (empty names get "Style N", repeats get "Name 2").
@@ -209,9 +209,9 @@ pub fn write_asl(styles: &[AslStyle], patterns: &[Pattern]) -> Result<Vec<u8>, S
 mod tests {
     use super::*;
     use craft_psd::descriptor::UnicodeString;
-    use photocraft_color::{Color, ColorMode, PixelFormat, SampleType};
-    use photocraft_doc::{BevelTexture, FxCommon, StrokePosition};
-    use photocraft_raster::Surface;
+    use patronusphoto_color::{Color, ColorMode, PixelFormat, SampleType};
+    use patronusphoto_doc::{BevelTexture, FxCommon, StrokePosition};
+    use patronusphoto_raster::Surface;
 
     fn pattern(id: &str, s: SampleType) -> Pattern {
         let fmt = PixelFormat::new(ColorMode::Rgb, s, true);

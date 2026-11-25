@@ -8,7 +8,7 @@
 use craft::ui::dialog::{PromptAnswer, PromptChoice, StandardPrompt};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// Notice title when the device was lost.
 pub const LOST_MESSAGE: &str = "GPU device was lost; using the CPU renderer.";
@@ -17,8 +17,8 @@ pub const ERROR_MESSAGE: &str = "GPU error; using the CPU renderer.";
 /// Frames after which startup counts as done even if a document never drew.
 const STARTED_MAX_FRAMES: u64 = 120;
 
-/// Hook run once the app has rendered its first frames (see [`PhotocraftApp::on_started`]).
-pub type StartedHook = Box<dyn FnOnce(&mut PhotocraftApp)>;
+/// Hook run once the app has rendered its first frames (see [`PatronusPhotoApp::on_started`]).
+pub type StartedHook = Box<dyn FnOnce(&mut PatronusPhotoApp)>;
 
 /// Out-of-memory errors after which the GPU canvas is rebuilt by itself; past them the CPU
 /// renderer stays until the user chooses Retry GPU, so a document that never fits doesn't rebuild
@@ -29,7 +29,7 @@ pub const OOM_AUTO_RETRIES: u32 = 3;
 /// out-of-memory error on a device that still works is not the end of the GPU for the session
 /// (#6564): the dropped canvas freed its memory, so a new one is built at once and the views
 /// redraw through it, up to [`OOM_AUTO_RETRIES`] times.
-pub fn check(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub fn check(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     if let Some(fault) = app.gpu.as_ref().and_then(|g| g.fault()) {
         drop_canvas(app, &fault);
         let mut rebuilt = false;
@@ -69,7 +69,7 @@ pub fn check(app: &mut PhotocraftApp, ctx: &egui::Context) {
 /// writes, and closes the app without asking once all of them are saved. The next launch reopens
 /// the documents. If a write fails (a full disk, say) the app stays open with the documents in
 /// memory and tries again every [`RECOVERY_RETRY_SECS`]: closing would lose them.
-pub fn check_window(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub fn check_window(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     let Some((device, health)) = app.window_device.as_ref() else { return };
     // A loss while the app sat idle or the PC slept is noticed here, before the next frame.
     health.probe(device);
@@ -113,7 +113,7 @@ pub const RECOVERY_RETRY_SECS: f64 = 2.0;
 /// Write every document with unsaved changes to crash recovery, whatever the autosave timer and
 /// preference, and wait until the writes finished (see `Services::flush_autosaves`). `Ok` only when
 /// each of them is known to be on disk.
-fn save_for_recovery(app: &mut PhotocraftApp) -> Result<(), String> {
+fn save_for_recovery(app: &mut PatronusPhotoApp) -> Result<(), String> {
     let jobs: Vec<_> = app.session.documents().iter().filter(|d| d.is_dirty()).map(|d| (d.doc.clone(), d.revision, d.path.clone())).collect();
     if jobs.is_empty() {
         return Ok(());
@@ -153,7 +153,7 @@ fn save_for_recovery(app: &mut PhotocraftApp) -> Result<(), String> {
 
 /// Drop the GPU canvas after `fault`: free its resources, send every view through the CPU
 /// path, record why, and tell the user. Documents are untouched.
-pub fn fall_back(app: &mut PhotocraftApp, fault: &photocraft_gpu::Fault) {
+pub fn fall_back(app: &mut PatronusPhotoApp, fault: &patronusphoto_gpu::Fault) {
     if drop_canvas(app, fault) {
         queue_fallback_notice(app, fault.to_string());
     }
@@ -161,7 +161,7 @@ pub fn fall_back(app: &mut PhotocraftApp, fault: &photocraft_gpu::Fault) {
 
 /// Everything [`fall_back`] does except telling the user, so [`check`] can rebuild the canvas
 /// without showing a prompt. Returns whether there was a GPU canvas to drop.
-fn drop_canvas(app: &mut PhotocraftApp, fault: &photocraft_gpu::Fault) -> bool {
+fn drop_canvas(app: &mut PatronusPhotoApp, fault: &patronusphoto_gpu::Fault) -> bool {
     let Some(gpu) = app.gpu.take() else { return false };
     // The GPU canvas is gone (that's this error); the switch to the CPU is `render_path`'s line.
     log::error!("{fault}; GPU canvas dropped");
@@ -186,13 +186,13 @@ fn drop_canvas(app: &mut PhotocraftApp, fault: &photocraft_gpu::Fault) -> bool {
 }
 
 /// English diagnostics for issue reports (Copy and the control API), independent of UI language.
-pub fn system_info(app: &PhotocraftApp) -> Vec<String> {
+pub fn system_info(app: &PatronusPhotoApp) -> Vec<String> {
     crate::i18n::with_language(crate::i18n::Lang::EN, || system_info_ui(app))
 }
 
 /// Help › System Info's on-screen text: version, platform and the graphics state.
-pub fn system_info_ui(app: &PhotocraftApp) -> Vec<String> {
-    let mut v = vec![format!("PhotoCraft {}", photocraft_engine::build_info::long_version()), {
+pub fn system_info_ui(app: &PatronusPhotoApp) -> Vec<String> {
+    let mut v = vec![format!("Patronus Photo {}", patronusphoto_engine::build_info::long_version()), {
         let template = "Platform: {os} {arch}";
         crate::i18n::fmt(tl!(template), &[("os", std::env::consts::OS), ("arch", std::env::consts::ARCH)])
     }];
@@ -202,9 +202,9 @@ pub fn system_info_ui(app: &PhotocraftApp) -> Vec<String> {
 }
 
 /// The `help.systemInfo` result: the same facts as JSON.
-pub fn system_info_json(app: &PhotocraftApp) -> serde_json::Value {
+pub fn system_info_json(app: &PatronusPhotoApp) -> serde_json::Value {
     json!({
-        "version": photocraft_engine::build_info::long_version(),
+        "version": patronusphoto_engine::build_info::long_version(),
         "os": std::env::consts::OS,
         "arch": std::env::consts::ARCH,
         "gpu": app.perf.gpu_info,
@@ -218,12 +218,12 @@ pub fn system_info_json(app: &PhotocraftApp) -> serde_json::Value {
 struct GpuFallback;
 
 /// The Switched to CPU prompt for `reason`. Escape keeps the CPU.
-fn prompt(app: &PhotocraftApp, reason: &str) -> StandardPrompt {
+fn prompt(app: &PatronusPhotoApp, reason: &str) -> StandardPrompt {
     let retry_line =
         if can_retry_now(app) { tl!("Retry GPU tries the graphics processor again now.") } else { tl!("Retry GPU requires a restart. Save your work first.") };
     StandardPrompt::custom(tl!("GPU acceleration could not continue. Your documents are unchanged.").to_string())
         .title(tl!("Switched to CPU rendering").to_string())
-        .paragraph(tl!("PhotoCraft is using the CPU image compositor. The window may still use your graphics adapter.").to_string())
+        .paragraph(tl!("Patronus Photo is using the CPU image compositor. The window may still use your graphics adapter.").to_string())
         .details(tl!("Details").to_string(), reason.to_owned())
         .paragraph(retry_line.to_string())
         .button(PromptChoice::Proceed, tl!("Keep Using CPU").to_string())
@@ -233,7 +233,7 @@ fn prompt(app: &PhotocraftApp, reason: &str) -> StandardPrompt {
 }
 
 /// Record the recovery warning for startup and runtime failures and open its prompt.
-pub fn queue_fallback_notice(app: &mut PhotocraftApp, reason: impl Into<String>) {
+pub fn queue_fallback_notice(app: &mut PatronusPhotoApp, reason: impl Into<String>) {
     let reason = reason.into();
     let prompt = prompt(app, &reason);
     // A prompt of another kind already open keeps the input; `gpu_fallback_notice` stays set for the inspector.
@@ -244,7 +244,7 @@ pub fn queue_fallback_notice(app: &mut PhotocraftApp, reason: impl Into<String>)
 /// A `PROMPTS` row: the answer of the Switched to CPU prompt. Keep Using CPU (and Escape) stores
 /// the CPU mode; Retry GPU stores the GPU mode and rebuilds the canvas when the device allows. A
 /// failed save reports the error and opens the prompt again, since the reason is still set.
-pub fn answer(app: &mut PhotocraftApp, ctx: &egui::Context, answer: &mut PromptAnswer) -> bool {
+pub fn answer(app: &mut PatronusPhotoApp, ctx: &egui::Context, answer: &mut PromptAnswer) -> bool {
     if answer.take_tag::<GpuFallback>().is_none() {
         return false;
     }
@@ -265,13 +265,13 @@ pub fn answer(app: &mut PhotocraftApp, ctx: &egui::Context, answer: &mut PromptA
 /// Whether Retry GPU can build a new GPU canvas now: the canvas was dropped after an error (out
 /// of memory, validation) on a device that still works. After a loss, or a GPU start that
 /// failed, only a restart can try the GPU again.
-fn can_retry_now(app: &PhotocraftApp) -> bool {
+fn can_retry_now(app: &PatronusPhotoApp) -> bool {
     app.gpu_render_state.is_some() && app.gpu_fault.as_ref().is_some_and(|f| !f.is_lost())
 }
 
 /// Build a new GPU canvas on the device the dropped one used, with a fresh health flag, and send
 /// the views back through it (#6577). Returns whether the canvas is active again.
-fn retry_now(app: &mut PhotocraftApp) -> bool {
+fn retry_now(app: &mut PatronusPhotoApp) -> bool {
     let Some(rs) = app.gpu_render_state.clone() else { return false };
     app.set_wgpu(rs);
     if !app.gpu_active() {
@@ -291,7 +291,7 @@ fn retry_now(app: &mut PhotocraftApp) -> bool {
 
 /// Store the next-launch choice without restarting or risking unsaved documents. Retry GPU after
 /// an error on a working device also builds a new GPU canvas at once (see [`retry_now`]).
-fn choose_recovery(app: &mut PhotocraftApp, retry: bool) -> Result<(), String> {
+fn choose_recovery(app: &mut PatronusPhotoApp, retry: bool) -> Result<(), String> {
     app.run(
         "prefs.set",
         json!({"values": {
@@ -309,7 +309,7 @@ fn choose_recovery(app: &mut PhotocraftApp, retry: bool) -> Result<(), String> {
         crate::notices::post(
             app,
             "GPU retry scheduled",
-            vec!["Save your work and restart PhotoCraft to retry GPU acceleration. CPU rendering remains active for this session.".into()],
+            vec!["Save your work and restart Patronus Photo to retry GPU acceleration. CPU rendering remains active for this session.".into()],
             craft::theme::variant::Tone::Neutral,
             None,
         );
@@ -326,7 +326,7 @@ mod tests {
         if !crate::i18n::needs_catalogs() {
             return;
         }
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.perf.gpu_info.adapter = "Test GPU".into();
         app.perf.gpu_info.preference = "auto".into();
         let english = crate::i18n::with_language(crate::i18n::Lang::EN, || system_info(&app));
@@ -351,7 +351,7 @@ mod tests {
         if !crate::i18n::needs_catalogs() {
             return;
         }
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         // Hardware names are opaque even when they happen to match a lookup key.
         app.perf.gpu_info.adapter = "auto".into();
         crate::i18n::with_language(crate::i18n::Lang::from_code("cs").unwrap(), || {
@@ -371,11 +371,11 @@ mod tests {
 
     /// An app whose settings live in `files` (a scratch location), so a second launch reads what
     /// the first one stored.
-    fn launch(files: &std::sync::Arc<craft::settings::testing::MemoryFiles>) -> Box<PhotocraftApp> {
-        let scratch = std::env::temp_dir().join("photocraft-gpu-status");
+    fn launch(files: &std::sync::Arc<craft::settings::testing::MemoryFiles>) -> Box<PatronusPhotoApp> {
+        let scratch = std::env::temp_dir().join("patronusphoto-gpu-status");
         let options = craft::settings::OpenOptions::new(craft::settings::Location::Dir(scratch)).files(files.clone());
         let services = crate::Services { settings: Some(craft::settings::SettingsStore::open_with(options)), ..Default::default() };
-        PhotocraftApp::new(photocraft_engine::Session::new(), services)
+        PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services)
     }
 
     #[test]
@@ -415,17 +415,17 @@ mod tests {
         /// stays until Retry GPU. Other errors and a loss still fall back at once.
         #[test]
         fn out_of_memory_rebuilds_the_gpu_canvas_by_itself() {
-            let _gpu = photocraft_testkit::gpu_lock();
+            let _gpu = patronusphoto_testkit::gpu_lock();
             let rs = std::panic::catch_unwind(|| egui_kittest::wgpu::create_render_state(crate::gpu_canvas::wgpu_setup(), Default::default()));
             let Ok(rs) = rs else {
                 eprintln!("skipping: no GPU adapter");
                 return;
             };
-            let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+            let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
             app.set_wgpu(rs);
             app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
             let ctx = app.ctx().clone();
-            let oom = || photocraft_gpu::Fault::Error("Out of Memory".into());
+            let oom = || patronusphoto_gpu::Fault::Error("Out of Memory".into());
             for n in 1..=OOM_AUTO_RETRIES {
                 app.gpu_health().unwrap().mark(oom());
                 check(&mut app, &ctx);
@@ -443,10 +443,10 @@ mod tests {
 
             // A validation error is not retried by itself.
             let rs = egui_kittest::wgpu::create_render_state(crate::gpu_canvas::wgpu_setup(), Default::default());
-            let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+            let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
             app.set_wgpu(rs);
             app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
-            app.gpu_health().unwrap().mark(photocraft_gpu::Fault::Error("Validation Error".into()));
+            app.gpu_health().unwrap().mark(patronusphoto_gpu::Fault::Error("Validation Error".into()));
             check(&mut app, &ctx);
             assert!(!app.gpu_active() && app.ui.gpu_fallback_notice.is_some());
         }
@@ -456,7 +456,7 @@ mod tests {
         /// the device can't be used again, so the retry still waits for the next launch.
         #[test]
         fn retry_gpu_after_an_error_rebuilds_the_canvas_without_a_restart() {
-            let _gpu = photocraft_testkit::gpu_lock();
+            let _gpu = patronusphoto_testkit::gpu_lock();
             let rs = std::panic::catch_unwind(|| egui_kittest::wgpu::create_render_state(crate::gpu_canvas::wgpu_setup(), Default::default()));
             let Ok(rs) = rs else {
                 eprintln!("skipping: no GPU adapter");
@@ -468,7 +468,7 @@ mod tests {
             let ctx = app.ctx().clone();
             // An error on a live device (one not retried by itself, see #6564): Retry GPU rebuilds
             // the canvas now.
-            app.gpu_health().unwrap().mark(photocraft_gpu::Fault::Error("Validation Error".into()));
+            app.gpu_health().unwrap().mark(patronusphoto_gpu::Fault::Error("Validation Error".into()));
             check(&mut app, &ctx);
             assert!(!app.gpu_active() && app.ui.gpu_fallback_notice.is_some());
             assert!(can_retry_now(&app));
@@ -481,7 +481,7 @@ mod tests {
             assert!(app.ui.gpu_fallback_notice.is_none() && app.ui.notices.is_empty(), "no restart notice");
             assert_eq!(app.session.documents().len(), 1, "the document stayed open");
             // A loss: the device can't be reused, so the retry is scheduled for the next launch.
-            app.gpu_health().unwrap().mark(photocraft_gpu::Fault::Lost("simulated".into()));
+            app.gpu_health().unwrap().mark(patronusphoto_gpu::Fault::Lost("simulated".into()));
             check(&mut app, &ctx);
             assert!(!can_retry_now(&app));
             choose_recovery(&mut app, true).unwrap();

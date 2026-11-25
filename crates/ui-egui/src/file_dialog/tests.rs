@@ -13,16 +13,16 @@ type Written = Rc<RefCell<Vec<String>>>;
 
 /// An app with an untitled document, whose file dialogs stay open until the test answers them
 /// (`answer`), and whose writer records the paths it wrote.
-fn app() -> (Box<PhotocraftApp>, Arc<ScriptedFiles>, Written) {
+fn app() -> (Box<PatronusPhotoApp>, Arc<ScriptedFiles>, Written) {
     app_with(Arc::new(ScriptedFiles::held()))
 }
 
 /// [`app`] over `files`, for a test whose dialogs answer themselves.
-fn app_with(files: Arc<ScriptedFiles>) -> (Box<PhotocraftApp>, Arc<ScriptedFiles>, Written) {
+fn app_with(files: Arc<ScriptedFiles>) -> (Box<PatronusPhotoApp>, Arc<ScriptedFiles>, Written) {
     let written: Written = Default::default();
     let w = written.clone();
     let services = Services {
-        export: Some(Box::new(|_: &photocraft_doc::Document, _: &str, _: &crate::ExportSettings| Ok((b"out".to_vec(), Vec::new())))),
+        export: Some(Box::new(|_: &patronusphoto_doc::Document, _: &str, _: &crate::ExportSettings| Ok((b"out".to_vec(), Vec::new())))),
         write: Some(Box::new(move |path: &str, _: &[u8]| {
             w.borrow_mut().push(path.to_string());
             Ok(())
@@ -30,7 +30,7 @@ fn app_with(files: Arc<ScriptedFiles>) -> (Box<PhotocraftApp>, Arc<ScriptedFiles
         files: Some(files.clone()),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     app.run("file.new", json!({"width": 4, "height": 4})).unwrap();
     (app, files, written)
 }
@@ -89,10 +89,10 @@ fn pdn_save_requests_a_native_copy_without_overwriting_the_source() {
 
 /// A real flat JPEG import, optionally edited to contain another layer. A filename without a
 /// path is the web/download case; desktop opens also retain their source location.
-fn jpeg_app(path: Option<&str>, layered: bool) -> (Box<PhotocraftApp>, Arc<ScriptedFiles>, Written) {
+fn jpeg_app(path: Option<&str>, layered: bool) -> (Box<PatronusPhotoApp>, Arc<ScriptedFiles>, Written) {
     let (mut app, files, written) = app();
-    let bytes = photocraft_io::export(&app.session.active().unwrap().doc, "My image.JPEG", &Default::default()).unwrap().bytes;
-    let doc = photocraft_io::import("My image.JPEG", &bytes).unwrap().document;
+    let bytes = patronusphoto_io::export(&app.session.active().unwrap().doc, "My image.JPEG", &Default::default()).unwrap().bytes;
+    let doc = patronusphoto_io::import("My image.JPEG", &bytes).unwrap().document;
     app.session.add_document(doc, path.map(str::to_string));
     if layered {
         app.run("layer.new.layer", json!({})).unwrap();
@@ -103,38 +103,38 @@ fn jpeg_app(path: Option<&str>, layered: bool) -> (Box<PhotocraftApp>, Arc<Scrip
 // PLAN: assumed dialogs-w59: `app.parked_save: Option<ParkedSave>` with `path`, `copy` and `record` as the old `jpeg_options` had, and JPEG Options hosted as `format_prompts::HostedFormatOptions` with `quality` and `format` fields.
 /// What the open JPEG Options asks about: the file, whether the save is a copy, and the command
 /// it records as.
-fn parked(app: &PhotocraftApp) -> Option<(String, bool, &'static str)> {
+fn parked(app: &PatronusPhotoApp) -> Option<(String, bool, &'static str)> {
     app.parked_save.as_ref().map(|p| (p.path.clone(), p.copy, p.record))
 }
 
 /// The id of the open JPEG Options dialog.
-fn options_dialog(app: &PhotocraftApp) -> Option<DialogId> {
+fn options_dialog(app: &PatronusPhotoApp) -> Option<DialogId> {
     let host = &app.framework.dialogs;
     host.stack().ids().find(|id| host.get_by_id::<craft::ui::patterns::form_dialogs::HostedFormatOptions>(*id).is_some())
 }
 
 /// The value of a field of the open JPEG Options dialog.
-fn option_field(app: &PhotocraftApp, field: &str) -> Value {
+fn option_field(app: &PatronusPhotoApp, field: &str) -> Value {
     let id = options_dialog(app).expect("JPEG Options is open");
     let dialog = app.framework.dialogs.open_dialogs().into_iter().find(|d| d.id == id).expect("listed");
     dialog.fields.expect("the dialog reports its fields")[field].clone()
 }
 
 /// The user sets a field of the open JPEG Options dialog.
-fn set_option(app: &mut PhotocraftApp, field: &str, value: Value) {
+fn set_option(app: &mut PatronusPhotoApp, field: &str, value: Value) {
     let ctx = app.ctx().clone();
     let id = options_dialog(app).expect("JPEG Options is open");
     app.framework.dialogs.set_json_field(&ctx, id, field, value).unwrap_or_else(|e| panic!("JPEG Options takes `{field}`: {e}"));
 }
 
 /// The user answers OK in the open JPEG Options.
-fn confirm_options(app: &mut PhotocraftApp) {
+fn confirm_options(app: &mut PatronusPhotoApp) {
     let ctx = app.ctx().clone();
     crate::format_prompts::confirm(app, &ctx);
 }
 
 /// The user cancels the open JPEG Options: the save it held is dropped.
-fn cancel_options(app: &mut PhotocraftApp) {
+fn cancel_options(app: &mut PatronusPhotoApp) {
     let ctx = app.ctx().clone();
     let id = options_dialog(app).expect("JPEG Options is open");
     app.framework.dialogs.cancel_by_id(&ctx, id);
@@ -230,8 +230,13 @@ fn a_jpeg_with_transparency_is_offered_as_png() {
 /// A Grayscale layer without an alpha channel is opaque, never read past its colour samples.
 #[test]
 fn a_layer_without_alpha_is_opaque() {
-    let doc = photocraft_doc::Document::new("gray", photocraft_geom::Size::new(3, 3), photocraft_doc::ColorMode::Grayscale, photocraft_color::SampleType::U8);
-    let layer = photocraft_doc::Layer::raster("gray", photocraft_color::PixelFormat::GRAY8);
+    let doc = patronusphoto_doc::Document::new(
+        "gray",
+        patronusphoto_geom::Size::new(3, 3),
+        patronusphoto_doc::ColorMode::Grayscale,
+        patronusphoto_color::SampleType::U8,
+    );
+    let layer = patronusphoto_doc::Layer::raster("gray", patronusphoto_color::PixelFormat::GRAY8);
     assert!(crate::opaque_layer(&doc, &layer));
 }
 
@@ -239,8 +244,8 @@ fn a_layer_without_alpha_is_opaque() {
 fn transparent_png_keeps_its_format_until_its_lone_layer_becomes_smart() {
     let (mut app, files, written) = app();
     std::sync::Arc::make_mut(app.session.active_mut().unwrap().doc_mut()).layers[0].surface_mut().unwrap().write_pixel(0, 0, &[1.0, 0.0, 0.0, 0.0]);
-    let bytes = photocraft_io::export(&app.session.active().unwrap().doc, "transparent.PNG", &Default::default()).unwrap().bytes;
-    let doc = photocraft_io::import("transparent.PNG", &bytes).unwrap().document;
+    let bytes = patronusphoto_io::export(&app.session.active().unwrap().doc, "transparent.PNG", &Default::default()).unwrap().bytes;
+    let doc = patronusphoto_io::import("transparent.PNG", &bytes).unwrap().document;
     assert_eq!(doc.layers.len(), 1);
     assert!(!doc.layers[0].locks.transparency, "transparent PNG imports as an unlocked raster layer");
     assert_eq!(doc.layers[0].surface().unwrap().pixel(0, 0)[3], 0.0);
@@ -252,7 +257,7 @@ fn transparent_png_keeps_its_format_until_its_lone_layer_becomes_smart() {
     app.poll_file_dialog();
     app.run("layer.smartObjects.convertToSmartObject", json!({})).unwrap();
     assert_eq!(app.session.active().unwrap().doc.layers.len(), 1);
-    assert!(matches!(app.session.active().unwrap().doc.layers[0].content, photocraft_doc::LayerContent::Smart(_)));
+    assert!(matches!(app.session.active().unwrap().doc.layers[0].content, patronusphoto_doc::LayerContent::Smart(_)));
     menus::invoke(&mut app, &ctx, "file.saveAs", json!({})).unwrap();
     assert_eq!(asked_save(&files), "/pics/transparent.psd");
     assert!(written.borrow().is_empty());
@@ -324,7 +329,7 @@ fn plain_save_of_a_flat_jpeg_records_and_replays_a_changed_quality() {
     let (mut app, files, written) = jpeg_app(Some("/pics/photo.jpg"), false);
     let qualities: Rc<RefCell<Vec<Option<u8>>>> = Rc::default();
     let q = qualities.clone();
-    app.services.export = Some(Box::new(move |_: &photocraft_doc::Document, _: &str, s: &crate::ExportSettings| {
+    app.services.export = Some(Box::new(move |_: &patronusphoto_doc::Document, _: &str, s: &crate::ExportSettings| {
         q.borrow_mut().push(s.jpeg_quality);
         Ok((b"out".to_vec(), Vec::new()))
     }));
@@ -343,8 +348,8 @@ fn plain_save_of_a_flat_jpeg_records_and_replays_a_changed_quality() {
     app.run("actions.stop", json!({})).unwrap();
     assert_eq!(app.session.actions.list.action(0).unwrap().steps, [ActionStep::new("file.save", json!({"quality": 3, "jpegFormat": "progressive"}))]);
     // Played on another flat JPEG: written over itself at quality 3, with no dialog or prompt.
-    let bytes = photocraft_io::export(&app.session.active().unwrap().doc, "other.jpg", &Default::default()).unwrap().bytes;
-    let index = app.session.add_document(photocraft_io::import("other.jpg", &bytes).unwrap().document, Some("/pics/other.jpg".into()));
+    let bytes = patronusphoto_io::export(&app.session.active().unwrap().doc, "other.jpg", &Default::default()).unwrap().bytes;
+    let index = app.session.add_document(patronusphoto_io::import("other.jpg", &bytes).unwrap().document, Some("/pics/other.jpg".into()));
     app.session.set_active(index);
     written.borrow_mut().clear();
     let played = app.run("actions.play", json!({"action": 0})).unwrap();
@@ -352,7 +357,7 @@ fn plain_save_of_a_flat_jpeg_records_and_replays_a_changed_quality() {
     assert!(parked(&app).is_none(), "playback does not ask");
     assert_eq!(files.open(), 0, "no Save dialog");
     assert_eq!(*written.borrow(), ["/pics/other.jpg"]);
-    assert_eq!(qualities.borrow().last().copied().flatten(), Some(photocraft_engine::file_cmds::jpeg_quality(3.0)));
+    assert_eq!(qualities.borrow().last().copied().flatten(), Some(patronusphoto_engine::file_cmds::jpeg_quality(3.0)));
 }
 
 #[test]
@@ -360,13 +365,13 @@ fn menu_place_starts_transform_for_each_chosen_image() {
     for command in ["file.placeEmbedded", "file.placeLinked"] {
         let (mut app, files, _) = app();
         app.run("edit.fill", json!({"color": "#ff0000"})).unwrap();
-        let bytes = photocraft_io::export(&app.session.active().unwrap().doc, "source.png", &Default::default()).unwrap().bytes;
+        let bytes = patronusphoto_io::export(&app.session.active().unwrap().doc, "source.png", &Default::default()).unwrap().bytes;
         let ctx = egui::Context::default();
         let initial_layers = app.session.active().unwrap().doc.layer_count();
         let initial_history = app.session.active().unwrap().history.past_len();
         let linked_dir = (command == "file.placeLinked").then(|| {
             let unique = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
-            let dir = std::env::temp_dir().join(format!("photocraft-menu-place-{}-{unique}", std::process::id()));
+            let dir = std::env::temp_dir().join(format!("patronusphoto-menu-place-{}-{unique}", std::process::id()));
             std::fs::create_dir(&dir).unwrap();
             dir
         });
@@ -388,7 +393,7 @@ fn menu_place_starts_transform_for_each_chosen_image() {
             assert_eq!(transform.made, Some(crate::state::MadeLayer::Place));
             if index == 0 {
                 let layer = st.active_layer.unwrap();
-                let photocraft_doc::LayerContent::Smart(smart) = &st.doc.layer(layer).unwrap().content else { panic!("placed Smart Object") };
+                let patronusphoto_doc::LayerContent::Smart(smart) = &st.doc.layer(layer).unwrap().content else { panic!("placed Smart Object") };
                 let original_scale = smart.transform.m[0];
                 // PLAN: assumed tools-w2: the open session is `app.ui.transform.session`, whose box `state()` is edited through `apply(TransformEdit::Box(..), now)`.
                 let transform = app.ui.transform.as_mut().unwrap();
@@ -404,7 +409,7 @@ fn menu_place_starts_transform_for_each_chosen_image() {
                 crate::transform_tool::commit(&mut app);
                 assert!(app.ui.transform.is_none(), "resizing the placed image must commit");
                 let st = app.session.active().unwrap();
-                let photocraft_doc::LayerContent::Smart(smart) = &st.doc.layer(layer).unwrap().content else { panic!("placed Smart Object") };
+                let patronusphoto_doc::LayerContent::Smart(smart) = &st.doc.layer(layer).unwrap().content else { panic!("placed Smart Object") };
                 assert!((smart.transform.m[0] - original_scale * 2.0).abs() < 1e-8, "placement width must double");
                 assert_eq!(app.session.active().unwrap().history.past_len(), initial_history + 1);
             } else {
@@ -428,7 +433,7 @@ fn menu_place_starts_transform_for_each_chosen_image() {
 fn menu_place_runs_in_the_background_and_starts_transform_when_it_lands() {
     let (mut app, files, _) = app();
     app.run("edit.fill", json!({"color": "#ff0000"})).unwrap();
-    let bytes = photocraft_io::export(&app.session.active().unwrap().doc, "source.png", &Default::default()).unwrap().bytes;
+    let bytes = patronusphoto_io::export(&app.session.active().unwrap().doc, "source.png", &Default::default()).unwrap().bytes;
     app.background_jobs = true;
     let ctx = egui::Context::default();
     let layers = app.session.active().unwrap().doc.layer_count();
@@ -478,7 +483,7 @@ fn menu_place_preserves_an_unfinished_transform() {
         let (mut app, files, _) = app();
         app.run("edit.fill", json!({"color": "#ff0000"})).unwrap();
         app.run("layer.new.layerFromBackground", json!({})).unwrap();
-        let bytes = photocraft_io::export(&app.session.active().unwrap().doc, "source.png", &Default::default()).unwrap().bytes;
+        let bytes = patronusphoto_io::export(&app.session.active().unwrap().doc, "source.png", &Default::default()).unwrap().bytes;
         let ctx = egui::Context::default();
         if !start_before_picker {
             menus::invoke(&mut app, &ctx, "file.placeEmbedded", json!({})).unwrap();
@@ -570,7 +575,7 @@ fn scripts_browse_extendscript_picks_report_the_error() {
 fn save_and_export_dialogs_start_beside_the_document() {
     let (mut app, files, _) = app();
     let ctx = app.ctx().clone();
-    let dir = std::env::temp_dir().join("PhotoCraft projects").join("图像");
+    let dir = std::env::temp_dir().join("Patronus Photo projects").join("图像");
     let source = dir.join("original.psd");
     app.session.active_mut().unwrap().path = Some(source.to_string_lossy().into_owned());
     for command in ["file.saveAs", "file.export.exportAs", "file.export.saveForWebLegacy"] {
@@ -743,24 +748,24 @@ fn an_answer_of_the_wrong_kind_is_an_error_not_a_crash() {
 }
 
 /// The app with a painted layer converted to a smart object and a duplicate instance of it.
-fn smart_app() -> (Box<PhotocraftApp>, Arc<ScriptedFiles>, Written, [u64; 2]) {
+fn smart_app() -> (Box<PatronusPhotoApp>, Arc<ScriptedFiles>, Written, [u64; 2]) {
     let (mut app, files, written) = app();
     app.run("layer.new.layer", json!({})).unwrap();
     app.session
         .edit("paint", |doc, active| {
-            doc.layer_mut(active.unwrap()).unwrap().surface_mut().unwrap().fill_rect(photocraft_geom::Rect::new(0, 0, 4, 4), &[0.0, 0.0, 1.0, 1.0]);
+            doc.layer_mut(active.unwrap()).unwrap().surface_mut().unwrap().fill_rect(patronusphoto_geom::Rect::new(0, 0, 4, 4), &[0.0, 0.0, 1.0, 1.0]);
             Ok(())
         })
         .unwrap();
     let a = app.run("layer.smartObjects.convertToSmartObject", json!({})).unwrap()["layer"].as_u64().unwrap();
     let b = app.run("layer.duplicate", json!({"layer": a})).unwrap()["layer"].as_u64().unwrap();
-    app.session.select_layer(photocraft_doc::LayerId(a)).unwrap();
+    app.session.select_layer(patronusphoto_doc::LayerId(a)).unwrap();
     (app, files, written, [a, b])
 }
 
-fn smart_source(app: &PhotocraftApp, id: u64) -> photocraft_doc::SmartSource {
-    match &app.session.active().unwrap().doc.layer(photocraft_doc::LayerId(id)).unwrap().content {
-        photocraft_doc::LayerContent::Smart(sm) => sm.source.clone(),
+fn smart_source(app: &PatronusPhotoApp, id: u64) -> patronusphoto_doc::SmartSource {
+    match &app.session.active().unwrap().doc.layer(patronusphoto_doc::LayerId(id)).unwrap().content {
+        patronusphoto_doc::LayerContent::Smart(sm) => sm.source.clone(),
         other => panic!("not a smart object: {}", other.kind_name()),
     }
 }
@@ -770,7 +775,7 @@ fn place_embedded_uses_the_single_file_picker_and_accepts_contents() {
     let (mut app, files, _) = app();
     let ctx = egui::Context::default();
     assert!(menus::is_enabled(&app, "file.placeEmbedded"));
-    let source = photocraft_io::export(&app.session.active().unwrap().doc, "source.png", &Default::default()).unwrap().bytes;
+    let source = patronusphoto_io::export(&app.session.active().unwrap().doc, "source.png", &Default::default()).unwrap().bytes;
     let layers_before = app.session.active().unwrap().doc.layers.len();
 
     // Cancel leaves the document alone and does not report an error.
@@ -793,8 +798,8 @@ fn place_embedded_uses_the_single_file_picker_and_accepts_contents() {
     assert_eq!(app.ui.transform.as_ref().and_then(|t| t.made), Some(crate::state::MadeLayer::Place));
     assert!(matches!(
         &layer.content,
-        photocraft_doc::LayerContent::Smart(sm)
-            if matches!(&sm.source, photocraft_doc::SmartSource::Embedded { file_name, .. } if file_name == "source.png")
+        patronusphoto_doc::LayerContent::Smart(sm)
+            if matches!(&sm.source, patronusphoto_doc::SmartSource::Embedded { file_name, .. } if file_name == "source.png")
     ));
 
     // Finish the successful placement before starting the next picker.
@@ -821,20 +826,20 @@ fn replace_contents_picks_a_file_for_every_instance() {
     app.poll_file_dialog();
     assert_eq!(ids.map(|id| smart_source(&app, id)), before);
     // A picked file (by contents, as on the web) replaces the contents of both instances.
-    let png = photocraft_io::export(&app.session.active().unwrap().doc, "png", &Default::default()).unwrap().bytes;
+    let png = patronusphoto_io::export(&app.session.active().unwrap().doc, "png", &Default::default()).unwrap().bytes;
     menus::invoke(&mut app, &ctx, "layer.smartObjects.replaceContents", json!({})).unwrap();
     answer(&files, Picked::Contents(vec![("art.png".into(), png)]));
     app.poll_file_dialog();
     assert!(!app.ui.status_error, "{}", app.ui.status);
     for id in ids {
-        assert!(matches!(smart_source(&app, id), photocraft_doc::SmartSource::Embedded { ref file_name, .. } if file_name == "art.png"));
+        assert!(matches!(smart_source(&app, id), patronusphoto_doc::SmartSource::Embedded { ref file_name, .. } if file_name == "art.png"));
     }
     // A file that isn't an image is an error, and the contents stay.
     menus::invoke(&mut app, &ctx, "layer.smartObjects.replaceContents", json!({})).unwrap();
     answer(&files, Picked::Contents(vec![("notes.png".into(), b"not an image".to_vec())]));
     app.poll_file_dialog();
     assert!(app.ui.status_error);
-    assert!(matches!(smart_source(&app, ids[1]), photocraft_doc::SmartSource::Embedded { ref file_name, .. } if file_name == "art.png"));
+    assert!(matches!(smart_source(&app, ids[1]), patronusphoto_doc::SmartSource::Embedded { ref file_name, .. } if file_name == "art.png"));
 }
 
 /// Layer › Smart Objects › Relink to File… (and the layer context menu item) asks for a file and
@@ -851,7 +856,7 @@ fn relink_to_file_picks_a_file_for_every_instance() {
     app.poll_file_dialog();
     assert_eq!(ids.map(|id| smart_source(&app, id)), before);
     // The web picker answers only a name and bytes: nothing to link to, so the contents stay.
-    let png = photocraft_io::export(&app.session.active().unwrap().doc, "png", &Default::default()).unwrap().bytes;
+    let png = patronusphoto_io::export(&app.session.active().unwrap().doc, "png", &Default::default()).unwrap().bytes;
     menus::invoke(&mut app, &ctx, "layer.smartObjects.relinkToFile", json!({})).unwrap();
     answer(&files, Picked::Contents(vec![("art.png".into(), png.clone())]));
     app.poll_file_dialog();
@@ -869,7 +874,7 @@ fn relink_to_file_picks_a_file_for_every_instance() {
     assert!(!app.ui.status_error, "{}", app.ui.status);
     std::fs::remove_dir_all(&dir).ok();
     for id in ids {
-        assert_eq!(smart_source(&app, id), photocraft_doc::SmartSource::Linked { path: path.clone() });
+        assert_eq!(smart_source(&app, id), patronusphoto_doc::SmartSource::Linked { path: path.clone() });
     }
 }
 
@@ -899,7 +904,7 @@ fn convert_to_linked_asks_where_to_write_the_contents() {
     assert!(std::fs::metadata(&path).is_ok_and(|m| m.len() > 0));
     std::fs::remove_dir_all(&dir).ok();
     for id in ids {
-        assert_eq!(smart_source(&app, id), photocraft_doc::SmartSource::Linked { path: path.clone() });
+        assert_eq!(smart_source(&app, id), patronusphoto_doc::SmartSource::Linked { path: path.clone() });
     }
 }
 
@@ -917,7 +922,7 @@ fn quick_export_selected_layers_writes_separate_pngs_with_one_prompt() {
     let capture = sources.clone();
     app.services.export = Some(Box::new(move |doc, path, _| {
         assert_eq!(doc.layers.len(), 1, "each PNG must contain just its source layer");
-        let png = photocraft_io::export(doc, path, &Default::default()).unwrap();
+        let png = patronusphoto_io::export(doc, path, &Default::default()).unwrap();
         assert!(png.bytes.starts_with(b"\x89PNG\r\n\x1a\n"));
         capture.borrow_mut().push(doc.name.clone());
         Ok((png.bytes, Vec::new()))
@@ -943,7 +948,7 @@ fn quick_export_selected_layers_writes_separate_pngs_with_one_prompt() {
 /// own file (a document opened from photo.png), and keeps writing beside a PSD without a prompt.
 #[test]
 fn same_folder_quick_export_asks_before_replacing_the_documents_own_file() {
-    let dir = std::env::temp_dir().join(format!("photocraft-quick-own-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("patronusphoto-quick-own-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let own = dir.join("photo.png").to_string_lossy().into_owned();
@@ -973,10 +978,10 @@ fn same_folder_quick_export_asks_before_replacing_the_documents_own_file() {
 /// asks for a name), and a notice says so. Documents bound to other files are left alone.
 #[test]
 fn saving_over_the_file_of_another_open_document_detaches_it() {
-    let dir = std::env::temp_dir().join(format!("photocraft-save-over-tab-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("patronusphoto-save-over-tab-{}", std::process::id()));
     let (a, d) = (dir.join("a.psd").to_string_lossy().into_owned(), dir.join("d.psd").to_string_lossy().into_owned());
     let (mut app, files, written) = app();
-    let saved_as = |app: &mut PhotocraftApp, path: &str| {
+    let saved_as = |app: &mut PatronusPhotoApp, path: &str| {
         let st = app.session.active_mut().unwrap();
         st.path = Some(path.to_string());
         st.saved_revision = st.revision;
@@ -1129,7 +1134,7 @@ fn render_video_menu_asks_for_directory_and_writes_frames_only_after_confirmatio
 type Disk = Rc<RefCell<std::collections::HashMap<String, u64>>>;
 
 /// Gives `app` file stamps from a fake disk that its own writes update too.
-fn on_disk(app: &mut PhotocraftApp) -> Disk {
+fn on_disk(app: &mut PatronusPhotoApp) -> Disk {
     let disk = Disk::default();
     let (read, wrote) = (disk.clone(), disk.clone());
     app.services.file_stamp = Some(Box::new(move |path| read.borrow().get(path).map(|&n| crate::FileStamp { len: n, modified: None })));
@@ -1147,7 +1152,7 @@ fn changed_by_another_app(disk: &Disk, path: &str) {
 }
 
 /// The changed-on-disk question of a Save, when one is open.
-fn disk_prompt(app: &PhotocraftApp) -> Option<DialogId> {
+fn disk_prompt(app: &PatronusPhotoApp) -> Option<DialogId> {
     crate::dialogs::alerts::prompt_tagged::<crate::disk_change_prompt::HeldSave>(app)
 }
 
@@ -1253,11 +1258,11 @@ type Qualities = Rc<RefCell<Vec<Option<u8>>>>;
 
 /// [`jpeg_app`] opened from `path` and edited, whose exporter records the JPEG quality of each
 /// save (#2223).
-fn flat_jpeg_app(path: &str) -> (Box<PhotocraftApp>, Arc<ScriptedFiles>, Written, Qualities) {
+fn flat_jpeg_app(path: &str) -> (Box<PatronusPhotoApp>, Arc<ScriptedFiles>, Written, Qualities) {
     let (mut app, files, written) = jpeg_app(Some(path), false);
     let qualities = Qualities::default();
     let q = qualities.clone();
-    app.services.export = Some(Box::new(move |_: &photocraft_doc::Document, _: &str, s: &crate::ExportSettings| {
+    app.services.export = Some(Box::new(move |_: &patronusphoto_doc::Document, _: &str, s: &crate::ExportSettings| {
         q.borrow_mut().push(s.jpeg_quality);
         Ok((b"out".to_vec(), Vec::new()))
     }));
@@ -1298,7 +1303,7 @@ fn save_asks_jpeg_options_then_writes_a_flat_jpeg_over_itself() {
     set_option(&mut app, "format", json!("progressive"));
     confirm_options(&mut app);
     assert_eq!(*written.borrow(), ["/pics/photo.jpg", "/pics/photo.jpg"]);
-    assert_eq!(qualities.borrow().last().copied().flatten(), Some(photocraft_engine::file_cmds::jpeg_quality(3.0)));
+    assert_eq!(qualities.borrow().last().copied().flatten(), Some(patronusphoto_engine::file_cmds::jpeg_quality(3.0)));
     assert_eq!(app.session.journal.last(), Some(&("file.save".to_string(), json!({"quality": 3, "jpegFormat": "progressive"}))));
     assert_eq!(app.session.active().unwrap().path.as_deref(), Some("/pics/photo.jpg"));
     // A script's `quality` answers it: no prompt.
@@ -1306,7 +1311,7 @@ fn save_asks_jpeg_options_then_writes_a_flat_jpeg_over_itself() {
     menus::invoke(&mut app, &ctx, "file.save", json!({"quality": 12})).unwrap();
     assert!(parked(&app).is_none());
     assert_eq!(written.borrow().len(), 3);
-    assert_eq!(qualities.borrow().last().copied().flatten(), Some(photocraft_engine::file_cmds::jpeg_quality(12.0)));
+    assert_eq!(qualities.borrow().last().copied().flatten(), Some(patronusphoto_engine::file_cmds::jpeg_quality(12.0)));
     // Once a layer is added, Save asks where to save a PSD instead (#2234).
     app.run("layer.new.layer", json!({})).unwrap();
     menus::invoke(&mut app, &ctx, "file.save", json!({})).unwrap();
@@ -1317,9 +1322,9 @@ fn save_asks_jpeg_options_then_writes_a_flat_jpeg_over_itself() {
 }
 
 /// Adds another flat JPEG, opened from `path`, and makes it active.
-fn add_flat_jpeg(app: &mut PhotocraftApp, path: &str) {
-    let bytes = photocraft_io::export(&app.session.active().unwrap().doc, "other.jpg", &Default::default()).unwrap().bytes;
-    let doc = photocraft_io::import("other.jpg", &bytes).unwrap().document;
+fn add_flat_jpeg(app: &mut PatronusPhotoApp, path: &str) {
+    let bytes = patronusphoto_io::export(&app.session.active().unwrap().doc, "other.jpg", &Default::default()).unwrap().bytes;
+    let doc = patronusphoto_io::import("other.jpg", &bytes).unwrap().document;
     let index = app.session.add_document(doc, Some(path.to_string()));
     app.session.set_active(index);
 }
@@ -1345,7 +1350,7 @@ fn flat_jpeg_saves_are_recorded_and_replay_over_the_open_file() {
     assert!(played.get("failed").is_none(), "{played}");
     assert!(parked(&app).is_none(), "playback does not ask");
     assert_eq!(*written.borrow(), ["/pics/other.jpg"]);
-    assert_eq!(qualities.borrow().last().copied().flatten(), Some(photocraft_engine::file_cmds::jpeg_quality(5.0)));
+    assert_eq!(qualities.borrow().last().copied().flatten(), Some(patronusphoto_engine::file_cmds::jpeg_quality(5.0)));
     assert!(files.requests().is_empty(), "no Save dialog");
 }
 
@@ -1399,7 +1404,7 @@ fn a_scripted_quality_survives_the_changed_on_disk_prompt() {
     let ctx = app.ctx().clone();
     let qualities: Rc<RefCell<Vec<Option<u8>>>> = Rc::default();
     let q = qualities.clone();
-    app.services.export = Some(Box::new(move |_: &photocraft_doc::Document, _: &str, s: &crate::ExportSettings| {
+    app.services.export = Some(Box::new(move |_: &patronusphoto_doc::Document, _: &str, s: &crate::ExportSettings| {
         q.borrow_mut().push(s.jpeg_quality);
         Ok((b"out".to_vec(), Vec::new()))
     }));
@@ -1416,7 +1421,7 @@ fn a_scripted_quality_survives_the_changed_on_disk_prompt() {
     crate::dialogs::confirm(&mut app, &ctx, id).unwrap();
     assert!(parked(&app).is_none(), "the script answered JPEG Options");
     assert_eq!(*written.borrow(), [path]);
-    assert_eq!(qualities.borrow().last().copied().flatten(), Some(photocraft_engine::file_cmds::jpeg_quality(5.0)));
+    assert_eq!(qualities.borrow().last().copied().flatten(), Some(patronusphoto_engine::file_cmds::jpeg_quality(5.0)));
     // Recorded as a plain Save keeping the answer, so a replay writes the file it's played on.
     assert_eq!(app.session.journal.last(), Some(&("file.save".to_string(), json!({"quality": 5}))));
 }
@@ -1475,7 +1480,7 @@ fn exports_start_in_the_last_exported_folder() {
     std::fs::create_dir(&renders).unwrap();
     let renders_text = renders.to_string_lossy().into_owned();
     app.session.active_mut().unwrap().path = Some("/proj/original.psd".into());
-    let remembered = |app: &PhotocraftApp| app.session.prefs().export.last_folder.clone();
+    let remembered = |app: &PatronusPhotoApp| app.session.prefs().export.last_folder.clone();
     // No export yet: beside the document. Cancelled, nothing is remembered.
     app.pick_export("a.png", |_, _| Ok(Value::Null)).unwrap();
     assert_eq!(asked_save(&files), joined("/proj", "a.png"));
@@ -1544,7 +1549,7 @@ fn a_picked_path_that_is_not_valid_unicode_is_an_error() {
     let good = std::env::temp_dir().join("ok.png");
     let (mut app, files, _) = app();
     let reached = Rc::new(Cell::new(false));
-    let ask_save = |app: &mut PhotocraftApp| {
+    let ask_save = |app: &mut PatronusPhotoApp| {
         let seen = reached.clone();
         app.pick_save("x.png", move |_, path| {
             seen.set(true);
@@ -1600,14 +1605,14 @@ fn save_types(suggested: &str) -> Vec<(String, Vec<String>)> {
     save_request("document", suggested).filters.into_iter().map(|f| (f.name, f.extensions)).collect()
 }
 
-/// Every flat format Save As offers is one PhotoCraft writes, and ICO is among them (#4357).
+/// Every flat format Save As offers is one Patronus Photo writes, and ICO is among them (#4357).
 #[test]
 fn save_as_offers_only_writable_formats_including_ico() {
-    // Layered formats, and PDF, are written by `photocraft-io`, not a codec.
+    // Layered formats, and PDF, are written by `patronusphoto-io`, not a codec.
     let layered = ["psd", "psb", "pcraft", "ora", "pdf"];
     for (name, exts) in filters::SAVE_FILTERS {
         for ext in exts.iter().filter(|e| !layered.contains(e)) {
-            let format = photocraft_codecs::from_extension(ext).unwrap_or_else(|| panic!("{name}: .{ext} is no known format"));
+            let format = patronusphoto_codecs::from_extension(ext).unwrap_or_else(|| panic!("{name}: .{ext} is no known format"));
             assert!(format.caps().write, "{name}: .{ext} can't be written");
         }
     }
@@ -1636,7 +1641,7 @@ fn save_as_offers_only_writable_formats_including_ico() {
     // stay absent from both Open filters rather than advertising an unavailable decoder.
     for (name, exts) in filters::SAVE_FILTERS {
         for ext in exts.iter().filter(|e| **e != "pdf") {
-            if photocraft_codecs::from_extension(ext).is_some_and(|format| !format.caps().read) {
+            if patronusphoto_codecs::from_extension(ext).is_some_and(|format| !format.caps().read) {
                 assert!(!filters::OPEN_EXTS.contains(ext), "{name}: export-only .{ext} must not appear in All Formats");
                 assert!(!filters::OPEN_FILTERS.iter().any(|(_, open)| open.contains(ext)), "{name}: export-only .{ext} must not appear in an Open type");
                 continue;
@@ -1648,19 +1653,19 @@ fn save_as_offers_only_writable_formats_including_ico() {
     assert_eq!(save_types("icon.ico")[0].0, "ICO", "an .ico name leads with its own type");
     // What Save As writes there: an icon up to 256×256, and a clear error past that.
     let doc = |side: u32| {
-        let mut s = photocraft_engine::Session::new();
+        let mut s = patronusphoto_engine::Session::new();
         s.execute("file.new", json!({"width": side, "height": side})).unwrap();
         s.active().unwrap().doc.clone()
     };
     let opts = Default::default();
-    let icon = photocraft_io::export(&doc(256), "icon.ico", &opts).unwrap();
+    let icon = patronusphoto_io::export(&doc(256), "icon.ico", &opts).unwrap();
     assert_eq!(icon.bytes[..4], [0, 0, 1, 0], "an ICO header");
     // And what the Netpbm and Radiance rows write.
-    let pnm = photocraft_io::export(&doc(4), "x.pnm", &opts).unwrap();
+    let pnm = patronusphoto_io::export(&doc(4), "x.pnm", &opts).unwrap();
     assert_eq!(pnm.bytes[..2], *b"P6", "an RGB document saves as a binary pixmap");
-    let hdr = photocraft_io::export(&doc(4), "x.hdr", &opts).unwrap();
+    let hdr = patronusphoto_io::export(&doc(4), "x.hdr", &opts).unwrap();
     assert!(hdr.bytes.starts_with(b"#?RADIANCE"), "a Radiance header");
-    let err = photocraft_io::export(&doc(300), "icon.ico", &opts).map(|_| ()).unwrap_err().to_string();
+    let err = patronusphoto_io::export(&doc(300), "icon.ico", &opts).map(|_| ()).unwrap_err().to_string();
     assert!(err.contains("256"), "{err}");
 }
 
@@ -1682,11 +1687,11 @@ fn psb_is_its_own_save_type() {
 #[test]
 fn save_types_list_the_document_formats_then_the_rest_by_name() {
     let names: Vec<&str> = filters::SAVE_FILTERS.iter().map(|(name, _)| *name).collect();
-    assert_eq!(names[..3], ["PSD Document", "PSB Large Document", "PhotoCraft"]);
+    assert_eq!(names[..3], ["PSD Document", "PSB Large Document", "Patronus Photo"]);
     let key = |name: &&str| name.to_ascii_lowercase();
     assert!(names[3..].is_sorted_by_key(key), "{:?}", &names[3..]);
     let names: Vec<&str> = filters::OPEN_FILTERS.iter().map(|(name, _)| *name).collect();
-    assert_eq!(names[..2], ["Photoshop", "PhotoCraft"]);
+    assert_eq!(names[..2], ["Photoshop", "Patronus Photo"]);
     let formats = names.iter().position(|name| *name == "Brushes").expect("the app's own resources");
     assert!(names[2..formats].is_sorted_by_key(key), "{:?}", &names[2..formats]);
 }

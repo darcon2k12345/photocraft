@@ -80,7 +80,7 @@ pub fn export_layers_report_with(s: &Session, p: &Value, mut write: impl FnMut(&
         one.layers = vec![only].into();
         if trim {
             let mut bounds = Rect::EMPTY;
-            let _ = photocraft_compose::render_bands(&one, one.bounds(), 0, |band| -> std::result::Result<(), ()> {
+            let _ = patronusphoto_compose::render_bands(&one, one.bounds(), 0, |band| -> std::result::Result<(), ()> {
                 let width = band.rect.width() as usize;
                 for (i, rgba) in band.px.iter().enumerate() {
                     if rgba[3] > 0.0 && width > 0 {
@@ -153,10 +153,10 @@ fn lut_layers<'a>(doc: &'a Document, ids: Option<&[LayerId]>) -> Result<Vec<&'a 
 
 /// Bake the chosen adjustment stack against an identity RGB lattice.
 /// Source order always follows the document stack, even if an explicit list is reversed.
-fn bake_cube_layers(size: usize, title: &str, layers: &[&Layer], depth: photocraft_color::SampleType) -> String {
+fn bake_cube_layers(size: usize, title: &str, layers: &[&Layer], depth: patronusphoto_color::SampleType) -> String {
     let n = size;
     let (w, h) = ((n * n) as u32, n as u32);
-    let mut lattice = Document::new("lut", photocraft_doc::Size::new(w, h), ColorMode::Rgb, photocraft_color::SampleType::F32);
+    let mut lattice = Document::new("lut", patronusphoto_doc::Size::new(w, h), ColorMode::Rgb, patronusphoto_color::SampleType::F32);
     let fmt = lattice.pixel_format();
     let step = 1.0 / (n - 1) as f32;
     let mut data = Vec::with_capacity((w * h) as usize * fmt.channels());
@@ -180,13 +180,13 @@ fn bake_cube_layers(size: usize, title: &str, layers: &[&Layer], depth: photocra
         a.clipped = false;
         lattice.layers.push(a);
     }
-    let out = photocraft_compose::flatten(&lattice);
+    let out = patronusphoto_compose::flatten(&lattice);
     // The shared writer owns CUBE syntax and precision; baking stays app-local.
     let rows = (0..n).flat_map(|b| (0..n).flat_map(move |g| (0..n).map(move |r| (b, g, r)))).map(|(b, g, r)| {
         let px = out.px[g * w as usize + b * n + r];
         [px[0], px[1], px[2]]
     });
-    craft_cms::lutfile::write_cube_export("PhotoCraft", title, n, !matches!(depth, photocraft_color::SampleType::F32), rows)
+    craft_cms::lutfile::write_cube_export("Patronus Photo", title, n, !matches!(depth, patronusphoto_color::SampleType::F32), rows)
 }
 
 /// How the refusal of a canvas too small for the lattice begins ([`bake_cube`] keeps the adjustment table for it alone).
@@ -235,7 +235,7 @@ fn stack_render_rows(n: usize, w: usize, h: usize) -> usize {
 /// GiB) is cut into chunks of at most [`MAX_LATTICE_TILES`] tiles, each rendered on its own. Entries
 /// are in row order, so a chunk is a run of one row.
 fn split_by_tiles(passes: Vec<Vec<LatticeEntry>>) -> Vec<Vec<LatticeEntry>> {
-    let tile = photocraft_geom::TILE_SIZE as usize;
+    let tile = patronusphoto_geom::TILE_SIZE as usize;
     let mut chunks: Vec<Vec<LatticeEntry>> = Vec::new();
     for pass in passes {
         let mut tiles = std::collections::HashSet::new();
@@ -306,8 +306,8 @@ fn bake_cube_stack(size: usize, title: &str, doc: &Document) -> Result<String> {
     let colour = |c: usize, g: usize| [(c % n) as f32 * step, g as f32 * step, (c / n) as f32 * step];
     // The lattice and the composite in floating point, whatever the document's depth: the
     // reference's tables of 8-bit documents are exact to their 1/32768 steps (mid grey is 0.5).
-    let depth = photocraft_color::SampleType::F32;
-    let fmt = photocraft_color::PixelFormat::new(ColorMode::Rgb, depth, true);
+    let depth = patronusphoto_color::SampleType::F32;
+    let fmt = patronusphoto_color::PixelFormat::new(ColorMode::Rgb, depth, true);
     let mut out = vec![[0.0f32; 3]; cols * n];
     for pass in &passes {
         let mut surf = Surface::new(fmt);
@@ -316,7 +316,7 @@ fn bake_cube_stack(size: usize, title: &str, doc: &Document) -> Result<String> {
             // A tile that cannot be allocated is an error of this export, not an abort.
             surf.try_write_region(
                 Rect::new(x as i32, y as i32, x as i32 + 1, y as i32 + 1),
-                &photocraft_raster::from_rgba(&fmt, [rgb[0], rgb[1], rgb[2], 1.0]),
+                &patronusphoto_raster::from_rgba(&fmt, [rgb[0], rgb[1], rgb[2], 1.0]),
             )?;
         }
         let mut grid = doc.clone();
@@ -335,7 +335,7 @@ fn bake_cube_stack(size: usize, title: &str, doc: &Document) -> Result<String> {
         }
         let ys: std::collections::BTreeSet<usize> = pass.iter().map(|e| e.2.1).collect();
         for y in ys {
-            let band = photocraft_compose::render(&grid, Rect::new(0, y as i32, w as i32, y as i32 + 1));
+            let band = patronusphoto_compose::render(&grid, Rect::new(0, y as i32, w as i32, y as i32 + 1));
             for &(c, g, (x, _)) in pass.iter().filter(|e| e.2.1 == y) {
                 let px = band.px[x];
                 out[g * cols + c] = [px[0], px[1], px[2]];
@@ -344,7 +344,7 @@ fn bake_cube_stack(size: usize, title: &str, doc: &Document) -> Result<String> {
     }
     // The shared writer owns CUBE syntax and precision; red changes fastest, then green, then blue.
     let rows = (0..n).flat_map(|b| (0..n).flat_map(move |g| (0..n).map(move |r| (b, g, r)))).map(|(b, g, r)| out[g * cols + b * n + r]);
-    Ok(craft_cms::lutfile::write_cube_export("PhotoCraft", title, n, !matches!(doc.depth, photocraft_color::SampleType::F32), rows))
+    Ok(craft_cms::lutfile::write_cube_export("Patronus Photo", title, n, !matches!(doc.depth, patronusphoto_color::SampleType::F32), rows))
 }
 
 /// The table `file.export.colorLookupTables` bakes by default: the whole visible stack of an RGB

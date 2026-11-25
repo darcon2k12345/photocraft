@@ -9,11 +9,11 @@ use craft::ui::dialog::DialogId;
 use craft::ui::patterns::form_dialogs::{DialogFields, HostedParamDialog, Param, ParamDialog, ParamKind, ParamResult};
 use craft::ui::runtime::env::Label;
 use craft::ui::runtime::requests::PathKind;
-use photocraft_doc::{DocId, LayerContent, LayerId, SmartSource};
+use patronusphoto_doc::{DocId, LayerContent, LayerId, SmartSource};
 use serde_json::{Value, json};
 
 use crate::dialogs::params::ParamFamily;
-use crate::{ExternalSvgEditor, ExternalSvgSession, PhotocraftApp};
+use crate::{ExternalSvgEditor, ExternalSvgSession, PatronusPhotoApp};
 
 const MAX_SESSIONS: usize = 8;
 const MAX_SVG_BYTES: usize = 16 * 1024 * 1024;
@@ -70,13 +70,13 @@ fn tr(source: &str) -> &str {
 }
 
 /// Surface a non-fatal editing or sync failure in the status bar; the document is unchanged.
-fn report(app: &mut PhotocraftApp, error: String) {
+fn report(app: &mut PatronusPhotoApp, error: String) {
     app.ui.status = error;
     app.ui.status_error = true;
 }
 
 /// Automation retains the engine's internal Edit Contents path; it never launches a program.
-pub(crate) fn intercept(app: &mut PhotocraftApp, id: &str, params: &Value) -> Option<Result<Value, String>> {
+pub(crate) fn intercept(app: &mut PatronusPhotoApp, id: &str, params: &Value) -> Option<Result<Value, String>> {
     if id != "layer.smartObjects.editContents" {
         return None;
     }
@@ -94,14 +94,17 @@ pub(crate) fn intercept(app: &mut PhotocraftApp, id: &str, params: &Value) -> Op
     let LayerContent::Smart(smart) = &st.doc.layer(layer)?.content else { return None };
     let bytes = match &smart.source {
         SmartSource::Embedded { bytes, .. } => bytes.as_slice(),
-        SmartSource::Linked { path } => photocraft_io::linked::embedded_payload(&st.doc.metadata, path)?.1,
+        SmartSource::Linked { path } => patronusphoto_io::linked::embedded_payload(&st.doc.metadata, path)?.1,
     };
-    if !(photocraft_io::svg::is_svg(bytes) || bytes.starts_with(b"%PDF-") || bytes.starts_with(b"%!PS-Adobe-") || bytes.starts_with(&[0xc5, 0xd0, 0xd3, 0xc6]))
+    if !(patronusphoto_io::svg::is_svg(bytes)
+        || bytes.starts_with(b"%PDF-")
+        || bytes.starts_with(b"%!PS-Adobe-")
+        || bytes.starts_with(&[0xc5, 0xd0, 0xd3, 0xc6]))
     {
         return None;
     }
     let doc = st.doc.id;
-    // Contents already open in PhotoCraft's own editor: the engine switches to that document.
+    // Contents already open in Patronus Photo's own editor: the engine switches to that document.
     if app.session.smart_links.iter().any(|link| link.parent == doc && link.contents_id == smart.contents_id) {
         return None;
     }
@@ -144,13 +147,13 @@ pub(crate) fn intercept(app: &mut PhotocraftApp, id: &str, params: &Value) -> Op
 }
 
 /// Saves apply only while the target's document is active, never by switching documents.
-fn same_target(app: &PhotocraftApp, target: &Target) -> bool {
+fn same_target(app: &PatronusPhotoApp, target: &Target) -> bool {
     app.session.active().is_some_and(|st| st.doc.id == target.doc)
 }
 
 /// The update command must be enabled and no layer sharing these contents (every placed
 /// instance changes together) may be fully or pixel locked.
-fn writable_target(app: &PhotocraftApp, target: &Target) -> bool {
+fn writable_target(app: &PatronusPhotoApp, target: &Target) -> bool {
     let Some(st) = app.session.active().filter(|st| st.doc.id == target.doc) else { return false };
     if !app.session.is_enabled_with("layer.smartObjects.updateSvg", &json!({"document":target.doc.0,"layer":target.layer.0})) {
         return false;
@@ -168,7 +171,7 @@ fn writable_target(app: &PhotocraftApp, target: &Target) -> bool {
 /// Act on the dialog's choice after re-exporting to confirm the fingerprint and contents id
 /// still match: run the internal editor, or start (or replace) one external session per
 /// shared contents, at most [`MAX_SESSIONS`]. Errors leave the document unchanged.
-fn confirm(app: &mut PhotocraftApp) -> Result<Value, String> {
+fn confirm(app: &mut PatronusPhotoApp) -> Result<Value, String> {
     let Some(pending) = app.smart_svg.pending.take() else { return Ok(json!({"cancelled": true})) };
     if !safe_to_apply(app) {
         return Err("Finish the current edit or dialog before editing this SVG Smart Object".into());
@@ -230,7 +233,7 @@ const CHOICES: [(Editor, &str, &str); 4] = [
     (Editor::VectorCraft, "vectorCraft", "VectorCraft"),
     (Editor::Illustrator, "illustrator", "Adobe Illustrator"),
     (Editor::Program, "program", "Other application"),
-    (Editor::Internal, "internal", "PhotoCraft (internal editor)"),
+    (Editor::Internal, "internal", "Patronus Photo (internal editor)"),
 ];
 
 fn editor_id(editor: Editor) -> &'static str {
@@ -265,9 +268,9 @@ fn params(svg: bool) -> Vec<Param> {
         Param::new("program", Label::from(tr("Executable")), ParamKind::text("")).browse(PathKind::open_file(extensions)).visible_when("editor", "program"),
     );
     let saved = tr(if svg {
-        "Save to the opened SVG file. Each saved change becomes one undo step in PhotoCraft."
+        "Save to the opened SVG file. Each saved change becomes one undo step in Patronus Photo."
     } else {
-        "Save to the opened original-format file. Each saved change becomes one undo step in PhotoCraft."
+        "Save to the opened original-format file. Each saved change becomes one undo step in Patronus Photo."
     });
     rows.push(Param::read_only_text("savedNote", Label::Empty, Label::from(saved)).full_width());
     rows.push(
@@ -292,13 +295,13 @@ fn dialog(ctx: &egui::Context, pending: &Pending, running: bool) -> HostedParamD
 const STOP_SYNC: &str = "stopSync";
 
 /// Whether an editor session runs for the contents `pending` would edit.
-fn session_running(app: &PhotocraftApp, pending: &Pending) -> bool {
+fn session_running(app: &PatronusPhotoApp, pending: &Pending) -> bool {
     app.smart_svg.editing.iter().any(|edit| edit.target.doc == pending.target.doc && edit.target.contents_id == pending.target.contents_id)
 }
 
 /// Once per pass: opens the editor-choice dialog while a choice is pending, and closes it when the
 /// choice was cleared elsewhere (the document went away, a session ended).
-pub(crate) fn host(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(crate) fn host(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     let open = app.smart_svg.dialog.filter(|id| app.framework.dialogs.stack().ids().any(|shown| shown == *id));
     match (app.smart_svg.pending.as_ref(), open) {
         (Some(pending), None) => {
@@ -324,7 +327,7 @@ fn owns(key: &str) -> bool {
 }
 
 /// Refuses OK for "Other application" until an executable is chosen.
-fn check(_app: &mut PhotocraftApp, result: &ParamResult) -> Result<(), Label> {
+fn check(_app: &mut PatronusPhotoApp, result: &ParamResult) -> Result<(), Label> {
     let program = result.fields.text("program").unwrap_or_default();
     if editor_from(result.fields.text("editor")) == Editor::Program && program.is_empty() {
         return Err(Label::from(tr("Choose an editor executable first")));
@@ -333,7 +336,7 @@ fn check(_app: &mut PhotocraftApp, result: &ParamResult) -> Result<(), Label> {
 }
 
 /// OK: the dialog's choice becomes the pending one and is confirmed.
-fn run(app: &mut PhotocraftApp, _ctx: &egui::Context, result: ParamResult) {
+fn run(app: &mut PatronusPhotoApp, _ctx: &egui::Context, result: ParamResult) {
     app.smart_svg.dialog = None;
     let Some(pending) = app.smart_svg.pending.as_mut() else { return };
     pending.editor = editor_from(result.fields.text("editor"));
@@ -344,13 +347,13 @@ fn run(app: &mut PhotocraftApp, _ctx: &egui::Context, result: ParamResult) {
 }
 
 /// Cancel, Escape, the close box, or a parent closing over the dialog: no choice, nothing launched.
-fn cancel(app: &mut PhotocraftApp, _ctx: &egui::Context, _id: DialogId) {
+fn cancel(app: &mut PatronusPhotoApp, _ctx: &egui::Context, _id: DialogId) {
     app.smart_svg.pending = None;
     app.smart_svg.dialog = None;
 }
 
 /// The footer buttons: "Stop syncing" ends the running sessions for the same contents and drops the choice.
-fn footer(app: &mut PhotocraftApp, ctx: &egui::Context, id: DialogId, action: &str) {
+fn footer(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: DialogId, action: &str) {
     if action != STOP_SYNC {
         return;
     }
@@ -363,7 +366,7 @@ fn footer(app: &mut PhotocraftApp, ctx: &egui::Context, id: DialogId, action: &s
 
 /// True only when no save, dialog, mask/channel target, transform, preview or drag is in
 /// progress, so an external save cannot land in the middle of another edit.
-fn safe_to_apply(app: &PhotocraftApp) -> bool {
+fn safe_to_apply(app: &PatronusPhotoApp) -> bool {
     !app.automation_input
         && !app.saving()
         && !app.save_options_open()
@@ -375,7 +378,7 @@ fn safe_to_apply(app: &PhotocraftApp) -> bool {
         && app.session.active().is_some_and(|st| {
             st.doc.quick_mask.is_none()
                 && st.channel_view.layer_mask.is_none()
-                && st.channel_view.target == photocraft_engine::channel_cmds::ChannelTarget::Composite
+                && st.channel_view.target == patronusphoto_engine::channel_cmds::ChannelTarget::Composite
                 && app.session.job_on(st.doc.id).is_none()
         })
         && !app.dialog_open()
@@ -408,7 +411,7 @@ fn safe_to_apply(app: &PhotocraftApp) -> bool {
 }
 
 /// Poll platform snapshots without changing the active document or selection.
-pub(crate) fn poll(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(crate) fn poll(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     if app
         .smart_svg
         .pending

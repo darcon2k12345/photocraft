@@ -20,9 +20,9 @@ use egui::{Color32, Pos2, Rect};
 
 use super::gpu_picture::{GpuPicture, GpuRequest, gpu_picture};
 use super::raster_source::{CompositePrep, OverlayPrep};
-use super::{Document, PhotocraftApp, View, tools};
-use photocraft_doc::LayerId;
-use photocraft_geom::Rect as DRect;
+use super::{Document, PatronusPhotoApp, View, tools};
+use patronusphoto_doc::LayerId;
+use patronusphoto_geom::Rect as DRect;
 
 impl View {
     /// This view as the framework's canvas view of `rect` at `ppp` device pixels per point, mirrored by View › Flip
@@ -62,7 +62,7 @@ impl CanvasHost {
     /// The canvas that shows document `idx`'s own view, the one the Navigator, the status bar's zoom, the tools and
     /// the dialogs' canvas picks work on: the floating document window that draws it, else the main document area.
     /// A New Window for Document keeps a view of its own, so it is never the document's own canvas.
-    pub(crate) fn primary(app: &PhotocraftApp, idx: usize) -> Self {
+    pub(crate) fn primary(app: &PatronusPhotoApp, idx: usize) -> Self {
         let window = app
             .ui
             .document_windows
@@ -75,7 +75,7 @@ impl CanvasHost {
     }
 
     /// Whether this canvas shows document `idx`'s own view ([`primary`](Self::primary)).
-    pub(crate) fn is_primary(self, app: &PhotocraftApp) -> bool {
+    pub(crate) fn is_primary(self, app: &PatronusPhotoApp) -> bool {
         self == Self::primary(app, self.idx)
     }
 
@@ -98,14 +98,14 @@ pub(crate) fn shown_camera(ctx: &egui::Context, host: CanvasHost, view: &View, p
 
 /// The active document's own canvas ([`CanvasHost::primary`]) as its last pass showed it, rect included: the tool
 /// host keeps the space it ran in, so no view is stored beside it. `None` before the first pass and with no document.
-pub fn active_view(app: &PhotocraftApp) -> Option<CanvasView> {
+pub fn active_view(app: &PatronusPhotoApp) -> Option<CanvasView> {
     let idx = app.session.active_index()?;
     ToolHost::shown_space(app.ctx(), CanvasHost::primary(app, idx).canvas_id()).map(|space| space.view)
 }
 
 /// The document point under the screen point `pos` of the active document's main canvas; `None` when `pos` is outside
 /// the canvas.
-pub(crate) fn doc_point_at(app: &PhotocraftApp, pos: Pos2) -> Option<Point> {
+pub(crate) fn doc_point_at(app: &PatronusPhotoApp, pos: Pos2) -> Option<Point> {
     active_view(app).filter(|view| view.rect.contains(pos)).map(|view| view.to_doc(pos))
 }
 
@@ -115,7 +115,7 @@ pub(crate) fn doc_point_at(app: &PhotocraftApp, pos: Pos2) -> Option<Point> {
 /// or Magnetic Lasso outline that is open (it replaces the selection when made), a Patch or Content-Aware Move drag
 /// (which replaces it on the active document, never a floating piece), and Content-Aware Move's Transform On Drop
 /// box, which draws them where it puts them.
-pub(crate) fn ants_shown(app: &PhotocraftApp, idx: usize) -> Option<(i32, i32)> {
+pub(crate) fn ants_shown(app: &PatronusPhotoApp, idx: usize) -> Option<(i32, i32)> {
     if !app.ui.view.shows(app.ui.view.show.selection_edges) || app.canvas_tools.selection.replaces_selection() || crate::cam_transform::active(app) {
         return None;
     }
@@ -127,14 +127,14 @@ pub(crate) fn ants_shown(app: &PhotocraftApp, idx: usize) -> Option<(i32, i32)> 
     Some(if active { super::tools::selection::shown_offset(app).unwrap_or((0, 0)) } else { (0, 0) })
 }
 
-/// Whether PhotoCraft's tool moves the view with the pointer this pass: the Crop tool in its default mode slides the
+/// Whether Patronus Photo's tool moves the view with the pointer this pass: the Crop tool in its default mode slides the
 /// view under a fixed frame. The canvas then shows the view unaligned.
-pub(crate) fn view_follows_pointer(app: &PhotocraftApp) -> bool {
+pub(crate) fn view_follows_pointer(app: &PatronusPhotoApp) -> bool {
     crate::crop_ui::moves_view(app)
 }
 
 /// The user's navigation choices from Preferences (General, Tools, Enhanced Controls).
-pub(crate) fn navigation(app: &PhotocraftApp) -> NavigationOptions {
+pub(crate) fn navigation(app: &PatronusPhotoApp) -> NavigationOptions {
     let p = app.session.prefs();
     let mut options = NavigationOptions::default();
     options.zoom_with_wheel = p.general.zoom_with_scroll_wheel;
@@ -149,7 +149,7 @@ pub(crate) fn navigation(app: &PhotocraftApp) -> NavigationOptions {
 }
 
 /// The transparency checkerboard of Preferences › Transparency & Gamut, `None` when it is off.
-pub(crate) fn checkerboard(app: &PhotocraftApp) -> Option<Checker> {
+pub(crate) fn checkerboard(app: &PatronusPhotoApp) -> Option<Checker> {
     let prefs = app.session.prefs();
     prefs.transparency_and_gamut.square().map(|square| {
         let [light, dark] = prefs.transparency_and_gamut.colors();
@@ -160,7 +160,7 @@ pub(crate) fn checkerboard(app: &PhotocraftApp) -> Option<Checker> {
 
 /// What the view commands fit and fill: the document, its artboard (the active board, else the last, production's
 /// Fit Artboard), and the resolutions Print Size and Actual Pixels read. Fit Layers asks [`layer_bounds`] itself.
-pub(crate) fn view_target(app: &PhotocraftApp, idx: usize) -> ViewTarget {
+pub(crate) fn view_target(app: &PatronusPhotoApp, idx: usize) -> ViewTarget {
     let doc = &app.session.documents()[idx].doc;
     let pages = super::artboard_ui::pages(app, idx);
     let mut target = ViewTarget::new(Size::new(f64::from(doc.size.width), f64::from(doc.size.height)))
@@ -177,7 +177,7 @@ pub(crate) fn view_target(app: &PhotocraftApp, idx: usize) -> ViewTarget {
 /// pass that runs the command.
 fn layer_bounds(doc: &Document, active: Option<LayerId>, selected: &[LayerId]) -> Rect64 {
     let mut layers = DRect::EMPTY;
-    for id in photocraft_engine::selected_in(doc, active, selected) {
+    for id in patronusphoto_engine::selected_in(doc, active, selected) {
         if let Some(bounds) = doc.layer(id).and_then(|l| l.surface()).map(|s| s.content_bounds()) {
             layers = if layers.is_empty() { bounds } else { layers.union(&bounds) };
         }
@@ -222,7 +222,7 @@ enum Prepared {
 
 /// The pasteboard colour: Preferences › Interface's, else black in Full Screen Mode (the backdrop there) and the
 /// theme's canvas otherwise.
-fn pasteboard_color(app: &PhotocraftApp) -> PasteboardColor {
+fn pasteboard_color(app: &PatronusPhotoApp) -> PasteboardColor {
     match crate::prefs_ui::pasteboard_color(app) {
         Some(color) => PasteboardColor::Custom(DataColor::new(color)),
         None if app.ui.view.hides_chrome() => PasteboardColor::Black,
@@ -231,11 +231,11 @@ fn pasteboard_color(app: &PhotocraftApp) -> PasteboardColor {
 }
 
 /// Shows document `pass.host.idx` in a framework `Canvas` over `pass.rect` through `view`: the canvas folds the wheel,
-/// pinch, page keys, view commands and the Overscroll clamp into the view, eases PhotoCraft's own eased zooms, and its
+/// pinch, page keys, view commands and the Overscroll clamp into the view, eases Patronus Photo's own eased zooms, and its
 /// body shows the pasteboard and the canvas controls, runs the tool host on the canvas's tool input, and last shows
 /// the document's picture into the slot the canvas reserved under the controls, so the picture shows what this pass's
 /// press and moves did. `view` is the view after the canvas's pass.
-pub(crate) fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui, view: &mut View, pass: &CanvasPass<'_>) -> Shown {
+pub(crate) fn show(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, view: &mut View, pass: &CanvasPass<'_>) -> Shown {
     let (ctx, host, idx, doc, output, rect, ppp) = (pass.ctx, pass.host, pass.host.idx, pass.doc, pass.output, pass.rect, pass.ppp);
     let given = view.canvas_view(rect, ppp, pass.flip, pass.aspect);
     let id = host.canvas_id();
@@ -257,8 +257,8 @@ pub(crate) fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui, view: &mut View, 
     });
 
     let border = match app.session.prefs().interface.canvas_border {
-        photocraft_engine::prefs::CanvasBorder::DropShadow => PageBorder::DropShadow,
-        photocraft_engine::prefs::CanvasBorder::Line => PageBorder::Line,
+        patronusphoto_engine::prefs::CanvasBorder::DropShadow => PageBorder::DropShadow,
+        patronusphoto_engine::prefs::CanvasBorder::Line => PageBorder::Line,
         _ => PageBorder::None,
     };
     let pattern = app.ui.view.pattern_preview;
@@ -302,7 +302,7 @@ pub(crate) fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui, view: &mut View, 
         // The canvas shows the rulers along its top and left edges, and its view lies inside the strips.
         .with_rulers(super::rulers::strips(app, host, &mut ruler_zero))
         .view_follows_pointer(follows_pointer)
-        .precise_cursors(app.session.prefs().cursors.other == photocraft_engine::prefs::OtherCursor::Precise)
+        .precise_cursors(app.session.prefs().cursors.other == patronusphoto_engine::prefs::OtherCursor::Precise)
         .tool_regions(regions);
     if let Some((from, anchor)) = ease {
         canvas = canvas.ease_from(from, anchor);
@@ -392,7 +392,7 @@ pub(crate) fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui, view: &mut View, 
             let r = frame.turned_bounds();
             PixelRect::new(r.x0.floor() as i32, r.y0.floor() as i32, r.x1.ceil() as i32, r.y1.ceil() as i32)
         });
-        let app: &PhotocraftApp = app;
+        let app: &PatronusPhotoApp = app;
         let (gpu, composite) = match prepared {
             Some(Prepared::Gpu(picture)) => (Some(picture), None),
             Some(Prepared::Cpu(prep)) => (None, Some(prep.source(app))),
@@ -455,7 +455,7 @@ pub(crate) fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui, view: &mut View, 
 
 /// The document's pasteboard, and for an artboard document a second one over the boards that leaves the shown layers
 /// uncovered (the layers' pixels past a board show through).
-fn pasteboards(app: &mut PhotocraftApp, ui: &mut egui::Ui, rect: Rect, idx: usize, border: PageBorder, label: String) {
+fn pasteboards(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, rect: Rect, idx: usize, border: PageBorder, label: String) {
     let Some(doc) = app.session.documents().get(idx).map(|state| state.doc.clone()) else { return };
     let page = [PageFrame::new(Rect64::new(0.0, 0.0, f64::from(doc.size.width), f64::from(doc.size.height)))];
     let pages = super::artboard_ui::pages(app, idx);
@@ -470,7 +470,7 @@ fn pasteboards(app: &mut PhotocraftApp, ui: &mut egui::Ui, rect: Rect, idx: usiz
 }
 
 /// The selection's marching ants, the Layer Edges outline and the pixel grid.
-fn selection_controls(app: &mut PhotocraftApp, ui: &mut egui::Ui, rect: Rect, idx: usize, label: &str) {
+fn selection_controls(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, rect: Rect, idx: usize, label: &str) {
     let ants = ants_shown(app, idx);
     if let Some(state) = app.session.documents().get(idx) {
         let doc = state.doc.clone();
@@ -493,14 +493,14 @@ fn selection_controls(app: &mut PhotocraftApp, ui: &mut egui::Ui, rect: Rect, id
 /// is above the earlier ones. Returns the gradient's live proposal, which the picture of the same pass shows, and puts
 /// what the Crop tool's frame and the Free Transform box reported in `reported`, for the host's pass.
 fn canvas_controls(
-    app: &mut PhotocraftApp,
+    app: &mut PatronusPhotoApp,
     ui: &mut egui::Ui,
     rect: Rect,
     host: CanvasHost,
     space: &CanvasSpace,
     turned: &mut Option<CanvasView>,
     reported: &mut tools::BodyShown,
-) -> Option<(photocraft_doc::LayerId, photocraft_doc::Fill)> {
+) -> Option<(patronusphoto_doc::LayerId, patronusphoto_doc::Fill)> {
     let pointer = ui.input(|i| i.pointer.hover_pos());
     let now = ui.input(|i| i.time);
     // The scroll bars (Standard Screen Mode only) and the rotation compass change the view they are bound to. They
@@ -615,8 +615,8 @@ mod tests {
     use crate::state::Tool;
 
     /// A 64×64 document with a 16×16 selection, shown by a first pass.
-    fn app() -> Box<PhotocraftApp> {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    fn app() -> Box<PatronusPhotoApp> {
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.session.execute("file.new", json!({"width": 64, "height": 64})).unwrap();
         app.sync_views();
         app.session.execute("select.rect", json!({"x": 8, "y": 8, "width": 16, "height": 16})).unwrap();
@@ -641,8 +641,8 @@ mod tests {
         use egui_kittest::kittest::{NodeT, Queryable};
 
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1200.0, 800.0)).with_pixels_per_point(1.0).build_eframe(move |cc| {
-            PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-            let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), crate::Services::default());
+            PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+            let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), crate::Services::default());
             app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
             app.ui.extras.rulers = rulers;
             app

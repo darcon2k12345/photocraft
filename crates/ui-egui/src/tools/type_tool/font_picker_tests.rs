@@ -6,13 +6,13 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use serde_json::json;
 
-use crate::{PhotocraftApp, Services};
+use crate::{PatronusPhotoApp, Services};
 
 /// Frames a harness may take to settle: opening the list loads the rows' samples over several passes.
 const SETTLE_STEPS: u64 = 64;
 
-fn app_with_layer() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Services::default());
+fn app_with_layer() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Services::default());
     app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
     app.run("type.create", json!({"text": "Sample", "font": "Inter", "size": 18})).unwrap();
     app.ui.tool = crate::state::Tool::Type;
@@ -21,30 +21,30 @@ fn app_with_layer() -> Box<PhotocraftApp> {
 }
 
 /// The options bar over `app`, on the app's own context.
-fn bar_harness(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
+fn bar_harness(app: Box<PatronusPhotoApp>) -> Harness<'static, Box<PatronusPhotoApp>> {
     // The full app frame: the app takes the window's context on its first pass.
     Harness::builder().with_size(vec2(1600.0, 1000.0)).with_max_steps(SETTLE_STEPS).build_eframe(move |cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, crate::theme::AppTheme::pro());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, crate::theme::AppTheme::pro());
         app
     })
 }
 
-fn field<'a>(h: &'a Harness<'static, Box<PhotocraftApp>>) -> egui_kittest::Node<'a> {
+fn field<'a>(h: &'a Harness<'static, Box<PatronusPhotoApp>>) -> egui_kittest::Node<'a> {
     h.query_all_by_label("Font family").next().expect("the family field")
 }
 
 /// Opens the family field and types `name` into it.
-fn type_family(h: &mut Harness<'static, Box<PhotocraftApp>>, name: &str) {
+fn type_family(h: &mut Harness<'static, Box<PatronusPhotoApp>>, name: &str) {
     field(h).click();
     h.run();
     field(h).type_text(name);
     h.run();
 }
 
-fn layer_font(app: &PhotocraftApp) -> String {
+fn layer_font(app: &PatronusPhotoApp) -> String {
     let st = app.session.active().unwrap();
     match &st.doc.layer(st.active_layer.unwrap()).unwrap().content {
-        photocraft_doc::LayerContent::Text(t) => t.font_family.clone(),
+        patronusphoto_doc::LayerContent::Text(t) => t.font_family.clone(),
         _ => panic!("type layer"),
     }
 }
@@ -68,7 +68,7 @@ fn font_cycle_in_options_bar_edits_the_layer_and_can_be_undone() {
 
 #[test]
 fn hovering_a_font_previews_only_the_selected_characters() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Services::default());
     app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
     app.run("type.create", json!({"text": "abcdef", "font": "Inter", "size": 18})).unwrap();
     let layer = app.session.active().unwrap().active_layer.unwrap();
@@ -78,8 +78,8 @@ fn hovering_a_font_previews_only_the_selected_characters() {
 
     crate::type_font_preview::set(&mut app, "Inter".into());
     let (preview, _) = crate::type_font_preview::display_doc(&mut app, 0).expect("preview document");
-    let fonts = |doc: &photocraft_doc::Document| {
-        let photocraft_doc::LayerContent::Text(text) = &doc.layer(layer).unwrap().content else {
+    let fonts = |doc: &patronusphoto_doc::Document| {
+        let patronusphoto_doc::LayerContent::Text(text) = &doc.layer(layer).unwrap().content else {
             panic!("type layer");
         };
         text.char_runs().into_iter().flat_map(|run| std::iter::repeat_n(run.style.font_family, run.len)).collect::<Vec<_>>()
@@ -93,7 +93,7 @@ fn hovering_a_font_previews_only_the_selected_characters() {
 /// by the preference; the next pass's state starts from what was stored.
 #[test]
 fn a_clicked_star_is_saved_to_the_preferences_library() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Services::default());
     let mut state = crate::type_tool::font_state(&app);
     state.settings.set_favorite("Bebas Neue", true);
     state.settings.note_recent("Arial");
@@ -118,7 +118,7 @@ fn a_clicked_star_is_saved_to_the_preferences_library() {
 
 #[test]
 fn the_preview_sets_the_type_layers_text_or_the_selection_being_typed() {
-    let mut app = crate::PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = crate::PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     assert_eq!(super::preview_text(&app), None, "no document");
     app.run("file.new", serde_json::json!({"width": 64, "height": 64})).unwrap();
     let id = app.run("type.create", serde_json::json!({"text": "Hello\rworld  ", "size": 24})).unwrap()["layer"].as_u64().unwrap();
@@ -140,12 +140,12 @@ fn the_preview_sets_the_type_layers_text_or_the_selection_being_typed() {
 /// #5152: with the Character panel's picker also shown, the open picker previews and the closed one never clears it.
 #[test]
 fn options_bar_hover_previews_with_the_character_picker_also_shown() {
-    use photocraft_doc::LayerContent;
+    use patronusphoto_doc::LayerContent;
 
     let theme = crate::theme::AppTheme::pro();
     let mut h = Harness::builder().with_size(vec2(1600.0, 1000.0)).with_max_steps(SETTLE_STEPS).build_eframe(move |cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, theme.clone());
-        let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), Services::default());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, theme.clone());
+        let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), Services::default());
         app.ui.theme = theme;
         app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
         app.run("type.create", json!({"text": "Sample", "font": "Inter", "size": 18})).unwrap();
@@ -155,7 +155,7 @@ fn options_bar_hover_previews_with_the_character_picker_also_shown() {
     });
     h.run_steps(8);
     let layer = h.state().session.active().unwrap().active_layer.unwrap();
-    let font = |h: &mut Harness<'static, Box<PhotocraftApp>>| {
+    let font = |h: &mut Harness<'static, Box<PatronusPhotoApp>>| {
         let (shown, _) = crate::canvas::display_doc(h.state_mut(), 0);
         let LayerContent::Text(t) = &shown.layer(layer).unwrap().content else { panic!("type layer") };
         t.char_runs()[0].style.font_family.clone()

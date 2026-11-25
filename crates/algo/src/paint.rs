@@ -1,8 +1,8 @@
 //! Paint helpers: bucket fill and the gradient tool.
 
-use photocraft_color::blend::{self, BlendMode};
-use photocraft_geom::Rect;
-use photocraft_raster::{Surface, from_rgba_into};
+use patronusphoto_color::blend::{self, BlendMode};
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::{Surface, from_rgba_into};
 use serde::{Deserialize, Serialize};
 
 /// How a fill lays down its colour: blended with a mode, or Clear, which erases what it covers
@@ -105,7 +105,7 @@ fn composite_area(
                 }
                 let i = ((y - r.y0) as usize * w + (x - r.x0) as usize) * n;
                 let px = &mut region[i..i + n];
-                let d = photocraft_raster::to_rgba(&fmt, px);
+                let d = patronusphoto_raster::to_rgba(&fmt, px);
                 if k <= 0.0 {
                     // A rim pixel: only its transparency takes the fill, so opaque art stays as it is.
                     k = on_rim * (1.0 - d[3].clamp(0.0, 1.0));
@@ -123,7 +123,7 @@ fn composite_area(
                 from_rgba_into(&fmt, o, &mut enc);
                 // A colour picked as CMYK inks replaces fully covered pixels of a CMYK target as it is.
                 if let Some(i) = inks
-                    && fmt.mode == photocraft_color::ColorMode::Cmyk
+                    && fmt.mode == patronusphoto_color::ColorMode::Cmyk
                     && mode == FillMode::Blend(BlendMode::Normal)
                     && k >= 1.0
                 {
@@ -173,7 +173,7 @@ pub fn paint_gradient(
             let mut c = sample_stops(stops, if reverse { 1.0 - t } else { t });
             if dither {
                 // One quantisation step of monochromatic noise breaks 8-bit banding without speckle.
-                let n = (photocraft_color::dither_noise(x, y) - 0.5) / 255.0;
+                let n = (patronusphoto_color::dither_noise(x, y) - 0.5) / 255.0;
                 for ch in c.iter_mut().take(3) {
                     *ch = (*ch + n).clamp(0.0, 1.0);
                 }
@@ -345,7 +345,7 @@ mod paint_gradient_sample_tests;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use photocraft_color::PixelFormat;
+    use patronusphoto_color::PixelFormat;
 
     #[test]
     fn gradient_t_shapes() {
@@ -462,7 +462,7 @@ mod tests {
     fn bucket_on_transparency_writes_the_picked_cmyk_inks_at_the_edge() {
         let a = Rect::new(0, 0, 8, 1);
         let inks = [1.0f32, 0.0, 0.0, 0.0];
-        let rgb = photocraft_color::convert::cmyk_to_rgb(inks).map(|c| c.clamp(0.0, 1.0));
+        let rgb = patronusphoto_color::convert::cmyk_to_rgb(inks).map(|c| c.clamp(0.0, 1.0));
         let src = |_, _| [rgb[0], rgb[1], rgb[2], 1.0];
         let raw = |s: &Surface, x: i32| -> Vec<f32> { s.read_region(Rect::new(x, 0, x + 1, 1)).into_iter().take(4).collect() };
         let is_inks = |got: &[f32]| got.iter().zip(inks).all(|(a, b)| (a - b).abs() < 0.02);

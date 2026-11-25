@@ -6,10 +6,10 @@
 
 use craft::color_ui::ui::EyedropperBar;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The options bar for the Eyedropper tool.
-pub fn options(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn options(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     EyedropperBar::new(&mut app.ui.tool_options.eyedropper).show(ui);
 }
 
@@ -18,7 +18,7 @@ mod tests {
     use craft::color_ui::ui::SampleSize;
     use serde_json::json;
 
-    use crate::PhotocraftApp;
+    use crate::PatronusPhotoApp;
     use crate::canvas::{ToolEvent, tool_event};
     use crate::state::Tool;
 
@@ -28,15 +28,15 @@ mod tests {
     }
 
     /// An app with a 40×40 white document whose top-left 3×3 pixels are black.
-    fn app() -> Box<PhotocraftApp> {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    fn app() -> Box<PatronusPhotoApp> {
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 40, "height": 40, "background": "white"})).unwrap();
         app.run("tools.setColors", json!({"foreground": [0.0, 0.0, 0.0, 1.0]})).unwrap();
         app.session
             .edit("paint", |doc, _| {
                 let bg = doc.layers[0].surface_mut().unwrap();
-                let black = photocraft_raster::from_rgba(&bg.format(), [0.0, 0.0, 0.0, 1.0]);
-                bg.fill_rect(photocraft_geom::Rect::new(0, 0, 3, 3), &black);
+                let black = patronusphoto_raster::from_rgba(&bg.format(), [0.0, 0.0, 0.0, 1.0]);
+                bg.fill_rect(patronusphoto_geom::Rect::new(0, 0, 3, 3), &black);
                 Ok(())
             })
             .unwrap();
@@ -44,11 +44,11 @@ mod tests {
         app
     }
 
-    fn fg(app: &PhotocraftApp) -> [f32; 4] {
+    fn fg(app: &PatronusPhotoApp) -> [f32; 4] {
         app.session.tools.foreground
     }
 
-    fn click(app: &mut PhotocraftApp, x: f64, y: f64, mods: egui::Modifiers) {
+    fn click(app: &mut PatronusPhotoApp, x: f64, y: f64, mods: egui::Modifiers) {
         tool_event(app, ToolEvent::Down { x, y, pressure: 1.0 }, mods);
         tool_event(app, ToolEvent::Up { x, y }, mods);
     }
@@ -56,20 +56,20 @@ mod tests {
     #[test]
     fn mask_sampling_sets_gray_swatches_without_changing_pixel_sampling() {
         for depth in [8, 16, 32] {
-            let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
             app.run("file.new", json!({"width": 20, "height": 20, "depth": depth, "background": "transparent"})).unwrap();
             app.session
                 .edit("red", |doc, _| {
                     let surface = doc.layers[0].surface_mut().unwrap();
-                    surface.fill_rect(photocraft_geom::Rect::new(0, 0, 20, 20), &photocraft_raster::from_rgba(&surface.format(), [1.0, 0.0, 0.0, 1.0]));
-                    doc.layers[0].mask = Some(photocraft_doc::LayerMask::reveal_all());
+                    surface.fill_rect(patronusphoto_geom::Rect::new(0, 0, 20, 20), &patronusphoto_raster::from_rgba(&surface.format(), [1.0, 0.0, 0.0, 1.0]));
+                    doc.layers[0].mask = Some(patronusphoto_doc::LayerMask::reveal_all());
                     Ok(())
                 })
                 .unwrap();
             app.ui.tool = Tool::Eyedropper;
             app.ui.mask_target = true;
             click(&mut app, 5.0, 5.0, egui::Modifiers::NONE);
-            let gray = photocraft_color::convert::rgb_to_gray([1.0, 0.0, 0.0]);
+            let gray = patronusphoto_color::convert::rgb_to_gray([1.0, 0.0, 0.0]);
             assert_eq!(fg(&app), [gray, gray, gray, 1.0], "depth {depth}");
             click(&mut app, 5.0, 5.0, egui::Modifiers::ALT);
             assert_eq!(app.session.tools.background, [gray, gray, gray, 1.0]);
@@ -81,7 +81,7 @@ mod tests {
 
     /// View the document at 200 %, where an N by N Average is the centred N × N square (#11751:
     /// at 100 % and below it covers (N+1) × (N+1) screen pixels).
-    fn zoomed_in(app: &mut PhotocraftApp) {
+    fn zoomed_in(app: &mut PatronusPhotoApp) {
         app.sync_views();
         for v in &mut app.ui.views {
             v.zoom = 2.0;

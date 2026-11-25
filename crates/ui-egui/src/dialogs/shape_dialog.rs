@@ -8,11 +8,11 @@ use craft::draw::ui::shape_drag::{CreateShapeDialog, CreateShapeOptions, ShapeKi
 use craft::ui::dialog::{DialogId, DialogResult};
 use craft::ui::patterns::form_dialogs::GuideUnits;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// Opens the creation dialog of `kind` for a click at `at` (document px). `None` for a kind without
 /// one (Line, Custom Shape) or a click that is not a point.
-pub(crate) fn open(app: &mut PhotocraftApp, kind: ShapeKind, at: Point) -> Option<DialogId> {
+pub(crate) fn open(app: &mut PatronusPhotoApp, kind: ShapeKind, at: Point) -> Option<DialogId> {
     if !CreateShapeDialog::supports(kind) || !(at.x.is_finite() && at.y.is_finite()) {
         return None;
     }
@@ -29,14 +29,14 @@ pub(crate) fn open(app: &mut PhotocraftApp, kind: ShapeKind, at: Point) -> Optio
     let units = GuideUnits::new(ruler, size[0], size[1], dpi).points_per_inch(points);
     // The options bar has no star ratio: a polygon opens as a plain polygon.
     let options = CreateShapeOptions::initial(kind, at).units(units).tool(radius, sides, 1.0);
-    Some(app.framework.dialogs.open(CreateShapeDialog::new(options).alert_title(tl!("PhotoCraft"))))
+    Some(app.framework.dialogs.open(CreateShapeDialog::new(options).alert_title(tl!("Patronus Photo"))))
 }
 
 /// Whether a click at `at` (document px) with the Rectangle tool in Shape mode lies inside the active live
 /// rectangle's outline: the click leaves the shape alone and opens no dialog (#13340). Rounded corners use
 /// the outline, not the box.
-pub(crate) fn click_inside_active_rectangle(app: &PhotocraftApp, kind: ShapeKind, at: [f64; 2]) -> bool {
-    use photocraft_doc::{LayerContent, LiveShape};
+pub(crate) fn click_inside_active_rectangle(app: &PatronusPhotoApp, kind: ShapeKind, at: [f64; 2]) -> bool {
+    use patronusphoto_doc::{LayerContent, LiveShape};
 
     if kind != ShapeKind::Rectangle || !matches!(app.ui.tool_options.shape_mode, craft::draw::ui::VectorMode::Shape) {
         return false;
@@ -53,13 +53,13 @@ pub(crate) fn click_inside_active_rectangle(app: &PhotocraftApp, kind: ShapeKind
     let (l, r, t, b) = (px - left, right - px, py - top, bottom - py);
     [(l, t), (r, t), (r, b), (l, b)]
         .into_iter()
-        .zip(photocraft_vector::shapes::clamp_radii(w.abs(), h.abs(), radii))
+        .zip(patronusphoto_vector::shapes::clamp_radii(w.abs(), h.abs(), radii))
         .all(|((dx, dy), radius)| dx >= radius || dy >= radius || (radius - dx).hypot(radius - dy) <= radius)
 }
 
 /// Opens the alert of a size typed past its range, once, then draws the shape of a Create Shape dialog that
 /// finished OK this pass.
-pub(crate) fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
+pub(crate) fn take(app: &mut PatronusPhotoApp, _ctx: &egui::Context) {
     if let Some(alert) = app.framework.dialogs.get_mut::<CreateShapeDialog>().and_then(CreateShapeDialog::take_range_alert) {
         let _ = super::alerts::show(app, alert);
     }

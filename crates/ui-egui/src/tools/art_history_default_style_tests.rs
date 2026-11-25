@@ -7,21 +7,21 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::{Tool, ToolOptions};
 
 /// Build an app with a document and the Art History Brush selected.
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 96, "height": 96, "background": "white"})).unwrap();
     app.ui.tool = Tool::ArtHistoryBrush;
     app
 }
 
 /// Render the options bar inside a kittest harness once fonts are loaded.
-fn bar(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
+fn bar(app: Box<PatronusPhotoApp>) -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(vec2(1400.0, 60.0)).build_ui_state(
-        |ui, app: &mut Box<PhotocraftApp>| {
+        |ui, app: &mut Box<PatronusPhotoApp>| {
             if !ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 return;
             }
@@ -29,19 +29,19 @@ fn bar(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     h.run_steps(4);
     h
 }
 
 /// Whether a combo box in the options bar currently shows `value`.
-fn has_combo_value(h: &Harness<'_, Box<PhotocraftApp>>, value: &str) -> bool {
+fn has_combo_value(h: &Harness<'_, Box<PatronusPhotoApp>>, value: &str) -> bool {
     h.query_all_by_role(egui::accesskit::Role::ComboBox).any(|n| n.value().as_deref() == Some(value))
 }
 
 /// Paint one deterministic `paint.artHistoryBrush` stroke with `extra` merged into its parameters.
 fn stroke_pixels(extra: Value) -> Vec<f32> {
-    let mut s = photocraft_engine::Session::new();
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 64, "height": 64, "background": "white"})).unwrap();
     s.execute("tools.setColors", json!({"foreground": [0.0, 0.0, 0.0, 1.0]})).unwrap();
     s.execute("edit.fill", json!({"contents": "foreground"})).unwrap();
@@ -85,7 +85,7 @@ fn fresh_settings_and_reset_tool_give_tight_short() {
 /// `paint.artHistoryBrush` without `style` (or with `style: null`) paints Tight Short, matching its params doc.
 #[test]
 fn paint_art_history_brush_defaults_to_tight_short() {
-    let spec = photocraft_engine::command_specs().iter().find(|c| c.id == "paint.artHistoryBrush").unwrap();
+    let spec = patronusphoto_engine::command_specs().iter().find(|c| c.id == "paint.artHistoryBrush").unwrap();
     assert!(spec.params.contains(r#"="tightShort""#), "{}", spec.params);
     assert!(!spec.params.contains(r#"="tightMedium""#), "{}", spec.params);
 

@@ -102,17 +102,17 @@ pub(super) fn move_hue_range_zone(start: [f32; 4], zone: u8, delta: f32) -> [f32
 
 /// The spectrum bar after the adjustment (what each hue becomes), sampled at `n` hues.
 fn adjusted_spectrum(v: &Value, n: usize) -> Vec<Color32> {
-    let hues: Vec<[f32; 3]> = (0..n).map(|i| photocraft_color::convert::hsb_to_rgb([i as f32 / (n - 1).max(1) as f32 * 360.0, 1.0, 1.0])).collect();
+    let hues: Vec<[f32; 3]> = (0..n).map(|i| patronusphoto_color::convert::hsb_to_rgb([i as f32 / (n - 1).max(1) as f32 * 360.0, 1.0, 1.0])).collect();
     adjusted_colors(v, &hues)
 }
 
 /// What the adjustment `v` makes of each colour in `rgb`.
 fn adjusted_colors(v: &Value, rgb: &[[f32; 3]]) -> Vec<Color32> {
-    let adj = photocraft_engine::commands::adjustment_from_params("hueSaturation", v);
-    let rect = photocraft_geom::Rect::new(0, 0, rgb.len() as i32, 1);
+    let adj = patronusphoto_engine::commands::adjustment_from_params("hueSaturation", v);
+    let rect = patronusphoto_geom::Rect::new(0, 0, rgb.len() as i32, 1);
     let px = rgb.iter().map(|c| [c[0], c[1], c[2], 1.0]).collect();
-    let mut buf = photocraft_compose::Buffer { rect, px };
-    photocraft_compose::adjust::apply(&adj, &mut buf);
+    let mut buf = patronusphoto_compose::Buffer { rect, px };
+    patronusphoto_compose::adjust::apply(&adj, &mut buf);
     buf.px.iter().map(|p| color32([p[0], p[1], p[2]])).collect()
 }
 
@@ -140,7 +140,7 @@ pub(super) fn range_swatch(v: &Value, i: usize) -> (Color32, Option<Color32>) {
     let Some(key) = HUE_RANGES.get(i) else { return (Color32::TRANSPARENT, None) };
     let o = &v[*key];
     let c = range_centre(nums(o, "range", HueRange::neutral(i).bounds));
-    let before = photocraft_color::convert::hsb_to_rgb([c, 1.0, 1.0]);
+    let before = patronusphoto_color::convert::hsb_to_rgb([c, 1.0, 1.0]);
     let edited = ["hue", "saturation", "lightness"].iter().any(|k| num(o, k, 0.0) != 0.0);
     let after = edited.then(|| {
         // This range alone: Master and the other ranges don't change its swatch.
@@ -334,7 +334,7 @@ pub(super) fn hue_saturation(ui: &mut egui::Ui, v: &mut Value, cx: &EditorCx) ->
     spectrum_bar(&p, bottom, &adjusted_spectrum(v, 37));
     if range > 0 {
         let key = HUE_RANGES[range - 1];
-        let neutral = photocraft_doc::adjust::HueRange::neutral(range - 1).bounds;
+        let neutral = patronusphoto_doc::adjust::HueRange::neutral(range - 1).bounds;
         let mut b = HueRange::canonical_bounds(nums(&v[key], "range", neutral));
         let xof = |deg: f32| bars.left() + deg.rem_euclid(360.0) / 360.0 * w;
         let deg_of = |x: f32| ((x - bars.left()) / w * 360.0).clamp(0.0, 360.0);

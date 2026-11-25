@@ -8,16 +8,16 @@
 //!
 //! Compositing stays in document space for RGB and gray documents. CMYK and Lab documents are
 //! composited in sRGB after a per-layer conversion with the built-in profiles (see
-//! `photocraft_color::convert`), so their [`composite_profile`] is sRGB; documents tagged with
+//! `patronusphoto_color::convert`), so their [`composite_profile`] is sRGB; documents tagged with
 //! a different CMYK profile therefore display approximately until compositing is mode-native.
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, Weak};
 
 use craft_cms::{Builtin, ColorSpace, GamutCheck, Intent, Lut3d, Profile, SampleKind, Transform};
-use photocraft_color::{Color, ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{DocId, Document, Duotone, Effect, Fill, FxPaint, Layer, LayerContent, TextStyles};
-use photocraft_raster::Surface;
+use patronusphoto_color::{Color, ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::{DocId, Document, Duotone, Effect, Fill, FxPaint, Layer, LayerContent, TextStyles};
+use patronusphoto_raster::Surface;
 use serde_json::{Value, json};
 
 use crate::commands::CommandSpec;
@@ -125,11 +125,11 @@ pub struct ColorSettings {
     pub bpc: bool,
     pub dither: bool,
     /// Advanced › "Blend Text Colors Using Gamma" (1 = off; Photoshop's default 1.45): type
-    /// layers mix anti-aliased edges in this gamma (`photocraft_compose::psblend::set_text_gamma`).
+    /// layers mix anti-aliased edges in this gamma (`patronusphoto_compose::psblend::set_text_gamma`).
     pub blend_text_gamma: f32,
     /// Working Spaces › Spot: the dot gain, in percent at a 50 % dot, that previews of spot
     /// channels add (Photoshop's default Dot Gain 20 %; its menu offers 10–30 % and custom
-    /// values). Lives in the compositor too (`photocraft_compose::multichannel::set_spot_dot_gain`).
+    /// values). Lives in the compositor too (`patronusphoto_compose::multichannel::set_spot_dot_gain`).
     pub spot_dot_gain: f32,
     /// Monitor profile the canvas is displayed in: `auto` (the main display's profile when the
     /// platform supplies it, else sRGB), a built-in RGB profile id or an `.icc` path.
@@ -152,8 +152,8 @@ impl Default for ColorSettings {
             intent: Intent::RelativeColorimetric.id().into(),
             bpc: true,
             dither: true,
-            blend_text_gamma: photocraft_compose::psblend::TEXT_GAMMA,
-            spot_dot_gain: photocraft_compose::multichannel::SPOT_DOT_GAIN,
+            blend_text_gamma: patronusphoto_compose::psblend::TEXT_GAMMA,
+            spot_dot_gain: patronusphoto_compose::multichannel::SPOT_DOT_GAIN,
             monitor_profile: "auto".into(),
         }
     }
@@ -205,8 +205,8 @@ pub fn validate_settings(c: &ColorSettings) -> std::result::Result<(), String> {
     if Intent::parse(&c.intent).is_none() {
         return Err(format!("unknown intent `{}` (perceptual|relative|saturation|absolute)", c.intent));
     }
-    if !(c.spot_dot_gain.is_finite() && (0.0..=photocraft_compose::multichannel::MAX_SPOT_DOT_GAIN).contains(&c.spot_dot_gain)) {
-        return Err(format!("spot dot gain must be 0..{} %", photocraft_compose::multichannel::MAX_SPOT_DOT_GAIN));
+    if !(c.spot_dot_gain.is_finite() && (0.0..=patronusphoto_compose::multichannel::MAX_SPOT_DOT_GAIN).contains(&c.spot_dot_gain)) {
+        return Err(format!("spot dot gain must be 0..{} %", patronusphoto_compose::multichannel::MAX_SPOT_DOT_GAIN));
     }
     Ok(())
 }
@@ -271,7 +271,7 @@ impl ColorState {
         let exif_srgb = space == ColorSpace::Rgb
             && !ignore_exif
             && doc.icc_profile.is_none()
-            && doc.metadata.exif.as_deref().and_then(|e| photocraft_codecs::exif_color_space(e)) == Some(photocraft_codecs::EXIF_COLOR_SPACE_SRGB);
+            && doc.metadata.exif.as_deref().and_then(|e| patronusphoto_codecs::exif_color_space(e)) == Some(patronusphoto_codecs::EXIF_COLOR_SPACE_SRGB);
         if exif_srgb {
             doc.icc_profile = Some(Builtin::Srgb.profile().to_bytes());
         }
@@ -688,9 +688,9 @@ pub fn convert_surface(s: &Surface, from: ColorMode, to: PixelFormat, t: &Transf
     let mut out = Surface::with_default(to, &dpo);
     // Convert every distinct tile once, in one parallel pass into a staging buffer, then store
     // them. Coordinates that share a tile (a filled background) share the converted one (#4531).
-    let mut distinct: Vec<std::sync::Arc<photocraft_raster::Tile>> = Vec::new();
-    let mut slot: std::collections::HashMap<*const photocraft_raster::Tile, usize> = std::collections::HashMap::new();
-    let tiles: Vec<(photocraft_geom::TileCoord, usize)> = s
+    let mut distinct: Vec<std::sync::Arc<patronusphoto_raster::Tile>> = Vec::new();
+    let mut slot: std::collections::HashMap<*const patronusphoto_raster::Tile, usize> = std::collections::HashMap::new();
+    let tiles: Vec<(patronusphoto_geom::TileCoord, usize)> = s
         .tiles()
         .map(|(c, tile)| {
             let i = *slot.entry(std::sync::Arc::as_ptr(tile)).or_insert_with(|| {
@@ -700,7 +700,7 @@ pub fn convert_surface(s: &Surface, from: ColorMode, to: PixelFormat, t: &Transf
             (*c, i)
         })
         .collect();
-    let tile_px = (photocraft_geom::TILE_SIZE * photocraft_geom::TILE_SIZE) as usize;
+    let tile_px = (patronusphoto_geom::TILE_SIZE * patronusphoto_geom::TILE_SIZE) as usize;
     let dst_len = tile_px * to.bytes_per_pixel();
     let kind = match sf.sample {
         SampleType::U8 => SampleKind::U8,
@@ -716,7 +716,7 @@ pub fn convert_surface(s: &Surface, from: ColorMode, to: PixelFormat, t: &Transf
             let _ = t.convert_bytes_many(kind, jobs, ss, ds, true);
         }
         for bytes in staging.chunks(dst_len.max(1)) {
-            let coord = photocraft_geom::TileCoord::new(0, 0);
+            let coord = patronusphoto_geom::TileCoord::new(0, 0);
             let mut surface = Surface::new(to);
             surface.tile_mut(coord).bytes_mut().copy_from_slice(bytes);
             converted.push(surface.tile(coord).cloned());
@@ -925,11 +925,11 @@ fn ink_surface(s: &Surface, d: &Duotone) -> Surface {
             let (mut px, mut o) = ([0.0f32; 2], [0.0f32; 4]);
             for i in 0..n {
                 for (k, v) in px.iter_mut().enumerate().take(ss) {
-                    *v = photocraft_color::read_sample(&src, sf.sample, i * ss + k);
+                    *v = patronusphoto_color::read_sample(&src, sf.sample, i * ss + k);
                 }
                 ink(&px[..ss], &mut o[..ds]);
                 for (k, v) in o.iter().enumerate().take(ds) {
-                    photocraft_color::write_sample(&mut dst, to.sample, i * ds + k, *v);
+                    patronusphoto_color::write_sample(&mut dst, to.sample, i * ds + k, *v);
                 }
             }
             dst
@@ -995,7 +995,7 @@ pub fn convert_mode(s: &mut Session, mode: ColorMode, p: &Value) -> Result<Value
 /// canvas pixel (255 = out of gamut, transparent pixels never are), plus the count.
 pub fn gamut_mask(doc: &Document, setup: &ProofSetup, threshold: f32) -> Result<(Vec<u8>, usize)> {
     let check = GamutCheck::new(&composite_profile(doc), &setup.profile, threshold).map_err(cms_err)?;
-    let buf = photocraft_compose::flatten(doc);
+    let buf = patronusphoto_compose::flatten(doc);
     let mut mask = vec![0u8; buf.px.len()];
     let count = check.mask_rgba(&buf.px, &mut mask).map_err(cms_err)?;
     Ok((mask, count))
@@ -1110,9 +1110,9 @@ fn prepare_profile_smart_layers(doc: &mut Document, rasterize: bool) -> Result<(
 }
 
 /// Flatten in the source space so conversion preserves the composited appearance.
-fn flatten_for_profile(doc: &mut Document, active: &mut Option<photocraft_doc::LayerId>) -> Result<()> {
+fn flatten_for_profile(doc: &mut Document, active: &mut Option<patronusphoto_doc::LayerId>) -> Result<()> {
     let bounds = doc.bounds();
-    if u64::from(bounds.width()) * u64::from(bounds.height()) > photocraft_compose::MAX_RENDER_PIXELS {
+    if u64::from(bounds.width()) * u64::from(bounds.height()) > patronusphoto_compose::MAX_RENDER_PIXELS {
         return Err(EngineError::BadParams {
             cmd: "edit.convertToProfile".into(),
             msg: format!("the document's {}×{} canvas is too large to flatten", bounds.width(), bounds.height()),
@@ -1120,7 +1120,7 @@ fn flatten_for_profile(doc: &mut Document, active: &mut Option<photocraft_doc::L
     }
     prepare_profile_smart_layers(doc, false)?;
     let format = doc.pixel_format();
-    let surface = photocraft_compose::flatten_to_surface(doc, format, Some([1.0, 1.0, 1.0]));
+    let surface = patronusphoto_compose::flatten_to_surface(doc, format, Some([1.0, 1.0, 1.0]));
     let mut background = Layer::raster("Background", format);
     background.locks.transparency = true;
     background.locks.position = true;
@@ -1289,7 +1289,7 @@ fn color_settings(s: &mut Session, p: &Value) -> Result<Value> {
     }
     match p.get("blendTextGamma") {
         Some(Value::Bool(false)) => next.blend_text_gamma = 1.0,
-        Some(Value::Bool(true)) => next.blend_text_gamma = photocraft_compose::psblend::TEXT_GAMMA,
+        Some(Value::Bool(true)) => next.blend_text_gamma = patronusphoto_compose::psblend::TEXT_GAMMA,
         Some(v) => {
             let g = v
                 .as_f64()
@@ -1300,7 +1300,7 @@ fn color_settings(s: &mut Session, p: &Value) -> Result<Value> {
         None => {}
     }
     if let Some(v) = p.get("spotDotGain") {
-        let max = f64::from(photocraft_compose::multichannel::MAX_SPOT_DOT_GAIN);
+        let max = f64::from(patronusphoto_compose::multichannel::MAX_SPOT_DOT_GAIN);
         let g = v
             .as_f64()
             .filter(|g| (0.0..=max).contains(g))
@@ -1309,8 +1309,8 @@ fn color_settings(s: &mut Session, p: &Value) -> Result<Value> {
     }
     validate_settings(&next).map_err(|msg| EngineError::BadParams { cmd: cmd.into(), msg })?;
     if next != s.color.settings {
-        photocraft_compose::psblend::set_text_gamma(next.blend_text_gamma);
-        photocraft_compose::multichannel::set_spot_dot_gain(next.spot_dot_gain);
+        patronusphoto_compose::psblend::set_text_gamma(next.blend_text_gamma);
+        patronusphoto_compose::multichannel::set_spot_dot_gain(next.spot_dot_gain);
         s.color.settings = next;
         // Persisted with the preferences.
         s.prefs.edit(|_| ());
@@ -1448,7 +1448,7 @@ pub fn specs() -> Vec<CommandSpec> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use photocraft_geom::Rect;
+    use patronusphoto_geom::Rect;
 
     /// Image › Mode to CMYK keeps a filled background's shared tile shared (#4531): one
     /// converted tile for the whole grid, the same colour everywhere.
@@ -1487,7 +1487,7 @@ mod tests {
             surf.fill_rect(Rect::new(0, 0, 16, 16), &[1.0, 0.0, 0.0, 1.0]);
             surf.fill_rect(Rect::new(16, 0, 32, 16), &[0.0, 0.0, 1.0, 1.0]);
             surf.fill_rect(Rect::new(32, 0, 48, 16), &[0.5, 0.5, 0.5, 0.5]);
-            l.mask = Some(photocraft_doc::LayerMask::reveal_all());
+            l.mask = Some(patronusphoto_doc::LayerMask::reveal_all());
             Ok(())
         })
         .unwrap();
@@ -1669,13 +1669,13 @@ mod tests {
         t.eval(&[0.5, 0.5, 0.5], &mut o).unwrap();
         // The default working gray (Dot Gain 20 %-compatible, gamma 1.732) shows gray 0.5 as the
         // sRGB value of linear 0.5^1.732, as Photoshop does: lighter than sGray's 0.5.
-        let want = photocraft_color::convert::linear_to_srgb(0.5f32.powf(1.732));
+        let want = patronusphoto_color::convert::linear_to_srgb(0.5f32.powf(1.732));
         assert!(o.iter().all(|v| (v - want).abs() < 2e-3), "Dot Gain 20 % gray displays as {want}: {o:?}");
         let s = session("cmyk", 8);
         assert_eq!(composite_profile(doc(&s)).description, "sRGB IEC61966-2.1");
     }
 
-    /// `cargo test -p photocraft-engine --release -- --ignored bench_cmyk --nocapture`
+    /// `cargo test -p patronusphoto-engine --release -- --ignored bench_cmyk --nocapture`
     #[test]
     #[ignore]
     fn bench_cmyk_conversion_6016() {
@@ -1715,7 +1715,7 @@ mod settings_tests {
     use super::*;
 
     fn tagged(spec: &str) -> Document {
-        let mut d = Document::with_background("t", photocraft_doc::Size::new(8, 8), ColorMode::Rgb, SampleType::U8, Color::rgba(0.2, 0.6, 0.9, 1.0));
+        let mut d = Document::with_background("t", patronusphoto_doc::Size::new(8, 8), ColorMode::Rgb, SampleType::U8, Color::rgba(0.2, 0.6, 0.9, 1.0));
         d.icc_profile = Some(Builtin::from_id(spec).unwrap().profile().to_bytes());
         d
     }
@@ -1805,7 +1805,7 @@ mod settings_tests {
         lin.white_point = [0.95047, 1.0, 1.08905];
         let bytes = lin.with_encoded_bytes().to_bytes();
         assert_ne!(bytes, Builtin::LinearSrgb.profile().to_bytes());
-        let mut d = Document::with_background("t", photocraft_doc::Size::new(8, 8), ColorMode::Rgb, SampleType::F32, Color::rgba(0.2, 0.6, 0.9, 1.0));
+        let mut d = Document::with_background("t", patronusphoto_doc::Size::new(8, 8), ColorMode::Rgb, SampleType::F32, Color::rgba(0.2, 0.6, 0.9, 1.0));
         d.icc_profile = Some(bytes.clone());
         let (_, r) = s.open_document(d, None);
         assert_eq!((r["action"].as_str(), r.get("ask")), (Some("kept"), None));
@@ -1909,10 +1909,10 @@ mod settings_tests {
         let mut s = Session::new();
         s.execute("edit.colorSettings", json!({"workingRgb": "display-p3"})).unwrap();
         // Embed Color Profile off: an untagged document is otherwise tagged sRGB on export (#9325).
-        let mut opts = photocraft_io::ExportOptions::default();
+        let mut opts = patronusphoto_io::ExportOptions::default();
         opts.encode.embed_icc = false;
-        let r = photocraft_io::export(&untagged_camera_file(Some(1)), "x.jpg", &opts).unwrap();
-        let back = photocraft_io::import("x.jpg", &r.bytes).unwrap().document;
+        let r = patronusphoto_io::export(&untagged_camera_file(Some(1)), "x.jpg", &opts).unwrap();
+        let back = patronusphoto_io::import("x.jpg", &r.bytes).unwrap().document;
         assert!(back.icc_profile.is_none(), "no ICC profile in the file");
         let (_, r) = s.open_document(back, None);
         assert_eq!((r["action"].as_str(), r["exif"].as_bool()), (Some("kept"), Some(true)));

@@ -21,10 +21,10 @@
 use craft::theme::{ColorToken, ThemeDef, ThemeId};
 use craft::ui::fonts::UiFonts;
 use egui::{Color32, CornerRadius, FontData, FontFamily, FontId, Stroke, TextStyle, Visuals};
-use photocraft_engine::prefs::UiFontSize;
+use patronusphoto_engine::prefs::UiFontSize;
 use std::sync::Arc;
 
-/// PhotoCraft's own palettes: the suite themes it draws itself, each in the mode it has one for.
+/// Patronus Photo's own palettes: the suite themes it draws itself, each in the mode it has one for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Palette {
     /// Photoshop-style Spectrum dark: flat charcoal panels, tab strips, blue accents (darkest brightness).
@@ -112,18 +112,18 @@ impl Palette {
         }
     }
 
-    /// The Light Theme row of the Appearance settings, in PhotoCraft's order.
+    /// The Light Theme row of the Appearance settings, in Patronus Photo's order.
     const LIGHT_ROW: [Palette; 7] =
         [Palette::ProLight, Palette::ProLightGray, Palette::StudioLight, Palette::Classic, Palette::Adwaita, Palette::BreezeLight, Palette::SoftLight];
 
-    /// The Dark Theme row, in PhotoCraft's order.
+    /// The Dark Theme row, in Patronus Photo's order.
     const DARK_ROW: [Palette; 7] =
         [Palette::ProMedium, Palette::Pro, Palette::Studio, Palette::SolarizedDark, Palette::AdwaitaDark, Palette::BreezeDark, Palette::SoftDark];
 
     /// Photoshop's four interface brightnesses, darkest first.
     const BRIGHTNESSES: [Palette; 4] = [Palette::Pro, Palette::ProMedium, Palette::ProLightGray, Palette::ProLight];
 
-    /// The palette that draws suite theme `id` in the dark or light mode, if PhotoCraft has one.
+    /// The palette that draws suite theme `id` in the dark or light mode, if Patronus Photo has one.
     fn of(id: &ThemeId, dark: bool) -> Option<Palette> {
         Palette::ALL.into_iter().find(|p| p.theme() == (id.as_str(), dark))
     }
@@ -133,15 +133,15 @@ impl Palette {
     }
 }
 
-/// The theme on screen: a suite theme in the mode shown, with the tokens PhotoCraft draws it with.
-/// The themes PhotoCraft has palettes for (see [`AppTheme::all`]) keep them; any other suite theme
+/// The theme on screen: a suite theme in the mode shown, with the tokens Patronus Photo draws it with.
+/// The themes Patronus Photo has palettes for (see [`AppTheme::all`]) keep them; any other suite theme
 /// (a library theme, `craft.graphite`) takes its tokens from craft-theme's resolved tokens.
 #[derive(Clone, Debug)]
 pub struct AppTheme {
     id: ThemeId,
     tokens: Tokens,
     /// The definition the tokens were resolved from, which the runtime resolves its own from;
-    /// `None` for a theme shown with PhotoCraft's palette.
+    /// `None` for a theme shown with Patronus Photo's palette.
     library: Option<Arc<ThemeDef>>,
 }
 
@@ -186,7 +186,7 @@ palette_themes! {
 }
 
 impl AppTheme {
-    /// The themes PhotoCraft has palettes for, in the order of its Appearance settings.
+    /// The themes Patronus Photo has palettes for, in the order of its Appearance settings.
     pub fn all() -> [AppTheme; 14] {
         Palette::ALL.map(AppTheme::from)
     }
@@ -206,7 +206,7 @@ impl AppTheme {
         Palette::BRIGHTNESSES.map(AppTheme::from)
     }
 
-    /// PhotoCraft's palette for suite theme `id` in the dark or light mode, if it has one.
+    /// Patronus Photo's palette for suite theme `id` in the dark or light mode, if it has one.
     pub fn palette(id: &ThemeId, dark: bool) -> Option<Self> {
         Palette::of(id, dark).map(Self::from)
     }
@@ -216,7 +216,7 @@ impl AppTheme {
         AppTheme { id: def.id.clone(), tokens: Tokens::from_resolved(&resolved.tokens, dark), library: Some(def) }
     }
 
-    /// The name PhotoCraft's Appearance settings give a theme it has a palette for.
+    /// The name Patronus Photo's Appearance settings give a theme it has a palette for.
     pub fn palette_label(id: &str, dark: bool) -> Option<&'static str> {
         Palette::ALL.into_iter().find(|p| p.theme() == (id, dark)).map(Palette::label)
     }
@@ -225,7 +225,7 @@ impl AppTheme {
         &self.id
     }
 
-    /// The suite definition of a theme PhotoCraft has no palette for.
+    /// The suite definition of a theme Patronus Photo has no palette for.
     pub fn library(&self) -> Option<&Arc<ThemeDef>> {
         self.library.as_ref()
     }
@@ -306,7 +306,7 @@ pub struct Tokens {
 }
 
 impl Tokens {
-    /// The tokens PhotoCraft draws a suite theme with when it has no palette for it: craft-theme's
+    /// The tokens Patronus Photo draws a suite theme with when it has no palette for it: craft-theme's
     /// resolved colours and radii, in the Studio layout.
     fn from_resolved(t: &craft::theme::Tokens, dark: bool) -> Self {
         let c = |token: ColorToken| {
@@ -877,7 +877,7 @@ impl Tokens {
 
     /// Tokens for the active theme (stored in egui's context data by [`apply`]).
     pub fn get(ctx: &egui::Context) -> Tokens {
-        ctx.data(|d| d.get_temp::<Tokens>(egui::Id::unique("photocraft-theme"))).unwrap_or_else(|| AppTheme::studio().tokens())
+        ctx.data(|d| d.get_temp::<Tokens>(egui::Id::unique("patronusphoto-theme"))).unwrap_or_else(|| AppTheme::studio().tokens())
     }
 
     /// Thin RGB outlines; the filled bands use the same hues with subdued coverage.
@@ -891,8 +891,8 @@ impl Tokens {
     }
 
     /// Semantic label hues stay recognisable across themes; None keeps the normal row surface.
-    pub fn layer_label_colors(&self, label: photocraft_doc::LabelColor) -> Option<(Color32, Color32)> {
-        use photocraft_doc::LabelColor;
+    pub fn layer_label_colors(&self, label: patronusphoto_doc::LabelColor) -> Option<(Color32, Color32)> {
+        use patronusphoto_doc::LabelColor;
         let (swatch, eye) = match label {
             LabelColor::None => return None,
             LabelColor::Red => ([0xFC, 0x5D, 0x5B], [0x9F, 0x2F, 0x30]),
@@ -911,8 +911,8 @@ impl Tokens {
         Some((rgb(swatch), rgb(eye)))
     }
 
-    pub fn layer_label_icon(&self, label: photocraft_doc::LabelColor) -> Color32 {
-        if label == photocraft_doc::LabelColor::None { self.icon } else { Color32::from_gray(226) }
+    pub fn layer_label_icon(&self, label: patronusphoto_doc::LabelColor) -> Color32 {
+        if label == patronusphoto_doc::LabelColor::None { self.icon } else { Color32::from_gray(226) }
     }
 
     /// Analysis colours are semantic hues, independent of the application accent palette.
@@ -957,7 +957,7 @@ pub fn install_fonts(ctx: &egui::Context) {
     install_font_stack(ctx, &fonts);
 }
 
-/// PhotoCraft's faces as the craft framework's font stack: Inter for the interface with its
+/// Patronus Photo's faces as the craft framework's font stack: Inter for the interface with its
 /// `medium` and `semibold` families, JetBrains Mono for numbers. The framework puts egui's default
 /// faces after them, for symbols Inter lacks, and orders the craft-fonts faces this build embeds
 /// (`cjk_fonts::craft_faces`) by `ui_language`. A web build's served faces and their fetcher come
@@ -966,7 +966,7 @@ fn ui_fonts(ctx: &egui::Context, ui_language: &str) -> UiFonts<'static> {
     use craft::ui::fonts::{Emoji, Family, FontRef, I18nScripts, SEMIBOLD};
     let (proportional, monospace, medium, semibold) = (FontRef::proportional(), FontRef::monospace(), FontRef::named("medium"), FontRef::named(SEMIBOLD));
     let mut faces: Vec<(String, FontData, Vec<FontRef>)> = Vec::new();
-    // The bundled fonts are inflated on first use (photocraft_text::fonts). Should one ever fail
+    // The bundled fonts are inflated on first use (patronusphoto_text::fonts). Should one ever fail
     // to inflate (empty bytes), it is left out and the next face draws that text.
     let mut add = |name: &str, data: Option<FontData>, families: &[FontRef]| match data {
         Some(data) => faces.push((name.to_owned(), data, families.to_vec())),
@@ -974,10 +974,10 @@ fn ui_fonts(ctx: &egui::Context, ui_language: &str) -> UiFonts<'static> {
     };
     let bundled = |bytes: &'static [u8]| (!bytes.is_empty()).then(|| FontData::from_static(bytes));
     // Each family's own face first, then Inter behind the named weights.
-    add("Inter-Medium", bundled(photocraft_text::fonts::INTER_MEDIUM.as_slice()), std::slice::from_ref(&medium));
-    add("Inter-SemiBold", bundled(photocraft_text::fonts::INTER_SEMIBOLD.as_slice()), std::slice::from_ref(&semibold));
-    add("JetBrainsMono", bundled(photocraft_text::fonts::JETBRAINS_MONO_REGULAR.as_slice()), std::slice::from_ref(&monospace));
-    add("Inter", bundled(photocraft_text::fonts::INTER_REGULAR.as_slice()), &[proportional.clone(), medium.clone(), semibold.clone()]);
+    add("Inter-Medium", bundled(patronusphoto_text::fonts::INTER_MEDIUM.as_slice()), std::slice::from_ref(&medium));
+    add("Inter-SemiBold", bundled(patronusphoto_text::fonts::INTER_SEMIBOLD.as_slice()), std::slice::from_ref(&semibold));
+    add("JetBrainsMono", bundled(patronusphoto_text::fonts::JETBRAINS_MONO_REGULAR.as_slice()), std::slice::from_ref(&monospace));
+    add("Inter", bundled(patronusphoto_text::fonts::INTER_REGULAR.as_slice()), &[proportional.clone(), medium.clone(), semibold.clone()]);
     // The monochrome emoji face egui's `default_fonts` would add; the last resort after the system fonts.
     let mut emoji = Emoji::default();
     emoji.monochrome = craft::ui::fonts::noto_emoji();
@@ -999,7 +999,7 @@ fn ui_fonts(ctx: &egui::Context, ui_language: &str) -> UiFonts<'static> {
 
 /// Installs the craft runtime on `ctx` with the font stack (see [`install_fonts`]) and the root
 /// window's `frame` decision (`None` where the platform has none, as on the web; the frame is part
-/// of this install, never set afterwards). It runs once, from `PhotocraftApp::setup_window` or
+/// of this install, never set afterwards). It runs once, from `PatronusPhotoApp::setup_window` or
 /// `setup_context`, when the window or headless context is created.
 pub fn install_runtime(ctx: &egui::Context, frame: Option<craft::window::policy::Decision>) {
     let fonts = ui_fonts(ctx, crate::i18n::current().code());
@@ -1048,7 +1048,7 @@ fn ui_fonts_active(ctx: &egui::Context) -> bool {
 }
 
 fn ui_fonts_id() -> egui::Id {
-    egui::Id::unique("photocraft-ui-fonts")
+    egui::Id::unique("patronusphoto-ui-fonts")
 }
 
 fn ui_font_size(ctx: &egui::Context) -> UiFontSize {
@@ -1092,7 +1092,7 @@ struct UiFontSizePlugin {
 
 impl egui::Plugin for UiFontSizePlugin {
     fn debug_name(&self) -> &'static str {
-        "photocraft-ui-font-size"
+        "patronusphoto-ui-font-size"
     }
 
     fn output_hook(&mut self, ctx: &egui::Context, _output: &mut egui::FullOutput) {
@@ -1149,7 +1149,7 @@ pub fn apply(ctx: &egui::Context, theme: &AppTheme) {
     // including when an integration or restored egui state pinned its own theme preference.
     ctx.set_theme(egui::ThemePreference::System);
     let t = theme.tokens();
-    ctx.data_mut(|d| d.insert_temp(egui::Id::unique("photocraft-theme"), t));
+    ctx.data_mut(|d| d.insert_temp(egui::Id::unique("patronusphoto-theme"), t));
     let mut v = if t.dark() { Visuals::dark() } else { Visuals::light() };
     v.panel_fill = t.chrome;
     v.window_fill = t.card;
@@ -1222,7 +1222,7 @@ pub fn apply(ctx: &egui::Context, theme: &AppTheme) {
         s.spacing.scroll = scroll;
         s.spacing.tooltip_width = 280.0;
     });
-    // egui selects its style branch using OS appearance, independently of PhotoCraft's fixed
+    // egui selects its style branch using OS appearance, independently of Patronus Photo's fixed
     // Dark/Light mode or platform appearance service. Both branches need the selected palette.
     let style = ctx.global_style();
     ctx.set_style_of(egui::Theme::Light, Arc::clone(&style));
@@ -1245,7 +1245,7 @@ mod tests;
 
 /// Development feature: live design-token overrides.
 ///
-/// Set `PHOTOCRAFT_THEME_FILE=/path/tokens.json` in a debug build; the file is polled and applied
+/// Set `PATRONUSPHOTO_THEME_FILE=/path/tokens.json` in a debug build; the file is polled and applied
 /// on change, so colours, radii and sizes can be tuned without recompiling. Keys are `Tokens` field
 /// names; values are `"#rrggbb"`, `"#rrggbbaa"` or numbers. Compiled out of release builds.
 #[cfg(all(debug_assertions, not(target_arch = "wasm32")))]
@@ -1263,7 +1263,7 @@ pub mod live {
 
     impl LiveTokens {
         pub fn from_env() -> Self {
-            Self { path: std::env::var_os("PHOTOCRAFT_THEME_FILE").map(Into::into), ..Default::default() }
+            Self { path: std::env::var_os("PATRONUSPHOTO_THEME_FILE").map(Into::into), ..Default::default() }
         }
 
         /// Re-apply overrides if the file changed. Returns true when tokens were updated.
@@ -1288,7 +1288,7 @@ pub mod live {
                     super::apply(ctx, theme);
                     let mut t = Tokens::get(ctx);
                     let unknown = apply_overrides(&mut t, &v);
-                    ctx.data_mut(|d| d.insert_temp(egui::Id::unique("photocraft-theme"), t));
+                    ctx.data_mut(|d| d.insert_temp(egui::Id::unique("patronusphoto-theme"), t));
                     if !unknown.is_empty() {
                         log::warn!("unknown token keys: {unknown:?}");
                     }

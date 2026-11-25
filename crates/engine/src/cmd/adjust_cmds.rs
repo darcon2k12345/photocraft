@@ -3,16 +3,16 @@
 //! * parameter parsing for Selective Color and Color Lookup (both also adjustment layers; their
 //!   commands are generated with the other kinds in `commands.rs`),
 //! * the destructive-only adjustments: Shadows/Highlights, Replace Color, Match Color and HDR
-//!   Toning (maths in `photocraft_algo::tone`).
+//!   Toning (maths in `patronusphoto_algo::tone`).
 //!
 //! Destructive adjustments convert the target (layer pixels, or a targeted alpha channel /
 //! Quick Mask) to straight RGBA, so every colour model and bit depth is handled, and blend the
 //! result through the selection like the other Image › Adjustments commands.
 
-use photocraft_algo::tone::{self, HdrToning, MatchColor, ShadowsHighlights};
-use photocraft_doc::adjust::{LutFormat, LutSource};
-use photocraft_doc::{Adjustment, Document, Layer, LayerContent, Rect};
-use photocraft_raster::{Surface, to_rgba};
+use patronusphoto_algo::tone::{self, HdrToning, MatchColor, ShadowsHighlights};
+use patronusphoto_doc::adjust::{LutFormat, LutSource};
+use patronusphoto_doc::{Adjustment, Document, Layer, LayerContent, Rect};
+use patronusphoto_raster::{Surface, to_rgba};
 use serde_json::{Value, json};
 
 use crate::commands::CommandSpec;
@@ -143,7 +143,7 @@ pub fn lookup_from_params(p: &Value, base: Option<&Adjustment>) -> Result<Adjust
     if let Some(text) = opt_str(CMD, p, "data")?.filter(|s| !s.is_empty()) {
         let file_name = file_name.unwrap_or("lut.cube");
         let bytes = if encoding == "base64" {
-            photocraft_paint::tile::b64_decode(text).ok_or_else(|| bad(CMD, "`data` is not valid base64"))?
+            patronusphoto_paint::tile::b64_decode(text).ok_or_else(|| bad(CMD, "`data` is not valid base64"))?
         } else {
             text.as_bytes().to_vec()
         };
@@ -338,7 +338,7 @@ pub(crate) fn has_adjustable(s: &Session) -> std::result::Result<(), String> {
 /// The smart object an adjustment's pixels would go to: the layer the params resolve to (the
 /// active one by default), when the command edits its pixels and that layer is a smart object.
 /// `None` for a mask or channel target, or a layer that is not a smart object.
-pub(crate) fn smart_pixel_target(s: &Session, p: &Value) -> Result<Option<photocraft_doc::LayerId>> {
+pub(crate) fn smart_pixel_target(s: &Session, p: &Value) -> Result<Option<patronusphoto_doc::LayerId>> {
     if crate::commands::is_mask_target(p) || crate::channel_cmds::is_channel_target(p) || crate::color_channels::target(s, p)?.is_some() {
         return Ok(None);
     }
@@ -361,10 +361,10 @@ pub(crate) fn adjust_as_smart_filter(s: &mut Session, kind: &str, label: &str, p
     if let Value::Object(m) = &mut params {
         m.remove("__kind");
     }
-    let sf = photocraft_doc::SmartFilter {
+    let sf = patronusphoto_doc::SmartFilter {
         command: format!("image.adjustments.{kind}"),
         params,
-        blend: photocraft_color::BlendMode::Normal,
+        blend: patronusphoto_color::BlendMode::Normal,
         opacity: 1.0,
         visible: true,
     };
@@ -381,7 +381,7 @@ fn has_doc(s: &Session) -> std::result::Result<(), String> {
 
 /// Image › Adjustments run as a smart filter (`image.adjustments.<kind>` recorded on a smart
 /// object): the adjustment applied to a copy of `surf`. `None` for kinds or params it can't run.
-pub(crate) fn adjust_as_filter(kind: &str, p: &Value, surf: &Surface, histogram_mask: Option<&photocraft_doc::LayerMask>) -> Result<Option<Surface>> {
+pub(crate) fn adjust_as_filter(kind: &str, p: &Value, surf: &Surface, histogram_mask: Option<&patronusphoto_doc::LayerMask>) -> Result<Option<Surface>> {
     // A Color Lookup filter re-reads its LUT `file`, a path stored in the document: followed only
     // as `doc_path` allows, else the filter can't run (like a missing file).
     let resolved;
@@ -544,9 +544,9 @@ fn replace_color(s: &mut Session, p: &Value) -> Result<Value> {
         Some(radius) => {
             let samples: Vec<_> = points
                 .iter()
-                .map(|&(x, y)| photocraft_algo::selection::RangeSample { color: [c[0], c[1], c[2]], at: Some((x - r.x0 as f32, y - r.y0 as f32)) })
+                .map(|&(x, y)| patronusphoto_algo::selection::RangeSample { color: [c[0], c[1], c[2]], at: Some((x - r.x0 as f32, y - r.y0 as f32)) })
                 .collect();
-            let mask = photocraft_algo::selection::color_range_samples(px, r.width() as usize, &samples, fuzz, Some(radius));
+            let mask = patronusphoto_algo::selection::color_range_samples(px, r.width() as usize, &samples, fuzz, Some(radius));
             tone::replace_color_masked(px, &mask, h, sat, l);
         }
         None => {
@@ -580,12 +580,12 @@ fn stats_pixels(doc: &Document, layer: Option<u64>, use_selection: bool) -> Resu
     let area = doc.bounds();
     let px: Vec<[f32; 4]> = match layer {
         Some(id) => {
-            let l = doc.layer(photocraft_doc::LayerId(id)).ok_or(EngineError::NoLayer(photocraft_doc::LayerId(id)))?;
-            photocraft_compose::render_layer(l, area).into_px()
+            let l = doc.layer(patronusphoto_doc::LayerId(id)).ok_or(EngineError::NoLayer(patronusphoto_doc::LayerId(id)))?;
+            patronusphoto_compose::render_layer(l, area).into_px()
         }
-        None => photocraft_compose::flatten(doc).into_px(),
+        None => patronusphoto_compose::flatten(doc).into_px(),
     };
-    let mask = doc.selection.as_ref().filter(|_| use_selection).map(|sel| photocraft_algo::selection::mask_from_surface(Some(sel), area));
+    let mask = doc.selection.as_ref().filter(|_| use_selection).map(|sel| patronusphoto_algo::selection::mask_from_surface(Some(sel), area));
     Ok((px, mask))
 }
 
@@ -612,7 +612,7 @@ fn match_color(s: &mut Session, p: &Value) -> Result<Value> {
     let target_sel = p.get("useSelectionInTarget").and_then(Value::as_bool).unwrap_or(false);
     let sel = s.active().and_then(|d| d.doc.selection.clone());
     rgba_edit(s, "Match Color", p, |px, r| {
-        let mask: Option<Vec<f32>> = sel.as_ref().filter(|_| target_sel).map(|sel| photocraft_algo::selection::mask_from_surface(Some(sel), r));
+        let mask: Option<Vec<f32>> = sel.as_ref().filter(|_| target_sel).map(|sel| patronusphoto_algo::selection::mask_from_surface(Some(sel), r));
         let Some(target) = tone::lab_stats(px, mask.as_deref()) else {
             return;
         };
@@ -641,12 +641,12 @@ fn hdr_toning(s: &mut Session, p: &Value) -> Result<Value> {
     };
     // Like Photoshop, HDR Toning flattens the image first (one history step).
     s.edit("HDR Toning", |doc, active| {
-        let buf = photocraft_compose::flatten(doc).over_background([1.0, 1.0, 1.0]);
+        let buf = patronusphoto_compose::flatten(doc).over_background([1.0, 1.0, 1.0]);
         let (w, hgt) = (buf.rect.width() as usize, buf.rect.height() as usize);
         let mut px = buf.into_px();
         tone::hdr_toning(&mut px, w, hgt, &h);
         let fmt = doc.pixel_format();
-        let data: Vec<f32> = px.iter().flat_map(|q| photocraft_raster::from_rgba(&fmt, *q)).collect();
+        let data: Vec<f32> = px.iter().flat_map(|q| patronusphoto_raster::from_rgba(&fmt, *q)).collect();
         let mut bg = Layer::raster("Background", fmt);
         bg.locks.transparency = true;
         bg.locks.position = true;
@@ -733,7 +733,7 @@ const AUTO_BW_SAMPLES: usize = 1 << 16;
 const AUTO_BW_BINS: usize = 32;
 
 /// Black & White's Auto (#9269): the colour weights (%, in [`crate::adjust_params::HUE_RANGES`]
-/// order) that spread the image's greys over the most grey levels. PhotoCraft's own search, not
+/// order) that spread the image's greys over the most grey levels. Patronus Photo's own search, not
 /// Photoshop's: from the default mix, each weight in turn steps through 0..=150 % to the value
 /// that most raises the entropy of the greys' histogram ([`AUTO_BW_BINS`] levels), less a pull
 /// back towards the default, until a pass changes nothing. So colours the default mix turns into
@@ -747,7 +747,7 @@ pub fn auto_black_white(px: &[[f32; 3]]) -> [f32; 6] {
         }
         let mut bins = [0u32; AUTO_BW_BINS];
         for c in px {
-            let g = photocraft_compose::adjust::black_white_gray(*c, w).clamp(0.0, 1.0);
+            let g = patronusphoto_compose::adjust::black_white_gray(*c, w).clamp(0.0, 1.0);
             if let Some(b) = bins.get_mut(((g * AUTO_BW_BINS as f32) as usize).min(AUTO_BW_BINS - 1)) {
                 *b += 1;
             }
@@ -790,7 +790,7 @@ fn auto_bw_sample(rgba: &[[f32; 4]]) -> Vec<[f32; 3]> {
 }
 
 /// Hides `id` and everything composited above it. Returns whether `id` is in `layers`.
-fn hide_from(layers: &mut [Layer], id: photocraft_doc::LayerId) -> bool {
+fn hide_from(layers: &mut [Layer], id: patronusphoto_doc::LayerId) -> bool {
     let mut found = false;
     for l in layers.iter_mut() {
         if found || l.id == id {
@@ -813,7 +813,7 @@ fn black_white_auto(s: &mut Session, p: &Value) -> Result<Value> {
     let st = s.active().ok_or(EngineError::NoDocument)?;
     let id = match p.get("layer") {
         None | Some(Value::Null) => st.active_layer.ok_or_else(|| EngineError::Other("no active layer".into()))?,
-        Some(v) => photocraft_doc::LayerId(v.as_u64().ok_or_else(|| bad(cmd, "`layer` must be a layer id"))?),
+        Some(v) => patronusphoto_doc::LayerId(v.as_u64().ok_or_else(|| bad(cmd, "`layer` must be a layer id"))?),
     };
     let filter = match p.get("filter") {
         None | Some(Value::Null) => None,
@@ -823,7 +823,7 @@ fn black_white_auto(s: &mut Session, p: &Value) -> Result<Value> {
     let area = st.doc.bounds();
     // Rendering or reading a canvas past the render limit gives nothing to sample: say so rather
     // than answer with the default mix.
-    if u64::from(area.width()) * u64::from(area.height()) > photocraft_compose::MAX_RENDER_PIXELS {
+    if u64::from(area.width()) * u64::from(area.height()) > patronusphoto_compose::MAX_RENDER_PIXELS {
         return Err(bad(cmd, "the canvas is too large to analyse"));
     }
     let read = |surf: &Surface| -> Vec<[f32; 4]> {
@@ -843,7 +843,7 @@ fn black_white_auto(s: &mut Session, p: &Value) -> Result<Value> {
         (LayerContent::Adjustment(_), None) => {
             let mut below = (*st.doc).clone();
             hide_from(&mut below.layers, id);
-            photocraft_compose::render(&below, area).into_px()
+            patronusphoto_compose::render(&below, area).into_px()
         }
         (_, None) => read(layer.surface().ok_or_else(|| EngineError::Other(format!("layer \"{}\" has no pixels", layer.name)))?),
     };

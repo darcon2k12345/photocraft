@@ -1,8 +1,8 @@
 use craft_psd::descriptor::{Descriptor, UnicodeString, Value, VersionedDescriptor};
 use craft_psd::{ColorMode as PsdMode, ImageResource, PsdFile};
-use photocraft_color::{ColorMode, SampleType};
-use photocraft_doc::{Color, ColorTable, CountGroup, Document};
-use photocraft_geom::Size;
+use patronusphoto_color::{ColorMode, SampleType};
+use patronusphoto_doc::{Color, ColorTable, CountGroup, Document};
+use patronusphoto_geom::Size;
 
 use super::{COUNT_INFO, count_groups_from_resource};
 

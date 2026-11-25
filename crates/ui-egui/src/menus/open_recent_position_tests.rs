@@ -2,8 +2,8 @@
 
 use super::*;
 
-fn app_with(recent: &[&str]) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app_with(recent: &[&str]) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.ui.recent_files = recent.iter().map(|s| (*s).to_string()).collect();
     app
 }

@@ -1,14 +1,14 @@
 use egui::Modifiers;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing::{frame, move_to, press, release};
 use crate::state::Tool;
-use photocraft_engine::gradient_fill_cmds as cmds;
+use patronusphoto_engine::gradient_fill_cmds as cmds;
 
 /// A 200×120 document with a Gradient Fill layer drawn from (20, 60) to (180, 60).
-fn app_with_fill_layer() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app_with_fill_layer() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 120})).unwrap();
     app.ui.tool = Tool::Gradient;
     let m = Modifiers::NONE;
@@ -19,11 +19,11 @@ fn app_with_fill_layer() -> Box<PhotocraftApp> {
     app
 }
 
-fn past(app: &PhotocraftApp) -> usize {
+fn past(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.past_len()
 }
 
-fn get(app: &mut PhotocraftApp) -> Value {
+fn get(app: &mut PatronusPhotoApp) -> Value {
     app.run(cmds::GET, json!({})).unwrap()
 }
 

@@ -3,35 +3,35 @@ use craft::ui::dialog::DialogId;
 use serde_json::{Map, Value, json};
 
 /// The id of the dialog on top of the host's stack: the one a test just opened.
-fn top_dialog(app: &PhotocraftApp) -> DialogId {
+fn top_dialog(app: &PatronusPhotoApp) -> DialogId {
     app.framework.dialogs.stack().top().expect("a dialog is open")
 }
 
 /// The open parameter dialog.
-fn hosted(app: &PhotocraftApp) -> &HostedParamDialog {
+fn hosted(app: &PatronusPhotoApp) -> &HostedParamDialog {
     app.framework.dialogs.get::<HostedParamDialog>().expect("a parameter dialog is open")
 }
 
 /// The open dialog's fields as the JSON map the filter helpers read.
-fn fields(app: &PhotocraftApp) -> Map<String, Value> {
+fn fields(app: &PatronusPhotoApp) -> Map<String, Value> {
     let Value::Object(fields) = serde_json::to_value(hosted(app).fields()).expect("fields serialize") else { panic!("fields are an object") };
     fields
 }
 
 /// Opens the dialog of `command` and shows it once: a hosted form loads its values when it first shows.
-fn open_filter(app: &mut PhotocraftApp, command: &str) {
+fn open_filter(app: &mut PatronusPhotoApp, command: &str) {
     crate::filter_dialog::open(app, command).unwrap_or_else(|error| panic!("{command} has a dialog: {error:?}"));
     crate::dialogs::testing::show(app);
 }
 
 /// Sets `name` of the open dialog through the host, as a script or a click on its row does.
-fn set_field(app: &mut PhotocraftApp, ctx: &egui::Context, name: &str, value: Value) {
+fn set_field(app: &mut PatronusPhotoApp, ctx: &egui::Context, name: &str, value: Value) {
     let id = top_dialog(app);
     app.framework.dialogs.set_json_field(ctx, id, name, value).unwrap_or_else(|error| panic!("the dialog takes {name}: {error}"));
 }
 
 /// Sets every field of `values` (an object) of the open dialog.
-fn set_fields(app: &mut PhotocraftApp, ctx: &egui::Context, values: &Value) {
+fn set_fields(app: &mut PatronusPhotoApp, ctx: &egui::Context, values: &Value) {
     for (name, value) in values.as_object().expect("an object of fields") {
         set_field(app, ctx, name, value.clone());
     }
@@ -42,7 +42,7 @@ fn set_fields(app: &mut PhotocraftApp, ctx: &egui::Context, values: &Value) {
 /// so the frame's refresh time counted the preview twice.
 #[test]
 fn inline_filter_preview_is_composited_and_recorded_once() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.background_jobs = false;
     app.run("file.new", json!({"width": 320, "height": 240})).unwrap();
     open_filter(&mut app, "filter.stylize.solarize");
@@ -64,13 +64,13 @@ fn inline_filter_preview_is_composited_and_recorded_once() {
 /// actually requests is the one under test.
 #[test]
 fn filter_preview_at_100_percent_is_full_resolution() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.background_jobs = false;
     app.run("file.new", json!({"width": 2400, "height": 2200})).unwrap();
     assert_eq!(crate::proxy::preview_factor(&app.session.active().unwrap().doc, true), 2, "big enough for a proxy");
     open_filter(&mut app, "filter.stylize.solarize");
     let ctx = app.ctx().clone();
-    let preview_at = |app: &mut PhotocraftApp, zoom: f32| {
+    let preview_at = |app: &mut PatronusPhotoApp, zoom: f32| {
         app.ui.views.get_mut(0).expect("the new document's view").zoom = zoom;
         assert_eq!(app.current_zoom(), zoom);
         let (k, _, size) = ensure_filter_preview(app, 0, &ctx).expect("a preview");
@@ -88,12 +88,12 @@ fn filter_preview_at_100_percent_is_full_resolution() {
 fn every_filter_previews_off_the_ui_thread_and_a_newer_value_cancels_the_old() {
     // Dragging Gaussian Blur's radius to 1000 px froze the window: the preview ran inline in
     // the frame, and every slider step waited for the previous blur to finish.
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
     app.background_jobs = true;
     open_filter(&mut app, "filter.blur.gaussianBlur");
     let ctx = app.ctx().clone();
-    let wait_for = |app: &mut PhotocraftApp, radius: f64| {
+    let wait_for = |app: &mut PatronusPhotoApp, radius: f64| {
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
         while app.filter_preview.as_ref().is_none_or(|p| p.key.params["radius"].as_f64() != Some(radius)) {
             assert!(std::time::Instant::now() < deadline, "no preview for radius {radius}");
@@ -157,7 +157,7 @@ fn every_filter_previews_off_the_ui_thread_and_a_newer_value_cancels_the_old() {
 // clock: `supersede` cancels a running job once the values have been still for SETTLE_MS, so a
 // test that relies on a real blur beating a 150 ms timer is a test that fails on a loaded box.
 #[cfg(not(target_arch = "wasm32"))]
-fn gated_blur_preview(app: &mut PhotocraftApp, ctx: &egui::Context) -> (std::sync::mpsc::Sender<()>, f64) {
+fn gated_blur_preview(app: &mut PatronusPhotoApp, ctx: &egui::Context) -> (std::sync::mpsc::Sender<()>, f64) {
     let dialog = top_dialog(app);
     let st = app.session.active().expect("a document is active");
     let command = "filter.blur.gaussianBlur";
@@ -200,7 +200,7 @@ fn gated_blur_preview(app: &mut PhotocraftApp, ctx: &egui::Context) -> (std::syn
                 Some(key.tool_colors),
             )
             .map(|d| {
-                let buffer = photocraft_compose::flatten(&d);
+                let buffer = patronusphoto_compose::flatten(&d);
                 (std::sync::Arc::new(d), buffer)
             });
             crate::dialogs::filter_preview_worker::Computed { result, ms: 0.0 }
@@ -213,7 +213,7 @@ fn gated_blur_preview(app: &mut PhotocraftApp, ctx: &egui::Context) -> (std::syn
 // from inside `compute` would still race that send. These tests drive the canvas until the
 // state they need appears instead of assuming a timing.
 #[cfg(not(target_arch = "wasm32"))]
-fn drive_until(app: &mut PhotocraftApp, ctx: &egui::Context, what: &str, done: impl Fn(&PhotocraftApp) -> bool) {
+fn drive_until(app: &mut PatronusPhotoApp, ctx: &egui::Context, what: &str, done: impl Fn(&PatronusPhotoApp) -> bool) {
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(60);
     while !done(app) {
         assert!(std::time::Instant::now() < deadline, "timed out waiting for {what}");
@@ -228,7 +228,7 @@ fn a_held_preview_frame_stays_on_the_canvas_when_the_proxy_factor_changes() {
     // #10474: Minimum and Maximum take their proxy factor from the radius, so a radius drag across
     // a whole pixel changes `FilterPreviewKey::k`. The frame for the old factor stays on the
     // canvas, drawn at its own factor, until the one for the new factor lands.
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 2400, "height": 2200})).unwrap();
     app.background_jobs = true;
     app.ui.views.get_mut(0).expect("the new document's view").zoom = 0.25;
@@ -253,7 +253,7 @@ fn indexed_matte_preview_matches_commit_and_refreshes_tool_colors_inline_and_on_
     for background in [false, true] {
         for depth in [8, 16, 32] {
             for matte in ["foreground", "background"] {
-                let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+                let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
                 app.background_jobs = background;
                 app.run("file.new", json!({"width": 64, "height": 48, "depth": depth, "background": "transparent"})).unwrap();
                 app.run("edit.assignProfile", json!({"profile": "adobe-rgb-compat"})).unwrap();
@@ -265,7 +265,7 @@ fn indexed_matte_preview_matches_commit_and_refreshes_tool_colors_inline_and_on_
                             .unwrap()
                             .surface_mut()
                             .unwrap()
-                            .fill_rect(photocraft_geom::Rect::new(0, 0, 32, 48), &photocraft_raster::from_rgba(&format, [1.0, 0.0, 0.0, 0.5]));
+                            .fill_rect(patronusphoto_geom::Rect::new(0, 0, 32, 48), &patronusphoto_raster::from_rgba(&format, [1.0, 0.0, 0.0, 0.5]));
                         Ok(())
                     })
                     .unwrap();
@@ -286,7 +286,7 @@ fn indexed_matte_preview_matches_commit_and_refreshes_tool_colors_inline_and_on_
                         app.filter_preview.as_ref().is_some_and(|p| p.key.tool_colors == colors && p.result.is_some())
                     });
                     let preview = app.filter_preview.as_ref().unwrap().result.as_ref().unwrap();
-                    let mut applied = photocraft_engine::Session::new();
+                    let mut applied = patronusphoto_engine::Session::new();
                     applied.color.settings = app.session.color.settings.clone();
                     applied.tools.foreground = colors.0;
                     applied.tools.background = colors.1;
@@ -302,7 +302,7 @@ fn indexed_matte_preview_matches_commit_and_refreshes_tool_colors_inline_and_on_
                         assert_ne!(actual, previous, "changing the selected tool color refreshes the pixels");
                     }
                     previous = Some(actual);
-                    assert_eq!(app.session.active().unwrap().doc.mode, photocraft_doc::ColorMode::Rgb, "preview does not commit");
+                    assert_eq!(app.session.active().unwrap().doc.mode, patronusphoto_doc::ColorMode::Rgb, "preview does not commit");
                 }
             }
         }
@@ -312,7 +312,7 @@ fn indexed_matte_preview_matches_commit_and_refreshes_tool_colors_inline_and_on_
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn cross_scale_indexed_matte_preview_rejects_old_tool_colors_from_cached_and_worker_results() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.background_jobs = true;
     app.run("file.new", json!({"width": 2400, "height": 2200, "depth": 8, "background": "transparent"})).unwrap();
     app.run("edit.assignProfile", json!({"profile": "adobe-rgb-compat"})).unwrap();
@@ -324,7 +324,7 @@ fn cross_scale_indexed_matte_preview_rejects_old_tool_colors_from_cached_and_wor
                 .unwrap()
                 .surface_mut()
                 .unwrap()
-                .fill_rect(photocraft_geom::Rect::new(0, 0, 32, 48), &photocraft_raster::from_rgba(&format, [1.0, 0.0, 0.0, 0.5]));
+                .fill_rect(patronusphoto_geom::Rect::new(0, 0, 32, 48), &patronusphoto_raster::from_rgba(&format, [1.0, 0.0, 0.0, 0.5]));
             Ok(())
         })
         .unwrap();
@@ -385,7 +385,7 @@ fn cross_scale_indexed_matte_preview_rejects_old_tool_colors_from_cached_and_wor
                 Some(old_worker.tool_colors),
             )
             .map(|doc| {
-                let buffer = photocraft_compose::flatten(&doc);
+                let buffer = patronusphoto_compose::flatten(&doc);
                 (std::sync::Arc::new(doc), buffer)
             });
             crate::dialogs::filter_preview_worker::Computed { result, ms: 0.0 }
@@ -417,7 +417,7 @@ fn match_color_preview_rejects_cached_and_late_frames_from_an_old_source_layer_o
 
     let command = "image.adjustments.matchColor";
     for change_layer in [true, false] {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
         app.run("file.new", json!({"width": 16, "height": 16, "background": "white"})).unwrap();
         app.run("file.new", json!({"width": 16, "height": 16, "background": "white"})).unwrap();
         let red = app.session.active().unwrap().active_layer.unwrap();
@@ -443,7 +443,7 @@ fn match_color_preview_rejects_cached_and_late_frames_from_an_old_source_layer_o
             app.filter_preview_worker
                 .start(old.clone(), ctx.clone(), move |_| {
                     wait.recv_timeout(std::time::Duration::from_secs(60)).expect("the test releases the job");
-                    let buffer = photocraft_compose::flatten(&doc);
+                    let buffer = patronusphoto_compose::flatten(&doc);
                     Computed { result: Some((doc, buffer)), ms: 0.0 }
                 })
                 .unwrap()
@@ -477,7 +477,7 @@ fn match_color_preview_rejects_cached_and_late_frames_from_an_old_source_layer_o
 fn a_preview_computed_mid_drag_reaches_the_canvas_and_then_converges() {
     // A drag used to paint nothing at all: every completion was dropped for carrying stale
     // parameters, so the canvas only ever showed an effect once the pointer had come to rest.
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
     app.background_jobs = true;
     open_filter(&mut app, "filter.blur.gaussianBlur");
@@ -513,7 +513,7 @@ fn a_preview_computed_mid_drag_reaches_the_canvas_and_then_converges() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn a_mid_drag_frame_does_not_replace_a_frame_that_is_already_exact() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
     app.background_jobs = true;
     open_filter(&mut app, "filter.blur.gaussianBlur");
@@ -552,7 +552,7 @@ fn a_mid_drag_frame_does_not_replace_a_frame_that_is_already_exact() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn a_mid_drag_empty_result_leaves_the_preview_alone() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
     app.background_jobs = true;
     open_filter(&mut app, "filter.blur.gaussianBlur");
@@ -607,7 +607,7 @@ fn a_mid_drag_empty_result_leaves_the_preview_alone() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn a_reopened_dialog_never_paints_the_previous_dialogs_preview() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
     app.background_jobs = true;
     open_filter(&mut app, "filter.blur.gaussianBlur");

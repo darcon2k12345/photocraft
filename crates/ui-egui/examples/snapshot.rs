@@ -1,7 +1,7 @@
-//! Render the full PhotoCraft UI offscreen (no window, no focus stealing) and save a PNG.
+//! Render the full Patronus Photo UI offscreen (no window, no focus stealing) and save a PNG.
 //!
 //! ```sh
-//! cargo run --release -p photocraft-ui-egui --example snapshot -- \
+//! cargo run --release -p patronusphoto-ui-egui --example snapshot -- \
 //!     --out ui.png --size 1440x900 --scale 2 --open photo.jpg \
 //!     --script '[["ui.set", {"tool": "type"}], ["ui.menu.invoke", {"id": "image.imageSize"}]]'
 //! ```
@@ -27,8 +27,8 @@
 //! `SNAPSHOT_RERUNS=1` prints, for every frame the script's calls run, its passes and the reasons a
 //! pass asked to run again, after the framework's `craft_ui::rerun` lines that name what changed.
 
-use photocraft_ui_egui::control::{ControlRequest, Reply, handle};
-use photocraft_ui_egui::{PhotocraftApp, Services};
+use patronusphoto_ui_egui::control::{ControlRequest, Reply, handle};
+use patronusphoto_ui_egui::{PatronusPhotoApp, Services};
 use serde_json::Value;
 
 /// Prints the framework's rerun diagnostics (`craft_ui::rerun`) to stderr.
@@ -49,7 +49,7 @@ impl log::Log for RerunLog {
 }
 
 /// Runs one frame; with `reruns`, prints its passes and why each pass after the first ran.
-fn step(harness: &mut egui_kittest::Harness<'_, Box<PhotocraftApp>>, reruns: Option<&str>) {
+fn step(harness: &mut egui_kittest::Harness<'_, Box<PatronusPhotoApp>>, reruns: Option<&str>) {
     harness.step();
     if let Some(label) = reruns {
         let output = &harness.output().platform_output;
@@ -75,11 +75,11 @@ fn main() {
         arg(&args, "--script").map(|s| serde_json::from_str::<Vec<(String, Value)>>(&s).expect("--script must be [[method, params], …]")).unwrap_or_default();
 
     let services = Services {
-        import: Some(Box::new(|name: &str, bytes: &[u8], opts: &photocraft_io::ImportOptions| {
-            photocraft_io::import_with_options(name, bytes, opts).map(|r| (r.document, r.warnings)).map_err(|e| e.to_string())
+        import: Some(Box::new(|name: &str, bytes: &[u8], opts: &patronusphoto_io::ImportOptions| {
+            patronusphoto_io::import_with_options(name, bytes, opts).map(|r| (r.document, r.warnings)).map_err(|e| e.to_string())
         })),
-        export: Some(Box::new(|doc: &photocraft_doc::Document, path: &str, settings: &photocraft_ui_egui::ExportSettings| {
-            let mut opts = photocraft_io::ExportOptions::default();
+        export: Some(Box::new(|doc: &patronusphoto_doc::Document, path: &str, settings: &patronusphoto_ui_egui::ExportSettings| {
+            let mut opts = patronusphoto_io::ExportOptions::default();
             if let Some(q) = settings.jpeg_quality {
                 opts.encode.jpeg_quality = q;
             }
@@ -90,9 +90,9 @@ fn main() {
             }
             opts.tga_bits = settings.tga_bits;
             opts.encode.dds = settings.dds;
-            photocraft_io::export(doc, path, &opts).map(|r| (r.bytes, r.warnings)).map_err(|e| e.to_string())
+            patronusphoto_io::export(doc, path, &opts).map(|r| (r.bytes, r.warnings)).map_err(|e| e.to_string())
         })),
-        write: Some(Box::new(|path: &str, bytes: &[u8]| photocraft_format::atomic_write(std::path::Path::new(path), bytes).map_err(|e| e.to_string()))),
+        write: Some(Box::new(|path: &str, bytes: &[u8]| patronusphoto_format::atomic_write(std::path::Path::new(path), bytes).map_err(|e| e.to_string()))),
         ..Default::default()
     };
     let open = arg(&args, "--open");
@@ -110,13 +110,13 @@ fn main() {
         .with_render_options(render_options)
         .wgpu()
         .build_eframe(move |cc| {
-            PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+            PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
             let mut services = services;
             services.is_wayland = wayland_notice;
-            services.xwayland_command = wayland_notice.then(|| "WAYLAND_DISPLAY= photocraft".into());
-            let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), services);
+            services.xwayland_command = wayland_notice.then(|| "WAYLAND_DISPLAY= patronusphoto".into());
+            let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), services);
             if update_notice {
-                photocraft_ui_egui::updates_ui::preview_release(&mut app, "99.0.0", "https://github.com/storytold/photocraft/releases/tag/v99.0.0");
+                patronusphoto_ui_egui::updates_ui::preview_release(&mut app, "99.0.0", "https://github.com/storytold/photocraft/releases/tag/v99.0.0");
             }
             app.background_jobs = background_jobs;
             // `--safe-gpu`: the CPU canvas, as the desktop app's `--safe-gpu` launch.
@@ -216,7 +216,7 @@ fn main() {
     }
     println!(
         "language: {}",
-        serde_json::json!({"preference": harness.state().session.prefs().interface.language, "resolved": photocraft_ui_egui::i18n::current().code()})
+        serde_json::json!({"preference": harness.state().session.prefs().interface.language, "resolved": patronusphoto_ui_egui::i18n::current().code()})
     );
     let img = harness.render().expect("render");
     img.save(&out).expect("save png");

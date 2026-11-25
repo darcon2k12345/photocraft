@@ -10,7 +10,7 @@ mod round;
 mod tests {
     use super::round::round_i32;
     // Keep the proof in the algorithm crate's dependent test graph.
-    use photocraft_algo as _;
+    use patronusphoto_algo as _;
     use rayon::prelude::*;
 
     /// Every `f32` bit pattern in [-4096, 4096] (both signs, about 2.3e9 values, split across

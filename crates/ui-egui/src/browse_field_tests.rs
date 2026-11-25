@@ -1,6 +1,6 @@
 //! #7942 / #7531: path fields of command dialogs get a Browse… button (Artboards to Files'
 //! folder, Install Plug-in…'s .wasm file) that fills the field from the file service.
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use craft::host::{PickKind, Picked, ScriptedFiles};
 use craft::ui::dialog::DialogId;
 use craft::ui::patterns::form_dialogs::HostedParamDialog;
@@ -8,24 +8,24 @@ use egui_kittest::{Harness, kittest::Queryable};
 use serde_json::{Value, json};
 use std::sync::Arc;
 
-fn harness(files: Arc<ScriptedFiles>) -> Harness<'static, Box<PhotocraftApp>> {
+fn harness(files: Arc<ScriptedFiles>) -> Harness<'static, Box<PatronusPhotoApp>> {
     // The framework builds its host's file service from the services the app is made with.
-    let app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services { files: Some(files), ..Default::default() });
+    let app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services { files: Some(files), ..Default::default() });
     let h = Harness::builder()
         .with_size(egui::vec2(1440.0, 900.0))
         .with_max_steps(64)
         .with_context(app.ctx().clone())
-        .build_ui_state(|ui, app: &mut Box<PhotocraftApp>| crate::dialogs::run(app, ui), app);
-    PhotocraftApp::setup_context(&h.ctx, Default::default());
+        .build_ui_state(|ui, app: &mut Box<PatronusPhotoApp>| crate::dialogs::run(app, ui), app);
+    PatronusPhotoApp::setup_context(&h.ctx, Default::default());
     h
 }
 
-fn field(h: &Harness<'_, Box<PhotocraftApp>>, dialog: DialogId, key: &str) -> Option<Value> {
+fn field(h: &Harness<'_, Box<PatronusPhotoApp>>, dialog: DialogId, key: &str) -> Option<Value> {
     let form = h.state().framework.dialogs.get_by_id::<HostedParamDialog>(dialog)?;
     serde_json::to_value(form.fields()).ok()?.get(key).cloned()
 }
 
-fn open(h: &mut Harness<'_, Box<PhotocraftApp>>, command: &str) -> DialogId {
+fn open(h: &mut Harness<'_, Box<PatronusPhotoApp>>, command: &str) -> DialogId {
     let ctx = h.ctx.clone();
     let reply = crate::menus::invoke(h.state_mut(), &ctx, command, json!({})).unwrap();
     let want = reply["dialog"].as_str().unwrap().to_owned();

@@ -93,7 +93,7 @@ fn an_inner_shadow_reaching_past_the_layer_paints_it_as_before() {
     s.execute("select.deselect", json!({})).unwrap();
     s.execute("layer.layerStyle.innerShadow", json!({"distance": 500.0, "size": 0.0})).unwrap();
     let d = s.active().unwrap();
-    let px = photocraft_compose::render(&d.doc, d.doc.bounds()).into_px();
+    let px = patronusphoto_compose::render(&d.doc, d.doc.bounds()).into_px();
     let level = |x: usize, y: usize| px[y * 400 + x].map(|c| (c.clamp(0.0, 1.0) * 255.0).round() as i32);
     // Inside the layer: Multiply black at the factory 75 %, so the orange stays only at a quarter.
     for (x, y) in [(200, 150), (105, 80), (295, 220)] {

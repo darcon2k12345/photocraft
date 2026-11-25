@@ -1,4 +1,4 @@
-//! Colour swatches open PhotoCraft's Color Picker, not egui's compact popup (#2144: "use the same
+//! Colour swatches open Patronus Photo's Color Picker, not egui's compact popup (#2144: "use the same
 //! color picker throughout the app"): filter dialog colours, Preferences colours, the Note and
 //! Count tools' colours and an artboard's custom background. OK sets that colour (in sRGB, as
 //! everywhere else); the foreground is untouched.
@@ -12,16 +12,16 @@ use craft::ui::dialog::{DialogId, OpenDialog};
 
 use crate::color_picker_ui::title_for;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 const PICKED: &str = "#336699";
 const PICKED_RGB: [f32; 3] = [0x33 as f32 / 255.0, 0x66 as f32 / 255.0, 0x99 as f32 / 255.0];
 
-fn harness(setup: impl FnOnce(&mut PhotocraftApp) + 'static) -> Harness<'static, Box<PhotocraftApp>> {
+fn harness(setup: impl FnOnce(&mut PatronusPhotoApp) + 'static) -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1800.0)).with_max_steps(64).build_eframe(|cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, crate::theme::AppTheme::pro());
-        let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), Default::default());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, crate::theme::AppTheme::pro());
+        let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), Default::default());
         app.run("file.new", json!({"width": 200, "height": 120})).unwrap();
         setup(&mut app);
         app
@@ -32,7 +32,7 @@ fn harness(setup: impl FnOnce(&mut PhotocraftApp) + 'static) -> Harness<'static,
 
 /// Clicks the swatch called `label` (a colour button) and answers the Color Picker it opens with [`PICKED`]; the
 /// picker shows `title`. Panics when no Color Picker opens.
-fn pick(h: &mut Harness<'_, Box<PhotocraftApp>>, label: &str, title: &str) {
+fn pick(h: &mut Harness<'_, Box<PatronusPhotoApp>>, label: &str, title: &str) {
     // Panels scroll: bring the swatch into view first.
     h.get_by_role_and_label(Role::ColorWell, label).scroll_to_me();
     h.run_steps(2);
@@ -41,12 +41,12 @@ fn pick(h: &mut Harness<'_, Box<PhotocraftApp>>, label: &str, title: &str) {
 }
 
 /// The hosted dialog `id` as automation lists it: its key and its JSON fields.
-fn open_dialog(app: &PhotocraftApp, id: DialogId) -> OpenDialog {
+fn open_dialog(app: &PatronusPhotoApp, id: DialogId) -> OpenDialog {
     app.framework.dialogs.open_dialogs().into_iter().find(|d| d.id == id).expect("the dialog is open")
 }
 
 /// Answers the Color Picker a swatch click just opened with [`PICKED`]; when `title` is given the picker shows it.
-fn answer(h: &mut Harness<'_, Box<PhotocraftApp>>, label: &str, title: Option<&str>) {
+fn answer(h: &mut Harness<'_, Box<PatronusPhotoApp>>, label: &str, title: Option<&str>) {
     let fg = h.state().session.tools.foreground;
     h.run_steps(4);
     let id = crate::color_picker_ui::top(h.state()).unwrap_or_else(|| panic!("the {label} swatch opens the Color Picker"));
@@ -90,7 +90,7 @@ fn preferences_colours_open_the_color_picker() {
     crate::prefs_ui::open_preferences(h.state_mut(), "guidesGridAndSlices");
     h.run_steps(4);
     // The window's draft reaches the saved preferences on Apply: one colour key changes then.
-    let values = |h: &Harness<'_, Box<PhotocraftApp>>| h.state().session.prefs().to_json()["guidesGridAndSlices"].clone();
+    let values = |h: &Harness<'_, Box<PatronusPhotoApp>>| h.state().session.prefs().to_json()["guidesGridAndSlices"].clone();
     let before = values(&h);
     h.get_all_by_role(Role::ColorWell).next().expect("a colour swatch").click();
     answer(&mut h, "the first Preferences colour", None);

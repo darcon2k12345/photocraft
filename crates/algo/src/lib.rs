@@ -1,4 +1,4 @@
-//! # photocraft-algo
+//! # patronusphoto-algo
 //!
 //! CPU image filters (Photoshop's Filter menu): blur, sharpen, noise,
 //! pixelate, stylize and distort. Every filter is
@@ -103,9 +103,9 @@ pub use params_ext::*;
 
 mod params_ext;
 
-use photocraft_color::ColorMode;
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use patronusphoto_color::ColorMode;
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::Surface;
 use serde::{Deserialize, Serialize};
 
 /// How far outside an output tile a filter reads.
@@ -1035,7 +1035,7 @@ pub fn kernel(params: &FilterParams, src: &Image, out: Rect, ctx: &Ctx) -> Vec<f
         FilterParams::ShapeBlur { radius, shape } => blur2::shape_blur(src, out, ctx, *radius, *shape),
         FilterParams::CustomShapeBlur { radius, kernel } => kernel
             .as_ref()
-            .and_then(|mask| shape_blur::Prepared::custom(*radius, mask, &photocraft_raster::Interrupt::NONE))
+            .and_then(|mask| shape_blur::Prepared::custom(*radius, mask, &patronusphoto_raster::Interrupt::NONE))
             .map_or_else(Vec::new, |prepared| prepared.run(src, out, ctx)),
         FilterParams::TiltShift { blur, center_x, center_y, angle, focus, transition } => {
             gallery::tilt_shift(src, out, ctx, *blur, (*center_x, *center_y), *angle, *focus, *transition)
@@ -1132,7 +1132,7 @@ pub fn apply_in_with(
     bounds: Rect,
     selection: Option<&Surface>,
     extent: Rect,
-    ctl: &photocraft_raster::Interrupt,
+    ctl: &patronusphoto_raster::Interrupt,
 ) -> Option<Surface> {
     try_apply_in_with(surface, params, area, bounds, selection, extent, ctl).ok()
 }
@@ -1174,7 +1174,7 @@ pub fn try_apply_in_with(
     bounds: Rect,
     selection: Option<&Surface>,
     extent: Rect,
-    ctl: &photocraft_raster::Interrupt,
+    ctl: &patronusphoto_raster::Interrupt,
 ) -> Result<Surface, ApplyError> {
     if ctl.cancelled() {
         return Err(ApplyError::Cancelled);
@@ -1195,7 +1195,7 @@ fn checked_native_filter(
     bounds: Rect,
     selection: Option<&Surface>,
     extent: Option<Rect>,
-    ctl: &photocraft_raster::Interrupt,
+    ctl: &patronusphoto_raster::Interrupt,
 ) -> Option<Result<Surface, ApplyError>> {
     let domain = extent.unwrap_or(bounds);
     Some(match params {
@@ -1284,7 +1284,7 @@ pub fn apply_tiled(
     extent: Option<Rect>,
 ) -> Surface {
     // Preserve the input if a checked filter allocation cannot be completed.
-    apply_tiled_with(surface, params, area, bounds, selection, tile, extent, &photocraft_raster::Interrupt::NONE).unwrap_or_else(|| surface.clone())
+    apply_tiled_with(surface, params, area, bounds, selection, tile, extent, &patronusphoto_raster::Interrupt::NONE).unwrap_or_else(|| surface.clone())
 }
 
 /// [`apply_tiled`] with cancellation (checked before each tile, so a cancel takes effect within
@@ -1299,7 +1299,7 @@ pub fn apply_tiled_with(
     selection: Option<&Surface>,
     tile: i32,
     extent: Option<Rect>,
-    ctl: &photocraft_raster::Interrupt,
+    ctl: &patronusphoto_raster::Interrupt,
 ) -> Option<Surface> {
     apply_tiled_with_impl(surface, params, area, bounds, selection, tile, extent, ctl, true)
 }
@@ -1337,7 +1337,7 @@ fn apply_tiled_with_impl(
     selection: Option<&Surface>,
     tile: i32,
     extent: Option<Rect>,
-    ctl: &photocraft_raster::Interrupt,
+    ctl: &patronusphoto_raster::Interrupt,
     prepare_fast_paths: bool,
 ) -> Option<Surface> {
     // Every dispatch path needs a positive step, including Motion Blur's fallback.
@@ -1566,7 +1566,7 @@ fn apply_tiled_with_impl(
             match data {
                 TileData::Samples(data) => {
                     out.write_region(t, &data);
-                    photocraft_raster::scratch::give(data);
+                    patronusphoto_raster::scratch::give(data);
                 }
                 TileData::Encoded(data) => out.write_interleaved(t, &data),
             }
@@ -1588,7 +1588,7 @@ fn apply_box_blur(
     extent: Option<Rect>,
     selection: Option<&Surface>,
     boxes: &[usize],
-    ctl: &photocraft_raster::Interrupt,
+    ctl: &patronusphoto_raster::Interrupt,
 ) -> Option<Surface> {
     let fmt = surface.format();
     let n = fmt.channels();
@@ -1606,7 +1606,9 @@ fn apply_box_blur(
         let mut columns: Vec<(Surface, Vec<blur::Strip>)> = Vec::new();
         for (t, data) in strips {
             match columns.last_mut() {
-                Some((_, v)) if v.first().is_some_and(|(r, _)| r.x0.div_euclid(photocraft_geom::TILE_SIZE) == t.x0.div_euclid(photocraft_geom::TILE_SIZE)) => {
+                Some((_, v))
+                    if v.first().is_some_and(|(r, _)| r.x0.div_euclid(patronusphoto_geom::TILE_SIZE) == t.x0.div_euclid(patronusphoto_geom::TILE_SIZE)) =>
+                {
                     v.push((t, data))
                 }
                 _ => columns.push((Surface::with_default(fmt, &surface.default_pixel()), vec![(t, data)])),
@@ -1622,7 +1624,7 @@ fn apply_box_blur(
                     mix_selection(data, *t, sel, &Image::read(surface, *t), fmt.alpha);
                 }
                 s.write_region(*t, data);
-                photocraft_raster::scratch::give(std::mem::take(data));
+                patronusphoto_raster::scratch::give(std::mem::take(data));
             }
         };
         #[cfg(not(target_arch = "wasm32"))]
@@ -1723,7 +1725,7 @@ fn apply_radial_reference(
     bounds: Rect,
     selection: Option<&Surface>,
     extent: Rect,
-    ctl: &photocraft_raster::Interrupt,
+    ctl: &patronusphoto_raster::Interrupt,
 ) -> Option<Surface> {
     apply_tiled_with_impl(surface, params, area.intersect(&extent), bounds, selection, auto_tile(params, bounds), Some(extent), ctl, false)
 }
@@ -1731,7 +1733,7 @@ fn apply_radial_reference(
 #[cfg(test)]
 mod selected_alpha_tests {
     use super::*;
-    use photocraft_color::{ColorMode, PixelFormat, SampleType};
+    use patronusphoto_color::{ColorMode, PixelFormat, SampleType};
 
     #[test]
     /// Compare declared alpha capability to actual channel-selective noise/convolution pixels across native models and
@@ -1769,7 +1771,7 @@ mod selected_alpha_tests {
                     });
                     for filter in [noise, convolution] {
                         assert_eq!(filter.makes_transparency(), alpha, "{mode:?} {depth:?}");
-                        let out = apply_in_with(&source, &filter, bounds, bounds, None, bounds, &photocraft_raster::Interrupt::NONE).unwrap();
+                        let out = apply_in_with(&source, &filter, bounds, bounds, None, bounds, &patronusphoto_raster::Interrupt::NONE).unwrap();
                         if alpha {
                             assert_ne!(out.pixel(1, 1).last(), source.pixel(1, 1).last());
                         } else {

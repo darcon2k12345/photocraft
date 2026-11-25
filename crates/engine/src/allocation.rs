@@ -68,7 +68,7 @@ pub(crate) fn checkpoint(purpose: &str) -> Result<()> {
 }
 
 /// Copy a region into an explicitly reserved buffer.
-pub(crate) fn read_region(surface: &photocraft_raster::Surface, area: photocraft_geom::Rect, purpose: &str) -> Result<Vec<f32>> {
+pub(crate) fn read_region(surface: &patronusphoto_raster::Surface, area: patronusphoto_geom::Rect, purpose: &str) -> Result<Vec<f32>> {
     let len = (area.width() as usize)
         .checked_mul(area.height() as usize)
         .and_then(|n| n.checked_mul(surface.channels()))
@@ -86,7 +86,7 @@ pub(crate) const MAX_DENSE_BYTES: u64 = crate::image_cmds::MAX_RESAMPLE_BYTES;
 
 /// Refuses, before anything is allocated, an operation that would hold `bytes_per_px` bytes of
 /// dense buffers for every pixel of `area` at once.
-pub(crate) fn check_dense(area: photocraft_geom::Rect, bytes_per_px: u64, purpose: &str) -> Result<()> {
+pub(crate) fn check_dense(area: patronusphoto_geom::Rect, bytes_per_px: u64, purpose: &str) -> Result<()> {
     let px = u64::from(area.width()).saturating_mul(u64::from(area.height()));
     let bytes = px.saturating_mul(bytes_per_px);
     if bytes <= MAX_DENSE_BYTES {
@@ -144,7 +144,7 @@ mod tests {
 
     #[test]
     fn dense_area_past_the_budget_is_refused() {
-        use photocraft_geom::Rect;
+        use patronusphoto_geom::Rect;
         assert!(check_dense(Rect::from_xywh(0, 0, 4096, 4096), 16, "test").is_ok());
         // Two tiles a million pixels apart: content bounds of a trillion pixels.
         let far = Rect::new(0, 0, 1 << 20, 1 << 20);

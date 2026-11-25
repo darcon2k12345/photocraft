@@ -5,7 +5,7 @@
 //! Applied on top of `menus::is_enabled`, so menus, shortcuts and the Layers context menu grey the
 //! same items Photoshop greys.
 
-use photocraft_doc::{Document, Layer, LayerContent, LayerId};
+use patronusphoto_doc::{Document, Layer, LayerContent, LayerId};
 
 /// Commands Photoshop greys while the Background layer is the active layer.
 fn background_blocks(id: &str, has_selection: bool) -> bool {
@@ -51,7 +51,7 @@ fn kind_blocks(id: &str, l: &Layer) -> bool {
         "layer.rasterize.layer" => {
             l.vector_mask.is_none() && !matches!(c, LayerContent::Text(_) | LayerContent::Shape(_) | LayerContent::Fill(_) | LayerContent::Smart(_))
         }
-        "layer.rasterize.layerStyle" => !photocraft_engine::rasterize_style_cmds::can_bake(l),
+        "layer.rasterize.layerStyle" => !patronusphoto_engine::rasterize_style_cmds::can_bake(l),
         "layer.layerStyle.copyLayerStyle" | "layer.layerStyle.clear" => l.effects.items.is_empty(),
         _ => id.starts_with("layer.combineShapes.") && !matches!(c, LayerContent::Shape(_)),
     }
@@ -128,7 +128,7 @@ pub fn disabled_for_selection(doc: &Document, selected: &[LayerId], active: Opti
     !any
 }
 
-pub fn disabled(app: &crate::PhotocraftApp, id: &str) -> bool {
+pub fn disabled(app: &crate::PatronusPhotoApp, id: &str) -> bool {
     let Some(st) = app.session.active() else { return false };
     let active = st.active_layer.and_then(|a| st.doc.layer(a));
     // The split warps edit the open Warp box's grid, or a smart object's stored warp: without
@@ -164,10 +164,10 @@ pub fn disabled(app: &crate::PhotocraftApp, id: &str) -> bool {
     // refuses as locked when it opens (#11101). It doesn't warp, and doesn't distort while
     // editable type is among them.
     if transform {
-        let targets = photocraft_engine::transform_cmds::selection_targets(st);
+        let targets = patronusphoto_engine::transform_cmds::selection_targets(st);
         // Judged on the layers the box moves, linked ones included (#11217): one linked layer
         // selected is a box over its link group, which doesn't warp either.
-        let targets = photocraft_engine::transform_cmds::box_targets(&st.doc, &targets);
+        let targets = patronusphoto_engine::transform_cmds::box_targets(&st.doc, &targets);
         if targets.len() > 1 || targets.first() != st.active_layer.as_ref() {
             let text = targets.iter().any(|t| st.doc.layer(*t).is_some_and(|l| matches!(l.content, LayerContent::Text(_))));
             return match id {
@@ -194,7 +194,7 @@ pub fn disabled(app: &crate::PhotocraftApp, id: &str) -> bool {
             | "edit.transform.splitWarpVertically"
             | "edit.transform.removeWarpSplit"
     ) && active.is_some_and(|l| matches!(l.content, LayerContent::Text(_)))
-        && photocraft_engine::transform_cmds::lone_target(&st.doc, st.active_layer, &serde_json::json!({ "target": crate::canvas::paint_target(app) }))
+        && patronusphoto_engine::transform_cmds::lone_target(&st.doc, st.active_layer, &serde_json::json!({ "target": crate::canvas::paint_target(app) }))
             .is_ok_and(|t| t.is_none())
     {
         return true;
@@ -211,43 +211,43 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    fn session() -> photocraft_engine::Session {
-        let mut s = photocraft_engine::Session::new();
+    fn session() -> patronusphoto_engine::Session {
+        let mut s = patronusphoto_engine::Session::new();
         s.execute("file.new", json!({"width": 20, "height": 20})).unwrap();
         s
     }
 
-    type Setup = fn(&mut photocraft_engine::Session);
+    type Setup = fn(&mut patronusphoto_engine::Session);
 
     fn layer_of(r: serde_json::Value) -> LayerId {
         LayerId(r["layer"].as_u64().unwrap())
     }
 
-    fn lone_background(_: &mut photocraft_engine::Session) {}
+    fn lone_background(_: &mut patronusphoto_engine::Session) {}
 
-    fn background_with_selection(s: &mut photocraft_engine::Session) {
+    fn background_with_selection(s: &mut patronusphoto_engine::Session) {
         s.execute("select.all", json!({})).unwrap();
     }
 
     /// A targeted alpha channel transforms instead of the Background (#2835).
-    fn background_with_alpha_target(s: &mut photocraft_engine::Session) {
+    fn background_with_alpha_target(s: &mut patronusphoto_engine::Session) {
         s.execute("channel.new", json!({})).unwrap();
         s.execute("channel.target", json!({"channel": 0})).unwrap();
     }
 
-    fn plain_layer(s: &mut photocraft_engine::Session) {
+    fn plain_layer(s: &mut patronusphoto_engine::Session) {
         s.execute("layer.new.layer", json!({})).unwrap();
     }
 
     /// A type layer and a raster layer selected, the raster layer active.
-    fn type_and_raster(s: &mut photocraft_engine::Session) {
+    fn type_and_raster(s: &mut patronusphoto_engine::Session) {
         let raster = layer_of(s.execute("layer.new.layer", json!({})).unwrap());
         let text = layer_of(s.execute("type.create", json!({"text": "Hi", "size": 12, "x": 2, "y": 12})).unwrap());
         s.execute("layer.select", json!({"layer": text.0})).unwrap();
         s.execute("layer.select", json!({"layer": raster.0, "mode": "add"})).unwrap();
     }
 
-    fn background_and_raster(s: &mut photocraft_engine::Session) {
+    fn background_and_raster(s: &mut patronusphoto_engine::Session) {
         let bg = s.active().unwrap().doc.layers[0].id;
         let raster = layer_of(s.execute("layer.new.layer", json!({})).unwrap());
         s.execute("layer.select", json!({"layer": bg.0})).unwrap();
@@ -255,7 +255,7 @@ mod tests {
     }
 
     /// Three layers, the first two linked, the first selected (#11217).
-    fn linked_layer_selected(s: &mut photocraft_engine::Session) -> LayerId {
+    fn linked_layer_selected(s: &mut patronusphoto_engine::Session) -> LayerId {
         let a = layer_of(s.execute("layer.new.layer", json!({})).unwrap());
         let b = layer_of(s.execute("layer.new.layer", json!({})).unwrap());
         let c = layer_of(s.execute("layer.new.layer", json!({})).unwrap());
@@ -266,11 +266,11 @@ mod tests {
         c
     }
 
-    fn linked_partner(s: &mut photocraft_engine::Session) {
+    fn linked_partner(s: &mut patronusphoto_engine::Session) {
         linked_layer_selected(s);
     }
 
-    fn unlinked_layer(s: &mut photocraft_engine::Session) {
+    fn unlinked_layer(s: &mut patronusphoto_engine::Session) {
         let c = linked_layer_selected(s);
         s.execute("layer.select", json!({"layer": c.0})).unwrap();
     }
@@ -336,7 +336,7 @@ mod tests {
         for (name, setup, wants) in cases {
             let mut s = session();
             setup(&mut s);
-            let app = crate::PhotocraftApp::new(s, crate::Services::default());
+            let app = crate::PatronusPhotoApp::new(s, crate::Services::default());
             for (id, greyed) in *wants {
                 assert_eq!(disabled(&app, id), *greyed, "{name}: {id}");
             }
@@ -346,8 +346,8 @@ mod tests {
     /// A document with a Background, plain layers, one with a mask, one with a vector mask, a type layer, a shape, a Smart
     /// Object, an adjustment layer and one with a drop shadow; `select` picks a selection (the last
     /// layer is active) and `copied` has a layer style on the clipboard.
-    fn world(select: &[&str], copied: bool) -> photocraft_engine::Session {
-        use photocraft_doc::LayerId;
+    fn world(select: &[&str], copied: bool) -> patronusphoto_engine::Session {
+        use patronusphoto_doc::LayerId;
         let mut s = session();
         let id = |r: serde_json::Value| LayerId(r["layer"].as_u64().unwrap());
         let mut ids = std::collections::HashMap::new();
@@ -376,7 +376,7 @@ mod tests {
     }
 
     /// What a layer command can change: kind, clipping, masks and style of every layer.
-    fn fingerprint(s: &photocraft_engine::Session) -> Vec<String> {
+    fn fingerprint(s: &patronusphoto_engine::Session) -> Vec<String> {
         s.active()
             .unwrap()
             .doc
@@ -437,7 +437,7 @@ mod tests {
                 // `is_enabled` only reads the app, so one app per world answers for every command; each command then
                 // runs on a world of its own. A copied style is read by Paste Layer Style alone (the engine's
                 // `style_clipboard`), so the other commands run without it only (#15652).
-                let app = crate::PhotocraftApp::new(world(sel, copied), crate::Services::default());
+                let app = crate::PatronusPhotoApp::new(world(sel, copied), crate::Services::default());
                 for (cmd, must_change) in commands {
                     if copied && cmd != "layer.layerStyle.pasteLayerStyle" {
                         continue;
@@ -470,7 +470,7 @@ mod tests {
     /// reference. A pixel selection doesn't change that; a saved selection enables Load Selection….
     #[test]
     fn a_lone_background_greys_group_from_layers_and_load_selection() {
-        let mut app = crate::PhotocraftApp::new(session(), crate::Services::default());
+        let mut app = crate::PatronusPhotoApp::new(session(), crate::Services::default());
         for id in ["layer.new.groupFromLayers", "select.loadSelection"] {
             assert!(!crate::menus::is_enabled(&app, id), "{id} is greyed on a lone Background");
         }
@@ -494,9 +494,9 @@ mod tests {
     fn group_from_layers_and_load_selection_stay_live_where_they_apply() {
         let mut s = session();
         let bg = s.active().unwrap().doc.layers[0].id;
-        let layer = photocraft_doc::LayerId(s.execute("layer.new.layer", json!({})).unwrap()["layer"].as_u64().unwrap());
-        let mut app = crate::PhotocraftApp::new(s, crate::Services::default());
-        let on = |app: &crate::PhotocraftApp, id: &str| crate::menus::is_enabled(app, id);
+        let layer = patronusphoto_doc::LayerId(s.execute("layer.new.layer", json!({})).unwrap()["layer"].as_u64().unwrap());
+        let mut app = crate::PatronusPhotoApp::new(s, crate::Services::default());
+        let on = |app: &crate::PatronusPhotoApp, id: &str| crate::menus::is_enabled(app, id);
         assert!(on(&app, "layer.new.groupFromLayers") && on(&app, "select.loadSelection"), "a plain layer");
         app.session.execute("layer.select", json!({"layer": bg.0, "mode": "add"})).unwrap();
         assert_eq!(app.session.active().unwrap().selected_layers().len(), 2);

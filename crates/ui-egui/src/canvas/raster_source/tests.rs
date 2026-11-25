@@ -2,8 +2,8 @@ use super::*;
 use egui::Color32;
 use serde_json::json;
 
-fn app_with(width: u32, height: u32, background: &str) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app_with(width: u32, height: u32, background: &str) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": width, "height": height, "background": background})).unwrap();
     app
 }
@@ -28,7 +28,7 @@ enum Want {
     Redraws(PixelRect),
 }
 
-type Step = fn(&mut PhotocraftApp);
+type Step = fn(&mut PatronusPhotoApp);
 
 /// One pass of a source: its revision and size, its damage since the revision asked about, and since a revision it
 /// never handed out.
@@ -45,7 +45,7 @@ fn pass(source: &impl RasterSource, since: Revision) -> Pass {
 
 /// Runs each case on a fresh document from `setup`: a pass, the event, a second pass, and the second pass's damage
 /// since the first.
-fn check_damage(setup: fn() -> Box<PhotocraftApp>, run: fn(&mut PhotocraftApp, &egui::Context, Revision) -> Pass, cases: &[(&str, Step, Want)]) {
+fn check_damage(setup: fn() -> Box<PatronusPhotoApp>, run: fn(&mut PatronusPhotoApp, &egui::Context, Revision) -> Pass, cases: &[(&str, Step, Want)]) {
     for (event, step, want) in cases {
         let mut app = setup();
         let ctx = app.ctx().clone();
@@ -139,11 +139,11 @@ fn history_damage_includes_effect_reach_only_once() {
     let mut app = app_with(1024, 1024, "transparent");
     app.session
         .edit("add effect", |doc, _| {
-            doc.layers.last_mut().unwrap().effects.items.push(photocraft_doc::Effect::default_drop_shadow());
+            doc.layers.last_mut().unwrap().effects.items.push(patronusphoto_doc::Effect::default_drop_shadow());
             Ok(())
         })
         .unwrap();
-    assert!(photocraft_compose::effects::margin(app.session.active().unwrap().doc.layers.last().unwrap()) > 0);
+    assert!(patronusphoto_compose::effects::margin(app.session.active().unwrap().doc.layers.last().unwrap()) > 0);
     app.run("select.rect", json!({"x": 300, "y": 300, "width": 3, "height": 2})).unwrap();
     let ctx = app.ctx().clone();
     let before = CompositePrep::new(&mut app, &ctx, 0, None, None).unwrap().source(&app).revision();
@@ -329,7 +329,7 @@ fn the_composite_shows_a_filter_dialogs_preview() {
         let shown = read(&CompositePrep::new(&mut app, &ctx, 0, None, None).unwrap().source(&app), first, 1).pixels;
         let preview = app.filter_preview.as_ref().and_then(|p| p.result.clone()).expect("the dialog's preview");
         let (display, _) = crate::canvas::canvas_display(&app, &preview, None);
-        let expected = crate::canvas::display_image(display.as_deref(), &photocraft_compose::flatten(&preview));
+        let expected = crate::canvas::display_image(display.as_deref(), &patronusphoto_compose::flatten(&preview));
         assert_eq!(shown.first(), expected.pixels.first(), "{size:?}: the canvas shows the preview");
         assert_ne!(shown, plain, "{size:?}: not the unfiltered document");
     }
@@ -339,7 +339,7 @@ fn the_composite_shows_a_filter_dialogs_preview() {
 /// over its own area, centred on the document's, as the GPU canvas centres it; the channel view over it follows.
 #[test]
 fn a_size_changing_preview_lies_centred_on_the_document() {
-    let size = |w, h| photocraft_geom::Size::new(w, h);
+    let size = |w, h| patronusphoto_geom::Size::new(w, h);
     assert_eq!(super::super::textures::preview_bounds(size(64, 32), size(64, 32), 1), DRect::new(0, 0, 64, 32));
     assert_eq!(super::super::textures::preview_bounds(size(2401, 2200), size(1201, 1100), 2), DRect::new(0, 0, 2401, 2200), "a proxy");
     assert_eq!(super::super::textures::preview_bounds(size(64, 32), size(32, 64), 1), DRect::new(16, -16, 48, 48), "rotated");
@@ -356,7 +356,7 @@ fn a_size_changing_preview_lies_centred_on_the_document() {
     for _ in 0..2 {
         crate::smart_filter_dialog::tests::pass(&mut app);
     }
-    let bounds = |app: &mut PhotocraftApp| CompositePrep::new(app, &ctx, 0, None, None).unwrap().source(app).bounds();
+    let bounds = |app: &mut PatronusPhotoApp| CompositePrep::new(app, &ctx, 0, None, None).unwrap().source(app).bounds();
     let rotated = DRect::new(16, -16, 48, 48);
     assert_eq!(bounds(&mut app), rotated, "centred on the document");
     // Preview off, then Cancel: the document again, unchanged.
@@ -365,7 +365,7 @@ fn a_size_changing_preview_lies_centred_on_the_document() {
     let mut h = egui_kittest::Harness::builder()
         .with_size(egui::vec2(1200.0, 900.0))
         .with_context(ctx.clone())
-        .build_ui_state(|ui, app: &mut Box<PhotocraftApp>| crate::dialogs::run(app, ui), app);
+        .build_ui_state(|ui, app: &mut Box<PatronusPhotoApp>| crate::dialogs::run(app, ui), app);
     h.run_steps(2);
     h.get_by_label("Preview").click();
     h.run_steps(2);
@@ -380,7 +380,7 @@ fn a_size_changing_preview_lies_centred_on_the_document() {
 /// dropped without committing shows the channel as it was. One row per view target.
 #[test]
 fn channel_views_show_live_strokes_and_drop_discarded_ones() {
-    type Target = fn(&mut PhotocraftApp);
+    type Target = fn(&mut PatronusPhotoApp);
     let targets: [(&str, Target); 5] = [
         ("quick mask", |app| {
             app.run("select.rect", json!({"x": 0, "y": 0, "width": 120, "height": 60})).unwrap();
@@ -411,11 +411,11 @@ fn channel_views_show_live_strokes_and_drop_discarded_ones() {
         app.ui.tool = crate::state::Tool::Brush;
         let ctx = app.ctx().clone();
         let original = app.session.documents()[0].doc.clone();
-        let view = |app: &PhotocraftApp, doc: &Document| {
+        let view = |app: &PatronusPhotoApp, doc: &Document| {
             let st = &app.session.documents()[0];
             crate::channel_view::render(doc, &st.channel_view, rect, 1, crate::channel_view::Look::default(), st.active_layer).unwrap()
         };
-        let shown = |app: &mut PhotocraftApp| read(&OverlayPrep::new(app, &ctx, 0, None, None).unwrap().source(app), stroke, 1).pixels;
+        let shown = |app: &mut PatronusPhotoApp| read(&OverlayPrep::new(app, &ctx, 0, None, None).unwrap().source(app), stroke, 1).pixels;
         let m = egui::Modifiers::NONE;
         crate::canvas::tool_event(&mut app, crate::canvas::ToolEvent::Down { x: 10.0, y: 30.0, pressure: 1.0 }, m);
         crate::canvas::tool_event(&mut app, crate::canvas::ToolEvent::Move { x: 50.0, y: 30.0, pressure: 1.0 }, m);
@@ -436,13 +436,13 @@ mod gpu_tests {
     /// and the layer path shows nothing (`adjust_preview::cheap`).
     #[test]
     fn during_a_proxy_adjustment_the_overlay_reads_the_preview_and_the_composite_the_document() {
-        let _gpu = photocraft_testkit::gpu_lock();
+        let _gpu = patronusphoto_testkit::gpu_lock();
         let rs = match std::panic::catch_unwind(|| egui_kittest::wgpu::create_render_state(crate::gpu_canvas::wgpu_setup(), Default::default())) {
             Ok(rs) => rs,
-            Err(error) if std::env::var_os("PHOTOCRAFT_REQUIRE_GPU_TESTS").is_some() => std::panic::resume_unwind(error),
+            Err(error) if std::env::var_os("PATRONUSPHOTO_REQUIRE_GPU_TESTS").is_some() => std::panic::resume_unwind(error),
             Err(_) => return,
         };
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
         app.set_wgpu(rs);
         app.run("file.new", json!({"width": 2400, "height": 2200, "background": "#808080"})).unwrap();
         let st = app.session.active().unwrap();

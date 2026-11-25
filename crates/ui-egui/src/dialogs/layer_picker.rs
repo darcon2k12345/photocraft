@@ -11,11 +11,11 @@
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::adjust_editors::is_gray;
 use crate::state::Tool;
 use craft::imaging::ui::adjust::TonePicker;
-use photocraft_doc::{Adjustment, ColorMode, LayerContent, LayerId};
+use patronusphoto_doc::{Adjustment, ColorMode, LayerContent, LayerId};
 
 /// An armed Properties eyedropper: on `layer`, for `point` ("black", "gray" or "white"), armed
 /// while `tool` was the current tool.
@@ -41,7 +41,7 @@ pub fn tone_picker(picker: &LayerPicker) -> Option<TonePicker> {
 }
 
 /// Arms `picker` on `layer` for the current tool, or disarms the picker when it is `layer`'s.
-pub fn arm(app: &mut PhotocraftApp, layer: LayerId, picker: Option<TonePicker>) {
+pub fn arm(app: &mut PatronusPhotoApp, layer: LayerId, picker: Option<TonePicker>) {
     match picker {
         Some(p) => app.ui.layer_picker = Some(LayerPicker { layer: layer.0, point: point_name(p).into(), tool: app.ui.tool }),
         None if app.ui.layer_picker.as_ref().is_some_and(|armed| armed.layer == layer.0) => app.ui.layer_picker = None,
@@ -51,7 +51,7 @@ pub fn arm(app: &mut PhotocraftApp, layer: LayerId, picker: Option<TonePicker>) 
 
 /// The armed picker if it still applies: same tool, the layer still the active Levels or Curves
 /// layer, and the point supported in the document's colour mode.
-pub fn armed(app: &PhotocraftApp) -> Option<(LayerId, TonePicker)> {
+pub fn armed(app: &PatronusPhotoApp) -> Option<(LayerId, TonePicker)> {
     let picker = app.ui.layer_picker.as_ref()?;
     let st = app.session.active()?;
     let layer = LayerId(picker.layer);
@@ -61,21 +61,21 @@ pub fn armed(app: &PhotocraftApp) -> Option<(LayerId, TonePicker)> {
 }
 
 /// Drops a picker that no longer applies, so returning to its tool or layer doesn't re-arm it.
-pub fn prune(app: &mut PhotocraftApp) {
+pub fn prune(app: &mut PatronusPhotoApp) {
     if app.ui.layer_picker.is_some() && armed(app).is_none() {
         app.ui.layer_picker = None;
     }
 }
 
 /// Esc: disarms the picker. Returns whether there was one.
-pub fn cancel(app: &mut PhotocraftApp) -> bool {
+pub fn cancel(app: &mut PatronusPhotoApp) -> bool {
     app.ui.layer_picker.take().is_some()
 }
 
 /// Sets the armed point from the image at document point (x, y): one `layer.setAdjustment`.
 /// Returns whether a picker was armed (and so owns the click), even if the sample failed (off
 /// the image, transparent): that is reported in the status bar and the picker stays armed.
-pub fn sample_at(app: &mut PhotocraftApp, x: f64, y: f64) -> bool {
+pub fn sample_at(app: &mut PatronusPhotoApp, x: f64, y: f64) -> bool {
     let Some((layer, point)) = armed(app) else { return false };
     let size = app.ui.tool_options.eyedropper.size.pixels();
     let p = json!({"layer": layer.0, "eyedropper": {"point": point_name(point), "at": [x, y], "size": size}});

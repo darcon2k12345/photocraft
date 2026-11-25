@@ -2,8 +2,8 @@
 //! you'd like to rasterize"; the Layers panel's right-click item reads "Rasterize Layers"), not
 //! only on the one that was clicked. An explicit `layer` param still targets exactly that layer.
 
-use photocraft_doc::{LayerContent, LayerId};
-use photocraft_engine::{EngineError, Session};
+use patronusphoto_doc::{LayerContent, LayerId};
+use patronusphoto_engine::{EngineError, Session};
 use serde_json::{Value, json};
 
 fn kind(s: &Session, id: LayerId) -> &'static str {
@@ -144,25 +144,25 @@ fn bad_targets_fail_gracefully() {
     }
 }
 
-fn deny(denied: &'static str, id: &str) -> photocraft_engine::Result<()> {
+fn deny(denied: &'static str, id: &str) -> patronusphoto_engine::Result<()> {
     if id == denied { Err(EngineError::Other("denied".into())) } else { Ok(()) }
 }
 
-fn deny_shape_rasterize(id: &str, _: &Value) -> photocraft_engine::Result<()> {
+fn deny_shape_rasterize(id: &str, _: &Value) -> patronusphoto_engine::Result<()> {
     deny("layer.rasterize.shape", id)
 }
 
-fn deny_vector_mask_rasterize(id: &str, _: &Value) -> photocraft_engine::Result<()> {
+fn deny_vector_mask_rasterize(id: &str, _: &Value) -> patronusphoto_engine::Result<()> {
     deny("layer.rasterize.vectorMask", id)
 }
 
-fn deny_type_rasterize(id: &str, _: &Value) -> photocraft_engine::Result<()> {
+fn deny_type_rasterize(id: &str, _: &Value) -> patronusphoto_engine::Result<()> {
     deny("type.rasterize", id)
 }
 
 /// Everything a refused Rasterize has to leave as it was (#4974).
 struct Snapshot {
-    doc: std::sync::Arc<photocraft_doc::Document>,
+    doc: std::sync::Arc<patronusphoto_doc::Document>,
     steps: usize,
     journal: usize,
     selection: Vec<LayerId>,

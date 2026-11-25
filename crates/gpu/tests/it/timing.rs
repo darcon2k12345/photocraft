@@ -14,10 +14,10 @@
 
 use std::time::Instant;
 
-use photocraft_color::{BlendMode, Color, ColorMode, SampleType};
-use photocraft_doc::{Document, Layer, Size};
-use photocraft_geom::Rect;
-use photocraft_gpu::{Compositor, DeviceHealth, GpuTiming, Stats, timing};
+use patronusphoto_color::{BlendMode, Color, ColorMode, SampleType};
+use patronusphoto_doc::{Document, Layer, Size};
+use patronusphoto_geom::Rect;
+use patronusphoto_gpu::{Compositor, DeviceHealth, GpuTiming, Stats, timing};
 
 /// Pixels in `r`, as the compositor counts them.
 fn area(r: Rect) -> u64 {

@@ -9,9 +9,9 @@ use craft::ui::canvas::AppPaint;
 use super::display::{LiveProposal, hdr_preview, sync_display_lut};
 use super::filter_preview::{ensure_adjust_proxy, ensure_filter_preview, ensure_proxy_preview, filter_preview_display_doc};
 use super::textures::{ensure_gpu, preview_bounds, redraw_focus};
-use super::{Document, PhotocraftApp, viewport_pages};
+use super::{Document, PatronusPhotoApp, viewport_pages};
 use crate::gpu_canvas::ViewParams;
-use photocraft_geom::Rect as DRect;
+use patronusphoto_geom::Rect as DRect;
 
 #[cfg(test)]
 mod tests;
@@ -64,7 +64,7 @@ pub(crate) struct GpuPicture {
 /// The GPU canvas's picture of document `req.idx`, after bringing its texture up to date this pass: a live preview
 /// when one is shown, else the viewport pages when the document's texture set does not fit, else its texture set.
 /// `None` when the GPU canvas cannot show it (no GPU canvas, a device fault), and the CPU canvas draws it.
-pub(crate) fn gpu_picture(app: &mut PhotocraftApp, req: &GpuRequest<'_>) -> Option<GpuPicture> {
+pub(crate) fn gpu_picture(app: &mut PatronusPhotoApp, req: &GpuRequest<'_>) -> Option<GpuPicture> {
     let (ctx, idx, doc, output) = (req.ctx, req.idx, req.doc, req.output);
     let doc_size = [doc.size.width, doc.size.height];
     let base = |doc_key: u64, size: [u32; 2], view_key: u64, display: u8, hdr: Option<[f32; 2]>| ViewParams {
@@ -93,7 +93,7 @@ pub(crate) fn gpu_picture(app: &mut PhotocraftApp, req: &GpuRequest<'_>) -> Opti
         let view_key = egui::Id::unique(("pc-canvas-proxy", ctx.viewport_id(), idx)).value();
         let params = base(key, preview_size, view_key, display, hdr_preview(app, doc));
         let growth = [(preview_size[0] as f32 - reduced[0] as f32) / 2.0, (preview_size[1] as f32 - reduced[1] as f32) / 2.0];
-        let bounds = preview_bounds(doc.size, photocraft_geom::Size::new(preview_size[0], preview_size[1]), k);
+        let bounds = preview_bounds(doc.size, patronusphoto_geom::Size::new(preview_size[0], preview_size[1]), k);
         return Some(GpuPicture { params, shows: Shows::Preview, k, growth, bounds });
     }
     let plain = |params: ViewParams, shows: Shows| GpuPicture { params, shows, k: 1, growth: [0.0, 0.0], bounds: doc.bounds() };

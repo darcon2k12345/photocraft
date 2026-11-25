@@ -6,8 +6,8 @@
 //! Knots are addressed as `[subpath, knot]`. Every edit validates its indices and returns an
 //! error message instead of panicking.
 
-use photocraft_doc::{Knot, Path, PathOp, Subpath};
-use photocraft_geom::Point;
+use patronusphoto_doc::{Knot, Path, PathOp, Subpath};
+use patronusphoto_geom::Point;
 
 /// One of a knot's two direction handles.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -839,7 +839,7 @@ mod tests {
         // two Combine components (what the split makes) the hole would fill.
         let pts = [(0.0, 0.0), (100.0, 0.0), (0.0, 100.0), (10.0, 80.0), (80.0, 10.0), (10.0, 10.0)];
         let before = Path::new(vec![Subpath::polyline(&pts)]);
-        let rect = photocraft_geom::Rect::new(0, 0, 100, 100);
+        let rect = patronusphoto_geom::Rect::new(0, 0, 100, 100);
         let hole = |p: &Path| crate::path_coverage(p, rect)[30 * 100 + 30];
         let (first, rest) = (Subpath::polyline(&pts[..3]), Subpath::polyline(&pts[3..]));
         assert_eq!(hole(&before), 0.0, "a hole before the split");

@@ -3,7 +3,7 @@
 //! Background's pixels. Values from the issue's measurements, within 1/4096.
 
 use super::*;
-use photocraft_doc::LayerMask;
+use patronusphoto_doc::LayerMask;
 use serde_json::json;
 
 const RED: [f32; 4] = [200.0 / 255.0, 30.0 / 255.0, 30.0 / 255.0, 1.0];
@@ -18,7 +18,7 @@ fn session() -> (Session, LayerId) {
         let st = s.active_mut().unwrap();
         let doc = std::sync::Arc::make_mut(st.doc_mut());
         let surface = doc.layers[0].surface_mut().unwrap();
-        let red = photocraft_raster::from_rgba(&surface.format(), RED);
+        let red = patronusphoto_raster::from_rgba(&surface.format(), RED);
         surface.fill_rect(Rect::new(0, 0, 100, 150), &red);
     }
     s.execute("layer.newAdjustmentLayer.invert", json!({})).unwrap();
@@ -35,7 +35,7 @@ fn edit(s: &mut Session, f: impl FnOnce(&mut Document)) {
 fn green(doc: &Document, opacity: f32) -> Layer {
     let fmt = doc.pixel_format();
     let mut l = Layer::raster("Green", fmt);
-    l.surface_mut().unwrap().fill_rect(Rect::new(0, 0, 200, 150), &photocraft_raster::from_rgba(&fmt, GREEN));
+    l.surface_mut().unwrap().fill_rect(Rect::new(0, 0, 200, 150), &patronusphoto_raster::from_rgba(&fmt, GREEN));
     l.opacity = opacity;
     l
 }
@@ -209,7 +209,7 @@ fn a_huge_canvas_is_rendered_in_bounded_chunks() {
     let total = pass.len();
     let chunks = split_by_tiles(vec![pass]);
     assert_eq!(chunks.iter().map(Vec::len).sum::<usize>(), total, "no entry lost or repeated");
-    let tile = photocraft_geom::TILE_SIZE as usize;
+    let tile = patronusphoto_geom::TILE_SIZE as usize;
     for chunk in &chunks {
         let tiles: std::collections::HashSet<_> = chunk.iter().map(|e| (e.2.0 / tile, e.2.1 / tile)).collect();
         assert!(tiles.len() <= MAX_LATTICE_TILES, "{} tiles", tiles.len());
@@ -240,7 +240,7 @@ fn a_deep_knockout_layer_knocks_out_to_the_lattice() {
     let (mut s, _) = session();
     edit(&mut s, |d| {
         let mut l = green(d, 1.0);
-        l.advanced.knockout = photocraft_doc::Knockout::Deep;
+        l.advanced.knockout = patronusphoto_doc::Knockout::Deep;
         l.fill_opacity = 0.0;
         d.layers.insert(1, l);
     });

@@ -4,15 +4,15 @@
 use egui::{Modifiers, PointerButton, Pos2, accesskit::Role, vec2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
-use photocraft_doc::LayerId;
+use patronusphoto_doc::LayerId;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::layers_panel_nodes::{drag, row};
 
 /// `a` with a Drop Shadow and a Color Overlay, and `b` above it without effects.
-fn harness() -> (Harness<'static, Box<PhotocraftApp>>, LayerId, LayerId) {
-    let mut s = photocraft_engine::Session::new();
+fn harness() -> (Harness<'static, Box<PatronusPhotoApp>>, LayerId, LayerId) {
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 64, "height": 48})).unwrap();
     let a = s.execute("layer.new.layer", json!({"name": "a"})).unwrap()["layer"].as_u64().unwrap();
     s.execute("layer.layerStyle.dropShadow", json!({})).unwrap();
@@ -20,15 +20,15 @@ fn harness() -> (Harness<'static, Box<PhotocraftApp>>, LayerId, LayerId) {
     let b = s.execute("layer.new.layer", json!({"name": "b"})).unwrap()["layer"].as_u64().unwrap();
     // Tall enough that the Layers panel shows every row of the sample, the last effect row included.
     let mut h = Harness::builder().with_size(vec2(1440.0, 1200.0)).with_max_steps(64).build_eframe(move |cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::with_context(cc.egui_ctx.clone(), s, crate::Services::default())
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        PatronusPhotoApp::with_context(cc.egui_ctx.clone(), s, crate::Services::default())
     });
     h.run_steps(8);
     (h, LayerId(a), LayerId(b))
 }
 
-fn effects(h: &Harness<'_, Box<PhotocraftApp>>, id: LayerId) -> Vec<&'static str> {
-    h.state().session.active().unwrap().doc.layer(id).unwrap().effects.items.iter().map(photocraft_doc::Effect::label).collect()
+fn effects(h: &Harness<'_, Box<PatronusPhotoApp>>, id: LayerId) -> Vec<&'static str> {
+    h.state().session.active().unwrap().doc.layer(id).unwrap().effects.items.iter().map(patronusphoto_doc::Effect::label).collect()
 }
 
 #[test]
@@ -47,7 +47,7 @@ fn alt_dragging_an_effect_row_onto_a_layer_copies_it() {
 }
 
 /// The Layers panel footer's Delete button.
-fn trash_button(h: &Harness<'_, Box<PhotocraftApp>>) -> Pos2 {
+fn trash_button(h: &Harness<'_, Box<PatronusPhotoApp>>) -> Pos2 {
     h.query_all_by_role(Role::Button).find(|n| n.accesskit_node().label().as_deref() == Some("Delete layer")).unwrap().rect().center()
 }
 

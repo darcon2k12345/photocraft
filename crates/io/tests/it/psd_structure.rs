@@ -2,8 +2,8 @@
 
 use craft_psd::testgen;
 use craft_psd::{ColorMode, Compression, LayerNode, PsdFile, SectionType, Version};
-use photocraft_doc::LayerContent;
-use photocraft_io::*;
+use patronusphoto_doc::LayerContent;
+use patronusphoto_io::*;
 
 /// Sample of a layer channel in document coordinates (0 outside the rect).
 fn sample(f: &PsdFile, li: usize, id: i16, x: i32, y: i32, cache: &mut std::collections::HashMap<(usize, i16), Vec<u8>>) -> Vec<u8> {
@@ -142,7 +142,7 @@ fn testgen_import_details() {
     let outer = d.layers.iter().find(|l| l.name == "Outer").expect("outer");
     let LayerContent::Group(g) = &outer.content else { panic!() };
     assert!(g.expanded);
-    assert_eq!(outer.blend, photocraft_color::BlendMode::PassThrough);
+    assert_eq!(outer.blend, patronusphoto_color::BlendMode::PassThrough);
     let inner = g.children.iter().find(|l| l.name == "Inner").unwrap();
     let LayerContent::Group(gi) = &inner.content else { panic!() };
     assert!(!gi.expanded);
@@ -170,7 +170,7 @@ fn fallback_modes_import_flattened() {
         let (d, w) = psd_to_document(&f);
         assert_eq!(d.layers.len(), 1, "{mode:?}");
         assert!(!w.is_empty(), "{mode:?} should warn");
-        assert_eq!(d.depth, photocraft_color::SampleType::U8);
+        assert_eq!(d.depth, patronusphoto_color::SampleType::U8);
         // Re-export produces a valid PSD.
         let out = export(&d, "x.psd", &ExportOptions::default()).unwrap();
         assert!(PsdFile::from_bytes(&out.bytes).is_ok());
@@ -197,16 +197,16 @@ fn palette_and_duotone_modes_are_written_in_their_own_mode() {
 }
 
 #[test]
-fn a_duotone_made_in_photocraft_is_written_with_its_inks() {
-    use photocraft_doc::{Duotone, DuotoneInk};
-    let mut d = photocraft_doc::Document::with_background(
+fn a_duotone_made_in_patronusphoto_is_written_with_its_inks() {
+    use patronusphoto_doc::{Duotone, DuotoneInk};
+    let mut d = patronusphoto_doc::Document::with_background(
         "d",
-        photocraft_doc::Size::new(4, 2),
-        photocraft_color::ColorMode::Grayscale,
-        photocraft_color::SampleType::U8,
-        photocraft_color::Color::rgba(0.5, 0.5, 0.5, 1.0),
+        patronusphoto_doc::Size::new(4, 2),
+        patronusphoto_color::ColorMode::Grayscale,
+        patronusphoto_color::SampleType::U8,
+        patronusphoto_color::Color::rgba(0.5, 0.5, 0.5, 1.0),
     );
-    d.mode = photocraft_color::ColorMode::Duotone;
+    d.mode = patronusphoto_color::ColorMode::Duotone;
     d.duotone = Some(Duotone { inks: vec![DuotoneInk::new("Black", [0.0; 3]), DuotoneInk::new("Orange", [1.0, 0.5, 0.0])], psd_raw: None });
     let out = export(&d, "x.psd", &ExportOptions::default()).unwrap();
     assert!(out.warnings.iter().all(|w| !w.contains("written as")), "{:?}", out.warnings);
@@ -222,16 +222,16 @@ fn a_duotone_made_in_photocraft_is_written_with_its_inks() {
     assert_eq!(again.color_mode_data, f.color_mode_data);
 }
 
-fn duotone_doc(sample: photocraft_color::SampleType) -> photocraft_doc::Document {
-    use photocraft_doc::{Duotone, DuotoneInk};
-    let mut d = photocraft_doc::Document::with_background(
+fn duotone_doc(sample: patronusphoto_color::SampleType) -> patronusphoto_doc::Document {
+    use patronusphoto_doc::{Duotone, DuotoneInk};
+    let mut d = patronusphoto_doc::Document::with_background(
         "d",
-        photocraft_doc::Size::new(4, 2),
-        photocraft_color::ColorMode::Grayscale,
+        patronusphoto_doc::Size::new(4, 2),
+        patronusphoto_color::ColorMode::Grayscale,
         sample,
-        photocraft_color::Color::rgba(0.5, 0.5, 0.5, 1.0),
+        patronusphoto_color::Color::rgba(0.5, 0.5, 0.5, 1.0),
     );
-    d.mode = photocraft_color::ColorMode::Duotone;
+    d.mode = patronusphoto_color::ColorMode::Duotone;
     d.duotone = Some(Duotone { inks: vec![DuotoneInk::new("Black", [0.0; 3]), DuotoneInk::new("Orange", [1.0, 0.5, 0.0])], psd_raw: None });
     d
 }
@@ -239,7 +239,7 @@ fn duotone_doc(sample: photocraft_color::SampleType) -> photocraft_doc::Document
 #[test]
 fn a_16_bit_duotone_is_written_as_grayscale() {
     // Photoshop has only 8-bit Duotone and refuses to open a 16-bit Duotone PSD.
-    let out = export(&duotone_doc(photocraft_color::SampleType::U16), "x.psd", &ExportOptions::default()).unwrap();
+    let out = export(&duotone_doc(patronusphoto_color::SampleType::U16), "x.psd", &ExportOptions::default()).unwrap();
     let f = PsdFile::from_bytes(&out.bytes).unwrap();
     assert_eq!((f.header.color_mode, f.header.depth), (ColorMode::Grayscale, 16));
     assert!(out.warnings.iter().any(|w| w == "Duotone document written as Grayscale"), "{:?}", out.warnings);
@@ -249,10 +249,10 @@ fn a_16_bit_duotone_is_written_as_grayscale() {
 fn a_layered_duotone_keeps_its_image_without_maximize_compatibility() {
     // A Duotone opens flattened from its merged image (its layer records are not read), so that
     // image is written in full even when Maximize Compatibility is off, never the placeholder.
-    let mut d = duotone_doc(photocraft_color::SampleType::U8);
-    let mut top = photocraft_doc::Layer::new("Dark", LayerContent::Raster(photocraft_raster::Surface::new(d.pixel_format())));
+    let mut d = duotone_doc(patronusphoto_color::SampleType::U8);
+    let mut top = patronusphoto_doc::Layer::new("Dark", LayerContent::Raster(patronusphoto_raster::Surface::new(d.pixel_format())));
     if let LayerContent::Raster(s) = &mut top.content {
-        s.fill_rect(photocraft_geom::Rect::new(0, 0, 2, 2), &photocraft_raster::from_rgba(&d.pixel_format(), [0.0, 0.0, 0.0, 1.0]));
+        s.fill_rect(patronusphoto_geom::Rect::new(0, 0, 2, 2), &patronusphoto_raster::from_rgba(&d.pixel_format(), [0.0, 0.0, 0.0, 1.0]));
     }
     d.layers.push(top);
     let opts = ExportOptions { psd_maximize_compatibility: false, ..Default::default() };
@@ -272,7 +272,7 @@ fn a_layered_duotone_keeps_its_image_without_maximize_compatibility() {
 
 #[test]
 fn a_colour_book_ink_shows_its_lab_equivalent_or_the_grey_plate() {
-    let out = export(&duotone_doc(photocraft_color::SampleType::U8), "x.psd", &ExportOptions::default()).unwrap();
+    let out = export(&duotone_doc(patronusphoto_color::SampleType::U8), "x.psd", &ExportOptions::default()).unwrap();
     let mut f = PsdFile::from_bytes(&out.bytes).unwrap();
     // The second ink becomes PANTONE 327 CVC, stored by its book key as Photoshop does.
     f.color_mode_data[14..24].copy_from_slice(&[0, 3, 0x20, 0x20, 0x33, 0x32, 0x37, 0x43, 0, 0]);
@@ -296,24 +296,24 @@ fn a_colour_book_ink_shows_its_lab_equivalent_or_the_grey_plate() {
 #[test]
 fn a_layered_duotone_tiff_says_its_inks_are_dropped() {
     // TIFF has no Duotone: a layered one is written in its grey plate, and says so.
-    let mut d = duotone_doc(photocraft_color::SampleType::U8);
+    let mut d = duotone_doc(patronusphoto_color::SampleType::U8);
     let adj = d.duotone.as_ref().unwrap().display_adjustment();
-    d.layers.push(photocraft_doc::Layer::new("Map", LayerContent::Adjustment(adj)));
+    d.layers.push(patronusphoto_doc::Layer::new("Map", LayerContent::Adjustment(adj)));
     let out = export(&d, "x.tif", &ExportOptions { tiff_layers: true, ..Default::default() }).unwrap();
     assert!(out.warnings.iter().any(|w| w == "Duotone document written as Grayscale"), "{:?}", out.warnings);
 }
 
 #[test]
 fn indexed_psd_keeps_the_table_length_and_transparent_entry() {
-    use photocraft_doc::ColorTable;
-    let mut d = photocraft_doc::Document::with_background(
+    use patronusphoto_doc::ColorTable;
+    let mut d = patronusphoto_doc::Document::with_background(
         "i",
-        photocraft_doc::Size::new(4, 2),
-        photocraft_color::ColorMode::Rgb,
-        photocraft_color::SampleType::U8,
-        photocraft_color::Color::rgba(1.0, 0.0, 0.0, 1.0),
+        patronusphoto_doc::Size::new(4, 2),
+        patronusphoto_color::ColorMode::Rgb,
+        patronusphoto_color::SampleType::U8,
+        patronusphoto_color::Color::rgba(1.0, 0.0, 0.0, 1.0),
     );
-    d.mode = photocraft_color::ColorMode::Indexed;
+    d.mode = patronusphoto_color::ColorMode::Indexed;
     d.color_table = Some(ColorTable { colors: vec![[0, 0, 0], [255, 0, 0], [0, 0, 255]], transparent: Some(2) });
     let out = export(&d, "x.psd", &ExportOptions::default()).unwrap();
     let f = PsdFile::from_bytes(&out.bytes).unwrap();
@@ -326,30 +326,30 @@ fn indexed_psd_keeps_the_table_length_and_transparent_entry() {
 }
 
 /// A 4x2 document filled with `fill` in Indexed Color mode with `colors` and `transparent`.
-fn indexed_doc(fill: photocraft_color::Color, colors: Vec<[u8; 3]>, transparent: Option<u8>) -> photocraft_doc::Document {
-    let mut d = photocraft_doc::Document::with_background(
+fn indexed_doc(fill: patronusphoto_color::Color, colors: Vec<[u8; 3]>, transparent: Option<u8>) -> patronusphoto_doc::Document {
+    let mut d = patronusphoto_doc::Document::with_background(
         "i",
-        photocraft_doc::Size::new(4, 2),
-        photocraft_color::ColorMode::Rgb,
-        photocraft_color::SampleType::U8,
+        patronusphoto_doc::Size::new(4, 2),
+        patronusphoto_color::ColorMode::Rgb,
+        patronusphoto_color::SampleType::U8,
         fill,
     );
-    d.mode = photocraft_color::ColorMode::Indexed;
-    d.color_table = Some(photocraft_doc::ColorTable { colors, transparent });
+    d.mode = patronusphoto_color::ColorMode::Indexed;
+    d.color_table = Some(patronusphoto_doc::ColorTable { colors, transparent });
     d
 }
 
 #[test]
 fn indexed_psd_never_writes_an_opaque_pixel_as_the_transparent_entry() {
     // The transparent entry duplicates opaque black (common in PNG-8 files) and comes first.
-    let d = indexed_doc(photocraft_color::Color::rgba(0.0, 0.0, 0.0, 1.0), vec![[0, 0, 0], [0, 0, 0], [255, 255, 255]], Some(0));
+    let d = indexed_doc(patronusphoto_color::Color::rgba(0.0, 0.0, 0.0, 1.0), vec![[0, 0, 0], [0, 0, 0], [255, 255, 255]], Some(0));
     let f = PsdFile::from_bytes(&export(&d, "x.psd", &ExportOptions::default()).unwrap().bytes).unwrap();
     assert_eq!(f.decode_merged().unwrap(), vec![1; 8], "opaque black is entry 1, not the transparent entry 0");
 }
 
 #[test]
 fn indexed_psd_transparency_survives_a_round_trip() {
-    let d = indexed_doc(photocraft_color::Color::rgba(1.0, 0.0, 0.0, 0.0), vec![[255, 0, 0], [255, 255, 255]], Some(1));
+    let d = indexed_doc(patronusphoto_color::Color::rgba(1.0, 0.0, 0.0, 0.0), vec![[255, 0, 0], [255, 255, 255]], Some(1));
     let out = export(&d, "x.psd", &ExportOptions::default()).unwrap();
     let f = PsdFile::from_bytes(&out.bytes).unwrap();
     assert_eq!(f.decode_merged().unwrap(), vec![1; 8]);
@@ -362,7 +362,7 @@ fn indexed_psd_transparency_survives_a_round_trip() {
 
 #[test]
 fn indexed_psd_without_a_transparent_entry_flattens_over_white() {
-    let d = indexed_doc(photocraft_color::Color::rgba(0.0, 0.0, 0.0, 0.0), vec![[0, 0, 0], [255, 255, 255]], None);
+    let d = indexed_doc(patronusphoto_color::Color::rgba(0.0, 0.0, 0.0, 0.0), vec![[0, 0, 0], [255, 255, 255]], None);
     let f = PsdFile::from_bytes(&export(&d, "x.psd", &ExportOptions::default()).unwrap().bytes).unwrap();
     assert_eq!(f.decode_merged().unwrap(), vec![1; 8], "empty areas are white, as Photoshop flattens them");
 }
@@ -376,7 +376,7 @@ fn indexed_psd_keeps_the_icc_profile() {
         p
     };
     for (space, kept) in [(b"RGB ", true), (b"GRAY", false)] {
-        let mut d = indexed_doc(photocraft_color::Color::rgba(1.0, 0.0, 0.0, 1.0), vec![[255, 0, 0]], None);
+        let mut d = indexed_doc(patronusphoto_color::Color::rgba(1.0, 0.0, 0.0, 1.0), vec![[255, 0, 0]], None);
         d.icc_profile = Some(std::sync::Arc::new(profile(space)));
         let f = PsdFile::from_bytes(&export(&d, "x.psd", &ExportOptions::default()).unwrap().bytes).unwrap();
         assert_eq!(f.header.color_mode, ColorMode::Indexed);
@@ -387,7 +387,7 @@ fn indexed_psd_keeps_the_icc_profile() {
 #[test]
 fn indexed_document_whose_only_entry_is_transparent_is_not_written_as_indexed() {
     // Every opaque pixel would have to take the transparent entry and vanish: written as RGB.
-    let d = indexed_doc(photocraft_color::Color::rgba(1.0, 0.0, 0.0, 1.0), vec![[255, 0, 0]], Some(0));
+    let d = indexed_doc(patronusphoto_color::Color::rgba(1.0, 0.0, 0.0, 1.0), vec![[255, 0, 0]], Some(0));
     let out = export(&d, "x.psd", &ExportOptions::default()).unwrap();
     let f = PsdFile::from_bytes(&out.bytes).unwrap();
     assert_eq!(f.header.color_mode, ColorMode::Rgb, "{:?}", out.warnings);
@@ -398,18 +398,18 @@ fn indexed_document_whose_only_entry_is_transparent_is_not_written_as_indexed() 
 fn indexed_save_warns_whenever_flattening_loses_a_layer() {
     // One plain visible pixel layer is the merged image: no warning. A single hidden, masked,
     // half-opaque or type layer, or a second layer, is lost in the flat file, so the save says so.
-    let flat = |d: &photocraft_doc::Document| {
+    let flat = |d: &patronusphoto_doc::Document| {
         let out = export(d, "x.psd", &ExportOptions::default()).unwrap();
         assert_eq!(PsdFile::from_bytes(&out.bytes).unwrap().header.color_mode, ColorMode::Indexed);
         out.warnings.iter().any(|w| w.contains("written flattened"))
     };
-    let plain = indexed_doc(photocraft_color::Color::rgba(1.0, 1.0, 1.0, 1.0), vec![[255, 255, 255], [0, 0, 0]], None);
+    let plain = indexed_doc(patronusphoto_color::Color::rgba(1.0, 1.0, 1.0, 1.0), vec![[255, 255, 255], [0, 0, 0]], None);
     assert!(!flat(&plain), "a single plain layer flattens losslessly");
-    let changes: [fn(&mut photocraft_doc::Layer); 4] = [
+    let changes: [fn(&mut patronusphoto_doc::Layer); 4] = [
         |l| l.visible = false,
         |l| l.opacity = 0.5,
-        |l| l.mask = Some(photocraft_doc::LayerMask::hide_all()),
-        |l| l.content = LayerContent::Text(photocraft_doc::TextLayer::default()),
+        |l| l.mask = Some(patronusphoto_doc::LayerMask::hide_all()),
+        |l| l.content = LayerContent::Text(patronusphoto_doc::TextLayer::default()),
     ];
     for (i, change) in changes.iter().enumerate() {
         let mut d = plain.clone();
@@ -423,12 +423,12 @@ fn indexed_save_warns_whenever_flattening_loses_a_layer() {
 
 #[test]
 fn indexed_and_bitmap_documents_with_channels_keep_them() {
-    // PhotoCraft does not read extra channels of a palette-mode PSD back, so these documents keep
+    // Patronus Photo does not read extra channels of a palette-mode PSD back, so these documents keep
     // the RGB / Grayscale file that holds their alpha channels and Quick Mask.
-    for mode in [photocraft_color::ColorMode::Indexed, photocraft_color::ColorMode::Bitmap] {
-        let mut d = indexed_doc(photocraft_color::Color::rgba(1.0, 1.0, 1.0, 1.0), vec![[255, 255, 255]], None);
+    for mode in [patronusphoto_color::ColorMode::Indexed, patronusphoto_color::ColorMode::Bitmap] {
+        let mut d = indexed_doc(patronusphoto_color::Color::rgba(1.0, 1.0, 1.0, 1.0), vec![[255, 255, 255]], None);
         d.mode = mode;
-        let alpha = || photocraft_doc::AlphaChannel::new("Alpha 1", photocraft_raster::Surface::new(photocraft_color::PixelFormat::GRAY8));
+        let alpha = || patronusphoto_doc::AlphaChannel::new("Alpha 1", patronusphoto_raster::Surface::new(patronusphoto_color::PixelFormat::GRAY8));
         d.channels.push(alpha());
         d.quick_mask = Some(alpha());
         let out = export(&d, "x.psd", &ExportOptions::default()).unwrap();
@@ -439,8 +439,8 @@ fn indexed_and_bitmap_documents_with_channels_keep_them() {
 
 #[test]
 fn layerless_psd_never_keeps_psb_only_block_signatures() {
-    for mode in [photocraft_color::ColorMode::Indexed, photocraft_color::ColorMode::Bitmap, photocraft_color::ColorMode::Multichannel] {
-        let mut d = indexed_doc(photocraft_color::Color::rgba(1.0, 1.0, 1.0, 1.0), vec![[255, 255, 255]], None);
+    for mode in [patronusphoto_color::ColorMode::Indexed, patronusphoto_color::ColorMode::Bitmap, patronusphoto_color::ColorMode::Multichannel] {
+        let mut d = indexed_doc(patronusphoto_color::Color::rgba(1.0, 1.0, 1.0, 1.0), vec![[255, 255, 255]], None);
         d.mode = mode;
         d.metadata.psd_global_blocks.push((*b"8B64", *b"FMsk", std::sync::Arc::new(vec![0; 12])));
         let f = PsdFile::from_bytes(&export(&d, "x.psd", &ExportOptions::default()).unwrap().bytes).unwrap();
@@ -454,7 +454,7 @@ fn multichannel_imports_ink_channels() {
     for depth in testgen::mode_depths(ColorMode::Multichannel) {
         let f = testgen::merged_only(Version::Psd, ColorMode::Multichannel, *depth, Compression::Rle, 9, 5);
         let (d, _) = psd_to_document(&f);
-        assert_eq!(d.mode, photocraft_color::ColorMode::Multichannel);
+        assert_eq!(d.mode, patronusphoto_color::ColorMode::Multichannel);
         assert!(d.layers.is_empty());
         assert_eq!(d.channels.len(), usize::from(f.header.channels));
         assert!(d.channels.iter().all(|c| c.spot.is_some()));
@@ -493,7 +493,7 @@ fn flattened_psd_becomes_background() {
     let (d, _) = psd_to_document(&f);
     assert_eq!(d.layers.len(), 1);
     assert_eq!(d.layers[0].name, "Background");
-    assert_eq!(d.depth, photocraft_color::SampleType::U16);
+    assert_eq!(d.depth, patronusphoto_color::SampleType::U16);
     let s = d.layers[0].surface().unwrap();
     let merged = f.decode_merged().unwrap();
     let v = u16::from_be_bytes([merged[0], merged[1]]);
@@ -594,13 +594,13 @@ fn locks_and_labels_from_psd() {
     let (d, _) = psd_to_document(&f);
     let l = &d.layers[0];
     assert!(l.locks.transparency && l.locks.position && !l.locks.pixels);
-    assert_eq!(l.label, photocraft_doc::LabelColor::Yellow);
+    assert_eq!(l.label, patronusphoto_doc::LabelColor::Yellow);
 }
 
 #[test]
 fn artboard_lock_round_trips_byte_for_byte() {
     // Reference files write a Background layer's locks as lspf = 0x0D (transparency + position +
-    // the bit-3 lock). PhotoCraft read the artboard lock at bit 4, so 0x0D came back as 0x05
+    // the bit-3 lock). Patronus Photo read the artboard lock at bit 4, so 0x0D came back as 0x05
     // and the lock bytes drifted on every re-save.
     use craft_psd::TaggedBlock;
     let mut f = testgen::small(Version::Psd, Compression::Raw);
@@ -630,7 +630,7 @@ fn adjustment_and_fill_layers_from_psd() {
     f.layers_mut().push(mk("red", b"SoCo", soco));
     let (d, _) = psd_to_document(&f);
     let n = d.layers.len();
-    use photocraft_doc::{Adjustment, Fill};
+    use patronusphoto_doc::{Adjustment, Fill};
     assert!(matches!(d.layers[n - 4].content, LayerContent::Adjustment(Adjustment::Invert)));
     assert!(matches!(d.layers[n - 3].content, LayerContent::Adjustment(Adjustment::Posterize { levels: 4 })));
     assert!(matches!(&d.layers[n - 2].content, LayerContent::Adjustment(Adjustment::Unsupported { psd_key, raw }) if psd_key == "selc" && **raw == [1, 2, 3]));
@@ -676,14 +676,14 @@ fn fill_layer_keeps_photoshop_pixels() {
     let fc = l.fill_cache.as_ref().expect("cache");
     assert_eq!(fc.surface.pixel(1, 1), vec![10.0 / 255.0, 20.0 / 255.0, 30.0 / 255.0, 1.0]);
     // The compositor uses the cache while the fill is unchanged.
-    let flat = photocraft_compose::flatten(&d);
+    let flat = patronusphoto_compose::flatten(&d);
     let p = flat.get(1, 1);
     assert!((p[0] - 10.0 / 255.0).abs() < 1e-3, "{p:?}");
     // Editing the fill invalidates the cache.
     let mut d2 = d.clone();
     let n = d2.layers.len();
-    d2.layers[n - 1].content = LayerContent::Fill(photocraft_doc::Fill::Solid(photocraft_color::Color::rgb(0.0, 0.0, 1.0)));
-    let p = photocraft_compose::flatten(&d2).get(1, 1);
+    d2.layers[n - 1].content = LayerContent::Fill(patronusphoto_doc::Fill::Solid(patronusphoto_color::Color::rgb(0.0, 0.0, 1.0)));
+    let p = patronusphoto_compose::flatten(&d2).get(1, 1);
     assert!(p[2] > 0.99 && p[0] < 0.01, "{p:?}");
 }
 
@@ -693,7 +693,7 @@ fn text_and_smart_detected() {
     let mut f = testgen::small(Version::Psd, Compression::Raw);
     for (name, key) in [("t", b"TySh"), ("s", b"PlLd"), ("sh", b"vscg")] {
         // Type identification needs readable type data, not an eight-byte malformed stub.
-        let data = if key == b"TySh" { photocraft_text::psd::build_tysh(&photocraft_doc::TextLayer::default(), 72.0, None).unwrap() } else { vec![0; 8] };
+        let data = if key == b"TySh" { patronusphoto_text::psd::build_tysh(&patronusphoto_doc::TextLayer::default(), 72.0, None).unwrap() } else { vec![0; 8] };
         f.layers_mut().push(LayerRecord {
             name: name.as_bytes().to_vec(),
             blocks: vec![TaggedBlock::unicode_name(name), TaggedBlock::new(*key, data)],
@@ -709,15 +709,16 @@ fn text_and_smart_detected() {
 
 #[test]
 fn guides_and_alpha_names_roundtrip() {
-    let mut d = photocraft_doc::Document::new("g", photocraft_geom::Size::new(8, 8), photocraft_color::ColorMode::Rgb, photocraft_color::SampleType::U8);
+    let mut d =
+        patronusphoto_doc::Document::new("g", patronusphoto_geom::Size::new(8, 8), patronusphoto_color::ColorMode::Rgb, patronusphoto_color::SampleType::U8);
     d.guides.horizontal = vec![1.0, 2.5];
     d.guides.vertical = vec![7.03125];
     for name in ["Spot \u{e9}", "Alpha 2"] {
-        d.channels.push(photocraft_doc::AlphaChannel::new(
+        d.channels.push(patronusphoto_doc::AlphaChannel::new(
             name,
-            photocraft_raster::Surface::new(photocraft_color::PixelFormat::new(
-                photocraft_color::ColorMode::Grayscale,
-                photocraft_color::SampleType::U8,
+            patronusphoto_raster::Surface::new(patronusphoto_color::PixelFormat::new(
+                patronusphoto_color::ColorMode::Grayscale,
+                patronusphoto_color::SampleType::U8,
                 false,
             )),
         ));
@@ -779,7 +780,7 @@ fn merged_composite_unmattes_photoshop_white() {
     deep.image_data.data = [65535_u16, 65535, 65535, 65500].into_iter().flat_map(u16::to_be_bytes).collect();
     assert_eq!(merged_composite(&deep).unwrap()[0][3], 65500.0 / 65535.0);
     let imported = import("hdr.psd", &hdr.to_bytes().unwrap()).unwrap().document;
-    assert_eq!(imported.depth, photocraft_color::SampleType::F32);
+    assert_eq!(imported.depth, patronusphoto_color::SampleType::F32);
     assert_eq!(imported.layers[0].surface().unwrap().pixel(0, 0), vec![2.0, -0.5, 0.0, 0.5]);
 }
 
@@ -816,10 +817,10 @@ fn vector_rendered_mask_not_doubled_on_shapes() {
 
 #[test]
 fn every_blend_mode_maps_both_ways() {
-    for m in std::iter::once(photocraft_color::BlendMode::PassThrough).chain(photocraft_color::BlendMode::LAYER_MODES) {
+    for m in std::iter::once(patronusphoto_color::BlendMode::PassThrough).chain(patronusphoto_color::BlendMode::LAYER_MODES) {
         let k = craft_psd::BlendMode::from_key(m.psd_key());
         assert!(!matches!(k, craft_psd::BlendMode::Unknown(_)), "{m:?}");
-        assert_eq!(photocraft_color::BlendMode::from_psd_key(k.key()), Some(m));
+        assert_eq!(patronusphoto_color::BlendMode::from_psd_key(k.key()), Some(m));
     }
 }
 

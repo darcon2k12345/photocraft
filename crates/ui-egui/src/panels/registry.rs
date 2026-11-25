@@ -1,4 +1,4 @@
-//! The panel registry: every panel PhotoCraft shows in its workspace, with its name, icon, size policy, body and
+//! The panel registry: every panel Patronus Photo shows in its workspace, with its name, icon, size policy, body and
 //! panel menu, and the built-in workspaces those panels are arranged in.
 //!
 //! The dock (`panel_docking`) reads a panel's spec and body from here; the command sources read each panel's menu
@@ -14,7 +14,7 @@ use craft::ui::menu::PanelRow;
 use craft::ui::runtime::commands::{CommandRef, CommandSet as _, CommandState};
 use egui::{Rect, pos2, vec2};
 
-use super::PhotocraftApp;
+use super::PatronusPhotoApp;
 
 /// One registered panel.
 pub(crate) struct PanelEntry {
@@ -31,13 +31,13 @@ pub(crate) struct PanelEntry {
     /// The size the panel floats at, for the panels that float by default.
     pub float_size: Option<[f32; 2]>,
     /// Draws the panel's contents.
-    pub body: fn(&mut PhotocraftApp, &mut egui::Ui),
+    pub body: fn(&mut PatronusPhotoApp, &mut egui::Ui),
     /// The rows of the panel's menu, before the dock's own rows.
-    pub rows: fn(&PhotocraftApp) -> Vec<PanelRow>,
+    pub rows: fn(&PatronusPhotoApp) -> Vec<PanelRow>,
     /// The state of each command the rows name, for a panel whose rows are a framework command set.
-    pub states: fn(&PhotocraftApp) -> Vec<(CommandRef, CommandState)>,
+    pub states: fn(&PatronusPhotoApp) -> Vec<(CommandRef, CommandState)>,
     /// Runs a fired command of the panel's command set; `false` when the command is not the panel's.
-    pub run: fn(&mut PhotocraftApp, &egui::Context, &CommandRef) -> bool,
+    pub run: fn(&mut PatronusPhotoApp, &egui::Context, &CommandRef) -> bool,
 }
 
 /// The toolbar: a column of tool buttons that docks, floats and resizes in whole tool columns like a panel of its own.
@@ -53,34 +53,34 @@ pub(crate) const CANVAS_MIN: [f32; 2] = [200.0, 120.0];
 /// The least width of a panel's body.
 const MIN_WIDTH: f32 = 220.0;
 
-fn no_rows(_: &PhotocraftApp) -> Vec<PanelRow> {
+fn no_rows(_: &PatronusPhotoApp) -> Vec<PanelRow> {
     Vec::new()
 }
 
-fn no_states(_: &PhotocraftApp) -> Vec<(CommandRef, CommandState)> {
+fn no_states(_: &PatronusPhotoApp) -> Vec<(CommandRef, CommandState)> {
     Vec::new()
 }
 
 /// The body of a panel whose group view draws it.
-fn drawn_by_group_view(_: &mut PhotocraftApp, _: &mut egui::Ui) {}
+fn drawn_by_group_view(_: &mut PatronusPhotoApp, _: &mut egui::Ui) {}
 
-fn runs_nothing(_: &mut PhotocraftApp, _: &egui::Context, _: &CommandRef) -> bool {
+fn runs_nothing(_: &mut PatronusPhotoApp, _: &egui::Context, _: &CommandRef) -> bool {
     false
 }
 
 /// A panel with no menu rows, a 220-point least width and `least` points of body height, docked by default.
-const fn panel(id: &'static str, label: fn() -> String, icon: &'static str, least: f32, body: fn(&mut PhotocraftApp, &mut egui::Ui)) -> PanelEntry {
+const fn panel(id: &'static str, label: fn() -> String, icon: &'static str, least: f32, body: fn(&mut PatronusPhotoApp, &mut egui::Ui)) -> PanelEntry {
     PanelEntry { id, label, icon, heights: None, min: [MIN_WIDTH, least], float_size: None, body, rows: no_rows, states: no_states, run: runs_nothing }
 }
 
 /// A panel that floats by default at `size`.
-const fn floating(id: &'static str, label: fn() -> String, icon: &'static str, size: [f32; 2], body: fn(&mut PhotocraftApp, &mut egui::Ui)) -> PanelEntry {
+const fn floating(id: &'static str, label: fn() -> String, icon: &'static str, size: [f32; 2], body: fn(&mut PatronusPhotoApp, &mut egui::Ui)) -> PanelEntry {
     PanelEntry { float_size: Some(size), ..panel(id, label, icon, LEAST, body) }
 }
 
 /// Shows `body`, whose content neither fills the group nor scrolls itself, in a stack that fills the group and scrolls
 /// vertically. Bodies whose root fills the group scroll themselves and are shown as they are.
-fn scrolled(app: &mut PhotocraftApp, ui: &mut egui::Ui, body: fn(&mut PhotocraftApp, &mut egui::Ui)) {
+fn scrolled(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, body: fn(&mut PatronusPhotoApp, &mut egui::Ui)) {
     Stack::new().fill().scroll(Scroll::vertical()).show(ui, |ui, _| body(app, ui));
 }
 
@@ -226,13 +226,13 @@ pub(crate) static PANELS: &[PanelEntry] = &[
 ];
 
 /// The Color panel menu's states, from the panel's own state.
-fn color_states(app: &PhotocraftApp) -> Vec<(CommandRef, CommandState)> {
+fn color_states(app: &PatronusPhotoApp) -> Vec<(CommandRef, CommandState)> {
     ColorPanelMenu::states(&app.ui.color_panel.panel).into_iter().map(|(command, state)| (command.into(), state)).collect()
 }
 
 /// Runs a fired Color panel menu command; Copy Color as HTML and Copy Color's Hex Code put their text on the
 /// clipboard.
-fn color_run(app: &mut PhotocraftApp, ctx: &egui::Context, command: &CommandRef) -> bool {
+fn color_run(app: &mut PatronusPhotoApp, ctx: &egui::Context, command: &CommandRef) -> bool {
     let Some(command) = ColorPanelCommand::from_ref(command) else { return false };
     if let Some(text) = super::color::run_menu_command(app, command) {
         ctx.copy_text(text);
@@ -281,12 +281,12 @@ pub(crate) fn permissions(panel: &str) -> Permissions {
 }
 
 /// The state of every panel's menu commands.
-pub(crate) fn states(app: &PhotocraftApp) -> Vec<(CommandRef, CommandState)> {
+pub(crate) fn states(app: &PatronusPhotoApp) -> Vec<(CommandRef, CommandState)> {
     PANELS.iter().flat_map(|panel| (panel.states)(app)).collect()
 }
 
 /// Runs a fired panel menu command through the panel whose command set it belongs to; `false` when none takes it.
-pub(crate) fn run_fired(app: &mut PhotocraftApp, ctx: &egui::Context, command: &CommandRef) -> bool {
+pub(crate) fn run_fired(app: &mut PatronusPhotoApp, ctx: &egui::Context, command: &CommandRef) -> bool {
     PANELS.iter().any(|panel| (panel.run)(app, ctx, command))
 }
 

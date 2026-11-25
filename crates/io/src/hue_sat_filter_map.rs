@@ -15,8 +15,8 @@
 //! value Photoshop's dialog can't hold) stays an opaque [`super::UNSUPPORTED_FILTER`].
 
 use craft_psd::descriptor::{Descriptor, UnicodeString, Value};
-use photocraft_doc::SmartFilter;
-use photocraft_doc::adjust::HueRange;
+use patronusphoto_doc::SmartFilter;
+use patronusphoto_doc::adjust::HueRange;
 use serde_json::{Map, Value as J, json};
 
 use super::{blend_options, enumv, is_meta, rgbc};
@@ -199,7 +199,7 @@ mod tests {
     use super::*;
     use crate::smart_map::{UNSUPPORTED_FILTER, filter_from_item, item_for_filter};
     use craft_psd::descriptor::Id;
-    use photocraft_color::BlendMode;
+    use patronusphoto_color::BlendMode;
 
     fn hst2(range: Option<(i32, [i32; 4])>, h: i32, s: i32, l: i32) -> Value {
         let mut d = Descriptor::new("Hst2");

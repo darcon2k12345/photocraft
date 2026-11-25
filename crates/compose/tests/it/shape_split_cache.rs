@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
-use photocraft_color::{Color, SampleType};
-use photocraft_compose::shape_split;
-use photocraft_doc::Fill;
-use photocraft_doc::vector::{Path, ShapeLayer, ShapeStroke, Subpath};
-use photocraft_geom::Rect;
+use patronusphoto_color::{Color, SampleType};
+use patronusphoto_compose::shape_split;
+use patronusphoto_doc::Fill;
+use patronusphoto_doc::vector::{Path, ShapeLayer, ShapeStroke, Subpath};
+use patronusphoto_geom::Rect;
 
 /// A small working set beyond 32 shapes should reuse its tiles at every sample depth.
 #[test]

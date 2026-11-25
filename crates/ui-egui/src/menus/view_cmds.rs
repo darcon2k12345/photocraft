@@ -11,7 +11,7 @@ use craft::ui::shell::ScreenMode;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 mod arrange;
 pub(crate) mod dialogs;

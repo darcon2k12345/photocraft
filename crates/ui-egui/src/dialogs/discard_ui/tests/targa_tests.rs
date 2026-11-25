@@ -5,7 +5,7 @@ use super::*;
 use craft::automation::actions::ActionStep;
 use craft::host::{Picked, ScriptedFiles};
 use egui_kittest::kittest::Queryable;
-use photocraft_io::TgaBits;
+use patronusphoto_io::TgaBits;
 use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 /// Each write: the path, and the Targa bits the export was asked for (as JSON).
@@ -38,7 +38,7 @@ fn targa_app(alpha_channel: bool, to: &str) -> (Prompted, Writes) {
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     craft::ui::testing::windows::set_os(&h.ctx, craft::host::target::Os::Windows);
     (h, writes)
 }

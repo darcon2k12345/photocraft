@@ -134,7 +134,9 @@ pub(crate) fn recorded_params(s: &Session, id: &str, mut p: Value) -> Value {
         return p;
     }
     let Some(st) = s.active() else { return p };
-    let Some(layer) = p.get("layer").and_then(Value::as_u64).map(photocraft_doc::LayerId).or(st.active_layer).and_then(|id| st.doc.layer(id)) else { return p };
+    let Some(layer) = p.get("layer").and_then(Value::as_u64).map(patronusphoto_doc::LayerId).or(st.active_layer).and_then(|id| st.doc.layer(id)) else {
+        return p;
+    };
     let ordinal = st.doc.walk().into_iter().filter(|(_, _, l)| l.name == layer.name).position(|(_, _, l)| l.id == layer.id).unwrap_or(0);
     if let Some(object) = p.as_object_mut() {
         object.remove("layer");
@@ -226,7 +228,7 @@ pub fn shell_save_command(id: &str) -> bool {
 /// started) is no longer open: a Save Document script event closed it. Playback stops there, so
 /// the next step without a document, such as the Close half of an imported Close with Save: Yes,
 /// doesn't act on whichever document is active now (#7367).
-pub fn save_target_closed(s: &Session, id: &str, target: Option<photocraft_doc::DocId>) -> Option<String> {
+pub fn save_target_closed(s: &Session, id: &str, target: Option<patronusphoto_doc::DocId>) -> Option<String> {
     let target = target.filter(|_| shell_save_command(id))?;
     (!s.documents().iter().any(|d| d.doc.id == target)).then(|| {
         "the document was closed during the save (by a Save Document script event); playback stopped so later steps don't act on another document".into()
@@ -1036,7 +1038,7 @@ fn toggle(s: &mut Session, p: &Value) -> Result<Value> {
 /// Prefix of the persisted shortcut override that plays a named action (`actions.play:<name>`).
 pub const PLAY_SHORTCUT_PREFIX: &str = "actions.play:";
 
-/// Prefix of the shortcut keys PhotoCraft files of the Actions library commands era stored per
+/// Prefix of the shortcut keys Patronus Photo files of the Actions library commands era stored per
 /// action id (`actions.playById:<id>`); [`name_id_shortcuts`] moves them to names on load.
 const PLAY_BY_ID_PREFIX: &str = "actions.playById:";
 
@@ -1069,7 +1071,7 @@ fn id_names(ids: &[(String, String)]) -> std::collections::HashMap<&str, &str> {
     ids.iter().map(|(id, name)| (id.as_str(), name.as_str())).collect()
 }
 
-/// Names are the list's only identity: the calls a loaded PhotoCraft file made by stored action id
+/// Names are the list's only identity: the calls a loaded Patronus Photo file made by stored action id
 /// (`actionId`, a Conditional's `thenActionId` / `elseActionId`) name the action
 /// [`ActionList::load`] gave that id (`ids`: stored id, name) instead. A call whose id no action
 /// has keeps the name it carried.
@@ -1103,7 +1105,7 @@ pub(crate) fn name_id_calls(list: &mut ActionList, ids: &[(String, String)]) {
     }
 }
 
-/// The `actions.playById:<id>` shortcut keys (primary and alternate) of a loaded PhotoCraft file's
+/// The `actions.playById:<id>` shortcut keys (primary and alternate) of a loaded Patronus Photo file's
 /// actions become `actions.play:<name>`, with the names [`ActionList::load`] gave the ids; a key
 /// whose id no action has goes.
 pub(crate) fn name_id_shortcuts(s: &mut Session, ids: &[(String, String)]) {

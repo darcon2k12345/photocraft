@@ -8,8 +8,8 @@ use serde_json::json;
 use super::*;
 use crate::panels::registry;
 
-fn app_with_layers() -> (Box<PhotocraftApp>, photocraft_doc::LayerId, photocraft_doc::LayerId) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app_with_layers() -> (Box<PatronusPhotoApp>, patronusphoto_doc::LayerId, patronusphoto_doc::LayerId) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     let pixel = app.session.active().unwrap().active_layer.unwrap();
@@ -21,11 +21,11 @@ fn app_with_layers() -> (Box<PhotocraftApp>, photocraft_doc::LayerId, photocraft
 }
 
 /// A new app that starts from `prefs`, with Remember Workspace Changes `remember`.
-fn app_from_prefs(prefs: &str, remember: bool) -> Box<PhotocraftApp> {
-    let mut session = photocraft_engine::Session::new();
+fn app_from_prefs(prefs: &str, remember: bool) -> Box<PatronusPhotoApp> {
+    let mut session = patronusphoto_engine::Session::new();
     session.load_prefs_json(prefs).unwrap();
     session.prefs.edit(|p| p.workspace.remember_workspace_changes = remember);
-    PhotocraftApp::new(session, crate::Services::default())
+    PatronusPhotoApp::new(session, crate::Services::default())
 }
 
 /// A changed layout and the Color panel's mode are remembered across launches, and only while
@@ -82,11 +82,11 @@ fn reset_workspace_restores_the_default_layout_and_new_workspaces_keep_theirs() 
     assert_eq!(app.workspaces.set.current, named);
 }
 
-/// The load robustness of PhotoCraft's own payload: an unreadable `docking` value is dropped for the
+/// The load robustness of Patronus Photo's own payload: an unreadable `docking` value is dropped for the
 /// default layout, and the rest of the save still applies.
 #[test]
 fn an_unreadable_docking_layout_is_dropped_and_the_rest_applies() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let mut saved = snapshot(&app);
     saved["docking"] = json!({"layout": "not-a-dock-layout"});
     saved["panels"]["status_bar"] = json!(false);
@@ -102,7 +102,7 @@ fn an_unreadable_docking_layout_is_dropped_and_the_rest_applies() {
 }
 
 /// Whether the toolbar's column is in the end dock.
-fn toolbar_at_end(app: &PhotocraftApp) -> bool {
+fn toolbar_at_end(app: &PatronusPhotoApp) -> bool {
     let layout = app.ui.docking.layout();
     match layout.place(&registry::TOOLBAR.to_owned()) {
         Some(craft::behavior::dock::PanelPlace::Dock { path, .. }) => layout.dock_path(craft::behavior::dock::DockEdge::End) == Some(path),
@@ -115,7 +115,7 @@ fn toolbar_at_end(app: &PhotocraftApp) -> bool {
 /// start dock. A save that holds the toolbar panel keeps the place it saved, whatever the flags say.
 #[test]
 fn an_old_saves_toolbar_side_places_the_toolbar_once() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     for (side, at_end) in [(json!("right"), true), (json!("left"), false), (json!("start"), false), (json!("sideways"), false), (json!(7), false)] {
         let old = json!({"panels": {"toolbar": true, "options_bar": true, "status_bar": true, "toolbar_side": side.clone()}});
         apply(&mut app, &old);
@@ -128,7 +128,7 @@ fn an_old_saves_toolbar_side_places_the_toolbar_once() {
     assert!(toolbar_at_end(&app));
     let mut saved = snapshot(&app);
     saved["panels"].as_object_mut().unwrap().insert("toolbar_side".into(), json!("left"));
-    let mut restored = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut restored = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     assert!(!toolbar_at_end(&restored));
     apply(&mut restored, &saved);
     assert!(toolbar_at_end(&restored), "the saved place wins over an old flag");
@@ -137,11 +137,11 @@ fn an_old_saves_toolbar_side_places_the_toolbar_once() {
 /// An old save's `toolbar_double` makes the toolbar two tool columns wide, and `toolbar: false` closes it.
 #[test]
 fn an_old_saves_toolbar_flags_set_its_width_and_visibility() {
-    let steps = |app: &PhotocraftApp| {
+    let steps = |app: &PatronusPhotoApp| {
         let layout = app.ui.docking.layout();
         layout.place(&registry::TOOLBAR.to_owned()).and_then(|place| layout.column(&place)).and_then(|column| column.steps)
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     apply(&mut app, &json!({"panels": {"toolbar": true, "options_bar": true, "status_bar": true, "toolbar_double": true}}));
     assert_eq!(steps(&app), Some(2));
     apply(&mut app, &json!({"panels": {"toolbar": false, "options_bar": true, "status_bar": true}}));

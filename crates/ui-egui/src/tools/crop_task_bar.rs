@@ -19,23 +19,23 @@ use craft::ui::canvas_controls::TaskBar;
 use craft::ui::contract::{Bind, Show as _};
 use craft::ui::runtime::env::Label;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::crop_ui;
 use crate::state::Tool;
 
 /// The bar shows: the Crop tool with a frame, the Window toggle on, no dialog over the canvas.
-fn wanted(app: &PhotocraftApp) -> bool {
+fn wanted(app: &PatronusPhotoApp) -> bool {
     app.ui.tool == Tool::Crop && app.ui.panels.context_task_bar && !app.dialog_open() && app.session.active().is_some()
 }
 
 /// Whether the bar can show now: [`wanted`] and a crop frame. `ui.inspect` checks it, so a bar
 /// hidden by `ui.set` before the next draw no longer reports last frame's rect.
-pub fn eligible(app: &PhotocraftApp) -> bool {
+pub fn eligible(app: &PatronusPhotoApp) -> bool {
     wanted(app) && app.canvas_tools.crop.tool.frame().is_some()
 }
 
 /// Shows the bar under the active document's crop frame, inside `area` (the canvas body's rect).
-pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui, area: egui::Rect) {
+pub fn show(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, area: egui::Rect) {
     if !wanted(app) {
         return;
     }

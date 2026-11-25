@@ -3,7 +3,7 @@
 //! only for a JPEG with Custom on: left alone, an export writes what the command writes with no
 //! quality (the source JPEG's own quality, else the encoder default), a WebP stays lossless and
 //! PNG has none. The forms are the hosted command forms; the tests drive them as automation does.
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use craft::ui::dialog::DialogId;
 use craft::ui::patterns::form_dialogs::HostedParamDialog;
 use serde_json::{Value, json};
@@ -12,8 +12,8 @@ use std::path::{Path, PathBuf};
 const ARTBOARDS: &str = "file.export.artboardsToFiles";
 const EXPORTS: [&str; 3] = [ARTBOARDS, "file.export.layersToFiles", "file.export.layerCompsToFiles"];
 
-fn app() -> (Box<PhotocraftApp>, egui::Context) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app() -> (Box<PatronusPhotoApp>, egui::Context) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 64, "height": 64})).unwrap();
     // A noisy layer inside the board, so the JPEG quality shows in the file.
     app.run("layer.new.layer", json!({})).unwrap();
@@ -26,7 +26,7 @@ fn app() -> (Box<PhotocraftApp>, egui::Context) {
     (app, ctx)
 }
 
-fn open(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, dir: &Path, format: &str) -> DialogId {
+fn open(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: &str, dir: &Path, format: &str) -> DialogId {
     let reply = crate::menus::invoke(app, ctx, id, json!({})).unwrap();
     let want = reply["dialog"].as_str().unwrap().to_owned();
     // PLAN: assumed `app.framework.dialogs: DialogHost` and `OpenDialog { id, .. }`
@@ -37,11 +37,11 @@ fn open(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, dir: &Path, form
     dialog
 }
 
-fn set(app: &mut PhotocraftApp, ctx: &egui::Context, dialog: DialogId, key: &str, value: Value) {
+fn set(app: &mut PatronusPhotoApp, ctx: &egui::Context, dialog: DialogId, key: &str, value: Value) {
     app.framework.dialogs.set_json_field(ctx, dialog, key, value).unwrap_or_else(|e| panic!("{key}: {e}"));
 }
 
-fn fields(app: &PhotocraftApp, dialog: DialogId) -> Value {
+fn fields(app: &PatronusPhotoApp, dialog: DialogId) -> Value {
     serde_json::to_value(app.framework.dialogs.get_by_id::<HostedParamDialog>(dialog).unwrap().fields()).unwrap()
 }
 
@@ -63,13 +63,13 @@ fn written(dir: &Path) -> Vec<u8> {
     std::fs::read(files.first().expect("the export wrote a file")).unwrap()
 }
 
-fn exported(app: &mut PhotocraftApp, ctx: &egui::Context, dialog: DialogId, dir: &Path) -> Vec<u8> {
+fn exported(app: &mut PatronusPhotoApp, ctx: &egui::Context, dialog: DialogId, dir: &Path) -> Vec<u8> {
     crate::dialogs::confirm(app, ctx, dialog).unwrap();
     written(dir)
 }
 
 /// The same export run straight through the command, into `dir`.
-fn direct(app: &mut PhotocraftApp, dir: &Path, format: &str, quality: Option<i64>) -> Vec<u8> {
+fn direct(app: &mut PatronusPhotoApp, dir: &Path, format: &str, quality: Option<i64>) -> Vec<u8> {
     let mut p = json!({"dir": dir, "prefix": "out", "format": format});
     if let Some(q) = quality {
         p["quality"] = json!(q);

@@ -6,19 +6,19 @@
 use craft::draw::ui::VectorMode;
 use craft::keymap::Mods;
 use egui::Modifiers;
-use photocraft_doc::{LayerContent, vector::PathOp};
+use patronusphoto_doc::{LayerContent, vector::PathOp};
 use serde_json::json;
 
 use super::shape_alt_samples;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing::click;
 use crate::canvas::{ToolEvent, tool_event};
 use crate::state::Tool;
 
 /// 800 × 600, white Background, a red (220,30,30) pixel layer at 100,100 to 300,250 (active),
 /// black foreground, the Custom Shape tool in Shape mode.
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 800, "height": 600, "background": "white"})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     app.run("select.rect", json!({"x": 100, "y": 100, "width": 200, "height": 150})).unwrap();
@@ -31,27 +31,27 @@ fn app() -> Box<PhotocraftApp> {
     app
 }
 
-fn steps(app: &PhotocraftApp) -> usize {
+fn steps(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.past_len()
 }
 
-fn layers(app: &PhotocraftApp) -> usize {
+fn layers(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().doc.layers.len()
 }
 
-fn foreground(app: &PhotocraftApp) -> [u8; 3] {
+fn foreground(app: &PatronusPhotoApp) -> [u8; 3] {
     let c = app.session.tools.foreground;
     [0, 1, 2].map(|i| (c[i] * 255.0).round() as u8)
 }
 
-fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2], press: Modifiers, rest: Modifiers) {
+fn drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2], press: Modifiers, rest: Modifiers) {
     tool_event(app, ToolEvent::Down { x: from[0], y: from[1], pressure: 1.0 }, press);
     tool_event(app, ToolEvent::Move { x: to[0], y: to[1], pressure: 1.0 }, rest);
     tool_event(app, ToolEvent::Up { x: to[0], y: to[1] }, rest);
 }
 
 /// The tool's Fill colour: a solid fill follows the foreground (`vector_ui::shapes::tool_paint`).
-fn tool_fill(app: &PhotocraftApp) -> [u8; 3] {
+fn tool_fill(app: &PatronusPhotoApp) -> [u8; 3] {
     let o = &app.ui.tool_options;
     assert!(o.shape_fill && o.shape_fill_gradient.is_none(), "a solid Fill");
     foreground(app)
@@ -62,7 +62,7 @@ fn alt_click_on_the_red_layer_picks_it_as_foreground_and_fill() {
     let mut app = app();
     // A gradient or no Fill becomes the sampled solid colour.
     app.ui.tool_options.shape_fill = false;
-    app.ui.tool_options.shape_fill_gradient = Some(photocraft_doc::Fill::Solid(photocraft_doc::Color::rgba(0.0, 0.0, 1.0, 1.0)));
+    app.ui.tool_options.shape_fill_gradient = Some(patronusphoto_doc::Fill::Solid(patronusphoto_doc::Color::rgba(0.0, 0.0, 1.0, 1.0)));
     let (before, count) = (steps(&app), layers(&app));
     click(&mut app, [200.0, 175.0], Modifiers::ALT);
     assert_eq!(foreground(&app), [220, 30, 30], "#DC1E1E");

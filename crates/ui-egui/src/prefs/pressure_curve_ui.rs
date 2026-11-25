@@ -1,5 +1,5 @@
 //! Preferences › Tools › Pressure Curve: the pen's pressure response, edited as points on a curve
-//! (`tools.pressureCurve`, read by the stylus through `photocraft_engine::prefs::PressureCurve`).
+//! (`tools.pressureCurve`, read by the stylus through `patronusphoto_engine::prefs::PressureCurve`).
 //! Brush Settings uses the same editor for each dynamic's own curve.
 
 use std::cell::Cell;
@@ -8,7 +8,7 @@ use craft::behavior::{EditEvent, EditEvents, Mixed};
 use craft::imaging::ui::curve::{Curve, CurveEditor};
 use craft::ui::buttons::Button;
 use craft::ui::contract::{Bind, BodyCx, Show as _};
-use photocraft_engine::prefs::PressureCurve;
+use patronusphoto_engine::prefs::PressureCurve;
 
 /// The editor's levels: the plot's whole units, so the points keep their unit-square values as percent.
 const LEVELS: f32 = 100.0;

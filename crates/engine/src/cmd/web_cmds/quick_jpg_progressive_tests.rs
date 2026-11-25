@@ -4,7 +4,7 @@
 use super::*;
 
 fn tmp(name: &str) -> String {
-    let d = std::env::temp_dir().join(format!("photocraft-quick-jpg-{}-{name}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("patronusphoto-quick-jpg-{}-{name}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).unwrap();
     d.to_string_lossy().into_owned()
@@ -42,9 +42,9 @@ fn sof_marker(bytes: &[u8]) -> Option<u8> {
 }
 
 fn rgba8(bytes: &[u8]) -> Vec<u8> {
-    let img = photocraft_codecs::decode(bytes).unwrap();
+    let img = patronusphoto_codecs::decode(bytes).unwrap();
     assert_eq!(img.dimensions(), (64, 48));
-    img.convert(photocraft_codecs::ChannelLayout::Rgba, photocraft_codecs::SampleType::U8).data().to_vec()
+    img.convert(patronusphoto_codecs::ChannelLayout::Rgba, patronusphoto_codecs::SampleType::U8).data().to_vec()
 }
 
 fn max_channel_diff(a: &[u8], b: &[u8]) -> u8 {

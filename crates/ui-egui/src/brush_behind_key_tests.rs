@@ -2,17 +2,17 @@
 
 use craft::ui::patterns::blend_keys::BlendShortcut;
 use egui::{Context, RawInput};
-use photocraft_color::BlendMode;
-use photocraft_engine::Session;
+use patronusphoto_color::BlendMode;
+use patronusphoto_engine::Session;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::brush_mode_menu::{self, Item};
 use crate::state::Tool;
 
 /// Create a test document for the selected tool, optionally with a transparent layer.
-fn app(tool: Tool, transparent_layer: bool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(Session::new(), Default::default());
+fn app(tool: Tool, transparent_layer: bool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(Session::new(), Default::default());
     app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
     if transparent_layer {
         app.run("layer.new.layer", json!({})).unwrap();
@@ -22,13 +22,13 @@ fn app(tool: Tool, transparent_layer: bool) -> Box<PhotocraftApp> {
 }
 
 /// Fires the Behind command (Shift+Alt+Q) and asserts that the module takes it.
-fn press_behind(app: &mut PhotocraftApp) {
+fn press_behind(app: &mut PatronusPhotoApp) {
     let command = craft::ui::runtime::commands::CommandRef::from(BlendShortcut::Behind);
     assert!(super::fired(app, &super::test_fired(command)));
 }
 
 /// Check whether the rendered options bar displays the Behind label.
-fn options_show_behind(app: &mut PhotocraftApp, ctx: &Context) -> bool {
+fn options_show_behind(app: &mut PatronusPhotoApp, ctx: &Context) -> bool {
     /// Find the Behind text label in a shape or its descendants.
     fn has_behind(shape: &egui::Shape) -> bool {
         match shape {
@@ -52,7 +52,7 @@ fn brush_and_pencil_select_behind_in_one_command() {
         app.ui.tool_options.pencil_clear = true;
         app.session.tools.brush.mode = BlendMode::Multiply;
         let ctx = app.ctx().clone();
-        PhotocraftApp::setup_context(&ctx, Default::default());
+        PatronusPhotoApp::setup_context(&ctx, Default::default());
         assert!(brush_mode_menu::enabled(&app, Item::Behind));
         let (id, params) = brush_mode_menu::engine_call(&app, tool, Item::Behind).unwrap();
         assert_eq!((id, &params), ("tools.setBrush", &json!({"brush": {"mode": "Normal", "behind": true}})));

@@ -2,7 +2,7 @@
 //! without one, and the selection is the same afterwards. One undo brings both back, and no
 //! channel is left behind (the reference saves the selection to a channel and deletes it again).
 
-use photocraft_doc::LayerId;
+use patronusphoto_doc::LayerId;
 
 use super::*;
 
@@ -29,11 +29,11 @@ fn select_square(s: &mut Session) {
     s.execute("select.rect", json!({"x": 150, "y": 150, "width": 50, "height": 50})).unwrap();
 }
 
-fn layer(s: &Session, l: LayerId) -> photocraft_doc::Surface {
+fn layer(s: &Session, l: LayerId) -> patronusphoto_doc::Surface {
     s.active().unwrap().doc.layer(l).unwrap().surface().unwrap().clone()
 }
 
-fn selection(s: &Session) -> Option<photocraft_doc::Surface> {
+fn selection(s: &Session) -> Option<patronusphoto_doc::Surface> {
     s.active().unwrap().doc.selection.clone()
 }
 
@@ -110,9 +110,9 @@ fn an_elliptical_or_feathered_selection_keeps_turning_only_its_pixels() {
 /// 0.999 threshold took this one for a plain rectangle.
 #[test]
 fn an_f32_selection_with_a_barely_partial_pixel_is_not_a_plain_rectangle() {
-    use photocraft_color::{ColorMode, PixelFormat, SampleType};
+    use patronusphoto_color::{ColorMode, PixelFormat, SampleType};
     let f32_selection = |edge: f32| {
-        let mut sel = photocraft_raster::Surface::new(PixelFormat::new(ColorMode::Grayscale, SampleType::F32, false));
+        let mut sel = patronusphoto_raster::Surface::new(PixelFormat::new(ColorMode::Grayscale, SampleType::F32, false));
         sel.fill_rect(Rect::new(150, 150, 200, 200), &[1.0]);
         sel.write_pixel(150, 150, &[edge]);
         sel

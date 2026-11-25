@@ -12,11 +12,11 @@ use craft::ui::runtime::env::Label;
 use serde_json::json;
 
 use super::{properties_panel, selected_gradient, stops};
-use crate::{PhotocraftApp, color_picker_ui, panel_docking};
+use crate::{PatronusPhotoApp, color_picker_ui, panel_docking};
 
 /// The panel body: the selected gradient fill layer's rows, else the tool gradient's stop bar with Save As Preset and
 /// the Gradients panel.
-pub(crate) fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub(crate) fn show(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     if let Some(layer) = selected_gradient(app) {
         properties_panel::show(app, ui, &layer);
         return;
@@ -37,7 +37,7 @@ pub(crate) fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 /// The stop bar of the Gradient tool's current gradient. An edit is one `gradient.presets.stop {action: "set"}` on
 /// commit (no document step); a drag in progress shows through `LiveGradient::preset` and is dropped on cancel. A second
 /// pass in one frame gets no pointer input, so its editor reports no event and applies nothing again.
-fn tool_gradient(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+fn tool_gradient(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let (fg, bg) = (app.session.tools.foreground, app.session.tools.background);
     let mut shown = app.gradient.preset.clone().unwrap_or_else(|| stops::of_preset(&app.session.presets.gradient, fg, bg));
     let sampler = stops::sampler(fg, bg);
@@ -56,7 +56,7 @@ fn tool_gradient(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
         match event {
             EditEvent::Set { after, .. } | EditEvent::Commit { after, .. } => {
                 app.gradient.preset = None;
-                let _ = app.run(photocraft_engine::presets::gradients::STOP, stops::preset_params(after));
+                let _ = app.run(patronusphoto_engine::presets::gradients::STOP, stops::preset_params(after));
             }
             EditEvent::Update { value, .. } => app.gradient.preset = Some(value.clone()),
             EditEvent::Cancel { .. } => app.gradient.preset = None,
@@ -70,7 +70,7 @@ fn tool_gradient(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
             app,
             "Color Picker (Stop Color)",
             rgb,
-            photocraft_engine::presets::gradients::STOP,
+            patronusphoto_engine::presets::gradients::STOP,
             json!({"action": "color", "index": requested.index}),
         );
     }

@@ -1,4 +1,4 @@
-PhotoCraft
+Patronus Photo
 Copyright (c) 2026 ArtCraft Team and the PhotoCraft contributors.
 Licensed under the MIT License or the Apache License, Version 2.0, at your option
 (LICENSE-MIT, LICENSE-APACHE).
@@ -17,7 +17,7 @@ JetBrains Mono font (assets/fonts/JetBrainsMono-Regular.ttf) — SIL Open Font L
 Lucide icons (assets/icons/*.svg, except slice-knife.svg) — ISC; icons derived from Feather also MIT. See assets/icons/LICENSE-lucide.txt.
 SCOWL English word list (assets/dict/en_US-scowl-50.txt.gz) — SCOWL license. See assets/dict/LICENSE-SCOWL.txt.
 libfacedetection face detection weights and network (crates/algo/data/libfacedetection.bin, crates/algo/src/faces/cnn.rs) — BSD-3-Clause, Copyright (c) 2015-2019, Shiqi Yu, all rights reserved. See crates/algo/data/LICENSE-libfacedetection.txt.
-Interface translations (embedded at build time from storytold/craft-i18n locales/<code>/common.tsv and photocraft.tsv, at the commit in craft-i18n.rev) — MIT OR Apache-2.0, Copyright (c) 2026 ArtCraft Team and the craft-i18n contributors; the license texts are the same as LICENSE-MIT and LICENSE-APACHE. Per-language credits and provenance: https://github.com/storytold/craft-i18n/blob/main/ATTRIBUTION.md
+Interface translations (embedded at build time from storytold/craft-i18n locales/<code>/common.tsv and patronusphoto.tsv, at the commit in craft-i18n.rev) — MIT OR Apache-2.0, Copyright (c) 2026 ArtCraft Team and the craft-i18n contributors; the license texts are the same as LICENSE-MIT and LICENSE-APACHE. Per-language credits and provenance: https://github.com/storytold/craft-i18n/blob/main/ATTRIBUTION.md
 
 Builds made with craft-fonts (CRAFT_FONTS_DIR; all official releases) also embed the fonts listed in
 https://github.com/storytold/craft-fonts/blob/main/ATTRIBUTION.md (today BIZ UDPGothic, Shippori Mincho and
@@ -74,7 +74,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 Optional PDF reader (craft-pdf)
 
-PhotoCraft imports PDF pages through craft-pdf (https://github.com/storytold/craft-libs,
+Patronus Photo imports PDF pages through craft-pdf (https://github.com/storytold/craft-libs,
 MIT OR Apache-2.0), pinned to revision c5a1cbfb5f9049f9270955caffb5bee5997aebf7. It vendors
 Hayro 0.7.1, hayro-interpret 0.7.0, hayro-syntax 0.7.2, hayro-jbig2 0.3.0 and
 hayro-cmap 0.1.0 (https://github.com/LaurenzV/hayro, MIT OR Apache-2.0). The reader bundles

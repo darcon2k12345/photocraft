@@ -1,6 +1,6 @@
 # Attribution
 
-Every non-code asset in this repository, with its author, source and license. PhotoCraft's own
+Every non-code asset in this repository, with its author, source and license. Patronus Photo's own
 code and original assets are MIT OR Apache-2.0 (see [`LICENSE-MIT`](LICENSE-MIT),
 [`LICENSE-APACHE`](LICENSE-APACHE) and [`NOTICE`](NOTICE)). When you add an asset, add a row here
 in the same change; third-party assets must be permissively licensed and keep their license file
@@ -10,22 +10,22 @@ next to them.
 
 | Path | Title | Author | Source | License |
 |---|---|---|---|---|
-| Embedded at build time from storytold/craft-i18n `locales/<code>/common.tsv` and `locales/<code>/photocraft.tsv` (revision in [`craft-i18n.rev`](craft-i18n.rev)) | UI translations (all languages) | craft-i18n and PhotoCraft contributors; per-language credits and provenance in [craft-i18n's ATTRIBUTION.md](https://github.com/storytold/craft-i18n/blob/main/ATTRIBUTION.md) | <https://github.com/storytold/craft-i18n> | MIT OR Apache-2.0; Copyright (c) 2026 ArtCraft Team and the craft-i18n contributors; notice in [NOTICE](NOTICE) |
+| Embedded at build time from storytold/craft-i18n `locales/<code>/common.tsv` and `locales/<code>/patronusphoto.tsv` (revision in [`craft-i18n.rev`](craft-i18n.rev)) | UI translations (all languages) | craft-i18n and PhotoCraft contributors; per-language credits and provenance in [craft-i18n's ATTRIBUTION.md](https://github.com/storytold/craft-i18n/blob/main/ATTRIBUTION.md) | <https://github.com/storytold/craft-i18n> | MIT OR Apache-2.0; Copyright (c) 2026 ArtCraft Team and the craft-i18n contributors; notice in [NOTICE](NOTICE) |
 | `epaint_default_fonts::EGUI_ICONS` (build input; deflated into `OUT_DIR/egui_fonts/egui-icons.ttf.deflate`, registered by `crates/ui-egui/src/text/egui_fonts.rs`) | egui-icons, five-glyph subset of emoji-icon-font | John Slegers | [egui fork at 6d518fc](https://github.com/storytold/egui/tree/6d518fc799681571963842f95b55a6b68431b15a/crates/epaint_default_fonts/fonts), [original](https://github.com/jslegers/emoji-icon-font); egui subset, unmodified here | MIT; Copyright (c) 2014 John Slegers; full upstream notice in [NOTICE](NOTICE) |
 | `assets/fonts/Inter-Regular.ttf`, `Inter-Medium.ttf`, `Inter-SemiBold.ttf` | Inter 4.001 (UI font) | The Inter Project Authors (Rasmus Andersson) | <https://github.com/rsms/inter> | SIL OFL 1.1, [`assets/fonts/OFL-Inter.txt`](assets/fonts/OFL-Inter.txt) |
 | `assets/fonts/JetBrainsMono-Regular.ttf` | JetBrains Mono 2.305 (numeric font) | The JetBrains Mono Project Authors | <https://github.com/JetBrains/JetBrainsMono> | SIL OFL 1.1, [`assets/fonts/OFL-JetBrainsMono.txt`](assets/fonts/OFL-JetBrainsMono.txt) |
 | `assets/icons/{arrow-left-right,circle-dashed,ellipsis,file-plus,folder-plus,grid-2x2,house,link-2,message-square,panel-left,pipette,rectangle-horizontal,rectangle-vertical,redo-2,square-dashed,square-dashed-mouse-pointer,triangle-alert,type,x}.svg` | Lucide icons | Lucide Icons and Contributors | <https://github.com/lucide-icons/lucide> (`icons/<name>.svg`) | ISC, [`assets/icons/LICENSE-lucide.txt`](assets/icons/LICENSE-lucide.txt) |
 | `assets/icons/{link-2,type,x}.svg` | Lucide icons derived from Feather (subset of the row above) | Cole Bemis (Feather), Lucide Contributors | <https://github.com/feathericons/feather> via Lucide | MIT (Feather) and ISC (Lucide), [`assets/icons/LICENSE-lucide.txt`](assets/icons/LICENSE-lucide.txt) |
-| `assets/icons/vector-shape.svg` | Vector path shape-layer glyph with four anchor points | @superplay2021 | Original work for PhotoCraft | MIT OR Apache-2.0 |
+| `assets/icons/vector-shape.svg` | Vector path shape-layer glyph with four anchor points | @superplay2021 | Original work for Patronus Photo | MIT OR Apache-2.0 |
 | `assets/icons/spirit-level.svg` | Straighten tool glyph: a spirit level with its vial and bubble under a dotted arc | PhotoCraft contributors | Original work | MIT OR Apache-2.0 |
 | `assets/icons/path-op-{new-layer,combine,subtract,intersect,exclude,merge}.svg` | Path Operations glyphs (Pen options bar): a single square for New Layer, and two overlapping squares showing the area each operation keeps (union, back minus front, overlap, everything but the overlap, the merged outline), drawn on Lucide's 24 px grid and stroke | PhotoCraft contributors | Original work | MIT OR Apache-2.0 |
 | `assets/icons/history-brush.svg` | History Brush tool glyph: Lucide `brush` plus counter-clockwise history rewind arrow | Lucide Icons and Contributors; arrow by PhotoCraft contributors | Derived from <https://github.com/lucide-icons/lucide> `icons/brush.svg` | ISC, [`assets/icons/LICENSE-lucide.txt`](assets/icons/LICENSE-lucide.txt) |
 | `assets/dict/en_US-scowl-50.txt.gz` | English word list for Check Spelling (SCOWL 2020.12.07, size 50, en_US; 72,403 words) | Kevin Atkinson and the SCOWL contributors | <http://wordlist.aspell.net/> | SCOWL license (permissive, keep the notice), [`assets/dict/LICENSE-SCOWL.txt`](assets/dict/LICENSE-SCOWL.txt), which also has the build recipe |
-| `assets/app-icon/` (all files) | PhotoCraft app icon (nine-tailed kitsune) | The project owner (drawn in ArtCraft, vectorised) | Original work, see [`assets/app-icon/README.md`](assets/app-icon/README.md) | MIT OR Apache-2.0, [`assets/app-icon/LICENSE.txt`](assets/app-icon/LICENSE.txt) |
-| `packaging/macos/dmg/` (all files) | PhotoCraft DMG window background and layout | @XusBadia, from the PhotoCraft app icon | Original work, see [`packaging/macos/dmg/README.md`](packaging/macos/dmg/README.md) | MIT OR Apache-2.0, like the code |
+| `assets/app-icon/` (all files) | Patronus Photo app icon (nine-tailed kitsune) | The project owner (drawn in ArtCraft, vectorised) | Original work, see [`assets/app-icon/README.md`](assets/app-icon/README.md) | MIT OR Apache-2.0, [`assets/app-icon/LICENSE.txt`](assets/app-icon/LICENSE.txt) |
+| `packaging/macos/dmg/` (all files) | Patronus Photo DMG window background and layout | @XusBadia, from the Patronus Photo app icon | Original work, see [`packaging/macos/dmg/README.md`](packaging/macos/dmg/README.md) | MIT OR Apache-2.0, like the code |
 | `crates/ui-egui/src/theme.rs` (Solarized Dark palette) | Solarized colour scheme used by the Solarized Dark theme | Ethan Schoonover | <https://ethanschoonover.com/solarized/> | MIT, [`LICENSE-solarized.txt`](crates/ui-egui/src/LICENSE-solarized.txt) |
-| `crates/ui-egui/src/theme.rs` (Breeze Light and Breeze Dark themes) | The Breeze Light and Breeze Dark themes are original colour values on PhotoCraft's Studio layout, chosen to look close to KDE Plasma's Breeze (cool blue-greys, blue accent, 5 px frame radius) so the app blends into a Plasma desktop. None of Breeze's colour values, files or code are copied; the values are a few levels away from its schemes and tuned for text contrast | PhotoCraft contributors | Inspired by the look of KDE Breeze, <https://invent.kde.org/plasma/breeze> (its colour schemes are LGPL-2.0-or-later) | Original work |
-| `crates/ui-egui/src/theme.rs` (Soft Dark and Soft Light themes) | Original colour values and radii for two low-contrast themes on PhotoCraft's Studio layout; no third-party palette, file or code is used | PhotoCraft contributors | Original | Original work |
+| `crates/ui-egui/src/theme.rs` (Breeze Light and Breeze Dark themes) | The Breeze Light and Breeze Dark themes are original colour values on Patronus Photo's Studio layout, chosen to look close to KDE Plasma's Breeze (cool blue-greys, blue accent, 5 px frame radius) so the app blends into a Plasma desktop. None of Breeze's colour values, files or code are copied; the values are a few levels away from its schemes and tuned for text contrast | PhotoCraft contributors | Inspired by the look of KDE Breeze, <https://invent.kde.org/plasma/breeze> (its colour schemes are LGPL-2.0-or-later) | Original work |
+| `crates/ui-egui/src/theme.rs` (Soft Dark and Soft Light themes) | Original colour values and radii for two low-contrast themes on Patronus Photo's Studio layout; no third-party palette, file or code is used | PhotoCraft contributors | Original | Original work |
 | `crates/algo/data/libfacedetection.bin` (face detection weights, read by `crates/algo/src/faces.rs`, whose network code is a port of the library's) | libfacedetection CNN (YuNet design) weights and inference code, weights converted to half precision | Shiqi Yu | [ShiqiYu/libfacedetection](https://github.com/ShiqiYu/libfacedetection) (`src/facedetectcnn-data.cpp`, `facedetectcnn.cpp`, `facedetectcnn-model.cpp`) | BSD-3-Clause, [`LICENSE-libfacedetection.txt`](crates/algo/data/LICENSE-libfacedetection.txt) |
 
 ### Optional build input: craft-fonts (not files in this repo)
@@ -42,7 +42,7 @@ from it is committed here. Per-file authors, sources and licences:
 | BIZ UDMincho Regular (Morisawa) | Japanese serif Type fallback (desktop) | SIL OFL 1.1, shipped as `OFL-biz-ud-mincho.txt` |
 
 The built-in ICC profiles and the generated LUT looks come from `craft-cms`
-([storytold/craft-libs](https://github.com/storytold/craft-libs/tree/main/crates/cms)): the PhotoCraft Coated CMYK profile is a file there
+([storytold/craft-libs](https://github.com/storytold/craft-libs/tree/main/crates/cms)): the Patronus Photo Coated CMYK profile is a file there
 (its `ATTRIBUTION.md`), the others are produced by code at runtime (`src/builtin.rs`,
 `src/lutfile.rs`). All are dedicated to the public domain (CC0-1.0).
 
@@ -51,30 +51,30 @@ The built-in ICC profiles and the generated LUT looks come from `craft-cms`
 | Path | Title | Author | Source | License |
 |---|---|---|---|---|
 | `docs/brand/` (all files) | ArtCraft name, wordmark and mark | ArtCraft Team | getartcraft.com | Not open source; trademarks of the ArtCraft Team, [`docs/brand/LICENSE-brand.txt`](docs/brand/LICENSE-brand.txt) |
-| `docs/images/photocraft-*.jpg` | PhotoCraft screenshots | PhotoCraft contributors (UI) | Rendered offscreen with the `snapshot` example | MIT OR Apache-2.0 (UI); the artwork in each is public domain, listed below |
+| `docs/images/patronusphoto-*.jpg` | Patronus Photo screenshots | PhotoCraft contributors (UI) | Rendered offscreen with the `snapshot` example | MIT OR Apache-2.0 (UI); the artwork in each is public domain, listed below |
 | `docs/images/embedded-vector-editor-en.png` | Embedded AI/PDF/EPS conversion warning and editor chooser (no artwork) | Don Omondi | Offscreen `smart_svg_ui::tests::capture_embedded_vector_conversion_prompt` with authored bytes and mock services | MIT OR Apache-2.0 |
 | `docs/images/embedded-vector-tabs-linux.png` | Shared VectorCraft window after a portal editor save and ordinary document launch | Don Omondi | Local Linux GUI acceptance with authored orange rectangle/blue circle SVGs; no private artwork | MIT OR Apache-2.0 |
-| `docs/images/preset-invalid-choice-before.png` | Gradient preset import before validation, with the collision dialog closed | @yoriswind | Offscreen PhotoCraft capture with the synthetic `Fire.grd` gradient fixture | MIT OR Apache-2.0 |
-| `docs/images/preset-invalid-choice-after.png` | Gradient preset import after validation, with the collision dialog still open | @yoriswind | Offscreen PhotoCraft capture with the synthetic `Fire.grd` gradient fixture | MIT OR Apache-2.0 |
+| `docs/images/preset-invalid-choice-before.png` | Gradient preset import before validation, with the collision dialog closed | @yoriswind | Offscreen Patronus Photo capture with the synthetic `Fire.grd` gradient fixture | MIT OR Apache-2.0 |
+| `docs/images/preset-invalid-choice-after.png` | Gradient preset import after validation, with the collision dialog still open | @yoriswind | Offscreen Patronus Photo capture with the synthetic `Fire.grd` gradient fixture | MIT OR Apache-2.0 |
 | `docs/images/cpu-pixel-alignment/*.png` | CPU canvas pixel alignment, before and after #8321 | PhotoCraft contributors | Original synthetic noise rendered with the offscreen `snapshot` example; see the adjacent README | MIT OR Apache-2.0, adjacent `LICENSE-MIT` and `LICENSE-APACHE` |
 | `docs/images/clone-source/*.png` | Clone source opacity/flow, cross-document and source-edge previews, and offset readouts | PhotoCraft contributors | Original synthetic red shapes rendered offscreen with the `snapshot` example; adjacent capture scripts and README | MIT OR Apache-2.0 |
 | `docs/images/multi-channel-editing/{curves,curves-choices,levels,drawing,mask-view-before,mask-view-after}.png` | Selected colour channel editing (synthetic gradient) | @hidoba | Original synthetic gradient rendered with the offscreen `snapshot` example; adjacent JSON scripts | MIT OR Apache-2.0, adjacent `LICENSE-MIT` and `LICENSE-APACHE` |
-| `docs/images/multi-channel-editing/great-wave.jpg`, `rgb.png`, `cmyk.png`, `lab.png`, `gallery-channel-preview-{before,after}.png` | *The Great Wave off Kanagawa*, c. 1830–1832, and PhotoCraft channel-selection captures | Katsushika Hokusai (artwork); PhotoCraft contributors (UI) | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Tsunami_by_hokusai_19th_century.jpg), Metropolitan Museum reproduction; adjacent JSON capture scripts | Public domain artwork (PD-Art), adjacent `LICENSE-PUBLIC-DOMAIN.txt`; UI/scripts MIT OR Apache-2.0 |
+| `docs/images/multi-channel-editing/great-wave.jpg`, `rgb.png`, `cmyk.png`, `lab.png`, `gallery-channel-preview-{before,after}.png` | *The Great Wave off Kanagawa*, c. 1830–1832, and Patronus Photo channel-selection captures | Katsushika Hokusai (artwork); PhotoCraft contributors (UI) | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Tsunami_by_hokusai_19th_century.jpg), Metropolitan Museum reproduction; adjacent JSON capture scripts | Public domain artwork (PD-Art), adjacent `LICENSE-PUBLIC-DOMAIN.txt`; UI/scripts MIT OR Apache-2.0 |
 
 Artwork shown in the screenshots (all public domain, via Wikimedia Commons; details in
 [`docs/images/SOURCES.md`](docs/images/SOURCES.md)):
 
 | Screenshot | Artwork | Source |
 |---|---|---|
-| `photocraft-demo.jpg` | *The Great Wave off Kanagawa*, Katsushika Hokusai, c. 1831 | [Commons](https://commons.wikimedia.org/wiki/File:Tsunami_by_hokusai_19th_century.jpg) |
-| `photocraft-layer-styles.jpg` | *Earthrise*, William Anders, Apollo 8, 1968 (NASA) | [Commons](https://commons.wikimedia.org/wiki/File:NASA-Apollo8-Dec24-Earthrise.jpg) |
-| `photocraft-masks.jpg` | *Girl with a Pearl Earring*, Johannes Vermeer, c. 1665 | [Commons](https://commons.wikimedia.org/wiki/File:1665_Girl_with_a_Pearl_Earring.jpg) |
-| `photocraft-vector.jpg` | *Water Lilies*, Claude Monet, 1906 | [Commons](https://commons.wikimedia.org/wiki/File:Claude_Monet_-_Water_Lilies_-_1906,_Ryerson.jpg) |
-| `photocraft-filters.jpg` | *The Starry Night*, Vincent van Gogh, 1889 | [Commons](https://commons.wikimedia.org/wiki/File:Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg) |
-| `photocraft-adjustments.jpg` | *Impression, Sunrise*, Claude Monet, 1872 | [Commons](https://commons.wikimedia.org/wiki/File:Monet_-_Impression,_Sunrise.jpg) |
-| `photocraft-transform.jpg` | *The Tetons and the Snake River*, Ansel Adams, 1942 (U.S. National Archives) | [Commons](https://commons.wikimedia.org/wiki/File:Adams_The_Tetons_and_the_Snake_River.jpg) |
-| `photocraft-type.jpg` | *Among the Sierra Nevada, California*, Albert Bierstadt, 1868 | [Commons](https://commons.wikimedia.org/wiki/File:Albert_Bierstadt_-_Among_the_Sierra_Nevada,_California_-_Google_Art_Project.jpg) |
-| `photocraft-export-light.jpg` | *The Kiss*, Gustav Klimt, 1907–1908 | [Commons](https://commons.wikimedia.org/wiki/File:Gustav_Klimt_016.jpg) |
+| `patronusphoto-demo.jpg` | *The Great Wave off Kanagawa*, Katsushika Hokusai, c. 1831 | [Commons](https://commons.wikimedia.org/wiki/File:Tsunami_by_hokusai_19th_century.jpg) |
+| `patronusphoto-layer-styles.jpg` | *Earthrise*, William Anders, Apollo 8, 1968 (NASA) | [Commons](https://commons.wikimedia.org/wiki/File:NASA-Apollo8-Dec24-Earthrise.jpg) |
+| `patronusphoto-masks.jpg` | *Girl with a Pearl Earring*, Johannes Vermeer, c. 1665 | [Commons](https://commons.wikimedia.org/wiki/File:1665_Girl_with_a_Pearl_Earring.jpg) |
+| `patronusphoto-vector.jpg` | *Water Lilies*, Claude Monet, 1906 | [Commons](https://commons.wikimedia.org/wiki/File:Claude_Monet_-_Water_Lilies_-_1906,_Ryerson.jpg) |
+| `patronusphoto-filters.jpg` | *The Starry Night*, Vincent van Gogh, 1889 | [Commons](https://commons.wikimedia.org/wiki/File:Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg) |
+| `patronusphoto-adjustments.jpg` | *Impression, Sunrise*, Claude Monet, 1872 | [Commons](https://commons.wikimedia.org/wiki/File:Monet_-_Impression,_Sunrise.jpg) |
+| `patronusphoto-transform.jpg` | *The Tetons and the Snake River*, Ansel Adams, 1942 (U.S. National Archives) | [Commons](https://commons.wikimedia.org/wiki/File:Adams_The_Tetons_and_the_Snake_River.jpg) |
+| `patronusphoto-type.jpg` | *Among the Sierra Nevada, California*, Albert Bierstadt, 1868 | [Commons](https://commons.wikimedia.org/wiki/File:Albert_Bierstadt_-_Among_the_Sierra_Nevada,_California_-_Google_Art_Project.jpg) |
+| `patronusphoto-export-light.jpg` | *The Kiss*, Gustav Klimt, 1907–1908 | [Commons](https://commons.wikimedia.org/wiki/File:Gustav_Klimt_016.jpg) |
 
 ## Test data (not committed, not shipped)
 
@@ -109,14 +109,14 @@ Files copied into `corpus/` by hand (tiff, exr, raw) must be MIT, BSD or CC0.
 
 The external SVG watcher, engine/UI handoff and bounded SVG rendering in this change
 are adapted from Skyfuller1303’s MIT OR Apache-2.0 implementation in
-[PhotoCraft #3409](https://github.com/storytold/photocraft/pull/3409), commit
+[Patronus Photo #3409](https://github.com/storytold/photocraft/pull/3409), commit
 `897f20072762fdf0eb688adcdb8d8cda7b38ce66`. Don Omondi’s embedded AI/PDF/EPS
 extension and current-main integration build on that source. Clipboard and unrelated
 Shape Tools changes from that branch are not included.
 
 ## Assets bundled by the PDF reader dependency (craft-pdf)
 
-PhotoCraft imports PDF pages through `craft-pdf`, pinned to the craft-libs revision
+Patronus Photo imports PDF pages through `craft-pdf`, pinned to the craft-libs revision
 `c5a1cbfb5f9049f9270955caffb5bee5997aebf7`. The renderer vendors Hayro and the assets below;
 they ship inside the dependency rather than being copied into this repository. PDFium is no
 longer used or shipped.

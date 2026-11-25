@@ -10,7 +10,7 @@ fn action(name: &str, steps: Vec<(&str, Value)>) -> Action {
     Action::new(name, steps.into_iter().map(|(id, params)| ActionStep::new(id, params)).collect())
 }
 
-fn call(app: &mut PhotocraftApp, ctx: &egui::Context, method: &str, params: Value) -> Value {
+fn call(app: &mut PatronusPhotoApp, ctx: &egui::Context, method: &str, params: Value) -> Value {
     let (req, _rx) = ControlRequest::new(method, params);
     match handle(app, ctx, &req) {
         Reply::Done(v) => v,
@@ -23,7 +23,7 @@ fn call(app: &mut PhotocraftApp, ctx: &egui::Context, method: &str, params: Valu
 /// the window host reports its queue idle. `ToolHost::inject` asks the host for its pass, so
 /// `injected_idle` stays false until the canvas took the input. A held key is released on a
 /// later pass, so the loop runs to idle rather than for one pass.
-fn pointer(app: &mut PhotocraftApp, params: Value) -> Value {
+fn pointer(app: &mut PatronusPhotoApp, params: Value) -> Value {
     let ctx = app.ctx().clone();
     // The pointer maps document points through the view the canvas last showed, so the canvas shows one first.
     if crate::canvas::document_display::active_view(app).is_none() {
@@ -41,12 +41,12 @@ fn pointer(app: &mut PhotocraftApp, params: Value) -> Value {
 }
 
 /// The `ui.inspect` `dialogs` list: the hosted dialogs in stack order, the top last.
-fn dialogs(app: &mut PhotocraftApp, ctx: &egui::Context) -> Vec<Value> {
+fn dialogs(app: &mut PatronusPhotoApp, ctx: &egui::Context) -> Vec<Value> {
     call(app, ctx, "ui.inspect", json!({}))["result"]["dialogs"].as_array().cloned().unwrap_or_default()
 }
 
 /// The top hosted dialog as `ui.inspect` lists it, or `null` when none is open.
-fn top_dialog(app: &mut PhotocraftApp, ctx: &egui::Context) -> Value {
+fn top_dialog(app: &mut PatronusPhotoApp, ctx: &egui::Context) -> Value {
     dialogs(app, ctx).last().cloned().unwrap_or(Value::Null)
 }
 
@@ -54,7 +54,7 @@ fn top_dialog(app: &mut PhotocraftApp, ctx: &egui::Context) -> Value {
 /// method listed for those hints is served.
 #[test]
 fn unknown_names_suggest_the_right_method_or_command() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     let mut error = |method: &str, params: Value| {
         let reply = call(&mut app, &ctx, method, params);
@@ -81,7 +81,7 @@ fn unknown_names_suggest_the_right_method_or_command() {
 
 #[test]
 fn shift_right_brush_does_not_open_presets_or_paint() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 64, "height": 64})).unwrap();
     app.ui.tool = crate::state::Tool::Brush;
     let before = app.session.journal.len();
@@ -99,7 +99,7 @@ fn shift_right_brush_does_not_open_presets_or_paint() {
 
 #[test]
 fn perf_output_includes_slow_frames() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     assert_eq!(call(&mut app, &ctx, "ui.inspect", json!({}))["result"]["perf"]["slowFrames"], json!([]));
     app.slow_frames.set_threshold_ms(0.0);
@@ -127,7 +127,7 @@ fn perf_output_includes_slow_frames() {
 
 #[test]
 fn full_window_workspaces_are_modal_for_menu_invocations() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width":32,"height":32})).unwrap();
     app.run("file.new", json!({"width":32,"height":32})).unwrap();
@@ -186,12 +186,12 @@ fn full_window_workspaces_are_modal_for_menu_invocations() {
 
 #[test]
 fn layer_style_picker_control_binds_previews_confirms_and_cancels() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width":16,"height":16})).unwrap();
     let parent = call(&mut app, &ctx, "ui.dialog.open", json!({"kind":"layerStyle","effect":"gradientOverlay"}))["result"]["dialog"].clone();
     assert!(parent.is_string(), "a hosted dialog's id is the string ui.inspect lists: {parent}");
-    let parent_fields = |app: &mut PhotocraftApp| {
+    let parent_fields = |app: &mut PatronusPhotoApp| {
         let listed = dialogs(app, &ctx);
         listed.into_iter().find(|d| d["id"] == parent).expect("the Layer Style dialog is listed")["fields"].clone()
     };
@@ -219,7 +219,7 @@ fn layer_style_picker_control_binds_previews_confirms_and_cancels() {
 
 #[test]
 fn layer_style_picker_control_rejects_bad_targets_without_opening_tool_picker() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width":16,"height":16})).unwrap();
     let parent = json!(crate::layer_style::open(&mut app, Some("colorOverlay")).unwrap().value().to_string());
@@ -240,7 +240,7 @@ fn layer_style_picker_control_rejects_bad_targets_without_opening_tool_picker() 
 
 #[test]
 fn shape_stroke_defaults_are_drivable_and_validate_atomically() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     let result =
         call(&mut app, &ctx, "ui.set", json!({"tool":"Triangle", "shapeStroke":{"width":5,"cap":"round","join":"bevel","dashes":[0,2,4,1],"dashOffset":-0.5}}));
@@ -262,10 +262,10 @@ fn shape_stroke_defaults_are_drivable_and_validate_atomically() {
 fn framework_dialogs_are_set_confirmed_and_cancelled_by_id() {
     use craft::ui::contract::Bind;
     use craft::ui::patterns::form_dialogs::{DialogFields, HostedParamDialog, Param, ParamDialog};
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
-    let top = |app: &mut PhotocraftApp| call(app, &ctx, "ui.inspect", json!({}))["result"]["dialogs"].as_array().and_then(|d| d.last().cloned());
-    let ok = |app: &mut PhotocraftApp, method: &str, params: Value| call(app, &ctx, method, params)["ok"].clone();
+    let top = |app: &mut PatronusPhotoApp| call(app, &ctx, "ui.inspect", json!({}))["result"]["dialogs"].as_array().and_then(|d| d.last().cloned());
+    let ok = |app: &mut PatronusPhotoApp, method: &str, params: Value| call(app, &ctx, method, params)["ok"].clone();
 
     app.framework.dialogs.open(HostedParamDialog::new(&ctx, "gaussianBlur", DialogFields::from_pairs([("radius", 1.0)]), |fields| {
         ParamDialog::new("gaussianBlur", "Gaussian Blur", Param::parse_list(r#"{"radius":0.1..1000=1}"#)).values(Bind::bound(fields))
@@ -285,7 +285,7 @@ fn framework_dialogs_are_set_confirmed_and_cancelled_by_id() {
     app.run("layer.new.layer", json!({})).unwrap();
     app.run("layer.layerMask.revealAll", json!({})).unwrap();
     let layer = app.session.active().and_then(|state| state.active_layer).expect("an active layer");
-    let has_mask = |app: &PhotocraftApp| app.session.active().and_then(|s| s.doc.layer(layer)).is_some_and(|l| l.mask.is_some());
+    let has_mask = |app: &PatronusPhotoApp| app.session.active().and_then(|s| s.doc.layer(layer)).is_some_and(|l| l.mask.is_some());
     assert!(has_mask(&app));
     // (method, extra params, accepted, the mask survives)
     let routes: [(&str, Value, bool, bool); 3] = [
@@ -314,7 +314,7 @@ fn framework_dialogs_are_set_confirmed_and_cancelled_by_id() {
 /// production dialog keys it (cx.P7) reaches the hosted dialog's value.
 #[test]
 fn a_value_reaches_the_top_dialog() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 16, "height": 16})).unwrap();
     let opened = call(&mut app, &ctx, "ui.dialog.open", json!({"kind": "command", "command": "filter.blur.gaussianBlur"}));
@@ -338,7 +338,7 @@ fn inspect_lists_hosted_dialogs_in_stack_order() {
     use craft::ui::contract::Bind;
     use craft::ui::dialog::{PromptKind, StandardPrompt};
     use craft::ui::patterns::form_dialogs::{DialogFields, HostedParamDialog, Param, ParamDialog};
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     // Each dialog takes its place when it opens, with no pass between the opens. The host keeps one dialog
     // per type, so the two are of different types.
@@ -347,7 +347,7 @@ fn inspect_lists_hosted_dialogs_in_stack_order() {
         ParamDialog::new("gaussianBlur", "Gaussian Blur", Param::parse_list(r#"{"radius":0.1..1000=1}"#)).values(Bind::bound(fields))
     }));
     let (lower_id, upper_id) = (json!(lower.value().to_string()), json!(upper.value().to_string()));
-    let listed = |app: &mut PhotocraftApp| -> Vec<Value> { dialogs(app, &ctx).iter().map(|d| d["id"].clone()).collect() };
+    let listed = |app: &mut PatronusPhotoApp| -> Vec<Value> { dialogs(app, &ctx).iter().map(|d| d["id"].clone()).collect() };
     assert_eq!(listed(&mut app), [lower_id.clone(), upper_id.clone()]);
     assert!(app.framework.dialogs.stack().is_top(upper));
     assert_eq!(call(&mut app, &ctx, "ui.dialog.cancel", json!({"dialog": upper_id}))["ok"], true);
@@ -364,7 +364,7 @@ fn inspect_lists_hosted_dialogs_in_stack_order() {
 fn shell_dialogs_are_listed_and_driven_through_ui_dialog() {
     // #1004: Window › Workspace and View dialogs are hosted dialogs, listed by ui.inspect and
     // driven by ui.dialog.* on the id it lists.
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     // Listed, then cancelled.
     crate::menus::invoke(&mut app, &ctx, "window.workspace.newWorkspace", json!({})).unwrap();
@@ -400,8 +400,8 @@ fn opening_new_document_through_control_matches_clipboard_image_size() {
     // #2034: every way of opening New Document uses the clipboard-aware initial fields.
     let clipboard = std::sync::Arc::new(std::sync::Mutex::new(Some((100, 200, vec![255; 100 * 200 * 4]))));
     let image = clipboard.clone();
-    let mut app = PhotocraftApp::new(
-        photocraft_engine::Session::new(),
+    let mut app = PatronusPhotoApp::new(
+        patronusphoto_engine::Session::new(),
         crate::Services { clipboard_get_image: Some(Box::new(move || Ok(image.lock().unwrap().clone()))), ..Default::default() },
     );
     let ctx = app.ctx().clone();
@@ -416,7 +416,7 @@ fn opening_new_document_through_control_matches_clipboard_image_size() {
 
 #[test]
 fn right_pointer_opens_agent_visible_selection_menu() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
     app.run("select.rect", json!({"x": 1, "y": 1, "width": 8, "height": 8})).unwrap();
@@ -436,7 +436,7 @@ fn right_pointer_opens_agent_visible_selection_menu() {
 
 #[test]
 fn agent_right_click_with_the_zoom_tool_opens_and_runs_the_view_menu() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
     app.sync_views();
@@ -461,7 +461,7 @@ fn agent_right_click_with_the_zoom_tool_opens_and_runs_the_view_menu() {
 #[test]
 fn agent_space_right_click_opens_the_hand_view_menu() {
     for tool in [crate::state::Tool::Move, crate::state::Tool::Brush, crate::state::Tool::RectMarquee, crate::state::Tool::Pen] {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         let ctx = app.ctx().clone();
         app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
         app.sync_views();
@@ -493,7 +493,7 @@ fn agent_space_right_click_opens_the_hand_view_menu() {
 /// edit menu, not the Hand's view menu.
 #[test]
 fn agent_space_right_click_while_typing_keeps_the_type_menu() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
     app.sync_views();
@@ -510,7 +510,7 @@ fn agent_space_right_click_while_typing_keeps_the_type_menu() {
 /// #6561: an agent's right-click on a pending crop opens the crop menu, as on the canvas.
 #[test]
 fn agent_right_click_on_a_pending_crop_opens_and_runs_the_crop_menu() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
     app.sync_views();
@@ -537,7 +537,7 @@ fn agent_right_click_on_a_pending_crop_opens_and_runs_the_crop_menu() {
 
 #[test]
 fn agent_can_inspect_and_choose_pen_make_selection_from_full_context_menu() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
     app.run("path.set", json!({"name":"work","path":{"subpaths":[{"closed":true,"knots":[[2,2],[20,2],[20,20]]}]}})).unwrap();
@@ -564,7 +564,7 @@ fn agent_can_inspect_and_choose_pen_make_selection_from_full_context_menu() {
 
 #[test]
 fn engine_execute_runs_with_defaults_but_menu_invoke_opens_the_dialog() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
     app.run("edit.fill", json!({"color": "#808080"})).unwrap();
@@ -582,7 +582,7 @@ fn engine_execute_runs_with_defaults_but_menu_invoke_opens_the_dialog() {
 
 #[test]
 fn menu_invoke_cannot_edit_document_behind_an_open_dialog() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
 
@@ -614,7 +614,7 @@ fn menu_invoke_cannot_edit_document_behind_an_open_dialog() {
 
 #[test]
 fn engine_execute_cannot_change_document_behind_adjustment_dialog() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 60, "height": 40, "background": "#3366cc"})).unwrap();
     let opened = call(&mut app, &ctx, "ui.menu.invoke", json!({"id": "image.adjustments.hueSaturation"}));
@@ -640,7 +640,7 @@ fn engine_execute_cannot_change_document_behind_adjustment_dialog() {
 #[test]
 fn ui_set_rejects_unknown_fields_before_changing_anything() {
     use crate::theme::AppTheme;
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     app.set_theme(&ctx, AppTheme::studio_light());
     // Not the default tool, so a rejected `"tool": "move"` that still applied would show.
@@ -663,7 +663,7 @@ fn ui_set_rejects_unknown_fields_before_changing_anything() {
 
 #[test]
 fn ui_set_drives_the_eyedropper_options() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     let good = call(
         &mut app,
@@ -695,11 +695,11 @@ fn ui_set_drives_the_eyedropper_options() {
 /// #3823: the Crop tool's Fill over the control channel, reported by `ui.inspect`.
 #[test]
 fn ui_set_drives_the_crop_fill() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     assert_eq!(call(&mut app, &ctx, "ui.set", json!({"tool": "crop", "cropFill": "contentAware"}))["ok"], true);
     // The fill's serialized name is the protocol's value.
-    let fill = |app: &PhotocraftApp| serde_json::to_value(app.ui.tool_options.crop.fill).unwrap();
+    let fill = |app: &PatronusPhotoApp| serde_json::to_value(app.ui.tool_options.crop.fill).unwrap();
     assert_eq!(fill(&app), json!("contentAware"));
     assert_eq!(call(&mut app, &ctx, "ui.inspect", json!({}))["result"]["toolOptions"]["crop"]["fill"], json!("contentAware"));
     for bad in [json!("generativeExpand"), json!(true), json!(1)] {
@@ -713,12 +713,12 @@ fn ui_set_drives_the_crop_fill() {
 /// #1919: the Crop tool's overlay menu over the control channel, reported by `ui.inspect`.
 #[test]
 fn ui_set_drives_the_crop_overlay_options() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     let good = call(&mut app, &ctx, "ui.set", json!({"tool": "crop", "cropOverlay": "goldenSpiral", "cropOverlayShow": "always", "cropOverlayOrientation": 2}));
     assert_eq!(good["ok"], true, "{good}");
     // The serialized names are the protocol's values.
-    let guide = |app: &PhotocraftApp| serde_json::to_value(app.ui.tool_options.crop.guide).unwrap();
+    let guide = |app: &PatronusPhotoApp| serde_json::to_value(app.ui.tool_options.crop.guide).unwrap();
     let o = &app.ui.tool_options.crop;
     assert_eq!((guide(&app), serde_json::to_value(o.guide_show).unwrap(), o.guide_orientation), (json!("goldenSpiral"), json!("always"), 2));
     let seen = call(&mut app, &ctx, "ui.inspect", json!({}));
@@ -743,7 +743,7 @@ fn ui_set_drives_the_crop_overlay_options() {
 #[test]
 fn ui_set_drives_the_crop_shield_options() {
     use craft::ui::canvas::{CropShield, ShieldColor};
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     let good = call(&mut app, &ctx, "ui.set", json!({"cropShield": {"color": "custom", "custom_color": [255, 0, 0], "opacity": 40}}));
     assert_eq!(good["ok"], true, "{good}");
@@ -781,11 +781,11 @@ fn ui_set_drives_the_crop_shield_options() {
 
 #[test]
 fn ui_set_opens_the_brush_preset_picker_and_sets_its_cards() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     let parts = &app.ui.brush_picker_state.parts;
     assert!(parts.name && parts.stroke && !parts.tip, "the cards show the name and the stroke by default");
-    let opened_at = |app: &PhotocraftApp| inspect(app, &ctx)["brushPicker"]["pos"].clone();
+    let opened_at = |app: &PatronusPhotoApp| inspect(app, &ctx)["brushPicker"]["pos"].clone();
     let r = call(&mut app, &ctx, "ui.set", json!({"tool": "brush", "brushPicker": [120, 80], "brushPickerStroke": false}));
     assert_eq!(r["ok"], true, "{r}");
     assert_eq!(opened_at(&app), json!([120.0, 80.0]));
@@ -806,7 +806,7 @@ fn ui_set_opens_the_brush_preset_picker_and_sets_its_cards() {
 
 #[test]
 fn ui_inspect_tracks_brush_picker_open_and_closed() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 128, "height": 128})).unwrap();
 
@@ -841,7 +841,7 @@ fn ui_inspect_tracks_brush_picker_open_and_closed() {
 
 #[test]
 fn ui_set_applies_all_fields_or_none() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     let before = app.ui.tool;
     // The panel and dock fields are workspace actions: a refused call leaves the workspace equal.
@@ -876,7 +876,7 @@ fn ui_set_applies_all_fields_or_none() {
 
 #[test]
 fn ui_set_rejects_view_numbers_beyond_f32_range() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
     app.sync_views();
@@ -899,12 +899,12 @@ fn ui_set_rejects_view_numbers_beyond_f32_range() {
     assert!(app.ui.views[0].zoom.is_finite() && app.ui.views[0].zoom > zoom, "{}", app.ui.views[0].zoom);
 }
 
-/// `ui.set {theme}` takes a suite theme id, shown in the mode on screen, or a name PhotoCraft took
+/// `ui.set {theme}` takes a suite theme id, shown in the mode on screen, or a name Patronus Photo took
 /// before theme ids, shown in its own mode; a theme the suite doesn't have is refused.
 #[test]
 fn ui_set_theme_takes_ids_and_pre_id_names_and_refuses_unknown_themes() {
     use crate::theme::AppTheme;
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     for unknown in ["nope", "Not an id!"] {
         assert_eq!(call(&mut app, &ctx, "ui.set", json!({"theme": unknown}))["ok"], false, "{unknown}");
@@ -930,7 +930,7 @@ fn ui_set_theme_picks_a_library_theme_the_suite_has_not_loaded() {
         Op,
         testing::{SAMPLE_THEME_ID, SAMPLE_THEME_JSON},
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     app.framework.suite().watch().request(Op::Import { bytes: std::sync::Arc::from(SAMPLE_THEME_JSON.as_bytes()), as_copy: false });
     app.framework.sync_theme(&mut app.session);
@@ -957,9 +957,9 @@ fn ui_set_theme_picks_a_library_theme_the_suite_has_not_loaded() {
 #[test]
 fn an_unknown_slot_theme_shows_the_mode_default_without_resolving_each_frame() {
     use std::sync::atomic::Ordering;
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
-    let frame = |app: &mut PhotocraftApp| {
+    let frame = |app: &mut PatronusPhotoApp| {
         let changed = app.framework.sync_theme(&mut app.session);
         if changed {
             crate::prefs_ui::show_selected_theme(app, &ctx);
@@ -983,7 +983,7 @@ fn an_unknown_slot_theme_shows_the_mode_default_without_resolving_each_frame() {
 
 #[test]
 fn preferences_apply_is_available_over_control_without_closing() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     let r = call(&mut app, &ctx, "ui.menu.invoke", json!({"id": "edit.preferences.interface"}));
     // The Preferences window is held by the app; control addresses it by the id `ui.inspect` lists,
@@ -996,10 +996,10 @@ fn preferences_apply_is_available_over_control_without_closing() {
     values["interface"]["uiScale"] = json!("200");
     assert_eq!(call(&mut app, &ctx, "ui.dialog.set", json!({"dialog": id, "field": "values", "value": values}))["ok"], true);
     assert_eq!(call(&mut app, &ctx, "ui.dialog.apply", json!({"dialog": id}))["ok"], true);
-    assert_eq!(app.session.prefs().interface.ui_scale, photocraft_engine::prefs::UiScale::P200);
+    assert_eq!(app.session.prefs().interface.ui_scale, patronusphoto_engine::prefs::UiScale::P200);
     assert_eq!(call(&mut app, &ctx, "ui.dialog.apply", json!({"dialog": id}))["ok"], true, "Apply left the window open");
     assert_eq!(call(&mut app, &ctx, "ui.dialog.cancel", json!({"dialog": id}))["ok"], true);
-    assert_eq!(app.session.prefs().interface.ui_scale, photocraft_engine::prefs::UiScale::P200);
+    assert_eq!(app.session.prefs().interface.ui_scale, patronusphoto_engine::prefs::UiScale::P200);
     for params in [json!({}), json!({"dialog": "invalid"}), json!({"dialog": u64::MAX})] {
         assert_eq!(call(&mut app, &ctx, "ui.dialog.apply", params)["ok"], false);
     }
@@ -1011,7 +1011,7 @@ fn preferences_apply_respects_the_automation_command_policy() {
         automation_command: Some(Box::new(|id, _| if id == "prefs.set" { Err("preference changes denied".into()) } else { Ok(()) })),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     let ctx = app.ctx().clone();
     let before = app.session.prefs().to_json();
     crate::prefs_ui::open_preferences(&mut app, "interface");
@@ -1035,7 +1035,7 @@ fn synthetic_shortcuts_use_the_automation_command_policy() {
         automation_command: Some(Box::new(|id, _| if id.starts_with("file.") { Err("filesystem command denied".into()) } else { Ok(()) })),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     let ctx = app.ctx().clone();
     app.automation_input = true;
     let error = crate::menus::invoke(&mut app, &ctx, "file.open", json!({})).unwrap_err();
@@ -1052,8 +1052,8 @@ fn automation_save_passes_targa_bits_without_asking() {
     let written: Rc<RefCell<Vec<String>>> = Rc::default();
     let (a, w) = (asked.clone(), written.clone());
     let services = crate::Services {
-        export: Some(Box::new(move |_d: &photocraft_doc::Document, _p: &str, s: &crate::ExportSettings| {
-            a.borrow_mut().push(s.tga_bits.map(photocraft_io::TgaBits::bits));
+        export: Some(Box::new(move |_d: &patronusphoto_doc::Document, _p: &str, s: &crate::ExportSettings| {
+            a.borrow_mut().push(s.tga_bits.map(patronusphoto_io::TgaBits::bits));
             Ok((b"out".to_vec(), Vec::new()))
         })),
         automation_write: Some(Box::new(move |path: &str, _b: &[u8]| {
@@ -1062,7 +1062,7 @@ fn automation_save_passes_targa_bits_without_asking() {
         })),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 8, "height": 8})).unwrap();
     for params in [json!({"path": "a.tga"}), json!({"path": "b.tga", "tgaBits": 24}), json!({"path": "c.tga", "tgaBits": 32})] {
@@ -1087,7 +1087,7 @@ fn app_save_takes_maximize_compatibility() {
     let written: Rc<RefCell<Vec<String>>> = Rc::default();
     let (a, w) = (asked.clone(), written.clone());
     let services = crate::Services {
-        export: Some(Box::new(move |_d: &photocraft_doc::Document, _p: &str, s: &crate::ExportSettings| {
+        export: Some(Box::new(move |_d: &patronusphoto_doc::Document, _p: &str, s: &crate::ExportSettings| {
             a.borrow_mut().push(s.psd_maximize_compatibility);
             Ok((b"out".to_vec(), Vec::new()))
         })),
@@ -1097,7 +1097,7 @@ fn app_save_takes_maximize_compatibility() {
         })),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 8, "height": 8})).unwrap();
     let saves = [
@@ -1110,7 +1110,7 @@ fn app_save_takes_maximize_compatibility() {
         let r = call(&mut app, &ctx, "app.save", params.clone());
         assert_eq!(r["result"]["path"], params["path"], "{r}");
     }
-    app.session.edit_prefs(|p| p.file_handling.maximize_psd_compatibility = photocraft_engine::prefs::Ask::Never);
+    app.session.edit_prefs(|p| p.file_handling.maximize_psd_compatibility = patronusphoto_engine::prefs::Ask::Never);
     for params in [json!({"path": "e.psd"}), json!({"path": "f.psd", "maximizeCompatibility": true})] {
         let r = call(&mut app, &ctx, "app.save", params.clone());
         assert_eq!(r["result"]["path"], params["path"], "{r}");
@@ -1125,7 +1125,7 @@ fn app_save_takes_maximize_compatibility() {
 /// a value it can't read is an error that writes nothing.
 #[test]
 fn automation_save_passes_jpeg_options_without_asking() {
-    use photocraft_codecs::JpegFormat;
+    use patronusphoto_codecs::JpegFormat;
     use std::cell::RefCell;
     use std::rc::Rc;
     // The JPEG quality (1–100) and format each export was asked for.
@@ -1134,7 +1134,7 @@ fn automation_save_passes_jpeg_options_without_asking() {
     let written: Rc<RefCell<Vec<String>>> = Rc::default();
     let (a, w) = (asked.clone(), written.clone());
     let services = crate::Services {
-        export: Some(Box::new(move |_d: &photocraft_doc::Document, _p: &str, s: &crate::ExportSettings| {
+        export: Some(Box::new(move |_d: &patronusphoto_doc::Document, _p: &str, s: &crate::ExportSettings| {
             a.borrow_mut().push((s.jpeg_quality, s.jpeg_format));
             Ok((b"out".to_vec(), Vec::new()))
         })),
@@ -1144,7 +1144,7 @@ fn automation_save_passes_jpeg_options_without_asking() {
         })),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 8, "height": 8})).unwrap();
     for params in
@@ -1171,20 +1171,20 @@ fn automation_save_passes_jpeg_options_without_asking() {
 /// Options.
 #[test]
 fn automation_save_passes_dds_options_without_asking() {
-    use photocraft_io::{DdsCompression, DdsOptions};
+    use patronusphoto_io::{DdsCompression, DdsOptions};
     use std::cell::RefCell;
     use std::rc::Rc;
     let asked: Rc<RefCell<Vec<DdsOptions>>> = Rc::default();
     let a = asked.clone();
     let services = crate::Services {
-        export: Some(Box::new(move |_d: &photocraft_doc::Document, _p: &str, s: &crate::ExportSettings| {
+        export: Some(Box::new(move |_d: &patronusphoto_doc::Document, _p: &str, s: &crate::ExportSettings| {
             a.borrow_mut().push(s.dds);
             Ok((b"out".to_vec(), Vec::new()))
         })),
         automation_write: Some(Box::new(|_: &str, _: &[u8]| Ok(()))),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 8, "height": 8})).unwrap();
     for params in [json!({"path": "a.dds"}), json!({"path": "b.dds", "ddsCompression": "bc1", "ddsMipmaps": true})] {
@@ -1200,9 +1200,9 @@ fn automation_save_passes_dds_options_without_asking() {
 
 #[test]
 fn automation_open_and_save_use_the_roots_and_reply_with_warnings() {
-    use photocraft_color::{ColorMode, SampleType};
-    use photocraft_doc::Document;
-    use photocraft_geom::Size;
+    use patronusphoto_color::{ColorMode, SampleType};
+    use patronusphoto_doc::Document;
+    use patronusphoto_geom::Size;
     use std::cell::RefCell;
     use std::rc::Rc;
 
@@ -1212,7 +1212,7 @@ fn automation_open_and_save_use_the_roots_and_reply_with_warnings() {
         write: Some(Box::new(|_p: &str, _b: &[u8]| Err("ambient writer used".into()))),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     let ctx = app.ctx().clone();
     let r = call(&mut app, &ctx, "app.open", json!({"path": "in/warn.psd"}));
     assert!(r.to_string().contains("automation read authority is not configured"), "{r}");
@@ -1223,7 +1223,7 @@ fn automation_open_and_save_use_the_roots_and_reply_with_warnings() {
     let written: Rc<RefCell<Vec<String>>> = Rc::default();
     let w = written.clone();
     let services = crate::Services {
-        import: Some(Box::new(|name: &str, _b: &[u8], _opts: &photocraft_io::ImportOptions| {
+        import: Some(Box::new(|name: &str, _b: &[u8], _opts: &patronusphoto_io::ImportOptions| {
             Ok((Document::new(name, Size::new(4, 4), ColorMode::Rgb, SampleType::U8), vec!["Adjustment layer flattened".to_string()]))
         })),
         export: Some(Box::new(|_d: &Document, _p: &str, _s: &crate::ExportSettings| Ok((b"out".to_vec(), vec!["Layers were flattened".to_string()])))),
@@ -1240,7 +1240,7 @@ fn automation_open_and_save_use_the_roots_and_reply_with_warnings() {
         })),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     let r = call(&mut app, &ctx, "app.open", json!({"path": "in/warn.psd"}));
     assert_eq!(r["result"]["warnings"], json!(["Adjustment layer flattened"]), "{r}");
     assert_eq!(r["result"]["name"], "warn.psd");
@@ -1269,9 +1269,9 @@ fn automation_open_and_save_use_the_roots_and_reply_with_warnings() {
     assert!(r["error"].as_str().unwrap().contains("pass `path`"), "{r}");
 }
 
-fn deny_ambient_file(id: &str, _: &serde_json::Value) -> photocraft_engine::Result<()> {
+fn deny_ambient_file(id: &str, _: &serde_json::Value) -> patronusphoto_engine::Result<()> {
     if id.starts_with("file.") && id != "file.new" {
-        Err(photocraft_engine::EngineError::Other(format!("automation command `{id}` is disabled")))
+        Err(patronusphoto_engine::EngineError::Other(format!("automation command `{id}` is disabled")))
     } else {
         Ok(())
     }
@@ -1279,20 +1279,20 @@ fn deny_ambient_file(id: &str, _: &serde_json::Value) -> photocraft_engine::Resu
 
 /// An app whose automation gates refuse file commands, with a document open, and the paths
 /// its writer was asked to write.
-fn gated_app_recording_writes() -> (Box<PhotocraftApp>, egui::Context, std::rc::Rc<std::cell::RefCell<Vec<String>>>, u64) {
+fn gated_app_recording_writes() -> (Box<PatronusPhotoApp>, egui::Context, std::rc::Rc<std::cell::RefCell<Vec<String>>>, u64) {
     let written: std::rc::Rc<std::cell::RefCell<Vec<String>>> = std::rc::Rc::default();
     let w = written.clone();
     let services = crate::Services {
         automation_authorize: Some(deny_ambient_file),
         automation_command: Some(Box::new(|id, params| deny_ambient_file(id, params).map_err(|e| e.to_string()))),
-        export: Some(Box::new(|_: &photocraft_doc::Document, _: &str, _: &crate::ExportSettings| Ok((b"out".to_vec(), Vec::new())))),
+        export: Some(Box::new(|_: &patronusphoto_doc::Document, _: &str, _: &crate::ExportSettings| Ok((b"out".to_vec(), Vec::new())))),
         write: Some(Box::new(move |path: &str, _: &[u8]| {
             w.borrow_mut().push(path.to_string());
             Ok(())
         })),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     app.background_jobs = false;
     app.session.execute("file.new", json!({"width": 4, "height": 4})).unwrap();
     let doc = app.session.active().unwrap().doc.id.0;
@@ -1305,7 +1305,7 @@ fn gated_app_recording_writes() -> (Box<PhotocraftApp>, egui::Context, std::rc::
 #[test]
 fn automation_confirming_a_file_writing_dialog_is_judged_as_its_file_command() {
     let (mut app, ctx, written, _) = gated_app_recording_writes();
-    let command = |app: &mut PhotocraftApp| crate::dialogs::open_command_dialog(app, "file.save", "Save").expect("the file-writing dialog opens");
+    let command = |app: &mut PatronusPhotoApp| crate::dialogs::open_command_dialog(app, "file.save", "Save").expect("the file-writing dialog opens");
     // A hosted dialog that writes files is a file command: its confirm is authorised as one.
     let prompt = command(&mut app);
     let r = call(&mut app, &ctx, "ui.dialog.confirm", json!({"dialog": prompt.value().to_string()}));
@@ -1323,9 +1323,9 @@ fn automation_confirming_a_file_writing_dialog_is_judged_as_its_file_command() {
 /// The desktop policy's verdict on file commands (crates/automation/src/workspace.rs): automation
 /// may close documents, but every file command that reads or writes a file, File › Save
 /// included, is refused.
-fn desktop_file_policy(id: &str, _: &Value) -> photocraft_engine::Result<()> {
+fn desktop_file_policy(id: &str, _: &Value) -> patronusphoto_engine::Result<()> {
     if id.starts_with("file.") && !matches!(id, "file.new" | "file.close" | "file.closeAll" | "file.closeOthers") {
-        Err(photocraft_engine::EngineError::Other(format!("automation command `{id}` is disabled")))
+        Err(patronusphoto_engine::EngineError::Other(format!("automation command `{id}` is disabled")))
     } else {
         Ok(())
     }
@@ -1334,7 +1334,7 @@ fn desktop_file_policy(id: &str, _: &Value) -> photocraft_engine::Result<()> {
 /// An app under the desktop file policy whose dirty document (its own file outside any
 /// automation root) a control request asked to close: the unsaved-changes prompt is up.
 /// Returns the app, its context, the paths written so far and the document's own file.
-fn dirty_close_prompted() -> (Box<PhotocraftApp>, egui::Context, std::rc::Rc<std::cell::RefCell<Vec<String>>>, String) {
+fn dirty_close_prompted() -> (Box<PatronusPhotoApp>, egui::Context, std::rc::Rc<std::cell::RefCell<Vec<String>>>, String) {
     let (mut app, ctx, written, _) = gated_app_recording_writes();
     app.services.automation_authorize = Some(desktop_file_policy);
     app.services.automation_command = Some(Box::new(|id, params| desktop_file_policy(id, params).map_err(|e| e.to_string())));
@@ -1351,7 +1351,7 @@ fn dirty_close_prompted() -> (Box<PhotocraftApp>, egui::Context, std::rc::Rc<std
 /// Answers the open unsaved-changes prompt with Save, as synthetic input (the drawn prompt's
 /// answer with `automation_input` set) or as a control client's `ui.dialog.confirm`. Returns
 /// the refusal, if any.
-fn answer_save(app: &mut PhotocraftApp, ctx: &egui::Context, synthetic: bool) -> Result<(), String> {
+fn answer_save(app: &mut PatronusPhotoApp, ctx: &egui::Context, synthetic: bool) -> Result<(), String> {
     let prompt = top_dialog(app, ctx)["id"].clone();
     if synthetic {
         assert_eq!(prompt, crate::discard_ui::CONTROL_ID, "the prompt is listed as discard");
@@ -1385,7 +1385,7 @@ fn automation_saving_from_the_unsaved_changes_prompt_is_judged_as_file_save() {
     }
     // A policy that allows `file.save` lets the automation Save write the document and close it.
     /// A policy that allows every command.
-    fn allow(_: &str, _: &Value) -> photocraft_engine::Result<()> {
+    fn allow(_: &str, _: &Value) -> patronusphoto_engine::Result<()> {
         Ok(())
     }
     for synthetic in [false, true] {
@@ -1433,13 +1433,13 @@ fn automation_saving_from_the_unsaved_changes_prompt_needs_a_policy_to_judge_it(
 
 #[test]
 fn app_open_opens_a_directory_pcraft_and_falls_back_for_the_zip_form() {
-    use photocraft_doc::Document;
+    use patronusphoto_doc::Document;
     use serde_json::json;
     let services = crate::Services {
         automation_open_pcraft: Some(Box::new(|path: &str| {
             if path == "native.pcraft" {
                 let name = path.rsplit('/').next().unwrap_or(path).to_string();
-                let doc = Document::new("Native", photocraft_doc::Size::new(16, 12), photocraft_doc::ColorMode::Rgb, photocraft_doc::SampleType::U8);
+                let doc = Document::new("Native", patronusphoto_doc::Size::new(16, 12), patronusphoto_doc::ColorMode::Rgb, patronusphoto_doc::SampleType::U8);
                 Ok(Some((name, doc)))
             } else if path == "zipped.pcraft" {
                 Ok(None) // a regular file: the bytes path reads the zip form
@@ -1447,8 +1447,8 @@ fn app_open_opens_a_directory_pcraft_and_falls_back_for_the_zip_form() {
                 Err(format!("corrupt bundle: {path}"))
             }
         })),
-        import: Some(Box::new(|name: &str, _b: &[u8], _opts: &photocraft_io::ImportOptions| {
-            Ok((Document::new(name, photocraft_doc::Size::new(4, 4), photocraft_doc::ColorMode::Rgb, photocraft_doc::SampleType::U8), Vec::new()))
+        import: Some(Box::new(|name: &str, _b: &[u8], _opts: &patronusphoto_io::ImportOptions| {
+            Ok((Document::new(name, patronusphoto_doc::Size::new(4, 4), patronusphoto_doc::ColorMode::Rgb, patronusphoto_doc::SampleType::U8), Vec::new()))
         })),
         automation_read: Some(Box::new(|path: &str| {
             if path == "zipped.pcraft" {
@@ -1459,7 +1459,7 @@ fn app_open_opens_a_directory_pcraft_and_falls_back_for_the_zip_form() {
         })),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     let ctx = app.ctx().clone();
 
     let r = call(&mut app, &ctx, "app.open", json!({"path": "native.pcraft"}));
@@ -1482,7 +1482,7 @@ fn app_open_opens_a_directory_pcraft_and_falls_back_for_the_zip_form() {
 
 #[test]
 fn app_save_runs_as_a_background_job_and_the_final_reply_carries_the_path() {
-    use photocraft_engine::automate_cmds::ScriptBinding;
+    use patronusphoto_engine::automate_cmds::ScriptBinding;
     use serde_json::json;
     let saved: std::sync::Arc<std::sync::Mutex<Vec<String>>> = Default::default();
     let record = saved.clone();
@@ -1493,7 +1493,7 @@ fn app_save_runs_as_a_background_job_and_the_final_reply_carries_the_path() {
         })),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     app.background_jobs = true;
     app.run("file.new", json!({"width": 8, "height": 8})).unwrap();
     // A "Save Document" binding that would leave a trace: automation saves never fire it.
@@ -1533,7 +1533,7 @@ fn app_save_runs_as_a_background_job_and_the_final_reply_carries_the_path() {
     assert_eq!(r["result"], json!({"path": "out.psd", "warnings": ["Layers were flattened"]}), "{r}");
 
     // An interactive save (File › Save's worker) still fires the binding.
-    let save = std::sync::Arc::new(|_doc: &photocraft_doc::Document, path: &str, _settings: &crate::ExportSettings, _ctl: &crate::jobs_ui::SaveCtl| {
+    let save = std::sync::Arc::new(|_doc: &patronusphoto_doc::Document, path: &str, _settings: &crate::ExportSettings, _ctl: &crate::jobs_ui::SaveCtl| {
         let _ = path;
         Ok(Vec::new())
     }) as crate::SaveFileFn;
@@ -1568,7 +1568,7 @@ fn ui_inspect_replies_while_a_save_job_encodes() {
         })),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     app.background_jobs = true;
     app.run("file.new", json!({"width": 8, "height": 8})).unwrap();
     let ctx = app.ctx().clone();
@@ -1604,35 +1604,35 @@ fn ui_inspect_replies_while_a_save_job_encodes() {
     assert_eq!(*saved.lock().unwrap(), vec!["out.png".to_string()], "the save completed after the gate opened");
 }
 
-fn deny_smart_object_paths(id: &str, params: &Value) -> photocraft_engine::Result<()> {
+fn deny_smart_object_paths(id: &str, params: &Value) -> patronusphoto_engine::Result<()> {
     // The production policy lives in the automation crate. This gate exercises the control
     // session's state-derived path check without adding that dependency to the UI crate.
     if matches!(id, "layer.smartObjects.editContents" | "layer.smartObjects.convertToLayers" | "layer.smartObjects.saveContents")
         && params.get("path").and_then(Value::as_str).is_some()
     {
-        Err(photocraft_engine::EngineError::Other("ambient smart-object path denied".into()))
+        Err(patronusphoto_engine::EngineError::Other("ambient smart-object path denied".into()))
     } else {
         Ok(())
     }
 }
 
-fn smart_control_app() -> (Box<PhotocraftApp>, egui::Context, photocraft_doc::LayerId) {
+fn smart_control_app() -> (Box<PatronusPhotoApp>, egui::Context, patronusphoto_doc::LayerId) {
     let services = crate::Services {
         automation_authorize: Some(deny_smart_object_paths),
         automation_command: Some(Box::new(|id, params| deny_smart_object_paths(id, params).map_err(|e| e.to_string()))),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     app.run("file.new", json!({"width": 8, "height": 6, "background": "transparent"})).unwrap();
     app.run("edit.fill", json!({"color": "#ff0000"})).unwrap();
     let id = app.run("layer.smartObjects.convertToSmartObject", json!({})).unwrap()["layer"].as_u64().unwrap();
     let ctx = app.ctx().clone();
-    (app, ctx, photocraft_doc::LayerId(id))
+    (app, ctx, patronusphoto_doc::LayerId(id))
 }
 
 #[test]
 fn control_edits_nested_embedded_smart_objects_and_converts_an_explicit_target() {
-    use photocraft_doc::{LayerContent, SmartSource};
+    use patronusphoto_doc::{LayerContent, SmartSource};
     use std::cell::RefCell;
     use std::rc::Rc;
     use std::sync::Arc;
@@ -1640,7 +1640,7 @@ fn control_edits_nested_embedded_smart_objects_and_converts_an_explicit_target()
     let (mut app, ctx, smart) = smart_control_app();
     // Embed this one-smart-layer document inside the outer object: two Edit Contents
     // requests must reach the raster layer, as in a nested product-photo template.
-    let nested = photocraft_engine::smart_cmds::encode_source(&app.session.active().unwrap().doc).unwrap();
+    let nested = patronusphoto_engine::smart_cmds::encode_source(&app.session.active().unwrap().doc).unwrap();
     app.session
         .edit("Nested fixture", |doc, _| {
             let LayerContent::Smart(sm) = &mut doc.layer_mut(smart).unwrap().content else { panic!("smart fixture") };
@@ -1666,17 +1666,17 @@ fn control_edits_nested_embedded_smart_objects_and_converts_an_explicit_target()
         assert_eq!(r["ok"], true, "{r}");
         assert_eq!(app.session.documents().len(), expected_documents);
     }
-    assert_eq!(app.session.active().unwrap().active_layer, Some(photocraft_doc::LayerId(other)));
-    assert_eq!(photocraft_compose::flatten(&app.session.active().unwrap().doc).px[0], [0.0, 0.0, 1.0, 1.0]);
+    assert_eq!(app.session.active().unwrap().active_layer, Some(patronusphoto_doc::LayerId(other)));
+    assert_eq!(patronusphoto_compose::flatten(&app.session.active().unwrap().doc).px[0], [0.0, 0.0, 1.0, 1.0]);
     let r = call(&mut app, &ctx, "engine.execute", json!({"command": "layer.smartObjects.convertToLayers", "params": {"layer": smart.0}}));
     assert_eq!(r["ok"], true, "{r}");
-    assert!(app.session.active().unwrap().doc.layer(photocraft_doc::LayerId(other)).is_some(), "the unrelated active layer remains");
+    assert!(app.session.active().unwrap().doc.layer(patronusphoto_doc::LayerId(other)).is_some(), "the unrelated active layer remains");
     assert!(app.session.authorize.is_none());
 
     let written = Rc::new(RefCell::new(Vec::new()));
     let output = written.clone();
     app.services.export =
-        Some(Box::new(|doc, _, _| photocraft_engine::smart_cmds::encode_source(doc).map(|bytes| (bytes, Vec::new())).map_err(|e| e.to_string())));
+        Some(Box::new(|doc, _, _| patronusphoto_engine::smart_cmds::encode_source(doc).map(|bytes| (bytes, Vec::new())).map_err(|e| e.to_string())));
     app.services.automation_write = Some(Box::new(move |path, bytes| {
         output.borrow_mut().push((path.to_string(), bytes.to_vec()));
         Ok(())
@@ -1687,13 +1687,13 @@ fn control_edits_nested_embedded_smart_objects_and_converts_an_explicit_target()
     let written = written.borrow();
     assert_eq!(written.len(), 1);
     assert_eq!(written[0].0, "out/template.pcraft");
-    let saved = photocraft_engine::smart_cmds::decode_source(&written[0].0, &written[0].1).unwrap();
-    assert_eq!(photocraft_compose::flatten(&saved).px[0], [0.0, 0.0, 1.0, 1.0]);
+    let saved = patronusphoto_engine::smart_cmds::decode_source(&written[0].0, &written[0].1).unwrap();
+    assert_eq!(patronusphoto_compose::flatten(&saved).px[0], [0.0, 0.0, 1.0, 1.0]);
 }
 
 #[test]
 fn control_refuses_linked_smart_objects_in_commands_and_actions_but_local_editing_still_works() {
-    use photocraft_doc::{LayerContent, SmartSource};
+    use patronusphoto_doc::{LayerContent, SmartSource};
     use std::sync::Arc;
 
     let (mut app, ctx, smart) = smart_control_app();
@@ -1735,14 +1735,14 @@ fn control_refuses_linked_smart_objects_in_commands_and_actions_but_local_editin
     app.automation_input = false;
     app.run("layer.smartObjects.editContents", json!({"layer": smart.0})).unwrap();
     assert_eq!(app.session.documents().len(), 2, "a human can still open the existing linked file");
-    assert_eq!(photocraft_compose::flatten(&app.session.active().unwrap().doc).px[0], [1.0, 0.0, 0.0, 1.0]);
+    assert_eq!(patronusphoto_compose::flatten(&app.session.active().unwrap().doc).px[0], [1.0, 0.0, 0.0, 1.0]);
     std::fs::remove_file(path).unwrap();
 }
 
 #[test]
 fn actions_play_checks_each_step_over_control() {
     let services = crate::Services { automation_authorize: Some(deny_ambient_file), ..Default::default() };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     app.session.actions.list.push(action("Open", vec![("file.open", json!({"path": "/etc/passwd"})), ("layer.new.layer", json!({}))])).unwrap();
     let ctx = app.ctx().clone();
     let r = call(&mut app, &ctx, "engine.execute", json!({"command": "actions.play", "params": {"action": "Open"}}));
@@ -1757,7 +1757,7 @@ fn actions_play_checks_each_step_over_control() {
 #[test]
 fn actions_play_checks_each_step_for_synthetic_input() {
     let services = crate::Services { automation_authorize: Some(deny_ambient_file), ..Default::default() };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     app.session.actions.list.push(action("Open", vec![("file.open", json!({"path": "/etc/passwd"})), ("layer.new.layer", json!({}))])).unwrap();
     app.automation_input = true;
     let r = app.run("actions.play", json!({"action": "Open"})).unwrap();
@@ -1778,10 +1778,10 @@ fn actions_play_checks_each_step_for_synthetic_input() {
 #[test]
 fn an_injected_shortcut_asks_the_automation_policy() {
     thread_local!(static ASKED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) });
-    fn deny_via_copy(id: &str, _: &serde_json::Value) -> photocraft_engine::Result<()> {
+    fn deny_via_copy(id: &str, _: &serde_json::Value) -> patronusphoto_engine::Result<()> {
         if id == "layer.new.layerViaCopy" {
             ASKED.set(true);
-            Err(photocraft_engine::EngineError::Other(format!("automation command `{id}` is disabled")))
+            Err(patronusphoto_engine::EngineError::Other(format!("automation command `{id}` is disabled")))
         } else {
             Ok(())
         }
@@ -1820,7 +1820,7 @@ fn delivered(frames: &mut craft::ui::testing::Frames) -> Vec<Vec<egui::Event>> {
 }
 
 /// `method` accepted as synthetic input; the steps it delivered, one pass each.
-fn queued(app: &mut PhotocraftApp, frames: &mut craft::ui::testing::Frames, method: &str, params: Value) -> Vec<Vec<egui::Event>> {
+fn queued(app: &mut PatronusPhotoApp, frames: &mut craft::ui::testing::Frames, method: &str, params: Value) -> Vec<Vec<egui::Event>> {
     let (req, _rx) = ControlRequest::new(method, params.clone());
     assert!(matches!(handle(app, &frames.ctx.clone(), &req), Reply::AfterInput), "{method} {params}");
     delivered(frames)
@@ -1835,7 +1835,7 @@ fn nothing_queued(ctx: &egui::Context) -> bool {
 /// Caps Lock held for the canvas, and document points mapped through the main canvas.
 #[test]
 fn synthetic_input_families_hold_what_they_name() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let (mut frames, ctx) = input_frames();
     let held = |frames: &mut craft::ui::testing::Frames| {
         let mut seen = (false, false, egui::Modifiers::NONE);
@@ -1878,7 +1878,7 @@ fn synthetic_input_families_hold_what_they_name() {
 }
 
 /// The reply of an accepted request that waits for input, once the host has run it.
-fn call_after_input(app: &mut PhotocraftApp, ctx: &egui::Context, method: &str, params: Value) -> Value {
+fn call_after_input(app: &mut PatronusPhotoApp, ctx: &egui::Context, method: &str, params: Value) -> Value {
     let (req, _rx) = ControlRequest::new(method, params.clone());
     match handle(app, ctx, &req) {
         Reply::AfterInput => Value::Null,
@@ -1888,7 +1888,7 @@ fn call_after_input(app: &mut PhotocraftApp, ctx: &egui::Context, method: &str, 
 }
 
 /// #2449: the error of a rejected synthetic input call, after checking it changed nothing.
-fn rejected(app: &mut PhotocraftApp, ctx: &egui::Context, method: &str, params: Value, names: &str) -> String {
+fn rejected(app: &mut PatronusPhotoApp, ctx: &egui::Context, method: &str, params: Value, names: &str) -> String {
     let (tool, revision) = (app.ui.tool, app.session.active().map(|d| d.revision));
     let r = call(app, ctx, method, params.clone());
     assert_eq!(r["ok"], false, "{method} {params}: {r}");
@@ -1908,7 +1908,7 @@ fn rejected(app: &mut PhotocraftApp, ctx: &egui::Context, method: &str, params: 
 
 #[test]
 fn ui_pointer_rejects_bad_params_before_acting() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 64, "height": 64})).unwrap();
     let stroke = json!([{"kind": "down", "x": 5, "y": 5}, {"kind": "move", "x": 30, "y": 30}, {"kind": "up", "x": 30, "y": 30}]);
@@ -1977,7 +1977,7 @@ fn ui_pointer_rejects_bad_params_before_acting() {
 
 #[test]
 fn ui_screenshot_rejects_bad_params_before_capturing() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     for (params, names) in [
         (json!({"focus": "yes"}), "focus"),
@@ -1999,7 +1999,7 @@ fn ui_screenshot_rejects_bad_params_before_capturing() {
 }
 
 /// A key press's modifiers, as `ui.key` delivered them.
-fn key_modifiers(app: &mut PhotocraftApp, frames: &mut craft::ui::testing::Frames, params: Value) -> egui::Modifiers {
+fn key_modifiers(app: &mut PatronusPhotoApp, frames: &mut craft::ui::testing::Frames, params: Value) -> egui::Modifiers {
     let passes = queued(app, frames, "ui.key", params.clone());
     match passes.iter().flatten().find(|e| matches!(e, egui::Event::Key { pressed: true, .. })) {
         Some(egui::Event::Key { modifiers, .. }) => *modifiers,
@@ -2009,7 +2009,7 @@ fn key_modifiers(app: &mut PhotocraftApp, frames: &mut craft::ui::testing::Frame
 
 #[test]
 fn ui_key_ctrl_reaches_shortcuts_like_a_real_ctrl_press() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let (mut frames, _) = input_frames();
     let ctrl = key_modifiers(&mut app, &mut frames, json!({"key":"N","ctrl":true}));
     let command = key_modifiers(&mut app, &mut frames, json!({"key":"N","command":true}));
@@ -2035,7 +2035,7 @@ fn ui_key_ctrl_reaches_shortcuts_like_a_real_ctrl_press() {
 /// changes, so the layer mask stays targeted.
 #[test]
 fn ui_set_filter_mask_target_needs_a_smart_object_with_filters() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
@@ -2050,9 +2050,9 @@ fn ui_set_filter_mask_target_needs_a_smart_object_with_filters() {
     app.run("layer.smartObjects.convertToSmartObject", json!({})).unwrap();
     app.run("filter.blur.gaussianBlur", json!({"radius": 2})).unwrap();
     // Not while a single colour channel is targeted: nothing would end up targeted.
-    app.session.active_mut().unwrap().channel_view.target = photocraft_engine::channel_cmds::ChannelTarget::Color(0);
+    app.session.active_mut().unwrap().channel_view.target = patronusphoto_engine::channel_cmds::ChannelTarget::Color(0);
     assert_eq!(call(&mut app, &ctx, "ui.set", json!({"filterMaskTarget": true}))["ok"], false);
-    app.session.active_mut().unwrap().channel_view.target = photocraft_engine::channel_cmds::ChannelTarget::Composite;
+    app.session.active_mut().unwrap().channel_view.target = patronusphoto_engine::channel_cmds::ChannelTarget::Composite;
     assert_eq!(call(&mut app, &ctx, "ui.set", json!({"filterMaskTarget": true}))["ok"], true);
     assert!(app.filter_mask_targeted());
     // Untargeting it ends its view, which would otherwise keep it targeted.
@@ -2060,7 +2060,7 @@ fn ui_set_filter_mask_target_needs_a_smart_object_with_filters() {
     app.run("view.layerMask", json!({"mode": "gray", "mask": "filter"})).unwrap();
     assert_eq!(call(&mut app, &ctx, "ui.set", json!({"filterMaskTarget": false}))["ok"], true);
     assert!(!app.filter_mask_targeted());
-    assert!(photocraft_engine::mask_view_cmds::current(app.session.active().unwrap()).is_none());
+    assert!(patronusphoto_engine::mask_view_cmds::current(app.session.active().unwrap()).is_none());
     // Targeting the pixels untargets it too.
     assert_eq!(call(&mut app, &ctx, "ui.set", json!({"filterMaskTarget": true}))["ok"], true);
     assert_eq!(call(&mut app, &ctx, "ui.set", json!({"maskTarget": false}))["ok"], true);
@@ -2072,7 +2072,7 @@ fn ui_set_filter_mask_target_needs_a_smart_object_with_filters() {
 /// ends that view, and the brush paints the layer mask.
 #[test]
 fn ui_set_mask_target_ends_a_filter_mask_view() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
@@ -2085,7 +2085,7 @@ fn ui_set_mask_target_ends_a_filter_mask_view() {
     app.sync_mask_targets();
     assert!(app.filter_mask_targeted());
     assert_eq!(call(&mut app, &ctx, "ui.set", json!({"maskTarget": true}))["ok"], true);
-    assert!(photocraft_engine::mask_view_cmds::current(app.session.active().unwrap()).is_none(), "the filter mask view ends");
+    assert!(patronusphoto_engine::mask_view_cmds::current(app.session.active().unwrap()).is_none(), "the filter mask view ends");
     assert!(app.layer_mask_targeted());
     assert!(!app.filter_mask_targeted());
     assert_eq!(crate::canvas::paint_target(&app), json!("mask"));
@@ -2094,22 +2094,22 @@ fn ui_set_mask_target_ends_a_filter_mask_view() {
     let st = app.session.active().unwrap();
     let l = st.doc.layer(st.active_layer.unwrap()).unwrap();
     assert_eq!(l.mask.as_ref().unwrap().value(20, 20), 0.0, "the stroke went into the layer mask");
-    let photocraft_doc::LayerContent::Smart(sm) = &l.content else { panic!("smart object") };
+    let patronusphoto_doc::LayerContent::Smart(sm) = &l.content else { panic!("smart object") };
     assert_eq!(sm.filter_mask.as_ref().unwrap().value(20, 20), 1.0, "not into the filter mask");
 }
 
 #[test]
 fn automation_library_open_requires_explicit_save_as_before_implicit_save() {
-    use photocraft_color::{ColorMode, SampleType};
-    use photocraft_doc::Document;
-    use photocraft_geom::Size;
+    use patronusphoto_color::{ColorMode, SampleType};
+    use patronusphoto_doc::Document;
+    use patronusphoto_geom::Size;
     use std::cell::RefCell;
     use std::rc::Rc;
 
     let written: Rc<RefCell<Vec<String>>> = Rc::default();
     let writes = written.clone();
     let services = crate::Services {
-        import: Some(Box::new(|name: &str, _: &[u8], _: &photocraft_io::ImportOptions| {
+        import: Some(Box::new(|name: &str, _: &[u8], _: &patronusphoto_io::ImportOptions| {
             Ok((Document::new(name, Size::new(4, 4), ColorMode::Rgb, SampleType::U8), Vec::new()))
         })),
         export: Some(Box::new(|_: &Document, _: &str, _: &crate::ExportSettings| Ok((b"saved".to_vec(), Vec::new())))),
@@ -2130,7 +2130,7 @@ fn automation_library_open_requires_explicit_save_as_before_implicit_save() {
         write: Some(Box::new(|_, _| Err("ambient writer used".into()))),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     let ctx = app.ctx().clone();
     let opened = call(&mut app, &ctx, "app.open", json!({"path": "library/same.psd"}));
     assert_eq!(opened["ok"], true, "{opened}");
@@ -2163,7 +2163,7 @@ fn automation_library_open_requires_explicit_save_as_before_implicit_save() {
     assert_eq!(saved["result"]["path"], "work/same.psd", "{saved}");
 }
 
-fn shift_right(app: &mut PhotocraftApp, tool: &str) {
+fn shift_right(app: &mut PatronusPhotoApp, tool: &str) {
     pointer(
         app,
         json!({"tool": tool, "button": "right", "shift": true,
@@ -2172,7 +2172,7 @@ fn shift_right(app: &mut PhotocraftApp, tool: &str) {
 }
 
 /// Whether the canvas tool menu open now is the brush mode menu.
-fn brush_mode_menu_open(app: &PhotocraftApp) -> bool {
+fn brush_mode_menu_open(app: &PatronusPhotoApp) -> bool {
     app.ui.canvas_tool_menu.as_ref().is_some_and(|m| matches!(m.kind, MenuKind::BrushMode { .. }))
 }
 
@@ -2180,7 +2180,7 @@ fn brush_mode_menu_open(app: &PhotocraftApp) -> bool {
 /// that changes nothing.
 #[test]
 fn shift_right_menu_choose_rejects_bad_choices_and_sets_the_tool() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 64, "height": 64, "background": "white"})).unwrap();
     // Nothing open yet.
@@ -2203,7 +2203,7 @@ fn shift_right_menu_choose_rejects_bad_choices_and_sets_the_tool() {
     assert!(!app.ui.tool_options.brush_clear && !app.session.tools.brush.behind);
     assert_eq!(call(&mut app, &ctx, "ui.context.choose", json!({"id": "Multiply"}))["ok"], true);
     assert!(!brush_mode_menu_open(&app));
-    assert_eq!(app.session.tools.brush.mode, photocraft_doc::BlendMode::Multiply);
+    assert_eq!(app.session.tools.brush.mode, patronusphoto_doc::BlendMode::Multiply);
     assert_eq!(app.session.journal.last().unwrap(), &("tools.setBrush".into(), json!({"brush": {"mode": "Multiply", "behind": false}})));
     // Another tool's rows.
     shift_right(&mut app, "eraser");
@@ -2226,8 +2226,8 @@ fn shift_right_menu_choose_rejects_bad_choices_and_sets_the_tool() {
 }
 
 /// A fresh app with a document, as a control client finds it, and the context the control channel runs on.
-fn app_with_document() -> (Box<PhotocraftApp>, egui::Context) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app_with_document() -> (Box<PatronusPhotoApp>, egui::Context) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 64, "height": 64})).unwrap();
     app.sync_views();
     let ctx = app.ctx().clone();
@@ -2235,7 +2235,7 @@ fn app_with_document() -> (Box<PhotocraftApp>, egui::Context) {
 }
 
 /// The id `ui.menu.invoke {id, wait: false}` replied for the dialog it opened.
-fn invoked_dialog(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str) -> Value {
+fn invoked_dialog(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: &str) -> Value {
     let reply = call(app, ctx, "ui.menu.invoke", json!({"id": id, "wait": false}));
     assert_eq!(reply["ok"], true, "{id}: {reply}");
     crate::canvas::testing::frame(app);
@@ -2299,7 +2299,7 @@ fn color_range_replies_with_the_bare_dialog_id() {
 fn the_unsaved_changes_prompt_is_listed_as_discard_and_answered_by_that_id() {
     let (mut app, ctx) = app_with_document();
     app.run("layer.new.layer", json!({})).unwrap();
-    let prompt = |app: &mut PhotocraftApp| dialogs(app, &ctx).into_iter().find(|d| d["id"] == "discard");
+    let prompt = |app: &mut PatronusPhotoApp| dialogs(app, &ctx).into_iter().find(|d| d["id"] == "discard");
     assert!(prompt(&mut app).is_none());
     // Close the changed document: the prompt is listed; Cancel keeps the document.
     assert_eq!(call(&mut app, &ctx, "ui.menu.invoke", json!({"id": "file.close"}))["ok"], true);

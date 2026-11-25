@@ -1,6 +1,6 @@
 #[test]
 fn ico_export_is_available_and_rejects_oversize_output() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 300, "height": 200})).unwrap();
     let mut f = Map::new();
     f.insert("format".into(), json!("ico"));
@@ -18,29 +18,29 @@ use craft::ui::runtime::memory::set_saved_value;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 
-type AppHarness = Harness<'static, Box<PhotocraftApp>>;
+type AppHarness = Harness<'static, Box<PatronusPhotoApp>>;
 
 /// An app with a `width` × `height` document whose exporter and writer accept everything.
-fn export_app(width: u32, height: u32) -> Box<PhotocraftApp> {
+fn export_app(width: u32, height: u32) -> Box<PatronusPhotoApp> {
     export_app_over(width, height, None)
 }
 
 /// [`export_app`] over the file service `files` (the framework takes it when the app is built).
-fn export_app_over(width: u32, height: u32, files: Option<std::sync::Arc<dyn craft::host::Files>>) -> Box<PhotocraftApp> {
+fn export_app_over(width: u32, height: u32, files: Option<std::sync::Arc<dyn craft::host::Files>>) -> Box<PatronusPhotoApp> {
     let services =
         crate::Services { files, export: Some(Box::new(|_, _, _| Ok((Vec::new(), Vec::new())))), write: Some(Box::new(|_, _| Ok(()))), ..Default::default() };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     app.run("file.new", json!({"width": width, "height": height})).unwrap();
     app
 }
 
 /// The dialog host and its answers, as a frame runs them, on the app's own context.
-fn harness(app: Box<PhotocraftApp>) -> AppHarness {
+fn harness(app: Box<PatronusPhotoApp>) -> AppHarness {
     let mut h = Harness::builder()
         .with_size(egui::vec2(900.0, 700.0))
         .with_step_dt(1.0 / 60.0)
         .with_context(app.ctx().clone())
-        .build_ui_state(|ui, app: &mut Box<PhotocraftApp>| crate::dialogs::run(app, ui), app);
+        .build_ui_state(|ui, app: &mut Box<PatronusPhotoApp>| crate::dialogs::run(app, ui), app);
     h.run_steps(2);
     h
 }
@@ -52,7 +52,7 @@ fn dialog_options(h: &AppHarness) -> ExportOptions {
 
 /// Closes the open Export As dialog, if any, runs `open`, and returns the settings it opens with
 /// after its first frames fitted them.
-fn reopen(h: &mut AppHarness, open: impl FnOnce(&mut PhotocraftApp) -> Result<DialogId, String>) -> ExportOptions {
+fn reopen(h: &mut AppHarness, open: impl FnOnce(&mut PatronusPhotoApp) -> Result<DialogId, String>) -> ExportOptions {
     let ctx = h.ctx.clone();
     if let Some(id) = h.state().export_open.as_ref().map(|o| o.dialog) {
         h.state_mut().framework.dialogs.cancel_by_id(&ctx, id);
@@ -96,16 +96,16 @@ fn settle_preview(h: &mut AppHarness) {
 }
 
 fn default_export_document(doc: &Document, f: &Map<String, Value>, max_side: Option<u32>) -> Result<Document, String> {
-    super::export_document(doc, f, max_side, &photocraft_engine::color_cmds::document_profile(doc))
+    super::export_document(doc, f, max_side, &patronusphoto_engine::color_cmds::document_profile(doc))
 }
 
 fn default_preview_proxy(doc: &Document, f: &Map<String, Value>) -> Result<Document, String> {
-    super::preview_proxy(doc, f, &photocraft_engine::color_cmds::document_profile(doc))
+    super::preview_proxy(doc, f, &patronusphoto_engine::color_cmds::document_profile(doc))
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 fn default_exact_estimate(doc: &Document, f: &Map<String, Value>) -> Option<u64> {
-    super::exact_estimate(doc, f, &photocraft_engine::color_cmds::document_profile(doc))
+    super::exact_estimate(doc, f, &patronusphoto_engine::color_cmds::document_profile(doc))
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -116,7 +116,7 @@ fn default_poll_or_start_preview(
     doc: Arc<Document>,
     fields: &Map<String, Value>,
 ) -> Option<Result<PreviewPixels, String>> {
-    let profile = photocraft_engine::color_cmds::document_profile(&doc);
+    let profile = patronusphoto_engine::color_cmds::document_profile(&doc);
     super::poll_or_start_preview(ui.ctx(), key, signature, doc, fields, profile)
 }
 
@@ -150,7 +150,7 @@ fn export_as_opens_with_the_settings_used_last() {
 /// (#7207); anything else is an error, not a guess.
 #[test]
 fn a_replayed_export_needs_a_path_and_a_known_format() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     assert!(replay(&mut app, &json!({"path": "/x.png"})).unwrap_err().contains("document"));
     app.run("file.new", json!({"width": 4, "height": 4})).unwrap();
     for bad in [json!({}), json!({"path": ""}), json!("nope"), json!({"path": 3})] {
@@ -228,7 +228,7 @@ fn a_remembered_pixel_size_keeps_this_images_proportions() {
         write: Some(Box::new(|_, _| Ok(()))),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     app.run("file.new", json!({"width": 30, "height": 40})).unwrap();
     let landscape = json!({"sizing": "pixels", "width": 20, "height": 15, "scale": 50, "lockAspect": true});
     let mut h = harness(app);
@@ -329,8 +329,8 @@ fn remembering_keeps_only_the_dialog_settings() {
 }
 
 /// A red/blue checkerboard at `depth`, one pixel per square.
-fn checker_doc(depth: photocraft_doc::SampleType) -> Document {
-    use photocraft_doc::{Color, ColorMode, Size};
+fn checker_doc(depth: patronusphoto_doc::SampleType) -> Document {
+    use patronusphoto_doc::{Color, ColorMode, Size};
     let mut doc = Document::with_background("checker", Size::new(5, 3), ColorMode::Rgb, depth, Color::WHITE);
     let b = doc.bounds();
     let surf = doc.layers[0].surface_mut().unwrap();
@@ -338,7 +338,7 @@ fn checker_doc(depth: photocraft_doc::SampleType) -> Document {
     let mut data = Vec::new();
     for y in b.y0..b.y1 {
         for x in b.x0..b.x1 {
-            data.extend(photocraft_raster::from_rgba(&fmt, checker(x, y)));
+            data.extend(patronusphoto_raster::from_rgba(&fmt, checker(x, y)));
         }
     }
     surf.write_region(b, &data);
@@ -354,7 +354,7 @@ fn checker(x: i32, y: i32) -> [f32; 4] {
 /// default) blends the squares instead.
 #[test]
 fn nearest_neighbor_doubles_each_pixel_into_an_exact_block() {
-    use photocraft_doc::SampleType;
+    use patronusphoto_doc::SampleType;
     for depth in [SampleType::U8, SampleType::U16] {
         let doc = checker_doc(depth);
         let before = doc.clone();
@@ -408,7 +408,7 @@ fn resample_is_remembered_and_a_bad_saved_value_falls_back() {
 
 #[test]
 fn export_document_scales_height_when_rounded_width_is_unchanged() {
-    use photocraft_doc::{Color, ColorMode, SampleType, Size};
+    use patronusphoto_doc::{Color, ColorMode, SampleType, Size};
 
     for depth in [SampleType::U8, SampleType::U16, SampleType::F32] {
         for (width, height, scale, expected) in [
@@ -434,7 +434,7 @@ fn export_document_scales_height_when_rounded_width_is_unchanged() {
 
 #[test]
 fn export_document_proxy_limits_both_dimensions_before_rounding() {
-    use photocraft_doc::{Color, ColorMode, SampleType, Size};
+    use patronusphoto_doc::{Color, ColorMode, SampleType, Size};
 
     for (width, height, scale, max_side, expected) in
         [(1, 1000, 100, 360, (1, 360)), (1, 1000, 50, 360, (1, 360)), (1, 1000, 25, 360, (1, 250)), (13, 20, 50, 8, (5, 8)), (20, 13, 50, 8, (8, 5))]
@@ -458,10 +458,10 @@ fn export_document_proxy_limits_both_dimensions_before_rounding() {
 fn the_estimate_is_the_exported_files_size() {
     let mut doc = Document::with_background(
         "x",
-        photocraft_doc::Size::new(900, 300),
-        photocraft_doc::ColorMode::Rgb,
-        photocraft_doc::SampleType::U8,
-        photocraft_doc::Color::WHITE,
+        patronusphoto_doc::Size::new(900, 300),
+        patronusphoto_doc::ColorMode::Rgb,
+        patronusphoto_doc::SampleType::U8,
+        patronusphoto_doc::Color::WHITE,
     );
     let id = doc.layers[0].id;
     let surf = doc.layer_mut(id).unwrap().surface_mut().unwrap();
@@ -470,7 +470,7 @@ fn the_estimate_is_the_exported_files_size() {
         for x in (0..900).step_by(2) {
             seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
             let v = (seed >> 24) as f32 / 255.0;
-            surf.fill_rect(photocraft_geom::Rect::new(x, y, x + 2, y + 2), &[v, x as f32 / 900.0, y as f32 / 300.0, 1.0]);
+            surf.fill_rect(patronusphoto_geom::Rect::new(x, y, x + 2, y + 2), &[v, x as f32 / 900.0, y as f32 / 300.0, 1.0]);
         }
     }
     let doc = Arc::new(doc);
@@ -478,7 +478,7 @@ fn the_estimate_is_the_exported_files_size() {
     // (the untagged document is tagged sRGB on export, #9325).
     let f =
         Map::from_iter([("format".into(), json!("jpg")), ("scale".into(), json!(100)), ("quality".into(), json!(32)), ("embedProfile".into(), json!(false))]);
-    let actual = photocraft_io::export(&default_export_document(&doc, &f, None).unwrap(), "x.jpg", &settings(&f).io_options()).unwrap().bytes.len() as u64;
+    let actual = patronusphoto_io::export(&default_export_document(&doc, &f, None).unwrap(), "x.jpg", &settings(&f).io_options()).unwrap().bytes.len() as u64;
     let proxy = default_preview_proxy(&doc, &f).unwrap();
     let old = estimate_native(&doc, &proxy, &f).unwrap();
     assert!((old as f64 / actual as f64 - 1.0).abs() > 0.1, "the proxy estimate was off: {old} vs {actual}");
@@ -490,7 +490,7 @@ fn the_estimate_is_the_exported_files_size() {
         let mut size = None;
         let mut output = ctx.run_ui(Default::default(), |ctx| {
             egui::CentralPanel::default().show(ctx, |ui| {
-                size = poll_or_start_exact_estimate(ui.ctx(), key, "jpg32", doc.clone(), &f, photocraft_engine::color_cmds::document_profile(&doc))
+                size = poll_or_start_exact_estimate(ui.ctx(), key, "jpg32", doc.clone(), &f, patronusphoto_engine::color_cmds::document_profile(&doc))
             });
         });
         output.textures_delta.clear();
@@ -512,10 +512,10 @@ fn the_estimate_is_the_exported_files_size() {
     // In scale mode the size comes from the scale, as the export's does, not from stale pixels.
     let big = Arc::new(Document::with_background(
         "big",
-        photocraft_doc::Size::new(1000, 1000),
-        photocraft_doc::ColorMode::Rgb,
-        photocraft_doc::SampleType::U8,
-        photocraft_doc::Color::WHITE,
+        patronusphoto_doc::Size::new(1000, 1000),
+        patronusphoto_doc::ColorMode::Rgb,
+        patronusphoto_doc::SampleType::U8,
+        patronusphoto_doc::Color::WHITE,
     ));
     let stale = Map::from_iter([
         ("format".into(), json!("png")),
@@ -533,7 +533,7 @@ fn the_estimate_is_the_exported_files_size() {
         ("height".into(), json!(9000)),
     ]);
     let at_10 =
-        photocraft_io::export(&default_export_document(&big, &small, None).unwrap(), "x.png", &settings(&small).io_options()).unwrap().bytes.len() as u64;
+        patronusphoto_io::export(&default_export_document(&big, &small, None).unwrap(), "x.png", &settings(&small).io_options()).unwrap().bytes.len() as u64;
     assert_eq!(default_exact_estimate(&big, &small), Some(at_10), "100 × 100 at 10 %, within it");
 }
 
@@ -541,7 +541,7 @@ fn the_estimate_is_the_exported_files_size() {
 #[test]
 fn export_as_downscales_stroke_only_shapes_and_preview() {
     for depth in [8, 16, 32] {
-        let mut session = photocraft_engine::Session::new();
+        let mut session = patronusphoto_engine::Session::new();
         session.execute("file.new", json!({"width": 1024, "height": 1024, "depth": depth, "background": "transparent"})).unwrap();
         let id =
             session.execute("shape.create", json!({"rect": [256, 256, 512, 512], "fill": null, "stroke": {"width": 32}})).unwrap()["layer"].as_u64().unwrap();
@@ -551,12 +551,12 @@ fn export_as_downscales_stroke_only_shapes_and_preview() {
             let out = default_export_document(&doc, &fields, limit).unwrap();
             let side = if limit.is_some() { 128 } else { 256 };
             assert_eq!((out.size.width, out.size.height), (side, side));
-            let shape = out.layer(photocraft_doc::LayerId(id)).unwrap();
-            let photocraft_doc::LayerContent::Shape(shape) = &shape.content else {
+            let shape = out.layer(patronusphoto_doc::LayerId(id)).unwrap();
+            let patronusphoto_doc::LayerContent::Shape(shape) = &shape.content else {
                 panic!("shape lost");
             };
             assert_eq!(shape.stroke.as_ref().unwrap().width, side as f32 / 32.0);
-            let pixels = photocraft_compose::flatten(&out);
+            let pixels = patronusphoto_compose::flatten(&out);
             let row = (side / 2 * side) as usize;
             assert!(pixels.px[row + (side / 4) as usize][3] > 0.99);
             assert!(pixels.px[row + (side / 4 - side / 32) as usize][3] < 0.01);
@@ -570,10 +570,10 @@ fn export_as_downscales_stroke_only_shapes_and_preview() {
 fn export_document_scales_and_flattens() {
     let doc = Document::with_background(
         "x",
-        photocraft_doc::Size::new(200, 100),
-        photocraft_doc::ColorMode::Rgb,
-        photocraft_doc::SampleType::U8,
-        photocraft_doc::Color::WHITE,
+        patronusphoto_doc::Size::new(200, 100),
+        patronusphoto_doc::ColorMode::Rgb,
+        patronusphoto_doc::SampleType::U8,
+        patronusphoto_doc::Color::WHITE,
     );
     let mut f = Map::new();
     f.insert("format".into(), json!("jpg"));
@@ -642,8 +642,8 @@ fn jpeg_export_sampling_skips_embedded_thumbnail() {
 /// lower qualities use chroma subsampling, including at the quality-50 boundary.
 #[test]
 fn jpeg_export_preserves_fine_colour_edges() {
-    use photocraft_doc::{Color, ColorMode, Layer, SampleType, Size};
-    use photocraft_geom::Rect;
+    use patronusphoto_doc::{Color, ColorMode, Layer, SampleType, Size};
+    use patronusphoto_geom::Rect;
 
     for depth in [SampleType::U8, SampleType::U16, SampleType::F32] {
         let mut doc = Document::with_background("colour detail", Size::new(32, 16), ColorMode::Rgb, depth, Color::WHITE);
@@ -656,10 +656,11 @@ fn jpeg_export_preserves_fine_colour_edges() {
         for quality in [1, 50, 51, 85, 100] {
             let fields = json!({"format": "jpg", "quality": quality, "scale": 100}).as_object().unwrap().clone();
             let out = default_export_document(&doc, &fields, None).unwrap();
-            let encoded = photocraft_io::export(&out, "detail.jpg", &settings(&fields).io_options()).unwrap();
+            let encoded = patronusphoto_io::export(&out, "detail.jpg", &settings(&fields).io_options()).unwrap();
             let expected_sampling = if quality <= 50 { [(2, 2), (1, 1), (1, 1)] } else { [(1, 1); 3] };
             assert_eq!(jpeg_sampling_factors(&encoded.bytes), expected_sampling, "{depth:?}, quality {quality}: JPEG sampling");
-            let decoded = photocraft_codecs::decode(&encoded.bytes).unwrap().convert(photocraft_codecs::ChannelLayout::Rgb, photocraft_codecs::SampleType::U8);
+            let decoded =
+                patronusphoto_codecs::decode(&encoded.bytes).unwrap().convert(patronusphoto_codecs::ChannelLayout::Rgb, patronusphoto_codecs::SampleType::U8);
             assert_eq!(decoded.dimensions(), (32, 16), "{depth:?}, quality {quality}");
             // Lower qualities also lose detail to quantization, independently of chroma sampling.
             if quality == 100 {
@@ -700,10 +701,10 @@ fn export_document_scales_when_only_the_height_changes() {
     for (src_h, want_h) in [(100u32, 50u32), (200, 100)] {
         let doc = Document::with_background(
             "x",
-            photocraft_doc::Size::new(1, src_h),
-            photocraft_doc::ColorMode::Rgb,
-            photocraft_doc::SampleType::U8,
-            photocraft_doc::Color::WHITE,
+            patronusphoto_doc::Size::new(1, src_h),
+            patronusphoto_doc::ColorMode::Rgb,
+            patronusphoto_doc::SampleType::U8,
+            patronusphoto_doc::Color::WHITE,
         );
         let out = default_export_document(&doc, &f, None).unwrap();
         assert_eq!((out.size.width, out.size.height), (1, want_h), "1 × {src_h} at 50%");
@@ -719,7 +720,7 @@ fn export_document_scales_when_only_the_height_changes() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn layered_preview_runs_outside_the_ui_frame() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 32, "height": 16})).unwrap();
     for _ in 0..33 {
         app.run("layer.new.layer", json!({})).unwrap();
@@ -759,8 +760,8 @@ fn layered_preview_runs_outside_the_ui_frame() {
 
     let tiff_fields = Map::from_iter([("format".into(), json!("tif")), ("scale".into(), json!(100))]);
     let proxy = default_preview_proxy(&doc, &tiff_fields).unwrap();
-    let options = photocraft_io::ExportOptions { tiff_layers: true, xmp: photocraft_io::XmpEmbed::None, ..Default::default() };
-    let actual_bytes = photocraft_io::export(&proxy, "estimate.tif", &options).unwrap().bytes.len();
+    let options = patronusphoto_io::ExportOptions { tiff_layers: true, xmp: patronusphoto_io::XmpEmbed::None, ..Default::default() };
+    let actual_bytes = patronusphoto_io::export(&proxy, "estimate.tif", &options).unwrap().bytes.len();
     assert_eq!(estimate_native(&doc, &proxy, &tiff_fields), Some(scaled_estimate(actual_bytes, &doc, &proxy, &tiff_fields)));
 }
 
@@ -810,7 +811,7 @@ fn webp_settings_follow_the_lossless_switch() {
 /// for TGA.
 #[test]
 fn tga_settings_follow_the_bits_per_pixel() {
-    use photocraft_io::TgaBits;
+    use patronusphoto_io::TgaBits;
     let mut f = Map::new();
     f.insert("format".into(), json!("tga"));
     assert_eq!(settings(&f).tga_bits, None, "no choice made");
@@ -823,13 +824,13 @@ fn tga_settings_follow_the_bits_per_pixel() {
 }
 
 fn check_profile_only_export(width: u32, height: u32) -> std::time::Duration {
-    use photocraft_doc::{Color, ColorMode, SampleType, Size};
+    use patronusphoto_doc::{Color, ColorMode, SampleType, Size};
     let mut doc = Document::with_background("untagged", Size::new(width, height), ColorMode::Rgb, SampleType::U8, Color::WHITE);
     let mut pixels = vec![0u8; width as usize * height as usize * 4];
     for (i, p) in pixels.as_chunks_mut::<4>().0.iter_mut().enumerate() {
         p.copy_from_slice(&[(i % 251) as u8, ((i / 251) % 251) as u8, ((i / 63001) % 251) as u8, 255]);
     }
-    doc.layers[0].surface_mut().unwrap().write_interleaved(photocraft_geom::Rect::from_xywh(0, 0, width, height), &pixels);
+    doc.layers[0].surface_mut().unwrap().write_interleaved(patronusphoto_geom::Rect::from_xywh(0, 0, width, height), &pixels);
     let before = doc.clone();
     let fields = json!({"format": "png", "profile": "srgb", "transparency": true, "width": width, "height": height}).as_object().unwrap().clone();
     let start = std::time::Instant::now();
@@ -863,7 +864,7 @@ fn untagged_srgb_export_24mp_keeps_pixel_tiles() {
 
 #[test]
 fn untagged_jpeg_export_embeds_the_requested_srgb_profile() {
-    use photocraft_doc::{Color, ColorMode, SampleType, Size};
+    use patronusphoto_doc::{Color, ColorMode, SampleType, Size};
     for (mode, depth) in [
         (ColorMode::Rgb, SampleType::U8),
         (ColorMode::Rgb, SampleType::U16),
@@ -877,13 +878,13 @@ fn untagged_jpeg_export_embeds_the_requested_srgb_profile() {
         let mut fields =
             json!({"format": "jpg", "profile": "srgb", "embedProfile": true, "metadata": "none", "width": 8, "height": 8}).as_object().unwrap().clone();
         let converted = default_export_document(&doc, &fields, None).unwrap();
-        let bytes = photocraft_io::export(&converted, "out.jpg", &settings(&fields).io_options()).unwrap().bytes;
-        let reloaded = photocraft_io::import("out.jpg", &bytes).unwrap().document;
+        let bytes = patronusphoto_io::export(&converted, "out.jpg", &settings(&fields).io_options()).unwrap().bytes;
+        let reloaded = patronusphoto_io::import("out.jpg", &bytes).unwrap().document;
         let profile = craft::cms::Profile::parse(reloaded.icc_profile.as_deref().expect("explicit sRGB export must embed its profile")).unwrap();
         assert!(profile.same_colors(craft::cms::Builtin::Srgb.profile()), "{depth:?}");
         fields.insert("embedProfile".into(), json!(false));
-        let bytes = photocraft_io::export(&converted, "out.jpg", &settings(&fields).io_options()).unwrap().bytes;
-        assert!(photocraft_io::import("out.jpg", &bytes).unwrap().document.icc_profile.is_none(), "embedding remains optional");
+        let bytes = patronusphoto_io::export(&converted, "out.jpg", &settings(&fields).io_options()).unwrap().bytes;
+        assert!(patronusphoto_io::import("out.jpg", &bytes).unwrap().document.icc_profile.is_none(), "embedding remains optional");
         fields.insert("profile".into(), json!("document"));
         fields.insert("embedProfile".into(), json!(true));
         let unchanged = default_export_document(&doc, &fields, None).unwrap();
@@ -895,9 +896,9 @@ fn untagged_jpeg_export_embeds_the_requested_srgb_profile() {
 #[test]
 fn preview_cache_tracks_working_profiles_but_prefers_embedded_profiles() {
     use craft::cms::Builtin;
-    use photocraft_doc::{Color, SampleType, Size};
+    use patronusphoto_doc::{Color, SampleType, Size};
     for embedded in [false, true] {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.services.export = Some(Box::new(|_, _, _| Ok((Vec::new(), Vec::new()))));
         app.session.execute("edit.colorSettings", json!({"workingRgb": "display-p3", "policyRgb": "off"})).unwrap();
         let mut doc = Document::with_background("colour", Size::new(8, 8), ColorMode::Rgb, SampleType::U8, Color::rgba(0.35, 0.65, 0.45, 1.0));
@@ -950,14 +951,14 @@ fn a_second_take_in_a_frame_answers_nothing_twice() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn preview_workers_keep_the_captured_source_profile() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("edit.colorSettings", json!({"workingRgb": "display-p3", "policyRgb": "off"})).unwrap();
     let doc = Document::with_background(
         "colour",
-        photocraft_doc::Size::new(8, 8),
+        patronusphoto_doc::Size::new(8, 8),
         ColorMode::Rgb,
-        photocraft_doc::SampleType::U8,
-        photocraft_doc::Color::rgba(0.35, 0.65, 0.45, 1.0),
+        patronusphoto_doc::SampleType::U8,
+        patronusphoto_doc::Color::rgba(0.35, 0.65, 0.45, 1.0),
     );
     app.session.open_document(doc, None);
     let doc = app.session.active().unwrap().doc.clone();
@@ -995,10 +996,10 @@ fn preview_workers_keep_the_captured_source_profile() {
 #[test]
 fn replay_converts_untagged_pixels_from_the_original_working_profile() {
     use craft::cms::{Builtin, Intent};
-    use photocraft_doc::{Color, ColorMode, SampleType, Size};
+    use patronusphoto_doc::{Color, ColorMode, SampleType, Size};
     for working in [Builtin::DisplayP3, Builtin::AdobeRgbCompat] {
         for depth in [SampleType::U8, SampleType::U16, SampleType::F32] {
-            let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
             app.session.execute("edit.colorSettings", json!({"workingRgb": working.id(), "policyRgb": "off"})).unwrap();
             let doc = Document::with_background("untagged", Size::new(8, 8), ColorMode::Rgb, depth, Color::rgba(0.35, 0.65, 0.45, 1.0));
             app.session.open_document(doc, None);
@@ -1006,7 +1007,7 @@ fn replay_converts_untagged_pixels_from_the_original_working_profile() {
             assert!(source.icc_profile.is_none());
             let mut expected = (*source).clone();
             expected.icc_profile = Some(working.profile().to_bytes());
-            photocraft_engine::color_cmds::convert_document(&mut expected, Builtin::Srgb.profile(), Intent::Perceptual, true).unwrap();
+            patronusphoto_engine::color_cmds::convert_document(&mut expected, Builtin::Srgb.profile(), Intent::Perceptual, true).unwrap();
             let original_pixel = source.layers[0].surface().unwrap().pixel(0, 0);
             let expected_pixel = expected.layers[0].surface().unwrap().pixel(0, 0);
             assert_ne!(original_pixel, expected_pixel, "the control must require a pixel conversion");
@@ -1049,10 +1050,10 @@ fn profile_and_metadata_follow_the_existing_exporter() {
 
     let mut doc = Document::with_background(
         "x",
-        photocraft_doc::Size::new(8, 8),
-        photocraft_doc::ColorMode::Rgb,
-        photocraft_doc::SampleType::U8,
-        photocraft_doc::Color::WHITE,
+        patronusphoto_doc::Size::new(8, 8),
+        patronusphoto_doc::ColorMode::Rgb,
+        patronusphoto_doc::SampleType::U8,
+        patronusphoto_doc::Color::WHITE,
     );
     doc.icc_profile = Some(Builtin::DisplayP3.profile().to_bytes());
     doc.metadata.xmp = Some("<x:xmpmeta>secret</x:xmpmeta>".into());
@@ -1065,12 +1066,12 @@ fn profile_and_metadata_follow_the_existing_exporter() {
     let converted = default_export_document(&doc, &f, None).unwrap();
     let parsed = craft::cms::Profile::parse(converted.icc_profile.as_deref().unwrap()).unwrap();
     assert!(parsed.same_colors(Builtin::Srgb.profile()), "Convert to sRGB replaces the document profile");
-    let stripped = photocraft_io::export(&converted, "out.jpg", &settings(&f).io_options()).unwrap().bytes;
+    let stripped = patronusphoto_io::export(&converted, "out.jpg", &settings(&f).io_options()).unwrap().bytes;
     assert!(!stripped.windows(b"ICC_PROFILE".len()).any(|w| w == b"ICC_PROFILE"));
     assert!(!stripped.windows(b"secret".len()).any(|w| w == b"secret"));
     f.insert("metadata".into(), json!("all"));
     f.insert("embedProfile".into(), json!(true));
-    let kept = photocraft_io::export(&converted, "out.jpg", &settings(&f).io_options()).unwrap().bytes;
+    let kept = patronusphoto_io::export(&converted, "out.jpg", &settings(&f).io_options()).unwrap().bytes;
     assert!(kept.windows(b"ICC_PROFILE".len()).any(|w| w == b"ICC_PROFILE"));
     assert!(kept.windows(b"secret".len()).any(|w| w == b"secret"));
     assert_eq!(doc, before);

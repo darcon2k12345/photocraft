@@ -159,7 +159,7 @@ fn budget_source(width: u32, height: u32, selected: bool) -> Session {
         surf.fill_rect(Rect::new(0, 0, 1, 1), &[0.0, 0.0, 0.0, 1.0]);
         assert_eq!(surf.tile_count(), 1);
         if selected {
-            let mut mask = photocraft_raster::Surface::new(photocraft_color::PixelFormat::GRAY8);
+            let mut mask = patronusphoto_raster::Surface::new(patronusphoto_color::PixelFormat::GRAY8);
             mask.fill_rect(Rect::new(0, 0, 1, 1), &[1.0]);
             mask.fill_rect(Rect::new(width as i32 - 1, height as i32 - 1, width as i32, height as i32), &[1.0]);
             assert_eq!(mask.tile_count(), 2);

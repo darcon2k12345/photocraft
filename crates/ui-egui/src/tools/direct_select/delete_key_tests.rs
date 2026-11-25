@@ -3,17 +3,17 @@
 //! Delete Anchor Point), and with nothing selected the targeted path is deleted (Delete Path).
 
 use egui::Modifiers;
-use photocraft_doc::vector::Path;
+use patronusphoto_doc::vector::Path;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing;
 use crate::state::Tool;
 
 /// 800 x 600 on white, pixel layer Red active, saved path Path 1 (a closed corner square and the
 /// open line (400,300)-(700,300)) targeted in the Paths panel, Direct Selection on.
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 800, "height": 600, "background": "white"})).unwrap();
     app.sync_views();
     app.run("layer.new.layer", json!({"name": "Red"})).unwrap();
@@ -27,28 +27,28 @@ fn app() -> Box<PhotocraftApp> {
     app
 }
 
-fn path1(app: &PhotocraftApp) -> Option<Path> {
+fn path1(app: &PatronusPhotoApp) -> Option<Path> {
     app.session.active().unwrap().doc.paths.iter().find(|p| p.name == "Path 1").map(|p| p.path.clone())
 }
 
-fn layers(app: &PhotocraftApp) -> usize {
+fn layers(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().doc.layers.len()
 }
 
-fn steps(app: &PhotocraftApp) -> usize {
+fn steps(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.past_len()
 }
 
-fn last_step(app: &PhotocraftApp) -> Option<String> {
+fn last_step(app: &PatronusPhotoApp) -> Option<String> {
     app.session.active().unwrap().history.undo_label().map(str::to_string)
 }
 
-fn click(app: &mut PhotocraftApp, at: [f64; 2]) {
+fn click(app: &mut PatronusPhotoApp, at: [f64; 2]) {
     testing::click(app, at, Modifiers::NONE);
 }
 
 /// A key as the canvas gets it: the overlay's session keys first, then the app's key route.
-fn press(app: &mut PhotocraftApp, key: egui::Key) {
+fn press(app: &mut PatronusPhotoApp, key: egui::Key) {
     testing::key(app, key, Modifiers::NONE);
 }
 

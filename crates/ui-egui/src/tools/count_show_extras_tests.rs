@@ -3,27 +3,27 @@
 use egui::Modifiers;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::{ToolEvent, tool_event};
 use crate::state::Tool;
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
     app.ui.tool = Tool::Count;
     app
 }
 
-fn click(app: &mut PhotocraftApp, x: f64, y: f64, m: Modifiers) {
+fn click(app: &mut PatronusPhotoApp, x: f64, y: f64, m: Modifiers) {
     tool_event(app, ToolEvent::Down { x, y, pressure: 1.0 }, m);
     tool_event(app, ToolEvent::Up { x, y }, m);
 }
 
-fn points(app: &PhotocraftApp) -> usize {
+fn points(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().doc.measurement.count_groups.iter().map(|g| g.points.len()).sum()
 }
 
-fn past(app: &PhotocraftApp) -> usize {
+fn past(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.past_len()
 }
 

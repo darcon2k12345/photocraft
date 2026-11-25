@@ -9,14 +9,14 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::panels::panel_docking;
 
 const TOGGLE: &str = "Toggle Character and Paragraph panels";
 
 /// An app with one selected type layer.
-fn app_with_layer() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app_with_layer() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.ui.tool = crate::state::Tool::Type;
     app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
     let made = app.run("type.create", json!({"text": "Sample", "font": "Inter", "size": 18})).unwrap();
@@ -26,7 +26,7 @@ fn app_with_layer() -> Box<PhotocraftApp> {
 }
 
 /// The options bar in a row, once the app's fonts are set up (the first pass has none).
-fn harness(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
+fn harness(app: Box<PatronusPhotoApp>) -> Harness<'static, Box<PatronusPhotoApp>> {
     let ctx = app.ctx().clone();
     let mut h = Harness::builder().with_context(ctx).with_size(vec2(1400.0, 200.0)).with_max_steps(16).build_app(
         |ui, app| {
@@ -38,13 +38,13 @@ fn harness(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
     h
 }
 
-fn click(h: &mut Harness<'static, Box<PhotocraftApp>>) {
+fn click(h: &mut Harness<'static, Box<PatronusPhotoApp>>) {
     h.get_by_role_and_label(egui::accesskit::Role::Button, TOGGLE).click();
     h.run();
 }
 
 /// Whether the Character | Paragraph group is shown, and whether Paragraph is its front tab.
-fn group(h: &Harness<'static, Box<PhotocraftApp>>) -> (bool, bool) {
+fn group(h: &Harness<'static, Box<PatronusPhotoApp>>) -> (bool, bool) {
     (panel_docking::is_shown(h.state(), "character"), panel_docking::is_front(h.state(), "paragraph"))
 }
 

@@ -20,19 +20,19 @@ use craft::ui::dialog::{DialogId, HostedWorkspace};
 use craft::ui::primitives::Revision;
 use craft::ui::runtime::memory::{SaveKey, saved_value, set_saved_value};
 use egui::{Color32, ColorImage};
-use photocraft_algo::liquify::{LiquifyField, LiquifyStroke, LiquifyTool, ProxyImage, auto_cell};
-use photocraft_doc::{DocId, Document, LayerId};
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use patronusphoto_algo::liquify::{LiquifyField, LiquifyStroke, LiquifyTool, ProxyImage, auto_cell};
+use patronusphoto_doc::{DocId, Document, LayerId};
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::Surface;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// Longest side of the preview proxy (px).
 const PROXY_SIDE: usize = 1600;
 
 /// The saved slot of the brush and view settings; the workspace writes it on every change.
-const REMEMBERED: SaveKey = SaveKey::new("photocraft.filter.liquify");
+const REMEMBERED: SaveKey = SaveKey::new("patronusphoto.filter.liquify");
 
 /// Changed rectangles the picture remembers for `damage`; a display older than this reads everything.
 const DAMAGE_RING: usize = 64;
@@ -52,7 +52,9 @@ fn render_components(
     dirty: Rect,
     out: &mut [[u8; 4]],
 ) -> bool {
-    let Ok(Some(colors)) = photocraft_engine::color_channels::explicit(&json!({"target":target}), source.format().mode.color_channels()) else { return false };
+    let Ok(Some(colors)) = patronusphoto_engine::color_channels::explicit(&json!({"target":target}), source.format().mode.color_channels()) else {
+        return false;
+    };
     let width = bounds.width() as usize;
     if source_bounds.is_empty() || bounds.is_empty() || !scale.is_finite() || scale <= 0.0 || width.checked_mul(bounds.height() as usize) != Some(out.len()) {
         return false;
@@ -89,7 +91,7 @@ fn render_components(
                     source.sample_channel(x, y, channel)
                 };
             }
-            let rgba = photocraft_raster::to_rgba(&fmt, &native);
+            let rgba = patronusphoto_raster::to_rgba(&fmt, &native);
             let a = rgba[3].clamp(0.0, 1.0);
             let encoded = [rgba[0] * a, rgba[1] * a, rgba[2] * a, a].map(|v| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8);
             let index = (y - bounds.y0) as usize * width + (x - bounds.x0) as usize;
@@ -194,7 +196,7 @@ fn edits_mask(tool: LiquifyTool) -> bool {
 /// (`distort_cmds::mix_by_selection`): the result over the original by its coverage. On a smart
 /// object with a filter mask it is that mask, which the engine shows every filter through.
 struct PreviewSelection {
-    mask: photocraft_doc::LayerMask,
+    mask: patronusphoto_doc::LayerMask,
     /// Coverage at each proxy pixel (row-major, the proxy's size).
     proxy: Vec<f32>,
     /// What shows where the mask hides the result, when that isn't the dialog's source: a filter
@@ -206,7 +208,7 @@ struct PreviewSelection {
 impl PreviewSelection {
     /// `sel` with its coverage sampled at `proxy`'s pixels. Kept even when every proxy pixel is
     /// selected: a gap narrower than a proxy pixel still shows in the source-resolution crop.
-    fn new(mask: photocraft_doc::LayerMask, proxy: &ProxyImage, base: Option<Surface>) -> Self {
+    fn new(mask: patronusphoto_doc::LayerMask, proxy: &ProxyImage, base: Option<Surface>) -> Self {
         let (bx, by, s) = (f64::from(proxy.bounds.x0), f64::from(proxy.bounds.y0), proxy.scale);
         let mut cov = Vec::with_capacity(proxy.w * proxy.h);
         for y in 0..proxy.h {
@@ -637,7 +639,7 @@ impl RasterSource for BackdropView {
     }
 }
 
-/// What PhotoCraft gives the Liquify workspace to show: the warped proxy, the freeze mask, the
+/// What Patronus Photo gives the Liquify workspace to show: the warped proxy, the freeze mask, the
 /// displaced mesh, the backdrop and the layer names.
 pub struct PcLiquifySource {
     picture: PictureView,
@@ -700,15 +702,15 @@ impl LiquifyApp {
 }
 
 /// Opens the workspace on the active layer.
-pub fn open(app: &mut PhotocraftApp, _ctx: &egui::Context) -> Result<DialogId, String> {
+pub fn open(app: &mut PatronusPhotoApp, _ctx: &egui::Context) -> Result<DialogId, String> {
     let (layer, mut surf, _) = crate::distort_ui::active_filter_target(app)?;
     let doc = &app.session.active().ok_or("no document")?.doc;
     let canvas = doc.bounds();
     // A smart object's pixels are its filters mixed through its filter mask; OK adds the Liquify
     // above the filters themselves, so that is what it edits.
-    if let Some(photocraft_doc::LayerContent::Smart(sm)) = doc.layer(layer).map(|l| &l.content)
+    if let Some(patronusphoto_doc::LayerContent::Smart(sm)) = doc.layer(layer).map(|l| &l.content)
         && sm.filter_mask.is_some()
-        && let Ok(Some(filtered)) = photocraft_engine::smart_cmds::render_below_filter(doc, sm, sm.smart_filters.len())
+        && let Ok(Some(filtered)) = patronusphoto_engine::smart_cmds::render_below_filter(doc, sm, sm.smart_filters.len())
     {
         surf = filtered;
     }
@@ -718,10 +720,10 @@ pub fn open(app: &mut PhotocraftApp, _ctx: &egui::Context) -> Result<DialogId, S
 /// Re-opens Liquify smart filter `index` of smart object `layer` with its recorded strokes and
 /// mesh size, previewing on the pixels below it; OK updates that filter
 /// (`layer.smartFilter.setParams`).
-pub fn open_smart_filter(app: &mut PhotocraftApp, _ctx: &egui::Context, layer: LayerId, index: usize) -> Result<DialogId, String> {
-    use photocraft_engine::distort_cmds::{LIQUIFY, liquify_params};
+pub fn open_smart_filter(app: &mut PatronusPhotoApp, _ctx: &egui::Context, layer: LayerId, index: usize) -> Result<DialogId, String> {
+    use patronusphoto_engine::distort_cmds::{LIQUIFY, liquify_params};
     let st = app.session.active().ok_or("no document")?;
-    let Some(photocraft_doc::LayerContent::Smart(sm)) = st.doc.layer(layer).map(|l| &l.content) else {
+    let Some(patronusphoto_doc::LayerContent::Smart(sm)) = st.doc.layer(layer).map(|l| &l.content) else {
         return Err("the layer is not a smart object".into());
     };
     let filter = sm.smart_filters.get(index).ok_or("no such smart filter")?;
@@ -729,14 +731,14 @@ pub fn open_smart_filter(app: &mut PhotocraftApp, _ctx: &egui::Context, layer: L
         return Err("the smart filter is not a Liquify filter".into());
     }
     let (strokes, cell) = liquify_params(LIQUIFY, &filter.params, st.doc.bounds()).map_err(|e| e.to_string())?;
-    let surf = photocraft_engine::smart_cmds::render_below_filter(&st.doc, sm, index)
+    let surf = patronusphoto_engine::smart_cmds::render_below_filter(&st.doc, sm, index)
         .map_err(|e| e.to_string())?
         .ok_or("the smart object's contents are unavailable (missing linked file?)")?;
     open_on(app, layer, surf, strokes, cell, Some(index))
 }
 
 fn open_on(
-    app: &mut PhotocraftApp,
+    app: &mut PatronusPhotoApp,
     layer: LayerId,
     surf: Surface,
     strokes: Vec<LiquifyStroke>,
@@ -748,15 +750,15 @@ fn open_on(
     let name = st.doc.layer(layer).map(|l| l.name.clone()).unwrap_or_default();
     let proxy = ProxyImage::new(&surf, canvas, PROXY_SIDE);
     let target = if smart_filter.is_some() { json!("pixels") } else { crate::distort_ui::colour_set_target(app) };
-    let colors = photocraft_engine::color_channels::explicit(&json!({"target":target}), surf.format().mode.color_channels()).map_err(|e| e.to_string())?;
+    let colors = patronusphoto_engine::color_channels::explicit(&json!({"target":target}), surf.format().mode.color_channels()).map_err(|e| e.to_string())?;
     let native_proxy = colors.map(|_| crate::gallery_ui::reduce(&surf, canvas, proxy.scale as u32));
     let out = vec![[0u8; 4]; proxy.w * proxy.h];
     // A smart object's filter mask shows every filter through it, a new Liquify too, whatever is
     // selected (`smart_cmds::add_smart_filter`), over the placed pixels without any filter.
     // Otherwise a new Liquify goes through the selection; a smart filter being edited has none.
     let selection = match st.doc.layer(layer).map(|l| &l.content) {
-        Some(photocraft_doc::LayerContent::Smart(sm)) if sm.filter_mask.is_some() => sm.filter_mask.clone().map(|mask| {
-            let placed = photocraft_engine::smart_cmds::render_below_filter(&st.doc, sm, 0).ok().flatten();
+        Some(patronusphoto_doc::LayerContent::Smart(sm)) if sm.filter_mask.is_some() => sm.filter_mask.clone().map(|mask| {
+            let placed = patronusphoto_engine::smart_cmds::render_below_filter(&st.doc, sm, 0).ok().flatten();
             PreviewSelection::new(mask, &proxy, placed)
         }),
         _ => st
@@ -764,7 +766,7 @@ fn open_on(
             .selection
             .clone()
             .filter(|_| smart_filter.is_none())
-            .map(|sel| PreviewSelection::new(photocraft_doc::LayerMask { surface: sel, ..photocraft_doc::LayerMask::reveal_all() }, &proxy, None)),
+            .map(|sel| PreviewSelection::new(patronusphoto_doc::LayerMask { surface: sel, ..patronusphoto_doc::LayerMask::reveal_all() }, &proxy, None)),
     };
     // Show Backdrop › Use: All Layers or one layer, bottom to top as Photoshop lists them.
     let layers: Vec<(u64, String)> = st.doc.walk().into_iter().map(|(_, _, l)| (l.id.0, l.name.clone())).collect();
@@ -825,7 +827,7 @@ fn open_on(
 
 /// Applies what the workspace reported since the last call to the field, loads a backdrop it
 /// asked for, and answers a held OK. Called once per frame after the dialog host ran.
-pub(crate) fn take(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(crate) fn take(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     let Some(id) = app.liquify.as_ref().map(|l| l.id) else { return };
     let Some(hosted) = app.framework.dialogs.get_mut_by_id::<Hosted>(id) else {
         // Cancelled, or finished by the answer to OK.
@@ -881,7 +883,7 @@ pub(crate) fn take(app: &mut PhotocraftApp, ctx: &egui::Context) {
 /// edits a smart filter, OK updates that filter instead (also when Restore All left no strokes).
 /// `app.run` shows a failed command's error in the status bar, and `take` hands it to the
 /// workspace.
-fn commit(app: &mut PhotocraftApp, done: &LiquifyDone) -> Result<(), String> {
+fn commit(app: &mut PatronusPhotoApp, done: &LiquifyDone) -> Result<(), String> {
     let l = app.liquify.as_ref().ok_or("Liquify is not open")?;
     let (layer, smart_filter) = (l.layer, l.smart_filter);
     let (cell, target) = {
@@ -903,7 +905,7 @@ fn commit(app: &mut PhotocraftApp, done: &LiquifyDone) -> Result<(), String> {
 /// Records a Forward Warp stroke through `points` (x, y, pressure) in the open workspace, as a drag with the
 /// default brush would, and lets the app apply it. For tests of other panels that need a stroke to commit.
 #[cfg(test)]
-pub(crate) fn record_stroke(app: &mut PhotocraftApp, points: &[[f64; 3]]) {
+pub(crate) fn record_stroke(app: &mut PatronusPhotoApp, points: &[[f64; 3]]) {
     let ctx = app.ctx().clone();
     let brush = craft::imaging::ui::liquify::LiquifySettings::default().brush;
     let stroke = StepStroke::new(StepTool::ForwardWarp, &brush, points.to_vec());
@@ -913,7 +915,7 @@ pub(crate) fn record_stroke(app: &mut PhotocraftApp, points: &[[f64; 3]]) {
 
 /// The reply of `filter.liquify` while the workspace is open: the app's facts, with the steps
 /// so far and the redo depth from the workspace.
-pub(crate) fn describe(app: &PhotocraftApp) -> Option<Value> {
+pub(crate) fn describe(app: &PatronusPhotoApp) -> Option<Value> {
     let l = app.liquify.as_ref()?;
     let strokes = app.framework.dialogs.get_by_id::<Hosted>(l.id).map_or(0, |h| h.workspace().session().len());
     let redo = app.framework.dialogs.get_by_id::<Hosted>(l.id).map_or(0, |h| h.workspace().redo_len());
@@ -935,10 +937,10 @@ pub(crate) fn describe(app: &PhotocraftApp) -> Option<Value> {
 /// The backdrop for Show Backdrop › Use `of`: the document as it is (All Layers, the liquified
 /// layer's own pixels included, as in Photoshop) or that one layer alone. A layer that is gone
 /// shows All Layers.
-fn load_backdrop(app: &PhotocraftApp, of: Option<u64>, canvas: Rect) -> Option<ColorImage> {
+fn load_backdrop(app: &PatronusPhotoApp, of: Option<u64>, canvas: Rect) -> Option<ColorImage> {
     let st = app.session.active()?;
-    let buf = photocraft_compose::render(&backdrop_doc(&st.doc, of), canvas);
-    let mut s = photocraft_raster::Surface::new(photocraft_color::PixelFormat::RGBA8);
+    let buf = patronusphoto_compose::render(&backdrop_doc(&st.doc, of), canvas);
+    let mut s = patronusphoto_raster::Surface::new(patronusphoto_color::PixelFormat::RGBA8);
     let flat: Vec<f32> = buf.px.iter().flat_map(|p| *p).collect();
     s.write_region(canvas, &flat);
     Some(crate::distort_ui::surface_image(&s, canvas, PROXY_SIDE))
@@ -959,11 +961,11 @@ fn backdrop_doc(doc: &Document, of: Option<u64>) -> std::borrow::Cow<'_, Documen
 }
 
 /// Makes layer `id` and the groups holding it visible; whether it was found.
-fn reveal(layers: &mut [photocraft_doc::Layer], id: LayerId) -> bool {
+fn reveal(layers: &mut [patronusphoto_doc::Layer], id: LayerId) -> bool {
     layers.iter_mut().any(|l| {
         let found = l.id == id
             || match &mut l.content {
-                photocraft_doc::LayerContent::Group(g) => reveal(&mut g.children, id),
+                patronusphoto_doc::LayerContent::Group(g) => reveal(&mut g.children, id),
                 _ => false,
             };
         if found {

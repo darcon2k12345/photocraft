@@ -5,12 +5,12 @@
 use egui::Modifiers;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::{ToolEvent, tool_event};
 use crate::state::Tool;
 
-fn app(w: u32, h: u32) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app(w: u32, h: u32) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": w, "height": h})).unwrap();
     app.sync_views();
     app.ui.tool = Tool::Triangle;
@@ -18,19 +18,19 @@ fn app(w: u32, h: u32) -> Box<PhotocraftApp> {
 }
 
 /// A canvas drag from `from` to `to` with `mods` held from the first move, as the canvas sends it.
-fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2], mods: Modifiers) {
+fn drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2], mods: Modifiers) {
     tool_event(app, ToolEvent::Down { x: from[0], y: from[1], pressure: 1.0 }, Modifiers::NONE);
     tool_event(app, ToolEvent::Move { x: (from[0] + to[0]) / 2.0, y: (from[1] + to[1]) / 2.0, pressure: 1.0 }, mods);
     tool_event(app, ToolEvent::Move { x: to[0], y: to[1], pressure: 1.0 }, mods);
     tool_event(app, ToolEvent::Up { x: to[0], y: to[1] }, mods);
 }
 
-fn steps(app: &PhotocraftApp) -> usize {
+fn steps(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.entries().len()
 }
 
 /// `shape.info` of the active layer.
-fn info(app: &mut PhotocraftApp) -> Value {
+fn info(app: &mut PatronusPhotoApp) -> Value {
     let id = app.session.active().unwrap().active_layer.unwrap().0;
     app.session.execute("shape.info", json!({"layer": id})).unwrap()
 }

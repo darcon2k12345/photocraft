@@ -1,10 +1,10 @@
 //! #6152: intact layers can be recovered when only the merged preview is damaged.
 
 use craft_psd::{Compression, GroupSpec, PsdBuilder, PsdFile};
-use photocraft_color::{ColorMode, SampleType};
-use photocraft_doc::{Document, Layer};
-use photocraft_geom::Size;
-use photocraft_io::{ExportOptions, export, import};
+use patronusphoto_color::{ColorMode, SampleType};
+use patronusphoto_doc::{Document, Layer};
+use patronusphoto_geom::Size;
+use patronusphoto_io::{ExportOptions, export, import};
 
 fn layered(depth: SampleType, extension: &str) -> PsdFile {
     layered_in_mode(ColorMode::Rgb, depth, extension)
@@ -15,7 +15,7 @@ fn layered_in_mode(mode: ColorMode, depth: SampleType, extension: &str) -> PsdFi
     let format = doc.pixel_format();
     let mut layer = Layer::raster("red pixels", doc.pixel_format());
     let mut pixel = vec![0.0; format.channels()];
-    photocraft_raster::from_rgba_into(&format, [1.0, 0.0, 0.0, 1.0], &mut pixel);
+    patronusphoto_raster::from_rgba_into(&format, [1.0, 0.0, 0.0, 1.0], &mut pixel);
     layer.surface_mut().unwrap().fill_rect(doc.bounds(), &pixel);
     doc.layers.push(layer);
     PsdFile::from_bytes(&export(&doc, extension, &ExportOptions::default()).unwrap().bytes).unwrap()
@@ -32,7 +32,7 @@ fn truncated_merged_image_keeps_layer_pixels_at_every_depth_and_compression() {
             for compression in Compression::ALL {
                 let mut file = layered_in_mode(mode, depth, extension);
                 let intact = import(extension, &file.to_bytes().unwrap()).unwrap();
-                let expected = photocraft_compose::flatten(&intact.document).into_px();
+                let expected = patronusphoto_compose::flatten(&intact.document).into_px();
                 let pixels = file.decode_merged().unwrap();
                 file.image_data = craft_psd::ImageData::encode(compression, &pixels, &file.header).unwrap();
                 file.image_data.data.truncate(file.image_data.data.len() / 2);
@@ -42,7 +42,7 @@ fn truncated_merged_image_keeps_layer_pixels_at_every_depth_and_compression() {
                 assert_eq!(result.document.layer_count(), 1);
                 assert_eq!(result.document.depth, depth);
                 assert!(result.warnings.iter().any(|w| w.contains("merged image")), "{:?}", result.warnings);
-                let rendered = photocraft_compose::flatten(&result.document);
+                let rendered = patronusphoto_compose::flatten(&result.document);
                 assert_eq!(rendered.px, expected, "{extension} {mode:?} {depth:?} {compression:?}");
                 // Saving the recovered document replaces the bad preview with a valid one.
                 let saved = export(&result.document, extension, &ExportOptions::default()).unwrap();
@@ -120,6 +120,6 @@ fn reported_group_divider_fixture_opens_with_its_group() {
     let bytes = std::fs::read(path).expect("run cargo xtask corpus --psd-tools");
     let result = import("group-divider-blend-mode.psd", &bytes).expect("#6152 opens");
     assert_eq!(result.document.layer_count(), 1);
-    assert!(matches!(result.document.layers[0].content, photocraft_doc::LayerContent::Group(_)));
+    assert!(matches!(result.document.layers[0].content, patronusphoto_doc::LayerContent::Group(_)));
     assert!(result.warnings.iter().any(|w| w.contains("merged image")));
 }

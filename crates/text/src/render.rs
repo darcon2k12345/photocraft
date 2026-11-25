@@ -1,9 +1,9 @@
 //! Rasterizes a [`TextLayout`] into a document-space [`Surface`] of any pixel format.
 
-use photocraft_color::{Color, ColorMode, PixelFormat, SampleType};
-use photocraft_doc::text::AntiAlias;
-use photocraft_geom::{Affine, Rect, TILE_SIZE};
-use photocraft_raster::Surface;
+use patronusphoto_color::{Color, ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::text::AntiAlias;
+use patronusphoto_geom::{Affine, Rect, TILE_SIZE};
+use patronusphoto_raster::Surface;
 use skrifa::instance::{LocationRef, NormalizedCoord, Size};
 use skrifa::outline::DrawSettings;
 use skrifa::{GlyphId, MetadataProvider};
@@ -137,7 +137,7 @@ fn is_bold(layout: &TextLayout, g: &PlacedGlyph) -> bool {
 
 /// Whether a path boundary hides any glyph with a drawable outline.
 /// Uses the same glyph centers and placement rules as rasterization.
-pub fn path_overflows(layout: &TextLayout, shape: &photocraft_doc::text::TextShape) -> bool {
+pub fn path_overflows(layout: &TextLayout, shape: &patronusphoto_doc::text::TextShape) -> bool {
     let left = layout.line_bounds().map_or(0.0, |bounds| f64::from(bounds[0]));
     let Some(warp) = Warp::on_path_oriented(shape, left, layout.vertical) else { return false };
     layout.glyphs.iter().any(|glyph| glyph_is_placed(layout, glyph, None) && !glyph_is_placed(layout, glyph, Some(&warp)))
@@ -175,7 +175,7 @@ pub(crate) struct Pass {
 /// in one pass with a hash of the colour: a linear search per glyph, and then a walk of every
 /// glyph per colour, made text with many coloured runs quadratic.
 pub(crate) fn visible_color_passes(layout: &TextLayout, warp: Option<&Warp>) -> Vec<(Color, bool, Pass)> {
-    type Key = (std::mem::Discriminant<photocraft_color::ColorMode>, [u32; 4], u32);
+    type Key = (std::mem::Discriminant<patronusphoto_color::ColorMode>, [u32; 4], u32);
     fn slot<'a>(colors: &'a mut Vec<(Color, bool, Pass)>, index: &mut std::collections::HashMap<Key, usize>, c: Color, bold: bool) -> Option<&'a mut Pass> {
         if !(c.alpha.is_finite() && c.alpha > 0.0) {
             return None;
@@ -456,7 +456,7 @@ fn paint_color_glyphs(
             let comps = match &native {
                 None => rgb.to_vec(),
                 Some(c) if straight.iter().zip([r, gr, bl]).all(|(v, f)| (v - f).abs() < 1e-5) => c.iter().copied().map(keep_range).collect(),
-                Some(_) => photocraft_raster::from_rgba(&opaque, [rgb[0], rgb[1], rgb[2], 1.0]),
+                Some(_) => patronusphoto_raster::from_rgba(&opaque, [rgb[0], rgb[1], rgb[2], 1.0]),
             };
             let keep = 1.0 - a;
             for (p, c) in px.iter_mut().zip(&comps).take(n) {
@@ -519,13 +519,13 @@ fn glyph_center(layout: &TextLayout, g: &PlacedGlyph, font: &skrifa::FontRef, si
 
 /// The deformation of a type layer: the path it runs along, or its Warp Text settings (None
 /// when neither applies).
-pub fn layout_deform(layout: &TextLayout, layer: &photocraft_doc::TextLayer) -> Option<Warp> {
+pub fn layout_deform(layout: &TextLayout, layer: &patronusphoto_doc::TextLayer) -> Option<Warp> {
     let text_start = layout.line_bounds().map_or(0.0, |bounds| f64::from(bounds[0]));
     Warp::on_path_oriented(&layer.shape, text_start, layout.vertical).or_else(|| layout_warp(layout, layer.warp.as_ref()))
 }
 
 /// The warp to apply to `layout` (None when `warp` is absent, `warpNone` or flat).
-pub fn layout_warp(layout: &TextLayout, warp: Option<&photocraft_doc::text::TextWarp>) -> Option<Warp> {
+pub fn layout_warp(layout: &TextLayout, warp: Option<&patronusphoto_doc::text::TextWarp>) -> Option<Warp> {
     Warp::new(warp?, layout.bounds()?)
 }
 
@@ -536,7 +536,7 @@ fn color_in(format: &PixelFormat, c: &Color) -> Vec<f32> {
         c.c[..n].to_vec()
     } else {
         let [r, g, b] = c.to_rgb();
-        let mut v = photocraft_raster::from_rgba(&PixelFormat { alpha: false, ..*format }, [r, g, b, 1.0]);
+        let mut v = patronusphoto_raster::from_rgba(&PixelFormat { alpha: false, ..*format }, [r, g, b, 1.0]);
         v.truncate(n);
         v
     }
@@ -849,15 +849,15 @@ pub fn outlines(layout: &TextLayout, transform: &Affine, warp: Option<&Warp>) ->
 #[cfg(test)]
 mod tests {
     use super::{MAX_PIXELS, fits_raster_budget, fits_tile_budget, rect_from_bounds, zeroed};
-    use photocraft_color::{PixelFormat, SampleType};
-    use photocraft_geom::Rect;
+    use patronusphoto_color::{PixelFormat, SampleType};
+    use patronusphoto_geom::Rect;
 
     /// Verifies underline and strikethrough decoration drawing bounds clip strictly to the text shape's explicit path span.
     #[test]
     fn path_decorations_respect_explicit_range() {
         use super::{Bounds, DecorationRect, TextLayout, Warp, Xform, draw};
-        use photocraft_doc::text::TextShape;
-        use photocraft_doc::vector::Subpath;
+        use patronusphoto_doc::text::TextShape;
+        use patronusphoto_doc::vector::Subpath;
 
         let path = Subpath::polyline(&[(0.0, 0.0), (100.0, 0.0)]);
         // Underline and strikethrough occupy separate bands but share the draw path.

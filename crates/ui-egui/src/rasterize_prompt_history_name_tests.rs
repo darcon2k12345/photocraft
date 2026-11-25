@@ -7,18 +7,18 @@ use serde_json::{Value, json};
 use super::tests::{BLUR, active_content, answer, app_with, click, menu, past, prompt};
 use super::*;
 
-fn step_name(app: &PhotocraftApp) -> Option<String> {
+fn step_name(app: &PatronusPhotoApp) -> Option<String> {
     app.session.active()?.history.undo_label().map(str::to_string)
 }
 
-fn active_layer_content(app: &PhotocraftApp) -> photocraft_doc::LayerContent {
+fn active_layer_content(app: &PatronusPhotoApp) -> patronusphoto_doc::LayerContent {
     let st = app.session.active().unwrap();
     st.doc.layer(st.active_layer.unwrap()).unwrap().content.clone()
 }
 
 /// A `kind` layer whose prompt is raised by a press of `tool`, or by Gaussian Blur from the menu
 /// when `tool` is `None`, and answered with OK. Returns the app and the history length before.
-fn answered(kind: Kind, tool: Option<Tool>) -> (Box<PhotocraftApp>, usize) {
+fn answered(kind: Kind, tool: Option<Tool>) -> (Box<PatronusPhotoApp>, usize) {
     let mut app = app_with(kind);
     let before = past(&app);
     match tool {

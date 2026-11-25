@@ -37,10 +37,10 @@ pub mod smart_mix;
 mod uniform;
 pub mod viewport;
 
-use photocraft_color::blend::BlendMode;
-use photocraft_doc::{Document, Fill, Layer, LayerContent, Pattern};
-use photocraft_geom::Rect;
-use photocraft_raster::{Rgba8Image, Surface};
+use patronusphoto_color::blend::BlendMode;
+use patronusphoto_doc::{Document, Fill, Layer, LayerContent, Pattern};
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::{Rgba8Image, Surface};
 use psblend as blend;
 
 pub use advanced::advanced_active;
@@ -104,7 +104,7 @@ pub struct Buffer {
 
 impl Clone for Buffer {
     fn clone(&self) -> Self {
-        let mut px = photocraft_raster::scratch::take(self.px.len(), [0.0; 4]);
+        let mut px = patronusphoto_raster::scratch::take(self.px.len(), [0.0; 4]);
         px.copy_from_slice(&self.px);
         Self { rect: self.rect, px }
     }
@@ -112,7 +112,7 @@ impl Clone for Buffer {
 
 impl Drop for Buffer {
     fn drop(&mut self) {
-        photocraft_raster::scratch::give(std::mem::take(&mut self.px));
+        patronusphoto_raster::scratch::give(std::mem::take(&mut self.px));
     }
 }
 
@@ -121,25 +121,26 @@ impl Buffer {
         Self::filled(rect, [0.0; 4])
     }
     pub fn filled(rect: Rect, c: [f32; 4]) -> Self {
-        Self { rect, px: photocraft_raster::scratch::take(rect.width() as usize * rect.height() as usize, c) }
+        Self { rect, px: patronusphoto_raster::scratch::take(rect.width() as usize * rect.height() as usize, c) }
     }
     /// Fallibly allocate a transparent RGBA buffer, preserving `filled`'s scratch-pool slack.
-    pub fn try_transparent(rect: Rect) -> Result<Self, photocraft_raster::AllocationError> {
+    pub fn try_transparent(rect: Rect) -> Result<Self, patronusphoto_raster::AllocationError> {
         Self::try_filled(rect, [0.0; 4])
     }
     /// Fallibly allocate and fill an RGBA buffer.
-    pub fn try_filled(rect: Rect, c: [f32; 4]) -> Result<Self, photocraft_raster::AllocationError> {
-        let width = usize::try_from(rect.width()).map_err(|_| photocraft_raster::AllocationError::SizeOverflow)?;
-        let height = usize::try_from(rect.height()).map_err(|_| photocraft_raster::AllocationError::SizeOverflow)?;
-        let len = width.checked_mul(height).ok_or(photocraft_raster::AllocationError::SizeOverflow)?;
-        let bytes = len.checked_mul(std::mem::size_of::<[f32; 4]>()).ok_or(photocraft_raster::AllocationError::SizeOverflow)?;
-        let px = photocraft_raster::scratch::try_take(len, c).ok_or(photocraft_raster::AllocationError::NotEnoughMemory { bytes })?;
+    pub fn try_filled(rect: Rect, c: [f32; 4]) -> Result<Self, patronusphoto_raster::AllocationError> {
+        let width = usize::try_from(rect.width()).map_err(|_| patronusphoto_raster::AllocationError::SizeOverflow)?;
+        let height = usize::try_from(rect.height()).map_err(|_| patronusphoto_raster::AllocationError::SizeOverflow)?;
+        let len = width.checked_mul(height).ok_or(patronusphoto_raster::AllocationError::SizeOverflow)?;
+        let bytes = len.checked_mul(std::mem::size_of::<[f32; 4]>()).ok_or(patronusphoto_raster::AllocationError::SizeOverflow)?;
+        let px = patronusphoto_raster::scratch::try_take(len, c).ok_or(patronusphoto_raster::AllocationError::NotEnoughMemory { bytes })?;
         Ok(Self { rect, px })
     }
     /// Fallibly clone the pixel storage while keeping the same rectangle.
-    pub fn try_clone(&self) -> Result<Self, photocraft_raster::AllocationError> {
-        let bytes = self.px.len().checked_mul(std::mem::size_of::<[f32; 4]>()).ok_or(photocraft_raster::AllocationError::SizeOverflow)?;
-        let mut px = photocraft_raster::scratch::try_take(self.px.len(), [0.0; 4]).ok_or(photocraft_raster::AllocationError::NotEnoughMemory { bytes })?;
+    pub fn try_clone(&self) -> Result<Self, patronusphoto_raster::AllocationError> {
+        let bytes = self.px.len().checked_mul(std::mem::size_of::<[f32; 4]>()).ok_or(patronusphoto_raster::AllocationError::SizeOverflow)?;
+        let mut px =
+            patronusphoto_raster::scratch::try_take(self.px.len(), [0.0; 4]).ok_or(patronusphoto_raster::AllocationError::NotEnoughMemory { bytes })?;
         px.copy_from_slice(&self.px);
         Ok(Self { rect: self.rect, px })
     }
@@ -206,13 +207,13 @@ impl BufferAlloc for InfallibleBufferAlloc {
         Ok(buffer.clone())
     }
     fn scalar_filled(&self, rect: Rect, value: f32) -> Result<Vec<f32>, Self::Error> {
-        Ok(photocraft_raster::scratch::take(rect.width() as usize * rect.height() as usize, value))
+        Ok(patronusphoto_raster::scratch::take(rect.width() as usize * rect.height() as usize, value))
     }
 }
 
 pub(crate) struct FallibleBufferAlloc;
 impl BufferAlloc for FallibleBufferAlloc {
-    type Error = photocraft_raster::AllocationError;
+    type Error = patronusphoto_raster::AllocationError;
     fn filled(&self, rect: Rect, color: [f32; 4]) -> Result<Buffer, Self::Error> {
         Buffer::try_filled(rect, color)
     }
@@ -220,11 +221,11 @@ impl BufferAlloc for FallibleBufferAlloc {
         buffer.try_clone()
     }
     fn scalar_filled(&self, rect: Rect, value: f32) -> Result<Vec<f32>, Self::Error> {
-        let width = usize::try_from(rect.width()).map_err(|_| photocraft_raster::AllocationError::SizeOverflow)?;
-        let height = usize::try_from(rect.height()).map_err(|_| photocraft_raster::AllocationError::SizeOverflow)?;
-        let len = width.checked_mul(height).ok_or(photocraft_raster::AllocationError::SizeOverflow)?;
-        let bytes = len.checked_mul(std::mem::size_of::<f32>()).ok_or(photocraft_raster::AllocationError::SizeOverflow)?;
-        photocraft_raster::scratch::try_take(len, value).ok_or(photocraft_raster::AllocationError::NotEnoughMemory { bytes })
+        let width = usize::try_from(rect.width()).map_err(|_| patronusphoto_raster::AllocationError::SizeOverflow)?;
+        let height = usize::try_from(rect.height()).map_err(|_| patronusphoto_raster::AllocationError::SizeOverflow)?;
+        let len = width.checked_mul(height).ok_or(patronusphoto_raster::AllocationError::SizeOverflow)?;
+        let bytes = len.checked_mul(std::mem::size_of::<f32>()).ok_or(patronusphoto_raster::AllocationError::SizeOverflow)?;
+        patronusphoto_raster::scratch::try_take(len, value).ok_or(patronusphoto_raster::AllocationError::NotEnoughMemory { bytes })
     }
 }
 

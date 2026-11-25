@@ -6,11 +6,11 @@ use craft::ui::dialog::DialogId;
 use craft::ui::patterns::form_dialogs::{DialogFields, Param, ParamDialog, ParamKind, ParamResult};
 use craft::ui::runtime::env::Label;
 use craft::ui::value_drag::SliderScale;
-use photocraft_color::BlendMode;
-use photocraft_doc::{DocId, LayerContent, LayerId};
+use patronusphoto_color::BlendMode;
+use patronusphoto_doc::{DocId, LayerContent, LayerId};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::dialogs::blend_options::{blend_mode, blend_param};
 use crate::dialogs::params::{captured, open_param};
 
@@ -18,7 +18,7 @@ use crate::dialogs::params::{captured, open_param};
 pub const COMMAND: &str = "layer.smartFilter.blendingOptions";
 
 /// Identify the Smart Filter at `layer`/`index` (document, revision, filter) so a stale dialog can be told apart from a current one.
-fn snapshot(app: &PhotocraftApp, layer: LayerId, index: usize) -> Result<Value, String> {
+fn snapshot(app: &PatronusPhotoApp, layer: LayerId, index: usize) -> Result<Value, String> {
     let st = app.session.active().ok_or("no document open")?;
     if app.session.job_on(st.doc.id).is_some() {
         return Err(tl!("Wait for the current job to finish.").into());
@@ -33,7 +33,7 @@ fn snapshot(app: &PhotocraftApp, layer: LayerId, index: usize) -> Result<Value, 
 
 /// The Smart Filter target an editor captures at open: the filter's snapshot. A closed document cancels the
 /// dialogs that hold its target, so the snapshot alone tells a stale target from a current one.
-pub(crate) fn target(app: &PhotocraftApp, layer: LayerId, index: usize) -> Result<Value, String> {
+pub(crate) fn target(app: &PatronusPhotoApp, layer: LayerId, index: usize) -> Result<Value, String> {
     snapshot(app, layer, index)
 }
 
@@ -51,7 +51,7 @@ pub(crate) fn document(captured: &Value) -> Option<DocId> {
 }
 
 /// Revision and filter identity catch every edit made since the target was captured.
-pub(crate) fn validate_target(app: &PhotocraftApp, target: &Value) -> Result<(LayerId, usize), String> {
+pub(crate) fn validate_target(app: &PatronusPhotoApp, target: &Value) -> Result<(LayerId, usize), String> {
     let layer = LayerId(target.get("layer").and_then(Value::as_u64).ok_or("invalid Smart Filter target")?);
     let index = target.get("index").and_then(Value::as_u64).and_then(|i| usize::try_from(i).ok()).ok_or("invalid Smart Filter index")?;
     if snapshot(app, layer, index)? != *target {
@@ -61,7 +61,7 @@ pub(crate) fn validate_target(app: &PhotocraftApp, target: &Value) -> Result<(La
 }
 
 /// Open the Blending Options dialog for one Smart Filter, starting from its recorded mode and opacity (shown as a percentage).
-pub fn open(app: &mut PhotocraftApp, layer: LayerId, index: usize) -> Result<DialogId, String> {
+pub fn open(app: &mut PatronusPhotoApp, layer: LayerId, index: usize) -> Result<DialogId, String> {
     let target = self::target(app, layer, index)?;
     let st = app.session.active().ok_or("no document open")?;
     let Some(LayerContent::Smart(sm)) = st.doc.layer(layer).map(|l| &l.content) else { return Err("the layer is not a Smart Object".into()) };
@@ -93,7 +93,7 @@ fn blend_params(fields: &DialogFields) -> Result<Value, String> {
 }
 
 /// The command a confirmed Blending Options dialog runs on the validated `target`.
-pub(crate) fn blend_command(app: &PhotocraftApp, target: &Value, fields: &DialogFields) -> Result<(String, Value), String> {
+pub(crate) fn blend_command(app: &PatronusPhotoApp, target: &Value, fields: &DialogFields) -> Result<(String, Value), String> {
     let (layer, index) = validate_target(app, target)?;
     let mut params = blend_params(fields)?;
     if let Some(p) = params.as_object_mut() {
@@ -104,7 +104,7 @@ pub(crate) fn blend_command(app: &PhotocraftApp, target: &Value, fields: &Dialog
 }
 
 /// The command a confirmed parameter editor of a Smart Filter runs on the validated `target`: `layer.smartFilter.setParams`.
-pub(crate) fn params_command(app: &PhotocraftApp, target: &Value, command: &str, params: Value) -> Result<(String, Value), String> {
+pub(crate) fn params_command(app: &PatronusPhotoApp, target: &Value, command: &str, params: Value) -> Result<(String, Value), String> {
     let (layer, index) = validate_target(app, target)?;
     // An adjustment's dialog opens on all the recorded settings and may remove keys, so OK
     // replaces them: merged, a removed one stays stored and can override the edit (a stale
@@ -114,13 +114,13 @@ pub(crate) fn params_command(app: &PhotocraftApp, target: &Value, command: &str,
 }
 
 /// OK is held until the captured target still names the filter.
-pub(crate) fn check(app: &mut PhotocraftApp, result: &ParamResult) -> Result<(), Label> {
+pub(crate) fn check(app: &mut PatronusPhotoApp, result: &ParamResult) -> Result<(), Label> {
     let captured = captured(app, &result.key);
     validate_target(app, &captured).map(|_| ()).map_err(Label::from)
 }
 
 /// Run the confirmed blending on the captured filter.
-pub(crate) fn run(app: &mut PhotocraftApp, _ctx: &egui::Context, result: ParamResult) {
+pub(crate) fn run(app: &mut PatronusPhotoApp, _ctx: &egui::Context, result: ParamResult) {
     let captured = captured(app, &result.key);
     let done = blend_command(app, &captured, &result.fields).and_then(|(command, params)| app.run(&command, params));
     if let Err(e) = done {

@@ -5,7 +5,7 @@ use craft::keymap::{Chord, Platform};
 use egui::{Key, KeyboardShortcut, Modifiers};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// Parse `Cmd+Shift+N` style strings. `Cmd` maps to ⌘ on macOS and Ctrl elsewhere.
@@ -42,37 +42,37 @@ fn lone_key(s: &str) -> String {
 
 /// The command's effective shortcut in the platform's notation (`Ctrl+N`), or `None` when
 /// the command has no binding (the user removed it in Edit › Keyboard Shortcuts).
-pub fn shortcut_label(app: &PhotocraftApp, command: &str) -> Option<String> {
+pub fn shortcut_label(app: &PatronusPhotoApp, command: &str) -> Option<String> {
     effective_shortcut(app, command, default_shortcut(command).as_deref()).map(|s| pretty(&s))
 }
 
 /// The command's effective shortcut as a chord, for framework components that show or bind it.
-pub fn chord(app: &PhotocraftApp, command: &str) -> Option<craft::keymap::Chord> {
+pub fn chord(app: &PatronusPhotoApp, command: &str) -> Option<craft::keymap::Chord> {
     effective_shortcut(app, command, default_shortcut(command).as_deref()).and_then(|s| craft::keymap::Chord::parse(&s).ok())
 }
 
 /// `label` (English, shown in the UI language) followed by the command's effective shortcut
 /// (`New document…     Ctrl+N`); bare `label` when the binding was removed.
-pub fn command_label(app: &PhotocraftApp, label: &str, command: &str) -> String {
+pub fn command_label(app: &PatronusPhotoApp, label: &str, command: &str) -> String {
     let label = tl!(label);
     shortcut_label(app, command).map_or_else(|| label.to_string(), |sc| format!("{label}     {sc}"))
 }
 
 /// `label` (English, shown in the UI language) with the command's effective shortcut in
 /// parentheses (`Rulers  (Ctrl+R)`); bare `label` when the binding was removed.
-pub fn tip_label(app: &PhotocraftApp, label: &str, command: &str) -> String {
+pub fn tip_label(app: &PatronusPhotoApp, label: &str, command: &str) -> String {
     let label = tl!(label);
     shortcut_label(app, command).map_or_else(|| label.to_string(), |sc| format!("{label}  ({sc})"))
 }
 
 /// The shortcut in effect for a command: the user's override, else `default`.
-pub fn effective_shortcut(app: &PhotocraftApp, id: &str, default: Option<&str>) -> Option<String> {
+pub fn effective_shortcut(app: &PatronusPhotoApp, id: &str, default: Option<&str>) -> Option<String> {
     app.session.prefs().shortcut(id, default).map(str::to_string)
 }
 
 /// A command's further keys in effect besides its main one (#3665): the user's, else
 /// Photoshop's (F3 for Copy, Shift+F7 for Inverse…). Menus show only the main key.
-pub fn effective_alternates(app: &PhotocraftApp, id: &str) -> Vec<String> {
+pub fn effective_alternates(app: &PatronusPhotoApp, id: &str) -> Vec<String> {
     let main = effective_shortcut(app, id, default_shortcut(id).as_deref());
     app.session.prefs().alternates(id, main.as_deref())
 }
@@ -83,9 +83,9 @@ pub fn default_shortcut(id: &str) -> Option<String> {
         .iter()
         .find(|c| c.0 == id)
         .and_then(|c| c.3)
-        .or_else(|| photocraft_engine::commands::find(id).and_then(|c| c.shortcut))
+        .or_else(|| patronusphoto_engine::commands::find(id).and_then(|c| c.shortcut))
         .or_else(|| crate::menu_catalog::CATALOG.iter().find(|c| c.3 == id).and_then(|c| c.2))
-        .or_else(|| photocraft_engine::prefs::TEMPORARY_TOOLS.iter().find(|t| t.0 == id).map(|t| t.2))
+        .or_else(|| patronusphoto_engine::prefs::TEMPORARY_TOOLS.iter().find(|t| t.0 == id).map(|t| t.2))
         .map(str::to_string)
         .or_else(|| crate::tool_shortcuts::tool(id).and_then(crate::tool_shortcuts::default))
 }
@@ -186,7 +186,7 @@ pub fn clipboard_keys(ctx: &egui::Context, typing: bool, raw: &mut egui::RawInpu
         // makes from the window's key and so never sends as key presses. A ⌘C / ⌘X / ⌘V press
         // here is the Mac menu's key equivalent (AppKit takes the key while Edit › Copy, Cut or
         // Paste is enabled), which a text field ignores: pasting text worked only while
-        // PhotoCraft's own clipboard was empty. Give those presses back as the events; Paste asks
+        // Patronus Photo's own clipboard was empty. Give those presses back as the events; Paste asks
         // the window for the clipboard text, which arrives as a Paste event next frame.
         raw.events.retain_mut(|e| {
             let egui::Event::Key { key, pressed: true, modifiers: m, .. } = *e else { return true };
@@ -295,7 +295,7 @@ pub fn clipboard_keys(ctx: &egui::Context, typing: bool, raw: &mut egui::RawInpu
 /// ([`crate::shortcut_dispatch::run_fired`]), then the held-key work of the app; Escape is [`escape_keys`]'s. The fired list is taken,
 /// so a second pass in one frame runs only what its own input fired. The main window runs no shortcuts while the
 /// screen color picker is open.
-pub fn handle(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub fn handle(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     let fired = std::mem::take(&mut app.framework.fired);
     if crate::screen_picker::busy(app) {
         return;
@@ -313,7 +313,7 @@ pub fn handle(app: &mut PhotocraftApp, ctx: &egui::Context) {
 /// reaches the window's intents. The main window takes none while the screen color picker is open, and a foreground
 /// save (Save in Background off, #6207) blocks the app until the file is written: only Esc reaches it, to cancel
 /// while it still encodes (see `jobs_ui::tick`).
-pub fn escape_keys(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub fn escape_keys(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     if crate::screen_picker::busy(app) || crate::jobs_ui::foreground_save(app).is_some() {
         return;
     }
@@ -323,7 +323,7 @@ pub fn escape_keys(app: &mut PhotocraftApp, ctx: &egui::Context) {
 /// Esc (reset a rotated view, else leave full screen, else deselect), the Add and Delete Anchor Point and Path
 /// Selection Esc stages, and the `+` / `−` path operations.
 /// Runs last, so every state that owns Esc has already had its chance.
-fn handle_escape_and_view_keys(app: &mut PhotocraftApp, ctx: &egui::Context) {
+fn handle_escape_and_view_keys(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     // A Properties Levels/Curves eyedropper: Esc disarms it.
     if !app.dialog_open() && crate::layer_picker::armed(app).is_some() && crate::window_keys::take_escape(ctx) {
         crate::layer_picker::cancel(app);

@@ -1,10 +1,10 @@
 //! Paint.NET PDN3 import. File parsing and pixel decompression live in `craft-pdn`;
-//! this module maps its neutral document structures into PhotoCraft's layer model.
+//! this module maps its neutral document structures into Patronus Photo's layer model.
 
-use photocraft_color::{BlendMode, ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{Document, Layer, LayerContent};
-use photocraft_geom::{Rect, Size};
-use photocraft_raster::{Interrupt, Surface};
+use patronusphoto_color::{BlendMode, ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::{Document, Layer, LayerContent};
+use patronusphoto_geom::{Rect, Size};
+use patronusphoto_raster::{Interrupt, Surface};
 
 use crate::{ImportResult, IoError};
 
@@ -45,7 +45,7 @@ pub(super) fn import(name: &str, bytes: &[u8], ctl: &Interrupt<'_>) -> Result<Im
     })?;
     let size = Size::new(parsed.width as u32, parsed.height as u32);
     let format = PixelFormat::RGBA8;
-    let raster_bytes = usize::try_from(photocraft_raster::tile_storage_bytes(Rect::from_xywh(0, 0, size.width, size.height), &format)).unwrap_or(usize::MAX);
+    let raster_bytes = usize::try_from(patronusphoto_raster::tile_storage_bytes(Rect::from_xywh(0, 0, size.width, size.height), &format)).unwrap_or(usize::MAX);
     let total = parsed.decoded_bytes().saturating_add(raster_bytes.saturating_mul(parsed.surface_count()));
     if total > MAX_PIXEL_BYTES {
         return Err(invalid("decoded pixels exceed the 1 GiB limit"));

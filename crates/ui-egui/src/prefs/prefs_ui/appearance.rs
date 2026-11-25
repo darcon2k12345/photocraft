@@ -1,11 +1,11 @@
-use super::{AppearanceMode, Color32, PhotocraftApp, json, prefs};
+use super::{AppearanceMode, Color32, PatronusPhotoApp, json, prefs};
 use crate::theme::AppTheme;
 use craft::menu::{ThemeChoice, ThemeMenu, ThemeRow};
 use craft::theme::{Mode, ThemeId};
 use craft::ui::runtime::env::system_appearance;
 
 /// The GPU canvas's gamut warning colours from Preferences › Transparency & Gamut.
-pub fn canvas_style(app: &PhotocraftApp) -> crate::gpu_canvas::CanvasStyle {
+pub fn canvas_style(app: &PatronusPhotoApp) -> crate::gpu_canvas::CanvasStyle {
     let t = &app.session.prefs().transparency_and_gamut;
     let f = |c: [u8; 3]| c.map(|v| v as f32 / 255.0);
     let g = prefs::parse_hex(&t.gamut_warning_color).unwrap_or([128; 3]);
@@ -13,7 +13,7 @@ pub fn canvas_style(app: &PhotocraftApp) -> crate::gpu_canvas::CanvasStyle {
 }
 
 /// Pasteboard colour from Preferences › Interface (`None` = the theme's default canvas).
-pub fn pasteboard_color(app: &PhotocraftApp) -> Option<Color32> {
+pub fn pasteboard_color(app: &PatronusPhotoApp) -> Option<Color32> {
     use prefs::CanvasColor;
     let i = &app.session.prefs().interface;
     Some(match i.canvas_color {
@@ -43,7 +43,7 @@ fn selected_slot(interface: &prefs::Interface, system: Option<egui::Theme>) -> (
     (if light { &interface.light_theme } else { &interface.dark_theme }, !light)
 }
 
-pub(crate) fn cycle_appearance(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(crate) fn cycle_appearance(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     let next = match app.session.prefs().interface.appearance_mode {
         AppearanceMode::Auto => AppearanceMode::Light,
         AppearanceMode::Light => AppearanceMode::Dark,
@@ -60,7 +60,7 @@ pub(crate) fn cycle_appearance(app: &mut PhotocraftApp, ctx: &egui::Context) {
 /// Photoshop's four brightnesses from the theme on screen, stopping at either end, as in
 /// Photoshop. Another theme steps from the nearest brightness: Medium Gray for a dark one, Light
 /// Gray for a light one. The choice is saved like picking it in Preferences › Interface.
-pub(crate) fn step_brightness(app: &mut PhotocraftApp, ctx: &egui::Context, lighter: bool) -> Result<(), String> {
+pub(crate) fn step_brightness(app: &mut PatronusPhotoApp, ctx: &egui::Context, lighter: bool) -> Result<(), String> {
     let brightnesses = AppTheme::brightnesses();
     let at = brightnesses.iter().position(|k| *k == app.ui.theme).unwrap_or(if app.ui.theme.is_dark() { 1 } else { 2 });
     let next = if lighter { (at + 1).min(brightnesses.len() - 1) } else { at.saturating_sub(1) };
@@ -74,7 +74,7 @@ pub(crate) fn step_brightness(app: &mut PhotocraftApp, ctx: &egui::Context, ligh
 }
 
 /// The Appearance menu's rows: every theme in both modes, the current choice and the favourites.
-pub fn theme_menu(app: &PhotocraftApp) -> ThemeMenu {
+pub fn theme_menu(app: &PatronusPhotoApp) -> ThemeMenu {
     let interface = &app.session.prefs().interface;
     let mut rows = Vec::new();
     for (row, dark) in [(AppTheme::light_row(), false), (AppTheme::dark_row(), true)] {
@@ -94,7 +94,7 @@ pub fn theme_menu(app: &PhotocraftApp) -> ThemeMenu {
 }
 
 /// The OS's light or dark mode, `None` where it gives no answer.
-pub(super) fn system_theme(_app: &PhotocraftApp, ctx: &egui::Context) -> Option<egui::Theme> {
+pub(super) fn system_theme(_app: &PatronusPhotoApp, ctx: &egui::Context) -> Option<egui::Theme> {
     system_appearance(ctx).appearance.mode.map(|mode| match mode {
         Mode::Dark => egui::Theme::Dark,
         _ => egui::Theme::Light,
@@ -113,7 +113,7 @@ pub(super) fn display_scale(pref: prefs::UiScale, native: Option<f32>) -> f32 {
     }
 }
 
-pub(super) fn sync_display_scale(app: &PhotocraftApp, ctx: &egui::Context) {
+pub(super) fn sync_display_scale(app: &PatronusPhotoApp, ctx: &egui::Context) {
     ctx.set_zoom_factor(interface_zoom(app.session.prefs().interface.ui_scale, ctx));
 }
 
@@ -128,7 +128,7 @@ pub(crate) fn interface_zoom(pref: prefs::UiScale, ctx: &egui::Context) -> f32 {
 /// Interface › Show Tooltips and Tools › Show Tooltips (either one off hides them): egui never
 /// shows a tooltip whose delay is infinite. Re-checked every frame because a theme change
 /// rebuilds the style; that's one style read, and a write only when it differs.
-pub(super) fn sync_tooltips(app: &PhotocraftApp, ctx: &egui::Context) {
+pub(super) fn sync_tooltips(app: &PatronusPhotoApp, ctx: &egui::Context) {
     let p = app.session.prefs();
     let delay = if p.interface.show_tooltips && p.tools.show_tooltips { crate::theme::TOOLTIP_DELAY } else { f32::INFINITY };
     if ctx.global_style().interaction.tooltip_delay != delay {
@@ -140,7 +140,7 @@ pub(super) fn sync_tooltips(app: &PhotocraftApp, ctx: &egui::Context) {
 /// isn't the one on screen. Runs every frame, so it only compares the slot's id and the mode; a
 /// slot the suite can't resolve, shown as the mode's default, resolves again only when
 /// `Framework::sync_theme` reports a change.
-pub(crate) fn sync_appearance(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(crate) fn sync_appearance(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     // A restored or embedding-supplied pin must not suppress native appearance events.
     ctx.set_theme(egui::ThemePreference::System);
     // The native service also covers Wayland sessions where winit has no system theme.
@@ -155,7 +155,7 @@ pub(crate) fn sync_appearance(app: &mut PhotocraftApp, ctx: &egui::Context) {
 /// Resolves the theme the saved appearance mode and slots select and shows it when it differs
 /// from the one on screen: also after the suite moved (`Framework::sync_theme`), when a library
 /// theme's definition may have changed under the same id.
-pub(crate) fn show_selected_theme(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(crate) fn show_selected_theme(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     let (id, dark) = selected_theme(&app.session.prefs().interface, system_theme(app, ctx));
     // A library theme the suite is loading: the current look stays until the suite's read shows it.
     if app.framework.theme_availability(&id) == Err(crate::app::framework::ThemeUnavailable::Loading) {

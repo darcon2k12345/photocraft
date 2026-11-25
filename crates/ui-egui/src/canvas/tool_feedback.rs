@@ -9,7 +9,7 @@ use craft::behavior::CursorBadge;
 use craft::behavior::geometry::SelectionOperation;
 use craft::keymap::Mods;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// Tools whose cursor carries the selection-mode badge.
@@ -64,7 +64,7 @@ pub fn mode_name(op: SelectionOperation) -> &'static str {
 /// Whether the active document has a non-empty selection. Reads the bounds the selection outline
 /// caches (same key), since the canvas asks every frame while a Patch lasso is drawn or hovered
 /// with ⌥.
-pub fn has_selection(app: &PhotocraftApp) -> bool {
+pub fn has_selection(app: &PatronusPhotoApp) -> bool {
     app.session.active().is_some_and(|st| st.doc.selection.as_ref().is_some_and(|s| !app.known_bounds(u64::MAX - st.doc.id.0, s).is_empty()))
 }
 
@@ -74,7 +74,7 @@ pub fn has_selection(app: &PhotocraftApp) -> bool {
 /// (an arrow for Patch, none for Content-Aware Move); otherwise the tool lassos its area in the
 /// Lasso's operation (⇧ adds, ⌥ subtracts, #11024). A ⌘ press is the Move tool's, through the
 /// Command stand-in.
-pub fn patch_badge(app: &PhotocraftApp, at: [f64; 2], press: Option<([f64; 2], Mods)>, mods: Mods) -> Option<CursorBadge> {
+pub fn patch_badge(app: &PatronusPhotoApp, at: [f64; 2], press: Option<([f64; 2], Mods)>, mods: Mods) -> Option<CursorBadge> {
     let tool = app.ui.tool;
     if !matches!(tool, Tool::Patch | Tool::ContentAwareMove) {
         return None;
@@ -96,7 +96,7 @@ mod tests {
     /// asks every frame, and scans only a selection that changed since.
     #[test]
     fn alt_reads_the_cached_selection_bounds() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
         app.run("file.new", serde_json::json!({"width": 40, "height": 30})).unwrap();
         app.run("select.rect", serde_json::json!({"x": 5, "y": 5, "width": 10, "height": 10})).unwrap();
         assert!(has_selection(&app), "nothing cached: scanned");
@@ -104,7 +104,7 @@ mod tests {
         let st = app.session.active().unwrap();
         let (key, fingerprint) = (u64::MAX - st.doc.id.0, st.doc.selection.as_ref().unwrap().generation());
         // An empty box cached for this very selection is believed, so nothing is scanned.
-        app.bounds_cache.insert(key, (fingerprint, photocraft_geom::Rect::EMPTY));
+        app.bounds_cache.insert(key, (fingerprint, patronusphoto_geom::Rect::EMPTY));
         assert!(!has_selection(&app), "the cached bounds are used");
         assert_eq!(selection_op(Tool::Lasso, 0, ALT, has_selection(&app)), SelectionOperation::New);
         app.run("select.rect", serde_json::json!({"x": 20, "y": 5, "width": 10, "height": 10})).unwrap();

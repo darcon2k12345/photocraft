@@ -6,7 +6,7 @@ use super::*;
 fn tmp(name: &str) -> String {
     static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
     let id = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let d = std::env::temp_dir().join(format!("photocraft-open-as-name-{}-{name}-{id}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("patronusphoto-open-as-name-{}-{name}-{id}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).unwrap();
     d.to_string_lossy().into_owned()
@@ -72,7 +72,7 @@ fn every_camera_raw_and_affinity_extension_is_an_open_as_format() {
     let dir = tmp("raw-exts");
     let path = write_notes(&dir);
     let mut s = Session::new();
-    for ext in photocraft_io::raw::EXTENSIONS.iter().chain(photocraft_io::affinity::EXTENSIONS) {
+    for ext in patronusphoto_io::raw::EXTENSIONS.iter().chain(patronusphoto_io::affinity::EXTENSIONS) {
         let r = s.execute("file.openAs", json!({"path": path, "as": ext}));
         assert!(!matches!(r, Err(EngineError::BadParams { .. })), "{ext}: {r:?}");
     }
@@ -81,8 +81,8 @@ fn every_camera_raw_and_affinity_extension_is_an_open_as_format() {
 #[test]
 fn a_png_opened_as_png_keeps_its_real_file_name() {
     let dir = tmp("png");
-    let img = photocraft_codecs::Image::from_u8(4, 4, photocraft_codecs::ChannelLayout::Rgb, vec![200; 48]).unwrap();
-    let bytes = photocraft_codecs::encode(&img, photocraft_codecs::Format::Png, &Default::default()).unwrap();
+    let img = patronusphoto_codecs::Image::from_u8(4, 4, patronusphoto_codecs::ChannelLayout::Rgb, vec![200; 48]).unwrap();
+    let bytes = patronusphoto_codecs::encode(&img, patronusphoto_codecs::Format::Png, &Default::default()).unwrap();
     let path = join(&dir, "photo one.png");
     std::fs::write(&path, bytes).unwrap();
     let mut s = Session::new();

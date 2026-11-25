@@ -4,16 +4,16 @@
 //! menu and other tools keep their right-click. A Free Transform box keeps its transform menu.
 
 use egui::Modifiers;
-use photocraft_doc::BlendMode;
+use patronusphoto_doc::BlendMode;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing;
 use crate::canvas_tool_menu::{self, MenuKind};
 use crate::state::Tool;
 
-fn bucket() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn bucket() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 64, "height": 64, "background": "white"})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     app.ui.tool = Tool::PaintBucket;
@@ -21,7 +21,7 @@ fn bucket() -> Box<PhotocraftApp> {
     app
 }
 
-fn steps(app: &PhotocraftApp) -> usize {
+fn steps(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.past_len()
 }
 
@@ -31,7 +31,7 @@ fn options_bar_modes() -> Vec<&'static str> {
 }
 
 /// The open Mode menu's rows (ids) and the ids of the checked ones; `None` when it is not open.
-fn mode_menu(app: &PhotocraftApp) -> Option<(Vec<String>, Vec<String>)> {
+fn mode_menu(app: &PatronusPhotoApp) -> Option<(Vec<String>, Vec<String>)> {
     let menu = app.ui.canvas_tool_menu.as_ref().filter(|m| matches!(m.kind, MenuKind::BrushMode { .. }))?;
     let rows: Vec<_> = canvas_tool_menu::entries(app, menu).into_iter().filter(|e| !e.is_separator()).collect();
     let id = |e: &craft::ui::contract::Entry<String>| e.value().cloned().unwrap_or_default();

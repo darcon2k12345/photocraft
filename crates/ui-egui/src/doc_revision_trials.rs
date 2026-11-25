@@ -5,27 +5,27 @@
 use craft::layers::ui::thumbs::{LayerThumb, ThumbContents};
 use craft::ui::primitives::textures::{ThumbRequest, ThumbSource};
 use egui_kittest::Harness;
-use photocraft_doc::{Fill, Layer, LayerContent, LayerId, PixelFormat};
-use photocraft_engine::Session;
+use patronusphoto_doc::{Fill, Layer, LayerContent, LayerId, PixelFormat};
+use patronusphoto_engine::Session;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::panels::layers_tree::PhotoThumbs;
 use crate::state::Tool;
 
-type H = Harness<'static, Box<PhotocraftApp>>;
+type H = Harness<'static, Box<PatronusPhotoApp>>;
 
 fn harness(s: Session) -> H {
     let mut h = Harness::builder().with_size(egui::vec2(1440.0, 900.0)).with_step_dt(1.0 / 60.0).with_max_steps(64).build_eframe(|cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::with_context(cc.egui_ctx.clone(), s, crate::Services::default())
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        PatronusPhotoApp::with_context(cc.egui_ctx.clone(), s, crate::Services::default())
     });
     h.run_steps(4);
     h
 }
 
 /// Every thumbnail the Layers panel can ask of the active document: each layer's picture and each mask.
-fn keys(app: &PhotocraftApp) -> Vec<LayerThumb<LayerId>> {
+fn keys(app: &PatronusPhotoApp) -> Vec<LayerThumb<LayerId>> {
     let doc = &app.session.active().unwrap().doc;
     let mut keys = Vec::new();
     for (_, _, l) in doc.walk() {
@@ -37,7 +37,7 @@ fn keys(app: &PhotocraftApp) -> Vec<LayerThumb<LayerId>> {
     keys
 }
 
-fn revisions(app: &PhotocraftApp, keys: &[LayerThumb<LayerId>]) -> Vec<u64> {
+fn revisions(app: &PatronusPhotoApp, keys: &[LayerThumb<LayerId>]) -> Vec<u64> {
     let doc = &app.session.active().unwrap().doc;
     let thumbs = PhotoThumbs::new(app, doc);
     keys.iter().map(|k| thumbs.revision(k, &ThumbRequest::for_cell(32.0, 1.0)).get()).collect()
@@ -155,9 +155,9 @@ fn idle_frames_walk_no_document() {
     h.run_steps(4);
     let serial = |h: &H| h.state().session.active().unwrap().doc.layers.index().serial();
     let builds = |h: &H| h.state().doc_queries.builds();
-    let (walks, index, built) = (photocraft_doc::walks(), serial(&h), builds(&h));
+    let (walks, index, built) = (patronusphoto_doc::walks(), serial(&h), builds(&h));
     h.run_steps(10);
-    assert_eq!((photocraft_doc::walks() - walks, serial(&h)), (0, index), "idle frames walk nothing");
+    assert_eq!((patronusphoto_doc::walks() - walks, serial(&h)), (0, index), "idle frames walk nothing");
     assert_eq!(builds(&h), built, "idle frames compute nothing");
 
     // The new artboard is the active layer; the fill goes on a pixel layer.
@@ -167,8 +167,8 @@ fn idle_frames_walk_no_document() {
     h.state_mut().run("edit.fill", json!({"contents": "black"})).unwrap();
     h.run_steps(4);
     assert!(builds(&h) > built, "an edit computes the values again");
-    let (walks, built) = (photocraft_doc::walks(), builds(&h));
+    let (walks, built) = (patronusphoto_doc::walks(), builds(&h));
     h.run_steps(10);
-    assert_eq!(photocraft_doc::walks() - walks, 0, "after an edit, idle frames walk nothing again");
+    assert_eq!(patronusphoto_doc::walks() - walks, 0, "after an edit, idle frames walk nothing again");
     assert_eq!(builds(&h), built, "after an edit, idle frames compute nothing again");
 }

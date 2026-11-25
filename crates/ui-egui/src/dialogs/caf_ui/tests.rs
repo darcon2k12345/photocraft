@@ -1,6 +1,6 @@
 use craft::imaging::ui::fill::FillOp;
 use craft::ui::canvas::PixelRect;
-use photocraft_doc::LayerId;
+use patronusphoto_doc::LayerId;
 use serde_json::{Value, json};
 
 use super::preview::{compute_preview, plan_params};
@@ -8,8 +8,8 @@ use super::*;
 use crate::control::dialogs::workspace_ui;
 
 /// A textured layer (a checker of two colours over a gradient) with a 20 px square selected.
-fn app_with_selection() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app_with_selection() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.session.execute("file.new", json!({"width": 200, "height": 160, "depth": 8})).unwrap();
     app.session.execute("layer.new.layer", json!({})).unwrap();
     app.session
@@ -35,24 +35,24 @@ fn app_with_selection() -> Box<PhotocraftApp> {
     app
 }
 
-fn px(app: &PhotocraftApp, layer: LayerId, x: i32, y: i32) -> Vec<f32> {
+fn px(app: &PatronusPhotoApp, layer: LayerId, x: i32, y: i32) -> Vec<f32> {
     app.session.active().unwrap().doc.layer(layer).unwrap().surface().unwrap().pixel(x, y)
 }
 
 /// The app's own context, which the dialog host and the remembered values run on.
-fn ctx(app: &PhotocraftApp) -> egui::Context {
+fn ctx(app: &PatronusPhotoApp) -> egui::Context {
     app.ctx().clone()
 }
 
 /// One pass of the host with the app's taker, as a frame runs them.
-fn pass(app: &mut PhotocraftApp) {
+fn pass(app: &mut PatronusPhotoApp) {
     let ctx = ctx(app);
     crate::canvas::testing::frame(app);
     take(app, &ctx);
 }
 
 /// A `{ui: …}` request to the open workspace, then the passes that report what it queued.
-fn ui(app: &mut PhotocraftApp, request: Value) -> Result<Value, String> {
+fn ui(app: &mut PatronusPhotoApp, request: Value) -> Result<Value, String> {
     let ctx = ctx(app);
     let r = workspace_ui(app, &ctx, CMD, &request);
     pass(app);
@@ -60,16 +60,16 @@ fn ui(app: &mut PhotocraftApp, request: Value) -> Result<Value, String> {
     r
 }
 
-fn facts(app: &PhotocraftApp) -> Value {
+fn facts(app: &PatronusPhotoApp) -> Value {
     describe(app).expect("the workspace is open")
 }
 
-fn sampled(app: &PhotocraftApp) -> u64 {
+fn sampled(app: &PatronusPhotoApp) -> u64 {
     facts(app)["sampledProxyPixels"].as_u64().unwrap()
 }
 
 /// Runs passes until `done` holds of the facts (the preview job runs on another thread).
-fn settle(app: &mut PhotocraftApp, done: impl Fn(&Value) -> bool) -> Value {
+fn settle(app: &mut PatronusPhotoApp, done: impl Fn(&Value) -> bool) -> Value {
     for _ in 0..600 {
         pass(app);
         // The preview job waits on the framework's queue until a request finishes it, as `waitPreview` does.
@@ -84,7 +84,7 @@ fn settle(app: &mut PhotocraftApp, done: impl Fn(&Value) -> bool) -> Value {
     panic!("the workspace did not settle: {}", facts(app));
 }
 
-fn close_all(app: &mut PhotocraftApp) {
+fn close_all(app: &mut PatronusPhotoApp) {
     for _ in 0..20 {
         if app.caf.is_none() {
             return;
@@ -93,7 +93,7 @@ fn close_all(app: &mut PhotocraftApp) {
     }
 }
 
-fn hosted(app: &mut PhotocraftApp) -> &mut Hosted {
+fn hosted(app: &mut PatronusPhotoApp) -> &mut Hosted {
     let id = app.caf.as_ref().unwrap().id;
     app.framework.dialogs.get_mut_by_id::<Hosted>(id).unwrap()
 }
@@ -213,7 +213,7 @@ fn undo_and_redo_of_a_stroke_clear_a_failed_oks_error() {
 }
 
 /// The preview picture's pixel at document point `(x, y)`.
-fn preview_pixel(app: &PhotocraftApp, x: i32, y: i32) -> egui::Color32 {
+fn preview_pixel(app: &PatronusPhotoApp, x: i32, y: i32) -> egui::Color32 {
     let mut out = egui::ColorImage::new([1, 1], vec![egui::Color32::TRANSPARENT]);
     app.caf.as_ref().unwrap().picture.read(PixelRect::new(x, y, x + 1, y + 1), 1, &mut out);
     out.pixels[0]
@@ -252,11 +252,11 @@ fn apply_fills_and_stays_open_ok_closes_cancel_keeps_what_was_applied() {
 }
 
 /// The engine's sampling area over the plan's rectangle (what the fill samples) and its fill area.
-fn engine_source(app: &PhotocraftApp) -> (Rect, Vec<bool>, Vec<bool>) {
+fn engine_source(app: &PatronusPhotoApp) -> (Rect, Vec<bool>, Vec<bool>) {
     let c = app.caf.as_ref().unwrap();
     let id = c.id;
     let command = app.framework.dialogs.get_by_id::<Hosted>(id).unwrap().workspace().command();
-    let plan = photocraft_engine::edit_menu_cmds::content_aware_plan(&c.doc, c.layer, &plan_params(&command, c.layer), CMD).unwrap();
+    let plan = patronusphoto_engine::edit_menu_cmds::content_aware_plan(&c.doc, c.layer, &plan_params(&command, c.layer), CMD).unwrap();
     (plan.rect, plan.source, plan.hole)
 }
 
@@ -312,7 +312,7 @@ fn ui_params_with_the_workspace_closed_are_an_error_not_a_fill() {
 /// is still drawn over the plan's rectangle.
 #[test]
 fn the_preview_texture_respects_the_device_limit() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.session.execute("file.new", json!({"width": 2200, "height": 40, "depth": 8})).unwrap();
     app.session.execute("layer.new.layer", json!({})).unwrap();
     app.session
@@ -337,7 +337,7 @@ fn the_preview_texture_respects_the_device_limit() {
     let command = app.framework.dialogs.get_by_id::<Hosted>(c.id).unwrap().workspace().command();
     let params = plan_params(&command, c.layer);
     for (limit, want) in [(2048usize, 1100usize), (4096, 2200)] {
-        let (rect, img, factor) = compute_preview(&c.doc, c.layer, &params, &photocraft_raster::Interrupt::NONE, limit).unwrap();
+        let (rect, img, factor) = compute_preview(&c.doc, c.layer, &params, &patronusphoto_raster::Interrupt::NONE, limit).unwrap();
         assert_eq!((rect.width(), img.size[0]), (2200, want), "limit {limit}");
         assert_eq!(factor as usize, 2200 / want);
         assert!(img.size.iter().all(|s| *s <= limit), "limit {limit}: {:?}", img.size);
@@ -371,7 +371,7 @@ fn a_failing_preview_is_reported_once_not_restarted() {
 fn the_view_shows_the_document_after_an_apply_to_a_new_layer() {
     let mut app = app_with_selection();
     open(&mut app).unwrap();
-    let red = |app: &PhotocraftApp| {
+    let red = |app: &PatronusPhotoApp| {
         let mut out = egui::ColorImage::new([1, 1], vec![egui::Color32::TRANSPARENT]);
         let source = app.framework.dialogs.get_by_id::<Hosted>(app.caf.as_ref().unwrap().id).unwrap().source().clone();
         source.image().read(PixelRect::new(100, 80, 101, 81), 1, &mut out);
@@ -398,7 +398,7 @@ fn keys_wait_while_the_overlay_colour_picker_is_open() {
     let less = sampled(&app);
     let app_ctx = ctx(&app);
     let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1600.0, 1000.0)).with_context(app_ctx).build_ui_state(
-        |ui, app: &mut Box<PhotocraftApp>| {
+        |ui, app: &mut Box<PatronusPhotoApp>| {
             app.framework.dialogs.run(ui);
             let ctx = ui.ctx().clone();
             take(app, &ctx);

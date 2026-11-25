@@ -1,7 +1,7 @@
 //! Targa Options: the bits per pixel File › Save As and Save a Copy ask for before writing an RGB
 //! Targa, as Photoshop's Targa Options does (its Resolution; 16 bits/pixel isn't offered). 32 bits
 //! write the document's alpha channel as the Targa's alpha, so a game texture keeps the mask its
-//! alpha holds (see `photocraft_io::TgaBits`).
+//! alpha holds (see `patronusphoto_io::TgaBits`).
 //!
 //! The save is parked (`format_prompts::ParkedSave`) while the hosted dialog is up and written
 //! once answered, recorded as `file.saveAs` (#2032, even when a flat Targa is written as a copy),
@@ -11,43 +11,43 @@
 
 use craft::ui::dialog::DialogId;
 use craft::ui::patterns::form_dialogs::{ExportOptionsKind, FormatOptions, HostedFormatOptions, TargaOptions};
-use photocraft_io::TgaBits;
+use patronusphoto_io::TgaBits;
 
 use crate::format_prompts::{self, ParkedFormat, ParkedSave};
-use crate::{ExportSettings, PhotocraftApp};
+use crate::{ExportSettings, PatronusPhotoApp};
 
 /// `true` when `path` names a Targa (`.tga`, and the rarer `.icb`, `.vda`, `.vst`).
 pub fn is_tga_path(path: &str) -> bool {
-    photocraft_engine::file_cmds::extension(path).and_then(|e| photocraft_formats::from_extension(&e)) == Some(photocraft_formats::Format::Tga)
+    patronusphoto_engine::file_cmds::extension(path).and_then(|e| patronusphoto_formats::from_extension(&e)) == Some(patronusphoto_formats::Format::Tga)
 }
 
 /// Whether saving the active document to `path` asks for Targa Options: an RGB Targa. Grayscale
 /// Targas are 8-bit, with nothing to choose.
-pub fn wants_prompt(app: &PhotocraftApp, path: &str) -> bool {
-    is_tga_path(path) && app.session.active().is_some_and(|st| st.doc.mode != photocraft_color::ColorMode::Grayscale)
+pub fn wants_prompt(app: &PatronusPhotoApp, path: &str) -> bool {
+    is_tga_path(path) && app.session.active().is_some_and(|st| st.doc.mode != patronusphoto_color::ColorMode::Grayscale)
 }
 
 /// The Targa bits a command or control call asks for (`"tgaBits": 24 | 32`), which skip the prompt.
 pub fn bits_param(params: &serde_json::Value, cmd: &str) -> Result<Option<TgaBits>, String> {
-    photocraft_engine::file_cmds::tga_bits_param(params, cmd).map_err(|e| e.to_string())
+    patronusphoto_engine::file_cmds::tga_bits_param(params, cmd).map_err(|e| e.to_string())
 }
 
 /// Parks the save behind the prompt, starting at 32 bits when the document has an alpha channel.
 /// A prompt already waiting is never replaced (a shortcut can still reach Save a Copy).
-pub fn park(app: &mut PhotocraftApp, path: String, copy: bool, record: &'static str) -> Result<(), String> {
+pub fn park(app: &mut PatronusPhotoApp, path: String, copy: bool, record: &'static str) -> Result<(), String> {
     park_dialog(app, path, copy, record).map(drop)
 }
 
 /// [`park`], returning the id of the dialog it opened.
-pub fn park_dialog(app: &mut PhotocraftApp, path: String, copy: bool, record: &'static str) -> Result<DialogId, String> {
+pub fn park_dialog(app: &mut PatronusPhotoApp, path: String, copy: bool, record: &'static str) -> Result<DialogId, String> {
     let doc = app.active_doc_id()?;
-    let bits = app.session.active().map_or(TgaBits::Bits24, |st| photocraft_io::tga_default_bits(&st.doc));
+    let bits = app.session.active().map_or(TgaBits::Bits24, |st| patronusphoto_io::tga_default_bits(&st.doc));
     let dialog = HostedFormatOptions::new(app.ctx(), ExportOptionsKind::Targa).initial(FormatOptions::Targa(TargaOptions::new(bits.bits())));
     format_prompts::park(app, ParkedSave { doc, path, copy, record, format: ParkedFormat::Targa }, dialog)
 }
 
 /// OK: writes the parked save at the dialog's bits per pixel, and journals it.
-pub(crate) fn finish(app: &mut PhotocraftApp, ctx: &egui::Context, save: ParkedSave, options: TargaOptions) {
+pub(crate) fn finish(app: &mut PatronusPhotoApp, ctx: &egui::Context, save: ParkedSave, options: TargaOptions) {
     let bits = if options.bits == 32 { TgaBits::Bits32 } else { TgaBits::Bits24 };
     let settings = ExportSettings { tga_bits: Some(bits), ..save.settings(app) };
     let mut step = save.step();

@@ -32,7 +32,7 @@ fn document_shape() -> Map {
 fn curve(name: &str, pts: &[(f32, f32)]) -> Contour {
     Contour::Custom {
         name: name.into(),
-        points: pts.iter().map(|(input, output)| photocraft_doc::adjust::CurvePoint { input: *input, output: *output }).collect(),
+        points: pts.iter().map(|(input, output)| patronusphoto_doc::adjust::CurvePoint { input: *input, output: *output }).collect(),
         // Every inner point of a built-in preset is a corner (the Contour picker stores it that
         // way), so the curve is its polyline.
         corners: (0..pts.len()).map(|i| i > 0 && i < pts.len() - 1).collect(),
@@ -89,8 +89,8 @@ fn cone() -> Contour {
 /// The issue's Inner Shadow settings: black, Normal, 100 %, global light off, Choke `spread`.
 fn shadow(size: f32, distance: f32, angle: f32, spread: f32, contour: Contour, anti_aliased: bool) -> Shadow {
     Shadow {
-        common: photocraft_doc::FxCommon::new(BlendMode::Normal, 1.0),
-        color: photocraft_color::Color::BLACK,
+        common: patronusphoto_doc::FxCommon::new(BlendMode::Normal, 1.0),
+        color: patronusphoto_color::Color::BLACK,
         angle,
         use_global_light: false,
         distance,

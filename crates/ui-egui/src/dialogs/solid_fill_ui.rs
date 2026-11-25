@@ -7,13 +7,13 @@ use std::sync::Arc;
 use craft::color_ui::ui::{ColorPickerDialog, PickedColor};
 use craft::theme::Srgba;
 use craft::ui::dialog::DialogId;
-use photocraft_color::Color;
-use photocraft_doc::{DocId, Document, Fill, LayerContent, LayerId};
-use photocraft_engine::solid_fill_cmds as cmds;
+use patronusphoto_color::Color;
+use patronusphoto_doc::{DocId, Document, Fill, LayerContent, LayerId};
+use patronusphoto_engine::solid_fill_cmds as cmds;
 use serde_json::{Value, json};
 
 use crate::color_picker_ui::{PickTarget, hex, inks_model, inks_of, rgb_hex, same_inks};
-use crate::{PhotocraftApp, color_picker_ui};
+use crate::{PatronusPhotoApp, color_picker_ui};
 
 pub(crate) struct Preview {
     document: DocId,
@@ -27,20 +27,20 @@ pub(crate) struct Preview {
     key: u64,
 }
 
-pub(crate) fn open(app: &mut PhotocraftApp) -> Option<DialogId> {
+pub(crate) fn open(app: &mut PatronusPhotoApp) -> Option<DialogId> {
     let st = app.session.active()?;
     let layer = st.active_layer?;
     let LayerContent::Fill(Fill::Solid(color)) = st.doc.layer(layer)?.content else { return None };
     let document = st.doc.id;
     // A CMYK fill reopens showing its own inks, not ones recomputed from its sRGB stand-in (#8568).
-    let kept = (color.mode == photocraft_color::ColorMode::Cmyk).then(|| inks_model(color.c));
+    let kept = (color.mode == patronusphoto_color::ColorMode::Cmyk).then(|| inks_model(color.c));
     let start = Srgba::from_rgb_array(color.to_rgb());
     Some(color_picker_ui::open_for(app, "Color Picker (Solid Color)", start, kept, PickTarget::SolidFill { document, layer }))
 }
 
 /// Creating a Solid Color fill is transactional: the document is unchanged until OK.
 /// The picker is seeded with the foreground colour, matching the engine's default.
-pub(crate) fn open_new(app: &mut PhotocraftApp) -> Option<DialogId> {
+pub(crate) fn open_new(app: &mut PatronusPhotoApp) -> Option<DialogId> {
     let document = app.session.active()?.doc.id;
     let foreground = app.session.tools.foreground;
     let rgb = [foreground[0], foreground[1], foreground[2]];
@@ -50,7 +50,7 @@ pub(crate) fn open_new(app: &mut PhotocraftApp) -> Option<DialogId> {
     Some(color_picker_ui::open_for(app, "Color Picker (Solid Color)", Srgba::from_rgb_array(rgb), kept, PickTarget::NewSolidFill { document }))
 }
 
-pub(crate) fn confirm_new(app: &mut PhotocraftApp, document: DocId, picked: &PickedColor) -> Result<Value, String> {
+pub(crate) fn confirm_new(app: &mut PatronusPhotoApp, document: DocId, picked: &PickedColor) -> Result<Value, String> {
     let st = app.session.active().ok_or("no document open")?;
     if st.doc.id != document {
         return Err("the target document is no longer active".into());
@@ -60,7 +60,7 @@ pub(crate) fn confirm_new(app: &mut PhotocraftApp, document: DocId, picked: &Pic
 }
 
 /// The colour the fill `layer` shows: the open picker's pick while one edits it.
-pub(crate) fn thumbnail_color(app: &PhotocraftApp, document: DocId, layer: LayerId, original: Color) -> Color {
+pub(crate) fn thumbnail_color(app: &PatronusPhotoApp, document: DocId, layer: LayerId, original: Color) -> Color {
     let found = color_picker_ui::find(app, |t| matches!(t, PickTarget::SolidFill { document: d, layer: l } if *d == document && *l == layer));
     let Some((id, _)) = found else { return original };
     let Some(mode) = app.session.documents().iter().find(|st| st.doc.id == document).map(|st| st.doc.mode) else { return original };
@@ -71,13 +71,13 @@ pub(crate) fn thumbnail_color(app: &PhotocraftApp, document: DocId, layer: Layer
 /// The colour the picker would commit to a fill of `original` in a `mode` document, built as the
 /// engine builds it: the picked hex, and in a CMYK document the inks it was picked as (#8568).
 /// `None` while the picker still shows the fill as it is ([`is_edit`]).
-fn picked_color(picked: &PickedColor, original: Color, mode: photocraft_color::ColorMode) -> Option<Color> {
+fn picked_color(picked: &PickedColor, original: Color, mode: patronusphoto_color::ColorMode) -> Option<Color> {
     if !is_edit(picked, original, mode) {
         return None;
     }
     let color = cmds::color_param(&json!(rgb_hex(picked.color)), original, mode).ok()?;
-    Some(inks_of(picked).filter(|_| mode == photocraft_color::ColorMode::Cmyk).map_or(color, |c| Color {
-        mode: photocraft_color::ColorMode::Cmyk,
+    Some(inks_of(picked).filter(|_| mode == patronusphoto_color::ColorMode::Cmyk).map_or(color, |c| Color {
+        mode: patronusphoto_color::ColorMode::Cmyk,
         c,
         alpha: color.alpha,
     }))
@@ -86,15 +86,15 @@ fn picked_color(picked: &PickedColor, original: Color, mode: photocraft_color::C
 /// Whether the picker differs from the fill it edits, inks included: different inks can share a
 /// display colour (CMYK 0/0/0/100 and 50/50/50/100 both read black), so the hex alone doesn't
 /// tell, and an RGB or Lab fill given inks in a CMYK document is an edit too.
-fn is_edit(picked: &PickedColor, original: Color, mode: photocraft_color::ColorMode) -> bool {
-    let cmyk = photocraft_color::ColorMode::Cmyk;
+fn is_edit(picked: &PickedColor, original: Color, mode: patronusphoto_color::ColorMode) -> bool {
+    let cmyk = patronusphoto_color::ColorMode::Cmyk;
     let inks_differ = mode == cmyk && inks_of(picked).is_some_and(|k| original.mode != cmyk || !same_inks(original.c, k));
     rgb_hex(picked.color) != hex(original.to_rgb()) || inks_differ
 }
 
 /// No-op OK preserves imported high-precision / non-RGB colour values rather than quantising
 /// them to the picker's display hex. A stale document must never receive the edit.
-pub(crate) fn confirm(app: &mut PhotocraftApp, document: DocId, layer: LayerId, picked: &PickedColor) -> Result<Value, String> {
+pub(crate) fn confirm(app: &mut PatronusPhotoApp, document: DocId, layer: LayerId, picked: &PickedColor) -> Result<Value, String> {
     let st = app.session.active().ok_or("no document open")?;
     if st.doc.id != document {
         return Err("the target document is no longer active".into());
@@ -112,7 +112,7 @@ pub(crate) fn confirm(app: &mut PhotocraftApp, document: DocId, layer: LayerId, 
     app.run(cmds::SET, params)
 }
 
-pub(crate) fn display_doc(app: &mut PhotocraftApp, idx: usize) -> Option<(Arc<Document>, u64)> {
+pub(crate) fn display_doc(app: &mut PatronusPhotoApp, idx: usize) -> Option<(Arc<Document>, u64)> {
     let Some((dialog, PickTarget::SolidFill { document, layer })) = color_picker_ui::find(app, |t| matches!(t, PickTarget::SolidFill { .. })) else {
         app.solid_fill_preview = None;
         return None;
@@ -146,7 +146,7 @@ pub(crate) fn display_doc(app: &mut PhotocraftApp, idx: usize) -> Option<(Arc<Do
         component.to_bits().hash(&mut hash);
     }
     let key = (1 << 36) | (hash.finish() & ((1 << 36) - 1));
-    let shown = Arc::new(photocraft_engine::mode_cmds::display_document(&doc).unwrap_or(doc));
+    let shown = Arc::new(patronusphoto_engine::mode_cmds::display_document(&doc).unwrap_or(doc));
     app.solid_fill_preview = Some(Preview { document: st.doc.id, revision: st.revision, dialog, open, layer, color, shown: shown.clone(), key });
     Some((shown, key))
 }

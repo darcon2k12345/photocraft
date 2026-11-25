@@ -1,7 +1,7 @@
 use craft::imaging::ui::fill::{FillCommand, SamplingMode};
 use egui::Color32;
-use photocraft_doc::{Document, LayerId};
-use photocraft_geom::Rect;
+use patronusphoto_doc::{Document, LayerId};
+use patronusphoto_geom::Rect;
 use serde_json::{Value, json};
 
 use super::CMD;
@@ -45,7 +45,7 @@ pub(super) fn compute_base(doc: &Document, layer: LayerId, command: &FillCommand
     if custom {
         p["sampling"] = json!("rectangular");
     }
-    let plan = photocraft_engine::edit_menu_cmds::content_aware_plan(doc, layer, &p, CMD).map_err(|e| e.to_string())?;
+    let plan = patronusphoto_engine::edit_menu_cmds::content_aware_plan(doc, layer, &p, CMD).map_err(|e| e.to_string())?;
     let base = if custom { vec![false; plan.base.len()] } else { plan.base };
     Ok(Base { window: plan.window, rect: plan.rect, hole: plan.hole, base })
 }
@@ -57,11 +57,11 @@ pub(super) fn compute_preview(
     doc: &Document,
     layer: LayerId,
     p: &Value,
-    ctl: &photocraft_raster::Interrupt,
+    ctl: &patronusphoto_raster::Interrupt,
     max_side: usize,
 ) -> Result<(Rect, egui::ColorImage, u32), String> {
-    let plan = photocraft_engine::edit_menu_cmds::content_aware_plan_with(doc, layer, p, CMD, ctl).map_err(|e| match e {
-        photocraft_engine::EngineError::Cancelled => super::CANCELLED.to_string(),
+    let plan = patronusphoto_engine::edit_menu_cmds::content_aware_plan_with(doc, layer, p, CMD, ctl).map_err(|e| match e {
+        patronusphoto_engine::EngineError::Cancelled => super::CANCELLED.to_string(),
         e => e.to_string(),
     })?;
     // Patches come only from the sampling area outside the fill area. With none (the Sampling
@@ -72,17 +72,17 @@ pub(super) fn compute_preview(
     }
     let (w, h) = (plan.rect.width() as usize, plan.rect.height() as usize);
     let n = plan.fmt.channels();
-    let filled =
-        photocraft_algo::content_aware::fill_with(w, h, n, &plan.img, &plan.hole, &plan.source, &plan.opts, ctl).map_err(|_| super::CANCELLED.to_string())?;
+    let filled = patronusphoto_algo::content_aware::fill_with(w, h, n, &plan.img, &plan.hole, &plan.source, &plan.opts, ctl)
+        .map_err(|_| super::CANCELLED.to_string())?;
     let own = plan.layer_pixels();
     // Pixel `i`: the fill over the fill area (a partly selected pixel by its coverage), the
     // layer's own pixels elsewhere.
     let pixel = |i: usize| -> [f32; 4] {
         let src = if plan.hole[i] { &filled[i * n..(i + 1) * n] } else { &own[i * n..(i + 1) * n] };
-        let mut c = photocraft_raster::to_rgba(&plan.fmt, src);
+        let mut c = patronusphoto_raster::to_rgba(&plan.fmt, src);
         if plan.hole[i] {
             let k = plan.cover[i];
-            let under = photocraft_raster::to_rgba(&plan.fmt, &own[i * n..(i + 1) * n]);
+            let under = patronusphoto_raster::to_rgba(&plan.fmt, &own[i * n..(i + 1) * n]);
             for j in 0..4 {
                 c[j] = under[j] + (c[j] - under[j]) * k;
             }

@@ -1,10 +1,10 @@
 //! Faithful vector subset for PDF shape export; unsupported shapes use raster fallback.
 
 use craft_pdf::write_raster::{ContentFillRule, ContentPath, ContentStroke, DeviceColor, PathElement};
-use photocraft_color::ColorMode;
-use photocraft_doc::{Fill, FillRule, LineCap, LineJoin, PathOp, ShapeLayer, StrokeAlign};
+use patronusphoto_color::ColorMode;
+use patronusphoto_doc::{Fill, FillRule, LineCap, LineJoin, PathOp, ShapeLayer, StrokeAlign};
 
-/// Convert a directly representable PhotoCraft shape to neutral vector geometry.
+/// Convert a directly representable Patronus Photo shape to neutral vector geometry.
 pub(super) fn shape_content(layer: &ShapeLayer, mode: ColorMode) -> Option<ContentPath> {
     if layer.has_soft_mask() || layer.path.inverted || layer.path.subpaths.len() != 1 {
         return None;
@@ -106,20 +106,20 @@ fn shape_path(layer: &ShapeLayer, mode: ColorMode) -> Option<String> {
     craft_pdf::write_raster::encode_vector_content(&craft_pdf::write_raster::VectorContent { operations: vec![craft_pdf::write_raster::ContentOp::Path(path)] })
 }
 
-fn point_finite(p: photocraft_geom::Point) -> bool {
+fn point_finite(p: patronusphoto_geom::Point) -> bool {
     p.x.is_finite() && p.y.is_finite()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use photocraft_doc::{Knot, Path, Subpath};
-    use photocraft_geom::Point;
+    use patronusphoto_doc::{Knot, Path, Subpath};
+    use patronusphoto_geom::Point;
 
     #[test]
     fn closed_cubic_emits_path_and_fill() {
         let layer = ShapeLayer {
-            fill: Some(Fill::Solid(photocraft_color::Color::rgb(1.0, 0.0, 0.0))),
+            fill: Some(Fill::Solid(patronusphoto_color::Color::rgb(1.0, 0.0, 0.0))),
             path: Path::new(vec![Subpath {
                 closed: true,
                 knots: vec![Knot::smooth(Point::new(0.0, 0.0), Point::new(-1.0, 0.0), Point::new(1.0, 0.0)), Knot::corner(10.0, 0.0)],
@@ -135,7 +135,7 @@ mod tests {
     #[test]
     fn rejects_open_path_and_mismatched_mode() {
         let mut layer = ShapeLayer {
-            fill: Some(Fill::Solid(photocraft_color::Color::rgb(1.0, 0.0, 0.0))),
+            fill: Some(Fill::Solid(patronusphoto_color::Color::rgb(1.0, 0.0, 0.0))),
             path: Path::new(vec![Subpath::polyline(&[(0.0, 0.0), (1.0, 1.0)])]),
             ..Default::default()
         };
@@ -147,16 +147,16 @@ mod tests {
     #[test]
     fn centered_stroke_keeps_its_width_color_and_dash_pattern() {
         let layer = ShapeLayer {
-            fill: Some(Fill::Solid(photocraft_color::Color::rgb(1.0, 0.0, 0.0))),
+            fill: Some(Fill::Solid(patronusphoto_color::Color::rgb(1.0, 0.0, 0.0))),
             path: Path::new(vec![Subpath::polygon(&[(0.0, 0.0), (10.0, 0.0), (10.0, 10.0)])]),
-            stroke: Some(photocraft_doc::ShapeStroke { width: 2.0, dashes: vec![2.0, 1.0], ..Default::default() }),
+            stroke: Some(patronusphoto_doc::ShapeStroke { width: 2.0, dashes: vec![2.0, 1.0], ..Default::default() }),
             ..Default::default()
         };
         let ops = shape_path(&layer, ColorMode::Rgb).unwrap();
         assert!(ops.contains("0 0 0 RG\n"));
         assert!(ops.contains("2 w 0 J 0 j 100 M\n[4 2 ] 0 d\n"));
         assert!(ops.ends_with("h\nB\n"));
-        let inside = ShapeLayer { stroke: Some(photocraft_doc::ShapeStroke { align: StrokeAlign::Inside, ..Default::default() }), ..layer };
+        let inside = ShapeLayer { stroke: Some(patronusphoto_doc::ShapeStroke { align: StrokeAlign::Inside, ..Default::default() }), ..layer };
         assert!(shape_path(&inside, ColorMode::Rgb).is_none());
     }
 
@@ -164,7 +164,7 @@ mod tests {
     fn stroke_only_emits_stroke_operator() {
         let layer = ShapeLayer {
             path: Path::new(vec![Subpath::polygon(&[(0.0, 0.0), (10.0, 0.0), (10.0, 10.0)])]),
-            stroke: Some(photocraft_doc::ShapeStroke { width: 1.0, ..Default::default() }),
+            stroke: Some(patronusphoto_doc::ShapeStroke { width: 1.0, ..Default::default() }),
             ..Default::default()
         };
         let ops = shape_path(&layer, ColorMode::Rgb).unwrap();

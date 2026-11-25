@@ -1,12 +1,12 @@
 use crate::canvas::{ToolEvent, tool_event};
 use crate::state::Tool;
-use crate::{PhotocraftApp, Services};
+use crate::{PatronusPhotoApp, Services};
 use craft::draw::ui::VectorMode;
 use craft::draw::ui::shape_drag::CreateShapeDialog;
 use serde_json::json;
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Services::default());
     app.run("file.new", json!({"width": 800, "height": 600, "background": "white"})).unwrap();
     app.ui.tool = Tool::Rectangle;
     app.ui.extras.snap = false;
@@ -14,24 +14,24 @@ fn app() -> Box<PhotocraftApp> {
     app
 }
 
-fn shape(app: &mut PhotocraftApp, kind: &str, radius: f64) {
+fn shape(app: &mut PatronusPhotoApp, kind: &str, radius: f64) {
     let radii = [radius; 4];
     app.run("shape.create", json!({"kind": kind, "rect": [400, 300, 200, 100], "radii": radii, "fill": "#ff0000"})).unwrap();
 }
 
-fn gesture(app: &mut PhotocraftApp, [x, y]: [f64; 2], [end_x, end_y]: [f64; 2]) {
+fn gesture(app: &mut PatronusPhotoApp, [x, y]: [f64; 2], [end_x, end_y]: [f64; 2]) {
     let mods = egui::Modifiers::NONE;
     tool_event(app, ToolEvent::Down { x, y, pressure: 1.0 }, mods);
     tool_event(app, ToolEvent::Move { x: end_x, y: end_y, pressure: 1.0 }, mods);
     tool_event(app, ToolEvent::Up { x: end_x, y: end_y }, mods);
 }
 
-fn state(app: &PhotocraftApp) -> (usize, usize) {
+fn state(app: &PatronusPhotoApp) -> (usize, usize) {
     let active = app.session.active().unwrap();
     (active.doc.layer_count(), active.history.past_len())
 }
 
-fn assert_create_rectangle(app: &PhotocraftApp) {
+fn assert_create_rectangle(app: &PatronusPhotoApp) {
     let dialog = app.framework.dialogs.get::<CreateShapeDialog>().expect("one Create Rectangle dialog");
     assert_eq!(dialog.options().size, (100.0, 100.0));
     assert!(!dialog.options().from_center);

@@ -1,7 +1,7 @@
 use craft::ui::dialog::DialogId;
 
 use super::*;
-use photocraft_doc::{LayerContent, TextLayer};
+use patronusphoto_doc::{LayerContent, TextLayer};
 use serde_json::json;
 
 thread_local! {
@@ -9,15 +9,15 @@ thread_local! {
     pub(super) static BUILDS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
-fn app_at(depth: u32) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app_at(depth: u32) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 400, "height": 200, "depth": depth})).unwrap();
     app.sync_views();
     app.ui.tool = crate::state::Tool::Type;
     app
 }
 
-fn new_type_layer(app: &mut PhotocraftApp, text: &str) -> LayerId {
+fn new_type_layer(app: &mut PatronusPhotoApp, text: &str) -> LayerId {
     LayerId(app.run("type.create", json!({"text": text, "color": "#000000"})).unwrap()["layer"].as_u64().unwrap())
 }
 
@@ -43,7 +43,7 @@ fn rgb_at(doc: &Document, id: LayerId, ci: usize) -> [u8; 4] {
 }
 
 /// Open the text Color Picker and move it to `color`, as dragging in its field does.
-fn pick(app: &mut PhotocraftApp, color: &str) -> DialogId {
+fn pick(app: &mut PatronusPhotoApp, color: &str) -> DialogId {
     crate::type_tool::open_color_picker(app, [0.0; 3]);
     let dialog = crate::color_picker_ui::top(app).expect("the text Color Picker opens");
     set_color(app, color);
@@ -51,18 +51,18 @@ fn pick(app: &mut PhotocraftApp, color: &str) -> DialogId {
 }
 
 /// Moves the top Color Picker to `color`.
-fn set_color(app: &mut PhotocraftApp, color: &str) {
+fn set_color(app: &mut PatronusPhotoApp, color: &str) {
     let picker = crate::color_picker_ui::top(app).expect("a Color Picker is open");
     crate::color_picker_ui::testing::set_color(app, picker, color);
 }
 
 /// The Color Picker on top, which a test that opened it through an editor entry point did not get the id of.
-fn top_picker(app: &PhotocraftApp) -> DialogId {
+fn top_picker(app: &PatronusPhotoApp) -> DialogId {
     crate::color_picker_ui::top(app).expect("a Color Picker is open")
 }
 
 /// What the session holds: document, revision, dirty flag and history length.
-fn committed(app: &PhotocraftApp) -> (Arc<Document>, u64, bool, usize) {
+fn committed(app: &PatronusPhotoApp) -> (Arc<Document>, u64, bool, usize) {
     let st = app.session.active().unwrap();
     (st.doc.clone(), st.revision, st.is_dirty(), st.history.entries().len())
 }
@@ -246,7 +246,7 @@ fn ok_counts_the_previewed_canvas_as_the_document_so_only_the_layer_is_redrawn()
         // The canvas draws the preview, then OK commits it.
         drop(crate::canvas::CompositePrep::new(&mut app, &ctx, 0, None, None).unwrap());
         let doc_id = app.session.active().unwrap().doc.id;
-        let cached = |app: &PhotocraftApp| app.raster_logs[&crate::canvas::cache_key(doc_id, None)].composite_seen().unwrap();
+        let cached = |app: &PatronusPhotoApp| app.raster_logs[&crate::canvas::cache_key(doc_id, None)].composite_seen().unwrap();
         let doc = app.session.active().unwrap().doc.clone();
         let dk = crate::canvas::canvas_display(&app, &doc, None).1;
         assert_ne!(cached(&app).1, dk, "gradient={gradient}: the canvas holds the preview");
@@ -256,7 +256,7 @@ fn ok_counts_the_previewed_canvas_as_the_document_so_only_the_layer_is_redrawn()
         let seen = cached(&app);
         assert_eq!(seen.1, dk, "gradient={gradient}: OK's edit is what the canvas already shows");
         // So the commit's own damage is all the canvas refreshes, not the whole document.
-        let edit = photocraft_geom::Rect::new(1, 2, 3, 4);
+        let edit = patronusphoto_geom::Rect::new(1, 2, 3, 4);
         let damage = crate::canvas::damage_since(&app, 0, seen, (revision, 0), dk, (revision - 1, Some(edit)));
         assert_eq!(damage, Some(edit), "gradient={gradient}");
     }
@@ -320,13 +320,13 @@ fn every_selected_type_layer_is_previewed_and_refreshed() {
 
 /// Colour stop `i` (by location) of gradient fill layer `id`, as 8-bit RGB.
 fn stop_rgb(doc: &Document, id: LayerId, i: usize) -> [u8; 3] {
-    let LayerContent::Fill(photocraft_doc::Fill::Gradient { stops, .. }) = &doc.layer(id).unwrap().content else { panic!("not a gradient fill") };
+    let LayerContent::Fill(patronusphoto_doc::Fill::Gradient { stops, .. }) = &doc.layer(id).unwrap().content else { panic!("not a gradient fill") };
     let mut sorted = stops.clone();
     sorted.sort_by(|a, b| a.0.total_cmp(&b.0));
     sorted[i].1.to_rgb().map(|v| (v * 255.0).round() as u8)
 }
 
-fn new_gradient_fill(app: &mut PhotocraftApp) -> LayerId {
+fn new_gradient_fill(app: &mut PatronusPhotoApp) -> LayerId {
     LayerId(app.run("layer.newFillLayer.gradient", json!({"from": "#000000", "to": "#ffffff"})).unwrap()["layer"].as_u64().unwrap())
 }
 

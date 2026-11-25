@@ -5,10 +5,10 @@
 
 use craft_psd::layer::CHANNEL_REAL_USER_MASK;
 use craft_psd::{ChannelData, Compression, MaskData, PsdFile, RealMask, Version};
-use photocraft_color::{Color, ColorMode, SampleType};
-use photocraft_doc::{Document, Fill, Layer, LayerContent, LayerMask, Path, ShapeLayer, Size, Subpath, VectorMask};
-use photocraft_geom::Rect;
-use photocraft_io::*;
+use patronusphoto_color::{Color, ColorMode, SampleType};
+use patronusphoto_doc::{Document, Fill, Layer, LayerContent, LayerMask, Path, ShapeLayer, Size, Subpath, VectorMask};
+use patronusphoto_geom::Rect;
+use patronusphoto_io::*;
 
 fn doc(depth: SampleType) -> Document {
     Document::with_background("t", Size::new(32, 32), ColorMode::Rgb, depth, Color::WHITE)
@@ -31,7 +31,7 @@ fn shape_layer_without_stored_pixels_renders_from_its_path() {
         let mut d = doc(depth);
         let sh = ShapeLayer { path: square(8.0, 8.0, 24.0, 24.0), fill: Some(Fill::Solid(Color::BLACK)), ..Default::default() };
         let mut sh2 = sh.clone();
-        sh2.cache = Some(photocraft_vector::render_shape(&sh, d.pixel_format(), d.bounds()));
+        sh2.cache = Some(patronusphoto_vector::render_shape(&sh, d.pixel_format(), d.bounds()));
         d.layers.push(Layer::new("Shape 1", LayerContent::Shape(sh2)));
         let mut file = PsdFile::from_bytes(&export(&d, "x.psd", &ExportOptions::default()).unwrap().bytes).unwrap();
         // Drop the shape record's pixels, as Photoshop does for 32-bit documents.
@@ -43,7 +43,7 @@ fn shape_layer_without_stored_pixels_renders_from_its_path() {
             *ch = ChannelData::encode(ch.id, Compression::Raw, &[], 0, 0, bits, Version::Psd).unwrap();
         }
         let imp = reimport(&file);
-        let f = photocraft_compose::flatten(&imp.document);
+        let f = patronusphoto_compose::flatten(&imp.document);
         assert!(f.get(16, 16)[0] < 0.01, "{depth:?}: shape interior renders black: {:?}", f.get(16, 16));
         assert!(f.get(2, 2)[0] > 0.99, "{depth:?}: outside stays white");
     }
@@ -142,7 +142,7 @@ fn shape_with_vector_mask_density_imports_as_soft_shape() {
     let LayerContent::Shape(sh) = &l.content else { panic!("{}", l.content.kind_name()) };
     assert_eq!(sh.density, 204.0 / 255.0);
     assert!(l.vector_mask.is_none());
-    let f = photocraft_compose::flatten(&imp.document);
+    let f = patronusphoto_compose::flatten(&imp.document);
     assert!(f.get(16, 16)[0] < 0.01, "inside the path: black");
     assert!((f.get(2, 2)[0] - 0.8).abs() < 0.01, "outside: 20% of the fill shows: {:?}", f.get(2, 2));
 }
@@ -156,7 +156,7 @@ fn shape_without_pixels_and_full_initial_fill_covers_the_canvas() {
     path.inverted = true;
     let sh = ShapeLayer { path, fill: Some(Fill::Solid(Color::BLACK)), ..Default::default() };
     let mut sh2 = sh.clone();
-    sh2.cache = Some(photocraft_vector::render_shape(&sh, d.pixel_format(), d.bounds()));
+    sh2.cache = Some(patronusphoto_vector::render_shape(&sh, d.pixel_format(), d.bounds()));
     d.layers.push(Layer::new("Color Fill 1", LayerContent::Shape(sh2)));
     let mut file = PsdFile::from_bytes(&export(&d, "x.psd", &ExportOptions::default()).unwrap().bytes).unwrap();
     let rec = file.layers_mut().last_mut().unwrap();
@@ -164,6 +164,6 @@ fn shape_without_pixels_and_full_initial_fill_covers_the_canvas() {
     for ch in &mut rec.channels {
         *ch = ChannelData::encode(ch.id, Compression::Raw, &[], 0, 0, 8, Version::Psd).unwrap();
     }
-    let f = photocraft_compose::flatten(&reimport(&file).document);
+    let f = patronusphoto_compose::flatten(&reimport(&file).document);
     assert!(f.get(0, 0)[0] < 0.01 && f.get(31, 31)[0] < 0.01, "covers everything: {:?}", f.get(0, 0));
 }

@@ -4,7 +4,7 @@
 
 use std::path::{Path, PathBuf};
 
-use photocraft_color::{ColorMode, SampleType};
+use patronusphoto_color::{ColorMode, SampleType};
 use serde_json::json;
 
 use super::LENS_BATCH;
@@ -31,7 +31,7 @@ fn run(dir: &Path, format: &str, file: &str) -> (ColorMode, SampleType) {
     let r = s.execute(LENS_BATCH, json!({"input": dir.join("in").to_str().unwrap(), "output": dir.join("out").to_str().unwrap(), "format": format})).unwrap();
     assert!(r["errors"].as_array().unwrap().is_empty(), "{r}");
     let path = dir.join("out").join(file);
-    let doc = photocraft_io::import(file, &std::fs::read(&path).unwrap()).unwrap().document;
+    let doc = patronusphoto_io::import(file, &std::fs::read(&path).unwrap()).unwrap().document;
     (doc.mode, doc.depth)
 }
 

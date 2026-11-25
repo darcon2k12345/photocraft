@@ -5,13 +5,13 @@ use craft::draw::ui::brush_settings::{BrushSection, BrushSettingsPanel, BrushStr
 use craft::ui::contract::Bind;
 use craft::ui::primitives::Revision;
 use egui::vec2;
-use photocraft_engine::BrushSettings;
+use patronusphoto_engine::BrushSettings;
 
 use super::brush_panel::{CHECKBOX_ONLY_START, SECTIONS, section_flag, section_lock};
 use super::brush_sections::SectionOut;
 use super::brush_settings_events::{apply_action, apply_section_events};
 use super::{brush_preview, brush_sections};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::theme::Tokens;
 
 /// The panel's height inside the floating window.
@@ -37,7 +37,7 @@ fn sections(brush: &mut BrushSettings) -> Vec<BrushSection<usize>> {
         .collect()
 }
 
-pub(super) fn brush_settings(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub(super) fn brush_settings(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let ctx = ui.ctx().clone();
     let text = Tokens::get(&ctx).text;
     let before = app.session.tools.brush.clone();

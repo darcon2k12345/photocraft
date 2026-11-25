@@ -2,7 +2,7 @@ name: CI
 
 # Quality gates for every push to main and every pull request. The Linux and Windows tests run
 # through the suite's shared gate workflow in craft-common-actions (`cargo xtask ci`, split over the
-# gate's jobs); the test variant and the corpus, web and fuzz jobs are PhotoCraft's own. Every night
+# gate's jobs); the test variant and the corpus, web and fuzz jobs are Patronus Photo's own. Every night
 # the Linux gate alone runs a cold build: the safety net for the workspace crates it keeps between
 # runs (`cache-workspace-crates`), and a fresh start for that cache entry.
 on:
@@ -58,11 +58,11 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
-  PHOTOCRAFT_FULL_SWEEP: ${{ inputs.full_sweep && '1' || '0' }}
+  PATRONUSPHOTO_FULL_SWEEP: ${{ inputs.full_sweep && '1' || '0' }}
   # No test or fuzz run may print a page: the engine refuses to spool, and if something ever
   # bypasses that, lp fails loudly on a printer that does not exist.
-  PHOTOCRAFT_NO_PRINT: "1"
-  LPDEST: photocraft-no-such-printer
+  PATRONUSPHOTO_NO_PRINT: "1"
+  LPDEST: patronusphoto-no-such-printer
 
 # A newer push to a PR branch cancels its older run. Every push to main gets a run of its own that
 # is never cancelled, so each state of main is checked to the end. Adding any label but `full-ci`
@@ -82,7 +82,7 @@ jobs:
   # get both. Other PRs get Windows when they touch code whose behaviour differs by platform: the
   # app shell, UI, text and fonts, GPU, pen input, native saves, build scripts or the lockfile.
   # Format changes must exercise the Windows-only publication barriers (#8034). macOS is tested
-  # only by release.yml. `windows_gpu`: whether those Windows legs run photocraft-gpu's tests, which
+  # only by release.yml. `windows_gpu`: whether those Windows legs run patronusphoto-gpu's tests, which
   # render on WARP, the CPU Direct3D 12 rasterizer, and took half of the integration leg's test time.
   # Pull requests run them only when they change the GPU crate, a workspace crate it builds on, any
   # package manifest, or a file outside the workspace packages other than documentation
@@ -127,7 +127,7 @@ jobs:
           # packages changed: the web app and its packaging, crate sources and manifests (the web
           # build compiles nearly every crate), the workspace manifests, the craft-i18n pin and this
           # workflow.
-          if git diff --name-only "$BASE" HEAD | grep -Eq '^(apps/photocraft-web(-boot)?/|packaging/web/|packaging/env\.sh$|crates/[^/]+/(src/|Cargo\.toml$|build\.rs$)|Cargo\.(toml|lock)$|craft-i18n\.rev$|rust-toolchain(\.toml)?$|\.github/workflows/ci\.yml$)'; then
+          if git diff --name-only "$BASE" HEAD | grep -Eq '^(apps/patronusphoto-web(-boot)?/|packaging/web/|packaging/env\.sh$|crates/[^/]+/(src/|Cargo\.toml$|build\.rs$)|Cargo\.(toml|lock)$|craft-i18n\.rev$|rust-toolchain(\.toml)?$|\.github/workflows/ci\.yml$)'; then
             echo "web=true" >> "$GITHUB_OUTPUT"
           else
             echo "web=false" >> "$GITHUB_OUTPUT"
@@ -140,7 +140,7 @@ jobs:
           gpu=$(python3 scripts/ci-windows-gpu-tests.py "$BASE")
           echo "windows_gpu=$gpu" >> "$GITHUB_OUTPUT"
           if [ "$gpu" = false ]; then
-            echo "::notice::photocraft-gpu's tests are skipped on Windows: this pull request changes nothing they are built from (the Linux gate still runs them)."
+            echo "::notice::patronusphoto-gpu's tests are skipped on Windows: this pull request changes nothing they are built from (the Linux gate still runs them)."
           fi
           skip=$(python3 scripts/ci-windows-gpu-tests.py --skip-neutral "$BASE")
           echo "windows_skip=$skip" >> "$GITHUB_OUTPUT"
@@ -180,9 +180,9 @@ jobs:
       dev-debug: "0"
       cache-version: v2
       env: |
-        PHOTOCRAFT_FULL_SWEEP=${{ inputs.full_sweep && '1' || '0' }}
-        PHOTOCRAFT_NO_PRINT=1
-        LPDEST=photocraft-no-such-printer
+        PATRONUSPHOTO_FULL_SWEEP=${{ inputs.full_sweep && '1' || '0' }}
+        PATRONUSPHOTO_NO_PRINT=1
+        LPDEST=patronusphoto-no-such-printer
         CARGO_PROFILE_TEST_STRIP=symbols
       timeout-minutes: 100
       cache-workspace-crates: true
@@ -206,7 +206,7 @@ jobs:
   # the tests ~1.75x slower than Linux: ~55 min on one runner, ~9 min per shard. A seventh shard
   # would not shorten the slowest one while its slowest test alone takes ~9.6 min (the
   # shortcut-dispatch UI test). The browser apps are wasm targets, so their native tests are left
-  # out; pull requests also leave out photocraft-gpu and the platform-neutral packages nothing they
+  # out; pull requests also leave out patronusphoto-gpu and the platform-neutral packages nothing they
   # change reaches (`windows_gpu`, `windows_skip`). Windows keeps a dependency-only cache entry:
   # its workspace crates would not fit the repository's cache budget beside Linux's.
   windows:
@@ -234,13 +234,13 @@ jobs:
       # identical-code folding and PDBs; the link arguments in build.rs (/DELAYLOAD, delayimp.lib)
       # are lld-link options too.
       env: |
-        PHOTOCRAFT_FULL_SWEEP=${{ inputs.full_sweep && '1' || '0' }}
-        PHOTOCRAFT_NO_PRINT=1
-        LPDEST=photocraft-no-such-printer
+        PATRONUSPHOTO_FULL_SWEEP=${{ inputs.full_sweep && '1' || '0' }}
+        PATRONUSPHOTO_NO_PRINT=1
+        LPDEST=patronusphoto-no-such-printer
         CARGO_TARGET_DIR=D:\t
         CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=rust-lld
         CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_RUSTFLAGS=-Clink-arg=/OPT:NOICF -Clink-arg=/DEBUG:NONE
-        PHOTOCRAFT_CI_EXCLUDE=photocraft-web photocraft-web-boot ${{ needs.platforms.outputs.windows_gpu == 'false' && 'photocraft-gpu' || '' }} ${{ needs.platforms.outputs.windows_skip }}
+        PATRONUSPHOTO_CI_EXCLUDE=patronusphoto-web patronusphoto-web-boot ${{ needs.platforms.outputs.windows_gpu == 'false' && 'patronusphoto-gpu' || '' }} ${{ needs.platforms.outputs.windows_skip }}
       timeout-minutes: 100
       lint-command: cargo xtask ci clippy
       archive-command: cargo xtask-gate archive
@@ -342,7 +342,7 @@ jobs:
           tool: cargo-nextest@0.9.150
 
       - name: Test without heif
-        run: cargo nextest run -p photocraft-io --locked --profile ci
+        run: cargo nextest run -p patronusphoto-io --locked --profile ci
 
   corpus:
     if: github.event_name != 'schedule' && (github.event.action != 'labeled' || github.event.label.name == 'full-ci')
@@ -432,7 +432,7 @@ jobs:
         env:
           # Pull requests skip wasm-opt --converge (minutes slower); main keeps it, so the size
           # gate on a PR measures a slightly larger wasm than main produces.
-          PHOTOCRAFT_WEB_WASM_OPT_CONVERGE: ${{ github.event_name == 'pull_request' && '0' || '1' }}
+          PATRONUSPHOTO_WEB_WASM_OPT_CONVERGE: ${{ github.event_name == 'pull_request' && '0' || '1' }}
         run: packaging/web/package.sh
       - name: Report wasm size
         if: success()
@@ -536,7 +536,7 @@ jobs:
       - name: Compare exact outputs and release timings on 24 MP
         run: |
           set -o pipefail
-          cargo test --release -p photocraft-engine --lib color_range_release_comparison -- --ignored --nocapture | tee color-range-perf.txt
+          cargo test --release -p patronusphoto-engine --lib color_range_release_comparison -- --ignored --nocapture | tee color-range-perf.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
@@ -569,11 +569,11 @@ jobs:
       - name: Compare exact outputs and release timings on 36 MP
         run: |
           set -o pipefail
-          cargo run --release -p photocraft-algo --example bench_selection_morphology | tee selection-morphology-perf.txt
+          cargo run --release -p patronusphoto-algo --example bench_selection_morphology | tee selection-morphology-perf.txt
       - name: Compare cropped command reads and writeback on 36 MP
         run: |
           set -o pipefail
-          cargo test --release -p photocraft-engine --lib sparse_modify_release_comparison -- --ignored --nocapture | tee -a selection-morphology-perf.txt
+          cargo test --release -p patronusphoto-engine --lib sparse_modify_release_comparison -- --ignored --nocapture | tee -a selection-morphology-perf.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
@@ -634,7 +634,7 @@ jobs:
       - name: Compare exact outputs and release timings on 36 MP
         run: |
           set -o pipefail
-          cargo test --release -p photocraft-algo --lib gray8_combining_release_comparison -- --ignored --nocapture | tee selection-combining-perf.txt
+          cargo test --release -p patronusphoto-algo --lib gray8_combining_release_comparison -- --ignored --nocapture | tee selection-combining-perf.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
@@ -667,8 +667,8 @@ jobs:
       - name: Build the same benchmark against both versions
         run: |
           cp after/crates/paint/examples/big_dab_bench.rs before/crates/paint/examples/big_dab_bench.rs
-          cargo build --release --locked --manifest-path before/Cargo.toml -p photocraft-paint --example big_dab_bench
-          cargo build --release --locked --manifest-path after/Cargo.toml -p photocraft-paint --example big_dab_bench
+          cargo build --release --locked --manifest-path before/Cargo.toml -p patronusphoto-paint --example big_dab_bench
+          cargo build --release --locked --manifest-path after/Cargo.toml -p patronusphoto-paint --example big_dab_bench
       - name: Compare round and transformed tips on 24 MP
         run: |
           set -o pipefail
@@ -709,9 +709,9 @@ jobs:
           git fetch --no-tags upstream main
           base=$(git merge-base HEAD upstream/main)
           echo "sha=$base" >> "$GITHUB_OUTPUT"
-          git worktree add --detach "$RUNNER_TEMP/photocraft-baseline" "$base"
-          mkdir -p "$RUNNER_TEMP/photocraft-baseline/crates/engine/examples"
-          cp crates/engine/examples/bench_dry_mixer.rs "$RUNNER_TEMP/photocraft-baseline/crates/engine/examples/bench_dry_mixer.rs"
+          git worktree add --detach "$RUNNER_TEMP/patronusphoto-baseline" "$base"
+          mkdir -p "$RUNNER_TEMP/patronusphoto-baseline/crates/engine/examples"
+          cp crates/engine/examples/bench_dry_mixer.rs "$RUNNER_TEMP/patronusphoto-baseline/crates/engine/examples/bench_dry_mixer.rs"
       - uses: step-security/dtolnay-rust-toolchain@8dd607977d06adf4ed49b190381e74c17a9dd25f # v1.0.0
         with:
           toolchain: stable
@@ -726,8 +726,8 @@ jobs:
           set -o pipefail
           echo "baseline=${{ steps.baseline.outputs.sha }}" | tee dry-mixer-perf.txt
           echo "candidate=${GITHUB_SHA}" | tee -a dry-mixer-perf.txt
-          CARGO_TARGET_DIR="$RUNNER_TEMP/target-baseline" cargo run --release --manifest-path "$RUNNER_TEMP/photocraft-baseline/Cargo.toml" -p photocraft-engine --example bench_dry_mixer | tee baseline-mixer.txt
-          CARGO_TARGET_DIR="$RUNNER_TEMP/target-candidate" cargo run --release -p photocraft-engine --example bench_dry_mixer | tee candidate-mixer.txt
+          CARGO_TARGET_DIR="$RUNNER_TEMP/target-baseline" cargo run --release --manifest-path "$RUNNER_TEMP/patronusphoto-baseline/Cargo.toml" -p patronusphoto-engine --example bench_dry_mixer | tee baseline-mixer.txt
+          CARGO_TARGET_DIR="$RUNNER_TEMP/target-candidate" cargo run --release -p patronusphoto-engine --example bench_dry_mixer | tee candidate-mixer.txt
           cat baseline-mixer.txt candidate-mixer.txt >> dry-mixer-perf.txt
           python3 - <<'PY'
           import re

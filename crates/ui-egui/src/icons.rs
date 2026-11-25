@@ -1,4 +1,4 @@
-//! PhotoCraft's icon names. The glyphs come from the framework's catalog and from the app's own set in
+//! Patronus Photo's icon names. The glyphs come from the framework's catalog and from the app's own set in
 //! `icon_data.rs`, registered once by [`register`]; drawing is the framework's `Icon` / `IconSpec::svg`.
 
 use std::borrow::Cow;
@@ -9,14 +9,14 @@ use craft::behavior::IconId;
 use craft::ui::contract::CommandSet;
 use craft::ui::primitives::register_app_icons;
 
-use crate::icon_data::PHOTOCRAFT_ICONS;
+use crate::icon_data::PATRONUSPHOTO_ICONS;
 use crate::panels::tool_commands::{ToolCommand, command_of};
 use crate::state::Tool;
 
 /// Registers the app's own icon set with the framework. The registry is process-wide and ignores a set
 /// registered twice, so a second window or a test may call it again.
 pub fn register() {
-    register_app_icons(&PHOTOCRAFT_ICONS);
+    register_app_icons(&PATRONUSPHOTO_ICONS);
 }
 
 /// Panel footer buttons share one glyph per action and one size, so the Layers footer and the
@@ -45,9 +45,9 @@ mod tests {
     use crate::icon_data::ICONS;
 
     /// A missing glyph paints nothing and only logs, so a call site left on a renamed (hyphenated)
-    /// name is caught here: every name PhotoCraft asks for resolves once the app set is registered.
+    /// name is caught here: every name Patronus Photo asks for resolves once the app set is registered.
     #[test]
-    fn every_name_photocraft_asks_for_resolves() {
+    fn every_name_patronusphoto_asks_for_resolves() {
         register();
         register();
         for t in Tool::ALL {

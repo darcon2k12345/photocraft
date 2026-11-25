@@ -1,21 +1,21 @@
 //! #15527: the Home screen uses the framework's Home layout, with Home and Learn in a left rail beside the content,
-//! the community links at the bottom of that rail and the PhotoCraft title above the page.
-use crate::PhotocraftApp;
+//! the community links at the bottom of that rail and the Patronus Photo title above the page.
+use crate::PatronusPhotoApp;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 
-type H = Harness<'static, Box<PhotocraftApp>>;
+type H = Harness<'static, Box<PatronusPhotoApp>>;
 
 const DROP_HINT: &str = "Drop an image or PSD anywhere to open it.";
 
 fn harness() -> H {
-    let app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     let mut h = Harness::builder()
         .with_size(egui::vec2(1100.0, 700.0))
         .with_max_steps(64)
         .with_context(app.ctx().clone())
-        .build_ui_state(|ui, app: &mut Box<PhotocraftApp>| super::start_screen(app, ui), app);
-    PhotocraftApp::setup_context(&h.ctx, Default::default());
+        .build_ui_state(|ui, app: &mut Box<PatronusPhotoApp>| super::start_screen(app, ui), app);
+    PatronusPhotoApp::setup_context(&h.ctx, Default::default());
     h.run_steps(4);
     h
 }
@@ -29,15 +29,15 @@ fn rect(h: &H, label: &str) -> egui::Rect {
 fn home_and_the_links_sit_in_a_rail_left_of_the_content_at_desktop_width() {
     let h = harness();
     let hint = rect(&h, DROP_HINT);
-    let title = rect(&h, "PhotoCraft");
-    for label in ["Home", "Learn", "Website", "Discord", "GitHub"] {
+    let title = rect(&h, "Patronus Photo");
+    for label in ["Home", "Learn", "Releases", "Community", "GitHub"] {
         let link = rect(&h, label);
         assert!(link.right() <= hint.left(), "{label} {link:?} must be in the rail left of the drop hint {hint:?}");
         assert!(link.right() <= title.left(), "{label} {link:?} must be left of the title {title:?}");
     }
     assert!(rect(&h, "Home").bottom() <= rect(&h, "Learn").top(), "Learn follows Home");
     let middle = h.ctx.content_rect().center().y;
-    for label in ["Website", "Discord", "GitHub"] {
+    for label in ["Releases", "Community", "GitHub"] {
         assert!(rect(&h, label).top() > middle, "{label} sits at the bottom of the rail");
     }
     assert!(title.bottom() <= hint.top(), "the title is above the page");
@@ -45,16 +45,16 @@ fn home_and_the_links_sit_in_a_rail_left_of_the_content_at_desktop_width() {
 
 /// The width of the first recent card on a Home screen `width` points wide, with six recent files.
 fn card_width(width: f32) -> f32 {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     for n in 1..=6 {
-        app.push_recent(&format!("/tmp/photocraft-home/card-{n}.png"));
+        app.push_recent(&format!("/tmp/patronusphoto-home/card-{n}.png"));
     }
     let mut h = Harness::builder()
         .with_size(egui::vec2(width, 700.0))
         .with_max_steps(64)
         .with_context(app.ctx().clone())
-        .build_ui_state(|ui, app: &mut Box<PhotocraftApp>| super::start_screen(app, ui), app);
-    PhotocraftApp::setup_context(&h.ctx, Default::default());
+        .build_ui_state(|ui, app: &mut Box<PatronusPhotoApp>| super::start_screen(app, ui), app);
+    PatronusPhotoApp::setup_context(&h.ctx, Default::default());
     h.run_steps(4);
     rect(&h, "card-6.png").width()
 }

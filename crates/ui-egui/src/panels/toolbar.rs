@@ -1,4 +1,4 @@
-use super::{PhotocraftApp, Tool, json, vec2};
+use super::{PatronusPhotoApp, Tool, json, vec2};
 use craft::behavior::overlay::Side;
 use craft::color_ui::ui::{PairWell, SwatchPair, Well};
 use craft::ui::contract::{Bind, Gap, Props as _, Show as _, ShowContainer as _, Tracked, clicked};
@@ -10,7 +10,7 @@ use craft::ui::rails::{
 use craft::ui::runtime::commands::CommandRef;
 use craft::ui::runtime::env::Label;
 use craft::ui::shell::ScreenModeButton;
-use photocraft_engine::prefs::ToolbarCustomization;
+use patronusphoto_engine::prefs::ToolbarCustomization;
 
 use super::tool_commands;
 
@@ -66,7 +66,7 @@ pub(crate) fn toolbar_position(tool: Tool) -> usize {
 }
 
 /// Opens the Edit Toolbar drawer beside the rail. The rail's "…" button and the `edit.toolbar` command both come here.
-pub(crate) fn open_drawer(app: &mut PhotocraftApp) {
+pub(crate) fn open_drawer(app: &mut PatronusPhotoApp) {
     app.ui.toolbar_drawer = true;
 }
 
@@ -146,7 +146,7 @@ fn last_used(slots: &[ToolSlot<Tool>], group_tools: &[Tool]) -> LastUsed<Tool> {
 
 /// The cells of the toolbar's grid: its visible slots and the Edit Toolbar button. The dock column's width in steps goes
 /// up to this many content columns.
-pub(crate) fn cells(app: &PhotocraftApp) -> usize {
+pub(crate) fn cells(app: &PatronusPhotoApp) -> usize {
     visible_slots(&app.toolbar_slots.get(&app.session.prefs), &[]).len() + 1
 }
 
@@ -155,7 +155,7 @@ pub(crate) const QUICK_MASK: &str = "select.editInQuickMaskMode";
 
 /// Quick Mask as a rail button, the size of the tool buttons: a click runs Edit in Quick Mask Mode, and the button shows
 /// on while the active document is in Quick Mask.
-fn quick_mask_button(app: &PhotocraftApp, ui: &mut egui::Ui) {
+fn quick_mask_button(app: &PatronusPhotoApp, ui: &mut egui::Ui) {
     let on = app.session.active().is_some_and(|s| s.doc.quick_mask.is_some());
     let tools = [RailTool::new(0_u8, CommandRef::new(QUICK_MASK))];
     let _ = FlyoutButton::new(&tools, &0).id_salt("quick-mask").selected(on).show(ui);
@@ -181,10 +181,10 @@ fn rail<'a>(
 }
 
 /// The rail's footer: the colour chips, then the Quick Mask and Screen Mode buttons.
-fn footer(app: &mut PhotocraftApp, ui: &mut egui::Ui, rail: RailFooter) {
+fn footer(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, rail: RailFooter) {
     let column = ui.available_width();
     color_chips(app, ui, column);
-    let modes = |ui: &mut egui::Ui, app: &mut PhotocraftApp| {
+    let modes = |ui: &mut egui::Ui, app: &mut PatronusPhotoApp| {
         quick_mask_button(app, ui);
         ScreenModeButton::new(app.ui.view.screen_mode).show(ui);
     };
@@ -228,7 +228,7 @@ impl PartialEq for MeasureKey {
 /// The dock asks for it on every frame before it shows the rail, and a measuring run of the rail (every tool button
 /// and the footer, each resolving its command) was the largest part of the UI pass (#15493). The last height is kept
 /// with what it depends on ([`MeasureKey`]) and measured again only when one of them changes.
-pub(crate) fn measure(app: &mut PhotocraftApp, ui: &egui::Ui, width: f32) -> f32 {
+pub(crate) fn measure(app: &mut PatronusPhotoApp, ui: &egui::Ui, width: f32) -> f32 {
     thread_local! {
         static LAST: std::cell::RefCell<Option<(MeasureKey, f32)>> = const { std::cell::RefCell::new(None) };
     }
@@ -255,7 +255,7 @@ pub(crate) fn measure(app: &mut PhotocraftApp, ui: &egui::Ui, width: f32) -> f32
 }
 
 /// [`measure`] without the kept height: a measuring run of the rail.
-fn measure_now(app: &mut PhotocraftApp, ui: &egui::Ui, width: f32) -> f32 {
+fn measure_now(app: &mut PatronusPhotoApp, ui: &egui::Ui, width: f32) -> f32 {
     let slots = app.toolbar_slots.get(&app.session.prefs);
     let remembered = app.toolbar_slots.remembered(last_used(&slots, &app.ui.group_tools));
     let current = app.ui.tool;
@@ -269,7 +269,7 @@ fn measure_now(app: &mut PhotocraftApp, ui: &egui::Ui, width: f32) -> f32 {
 ///
 /// A frame can run this twice. Every outcome comes from the pass's own widgets (a click, a drop), and the slots and
 /// remembered tools are read again at the start of each pass, so a second pass applies only its own input.
-pub fn toolbar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn toolbar(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let ctx = ui.ctx().clone();
     let slots = app.toolbar_slots.get(&app.session.prefs);
     let remembered = app.toolbar_slots.remembered(last_used(&slots, &app.ui.group_tools));
@@ -310,7 +310,7 @@ pub fn toolbar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 
 /// The Edit Toolbar drawer beside the rail: its tool list, and the arrangement edits saved through `edit.toolbar`.
 fn show_drawer(
-    app: &mut PhotocraftApp,
+    app: &mut PatronusPhotoApp,
     ui: &mut egui::Ui,
     ctx: &egui::Context,
     slots: &[ToolSlot<Tool>],
@@ -354,7 +354,7 @@ fn show_drawer(
 /// Photoshop's foreground / background colour chips: `SwatchPair` in host-picker mode, the
 /// foreground in front, Default Colors (D) and Switch Colors (X) over them, centred in the tool
 /// column.
-fn chip_pair<'a>(app: &PhotocraftApp, active: &'a mut Well) -> SwatchPair<'a> {
+fn chip_pair<'a>(app: &PatronusPhotoApp, active: &'a mut Well) -> SwatchPair<'a> {
     let tools = &app.session.tools;
     let wells = [
         PairWell::new(tl!("Set foreground color"), crate::panels::color::srgba(tools.foreground)),
@@ -368,7 +368,7 @@ fn chip_pair<'a>(app: &PhotocraftApp, active: &'a mut Well) -> SwatchPair<'a> {
 }
 
 /// The colour chips: a click on a chip opens the Color Picker for that colour (Photoshop).
-pub(super) fn color_chips(app: &mut PhotocraftApp, ui: &mut egui::Ui, column: f32) {
+pub(super) fn color_chips(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, column: f32) {
     let mut active = Well::Primary;
     let layout = egui::Layout::top_down(egui::Align::Center);
     let out = ui.allocate_ui_with_layout(vec2(column, 0.0), layout, |ui| chip_pair(app, &mut active).show(ui)).inner;
@@ -391,7 +391,7 @@ pub(super) fn color_chips(app: &mut PhotocraftApp, ui: &mut egui::Ui, column: f3
 
 /// Run Switch Colors or Default Colors from the chips. As in Photoshop, characters highlighted
 /// in the type layer being edited take the new foreground colour, like picking one (#5690).
-fn chip_command(app: &mut PhotocraftApp, id: &str) {
+fn chip_command(app: &mut PatronusPhotoApp, id: &str) {
     if app.run(id, json!({})).is_ok() {
         crate::type_tool::foreground_changed(app);
     }

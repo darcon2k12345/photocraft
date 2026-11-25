@@ -6,10 +6,10 @@ use std::time::{Duration, Instant};
 fn detailed() -> Arc<Document> {
     let mut doc = Document::with_background(
         "x",
-        photocraft_doc::Size::new(96, 64),
-        photocraft_doc::ColorMode::Rgb,
-        photocraft_doc::SampleType::U8,
-        photocraft_doc::Color::WHITE,
+        patronusphoto_doc::Size::new(96, 64),
+        patronusphoto_doc::ColorMode::Rgb,
+        patronusphoto_doc::SampleType::U8,
+        patronusphoto_doc::Color::WHITE,
     );
     let id = doc.layers[0].id;
     let surf = doc.layer_mut(id).unwrap().surface_mut().unwrap();
@@ -18,7 +18,7 @@ fn detailed() -> Arc<Document> {
         for x in (0..96).step_by(2) {
             seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
             let v = (seed >> 24) as f32 / 255.0;
-            surf.fill_rect(photocraft_geom::Rect::new(x, y, x + 2, y + 2), &[v, x as f32 / 96.0, y as f32 / 64.0, 1.0]);
+            surf.fill_rect(patronusphoto_geom::Rect::new(x, y, x + 2, y + 2), &[v, x as f32 / 96.0, y as f32 / 64.0, 1.0]);
         }
     }
     Arc::new(doc)
@@ -34,7 +34,7 @@ fn source(own_quality: Option<u8>) -> Source {
 fn quality_12_reads_larger_than_quality_0() {
     let src = source(None);
     let (low, high) = (src.settings(0, JpegFormat::Baseline), src.settings(12, JpegFormat::Baseline));
-    let size = |s: &ExportSettings| photocraft_io::export(&src.doc, "a.jpg", &s.io_options()).unwrap().bytes.len() as u64;
+    let size = |s: &ExportSettings| patronusphoto_io::export(&src.doc, "a.jpg", &s.io_options()).unwrap().bytes.len() as u64;
     assert_eq!(encoded_size(&src.doc, &low), Some(size(&low)));
     assert_eq!(encoded_size(&src.doc, &high), Some(size(&high)));
     assert!(size(&high) > size(&low), "quality 12: {} bytes, quality 0: {} bytes", size(&high), size(&low));
@@ -48,7 +48,7 @@ fn the_files_own_quality_is_what_is_estimated() {
     let src = source(Some(95));
     assert_eq!(src.settings(11, JpegFormat::Progressive).jpeg_quality, Some(95));
     assert_eq!(src.settings(11, JpegFormat::Progressive).jpeg_format, JpegFormat::Progressive);
-    assert_eq!(src.settings(10, JpegFormat::Baseline).jpeg_quality, Some(photocraft_engine::file_cmds::jpeg_quality(10.0)));
+    assert_eq!(src.settings(10, JpegFormat::Baseline).jpeg_quality, Some(patronusphoto_engine::file_cmds::jpeg_quality(10.0)));
 }
 
 /// Waits for `readout` to answer `key`, encoding with `job`.
@@ -75,7 +75,7 @@ fn unchanged_settings_are_not_encoded_again() {
             Some(size)
         }
     };
-    let key = Key { doc: photocraft_doc::DocId(1), revision: 3, quality: 84, format: JpegFormat::Baseline };
+    let key = Key { doc: patronusphoto_doc::DocId(1), revision: 3, quality: 84, format: JpegFormat::Baseline };
     let mut readout = Readout::default();
     assert_eq!(answer(&mut readout, key, counted(1000)), Some(1000));
     for _ in 0..10 {
@@ -133,7 +133,7 @@ fn earlier_settings_are_not_encoded_again() {
             Some(size)
         }
     };
-    let at = |quality: u8| Key { doc: photocraft_doc::DocId(1), revision: 3, quality, format: JpegFormat::Baseline };
+    let at = |quality: u8| Key { doc: patronusphoto_doc::DocId(1), revision: 3, quality, format: JpegFormat::Baseline };
     let mut readout = Readout::default();
     assert_eq!(answer(&mut readout, at(84), counted(1000)), Some(1000));
     assert_eq!(answer(&mut readout, at(92), counted(2000)), Some(2000));

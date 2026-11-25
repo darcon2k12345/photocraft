@@ -7,10 +7,10 @@ use craft::theme::Srgba;
 use craft::ui::contract::Bind;
 use serde_json::json;
 
-use super::PhotocraftApp;
+use super::PatronusPhotoApp;
 
 /// The Color tab: the panel in the view its panel menu picked (#6000).
-pub(crate) fn panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub(crate) fn panel(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let colors = [srgba(app.session.tools.foreground), srgba(app.session.tools.background)];
     let dynamic = app.session.prefs().interface.dynamic_color_sliders;
     let out = ColorPanel::new(Bind::bound(&mut app.ui.color_panel.panel), colors).dynamic_tracks(dynamic).show(ui);
@@ -32,7 +32,7 @@ pub(crate) fn panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 /// One edit of a colour: `tools.setColors` under the gesture's coalesce key, so a drag or a
 /// typed value is one history step; a new foreground recolours what is selected. A colour equal
 /// to the current one runs nothing, so it leaves no empty history step.
-fn set_color(app: &mut PhotocraftApp, target: PanelTarget, event: &EditEvent<PickedColor>) {
+fn set_color(app: &mut PatronusPhotoApp, target: PanelTarget, event: &EditEvent<PickedColor>) {
     let Some(picked) = event.landed() else { return };
     let c = picked.color;
     let now = match target {
@@ -72,7 +72,7 @@ pub(crate) fn srgba(c: [f32; 4]) -> Srgba {
 
 /// Runs a Color panel menu command on the panel state; Copy Color as HTML and Copy Color's Hex
 /// Code return the clipboard text of the edited colour.
-pub(crate) fn run_menu_command(app: &mut PhotocraftApp, command: ColorPanelCommand) -> Option<String> {
+pub(crate) fn run_menu_command(app: &mut PatronusPhotoApp, command: ColorPanelCommand) -> Option<String> {
     let tools = &app.session.tools;
     let edited = srgba(if app.ui.color_panel.panel.background { tools.background } else { tools.foreground });
     ColorPanelMenu::run_command(&mut app.ui.color_panel.panel, command, edited)

@@ -1,9 +1,9 @@
 //! Shared helpers for the second filter batch: colour-model access, window
 //! buffers, single-channel box/Gaussian blurs and jittered cell points.
 
-use photocraft_color::{ColorMode, PixelFormat, SampleType};
-use photocraft_geom::Rect;
-use photocraft_raster::{from_rgba_into, to_rgba};
+use patronusphoto_color::{ColorMode, PixelFormat, SampleType};
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::{from_rgba_into, to_rgba};
 
 use crate::Ctx;
 use crate::image::Image;
@@ -447,7 +447,7 @@ mod tests {
         }
     }
 
-    /// `cargo test -p photocraft-algo --release --lib -- --ignored --nocapture cols_timing`
+    /// `cargo test -p patronusphoto-algo --release --lib -- --ignored --nocapture cols_timing`
     #[test]
     #[ignore = "timing"]
     fn cols_timing() {

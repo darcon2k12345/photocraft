@@ -10,7 +10,7 @@ use craft::behavior::kurbo::{Point, Rect};
 use craft::ui::canvas_controls::Marquee;
 use craft::ui::contract::Show as _;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The marquee being dragged, in document pixels.
 #[derive(Clone, Copy, Debug)]
@@ -29,18 +29,18 @@ pub(crate) struct LayerBox {
 /// real Move tool skips effective Position as well as All locks. Set `clear_on_empty` for its
 /// locked-only press so an empty replacement marquee clears the selection.
 /// Temporary Move keeps ordinary lock filtering.
-pub(crate) fn begin(app: &mut PhotocraftApp, p: [f64; 2], add: bool, move_auto_select: bool, clear_on_empty: bool) {
+pub(crate) fn begin(app: &mut PatronusPhotoApp, p: [f64; 2], add: bool, move_auto_select: bool, clear_on_empty: bool) {
     app.layer_box = Some(LayerBox { start: p, end: p, add, move_auto_select, clear_on_empty });
 }
 
 /// No visible layer has pixels at document point `p` (locked ones included).
-pub(crate) fn empty_at(app: &mut PhotocraftApp, p: [f64; 2]) -> bool {
+pub(crate) fn empty_at(app: &mut PatronusPhotoApp, p: [f64; 2]) -> bool {
     app.run("layer.pickAt", json!({"x": p[0], "y": p[1], "list": true})).is_ok_and(|v| v["layers"].as_array().is_some_and(Vec::is_empty))
 }
 
 /// The pointer moved to document point `p` while a marquee is dragged (unsnapped, unconstrained):
 /// true when a marquee is running.
-pub(crate) fn drag_to(app: &mut PhotocraftApp, p: [f64; 2]) -> bool {
+pub(crate) fn drag_to(app: &mut PatronusPhotoApp, p: [f64; 2]) -> bool {
     let Some(b) = app.layer_box.as_mut() else { return false };
     b.end = p;
     true
@@ -48,7 +48,7 @@ pub(crate) fn drag_to(app: &mut PhotocraftApp, p: [f64; 2]) -> bool {
 
 /// The button came up at document point `p`: selects the layers the box touches. True when a
 /// marquee was running.
-pub(crate) fn release(app: &mut PhotocraftApp, p: [f64; 2]) -> bool {
+pub(crate) fn release(app: &mut PatronusPhotoApp, p: [f64; 2]) -> bool {
     let Some(b) = app.layer_box.take() else { return false };
     let b = LayerBox { end: p, ..b };
     let (w, h) = (b.end[0] - b.start[0], b.end[1] - b.start[1]);
@@ -81,12 +81,12 @@ pub(crate) fn release(app: &mut PhotocraftApp, p: [f64; 2]) -> bool {
 }
 
 /// The drag ends without selecting anything.
-pub(crate) fn cancel(app: &mut PhotocraftApp) {
+pub(crate) fn cancel(app: &mut PatronusPhotoApp) {
     app.layer_box = None;
 }
 
 /// The marquee being dragged, over the canvas `canvas`.
-pub(crate) fn show(app: &PhotocraftApp, ui: &mut egui::Ui, canvas: egui::Rect) {
+pub(crate) fn show(app: &PatronusPhotoApp, ui: &mut egui::Ui, canvas: egui::Rect) {
     let Some(b) = app.layer_box else { return };
     let rect = Rect::from_points(Point::new(b.start[0], b.start[1]), Point::new(b.end[0], b.end[1]));
     Marquee::rect(tl!("Layer marquee"), rect).show_at(ui, canvas);
@@ -96,11 +96,11 @@ pub(crate) fn show(app: &PhotocraftApp, ui: &mut egui::Ui, canvas: egui::Rect) {
 mod tests {
     use serde_json::json;
 
-    use crate::PhotocraftApp;
+    use crate::PatronusPhotoApp;
     use crate::canvas::{ToolEvent, tool_event};
     use crate::state::Tool;
 
-    fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2], m: egui::Modifiers) {
+    fn drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2], m: egui::Modifiers) {
         tool_event(app, ToolEvent::Down { x: from[0], y: from[1], pressure: 1.0 }, m);
         tool_event(app, ToolEvent::Move { x: to[0], y: to[1], pressure: 1.0 }, m);
         tool_event(app, ToolEvent::Up { x: to[0], y: to[1] }, m);
@@ -110,7 +110,7 @@ mod tests {
     /// nothing.
     #[test]
     fn a_drag_from_an_empty_spot_selects_the_layers_it_touches() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.session.execute("file.new", json!({"width": 64, "height": 64})).unwrap();
         app.sync_views();
         let mut ids = Vec::new();
@@ -139,14 +139,14 @@ mod tests {
     /// A Shift-click preserves the selection, and a pasteboard drag remains a marquee.
     #[test]
     fn pasteboard_click_deselects_layers_without_affecting_empty_canvas_clicks() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 64, "height": 64, "background": "transparent"})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();
         app.ui.tool = Tool::Move;
         app.ui.tool_options.move_auto_select = true;
         let layer = app.session.active().unwrap().active_layer.unwrap();
         assert_eq!(app.session.active().unwrap().selected_layers(), vec![layer]);
-        let click = |app: &mut PhotocraftApp, p: [f64; 2], mods| {
+        let click = |app: &mut PatronusPhotoApp, p: [f64; 2], mods| {
             tool_event(app, ToolEvent::Down { x: p[0], y: p[1], pressure: 1.0 }, mods);
             tool_event(app, ToolEvent::Up { x: p[0], y: p[1] }, mods);
         };
@@ -164,14 +164,14 @@ mod tests {
     /// pasteboard, so a click there still clears the layer selection rather than picking them.
     #[test]
     fn pasteboard_click_deselects_over_fill_layers_and_off_canvas_pixels() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 64, "height": 64, "background": "transparent"})).unwrap();
         app.run("layer.newFillLayer.solidColor", json!({"color": "#00ff00"})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();
         let off = app.session.active().unwrap().active_layer.unwrap();
         app.session
             .edit("paint past the edge", |doc, _| {
-                doc.layer_mut(off).unwrap().surface_mut().unwrap().fill_rect(photocraft_geom::Rect::new(-20, 0, 10, 64), &[1.0, 0.0, 0.0, 1.0]);
+                doc.layer_mut(off).unwrap().surface_mut().unwrap().fill_rect(patronusphoto_geom::Rect::new(-20, 0, 10, 64), &[1.0, 0.0, 0.0, 1.0]);
                 Ok(())
             })
             .unwrap();
@@ -189,7 +189,7 @@ mod tests {
     /// open the move-lock dialog, and releasing selects the unlocked layer the box touches.
     #[test]
     fn a_drag_on_the_locked_background_selects_instead_of_erroring() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 80, "height": 60})).unwrap();
         app.sync_views();
         app.run("layer.new.layer", json!({})).unwrap();

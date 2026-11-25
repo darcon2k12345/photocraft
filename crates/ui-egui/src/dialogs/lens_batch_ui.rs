@@ -8,7 +8,7 @@ use craft::ui::patterns::form_dialogs::{Param, ParamKind};
 use craft::ui::runtime::env::Label;
 use craft::ui::runtime::requests::PathKind;
 
-pub(crate) const COMMAND: &str = photocraft_engine::lens_cmds::LENS_BATCH;
+pub(crate) const COMMAND: &str = patronusphoto_engine::lens_cmds::LENS_BATCH;
 
 const FORMATS: [(&str, &str); 4] = [("jpg", "JPG"), ("png", "PNG"), ("psd", "PSD"), ("tiff", "TIFF")];
 const PROFILES: [(&str, &str); 3] = [("auto", "Auto"), ("generic", "Generic"), ("none", "None")];

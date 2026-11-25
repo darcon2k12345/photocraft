@@ -1,10 +1,10 @@
 //! File dialogs that never block the event loop (#673, #574).
 //!
-//! A command that needs a file asks with [`PhotocraftApp::ask_file`] (or one of its wrappers) and
+//! A command that needs a file asks with [`PatronusPhotoApp::ask_file`] (or one of its wrappers) and
 //! hands over what to do with the answer. The request goes to the host's file service
-//! ([`craft::host::Files`]); [`PhotocraftApp::poll_file_dialog`], every frame, continues the action
+//! ([`craft::host::Files`]); [`PatronusPhotoApp::poll_file_dialog`], every frame, continues the action
 //! once the service has the user's answer. On native targets the service shows the platform
-//! pickers with the window as their parent when [`PhotocraftApp::pump_files`] runs at the end of
+//! pickers with the window as their parent when [`PatronusPhotoApp::pump_files`] runs at the end of
 //! the frame, so the window keeps drawing and answering the compositor meanwhile. A dialog run to
 //! completion inside the frame froze the window (Linux compositors offered to kill it, #574) and,
 //! on macOS, ran AppKit's modal loop inside winit's event handler, which aborts the app when
@@ -17,10 +17,10 @@ use std::path::{Path, PathBuf};
 #[cfg(not(target_arch = "wasm32"))]
 use craft::host::PickId;
 use craft::host::{PickKind, PickRequest, Picked};
-use photocraft_doc::DocId;
+use patronusphoto_doc::DocId;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::file_open::{display_name, path_text};
 
 mod filters;
@@ -83,7 +83,7 @@ pub type FileDialogFn = Box<dyn FnMut(FileDialogRequest, Option<&eframe::Frame>,
 
 /// What to do with the answer. It runs with the user's files only: Cancel and an unavailable
 /// dialog end in `Err` before it.
-type Then = Box<dyn FnOnce(&mut PhotocraftApp, Picked) -> Result<Value, String>>;
+type Then = Box<dyn FnOnce(&mut PatronusPhotoApp, Picked) -> Result<Value, String>>;
 
 /// The file dialog in progress.
 pub(crate) struct Pending {
@@ -100,7 +100,7 @@ pub(crate) struct Pending {
 pub(crate) const CANCELLED: &str = "cancelled";
 const UNEXPECTED: &str = "the file dialog gave an unexpected answer";
 
-/// The text of a chosen path. [`PhotocraftApp::ask_file`] has refused a path that is not valid
+/// The text of a chosen path. [`PatronusPhotoApp::ask_file`] has refused a path that is not valid
 /// Unicode by the time an action sees it.
 fn path_string(path: &Path) -> String {
     path.to_string_lossy().into_owned()
@@ -116,7 +116,7 @@ fn path_strings(picked: &Picked) -> Vec<String> {
     }
 }
 
-impl PhotocraftApp {
+impl PatronusPhotoApp {
     /// Whether a file dialog is open (or about to be shown).
     pub fn file_dialog_open(&self) -> bool {
         self.file_dialog.is_some()
@@ -497,7 +497,7 @@ fn read_picked(picked: Picked) -> Result<(String, Vec<u8>), String> {
         Picked::Contents(files) => files.into_iter().next().ok_or_else(|| CANCELLED.into()),
         Picked::Paths(paths) => {
             let path = path_string(paths.first().ok_or(CANCELLED)?);
-            let bytes = photocraft_format::read_file(Path::new(&path)).map_err(|e| format!("{}: {e}", display_name(&path)))?;
+            let bytes = patronusphoto_format::read_file(Path::new(&path)).map_err(|e| format!("{}: {e}", display_name(&path)))?;
             Ok((path, bytes))
         }
         Picked::Cancelled | Picked::Unavailable(_) | Picked::Failed(_) | Picked::Downloaded(_) => Err(UNEXPECTED.into()),

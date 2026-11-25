@@ -22,8 +22,8 @@
 //! count, then one 10-byte colour per ink in the same order.
 
 use craft_psd::aco::AcoColor;
-use photocraft_doc::adjust::CurvePoint;
-use photocraft_doc::{Duotone, DuotoneInk};
+use patronusphoto_doc::adjust::CurvePoint;
+use patronusphoto_doc::{Duotone, DuotoneInk};
 
 use craft_psd::duotone as wire;
 #[cfg(test)]

@@ -4,8 +4,8 @@ use super::open::raw_stage;
 use craft::imaging::raw::RawDevelopSettings as CameraRaw;
 #[cfg(test)]
 use craft::imaging::ui::raw_develop::RawPreviewRequest;
-use photocraft_algo::camera_raw::DevelopInputs;
-use photocraft_algo::histogram::RgbHistogram;
+use patronusphoto_algo::camera_raw::DevelopInputs;
+use patronusphoto_algo::histogram::RgbHistogram;
 
 /// What every develop of one open raw shares: the proxy and the inputs the source keeps between
 /// requests. A request adds the settings.
@@ -17,7 +17,7 @@ pub(crate) struct ProxyBase {
     pub(crate) float: bool,
     pub(crate) size: (usize, usize),
     pub(crate) full_w: usize,
-    pub(crate) display: std::sync::Arc<photocraft_engine::display_color::CanvasDisplay>,
+    pub(crate) display: std::sync::Arc<patronusphoto_engine::display_color::CanvasDisplay>,
     pub(crate) gpu: Option<crate::camera_raw_gpu::CameraRawGpu>,
     pub(crate) source_key: u64,
     /// The develop's inputs besides the settings (seed, pixel scale, encoding gamma).
@@ -45,8 +45,8 @@ pub(crate) struct ProxyFrame {
 
 /// `px` (straight RGBA, `w` × `h`) as the canvas shows it, converted in bands across cores (#4682),
 /// not as a whole copy on one thread.
-pub(crate) fn display_pixels(px: &[[f32; 4]], w: usize, h: usize, display: &photocraft_engine::display_color::CanvasDisplay) -> egui::ColorImage {
-    crate::dialogs::camera_raw_detail_ui::display_image(photocraft_geom::Rect::new(0, 0, w as i32, h as i32), display, |r, out| {
+pub(crate) fn display_pixels(px: &[[f32; 4]], w: usize, h: usize, display: &patronusphoto_engine::display_color::CanvasDisplay) -> egui::ColorImage {
+    crate::dialogs::camera_raw_detail_ui::display_image(patronusphoto_geom::Rect::new(0, 0, w as i32, h as i32), display, |r, out| {
         let start = (r.y0.max(0) as usize).saturating_mul(w);
         if let Some(src) = px.get(start..start.saturating_add(out.len())) {
             out.copy_from_slice(src);
@@ -72,7 +72,7 @@ impl ProxyJob {
         // proxy as it is and uploads it once.
         let retoned = raw_curve.as_ref().map(|curve| {
             let mut px = proxy.to_vec();
-            photocraft_io::raw::retone(&mut px, pw, ph, curve, raw_stage(&p));
+            patronusphoto_io::raw::retone(&mut px, pw, ph, curve, raw_stage(&p));
             px
         });
         if retoned.is_some() {
@@ -86,7 +86,7 @@ impl ProxyJob {
                 Some(out) => (out, "gpu"),
                 None => {
                     let mut px = retoned.unwrap_or_else(|| proxy.to_vec());
-                    photocraft_algo::camera_raw::develop(&mut px, pw, ph, &p, &inputs, float);
+                    patronusphoto_algo::camera_raw::develop(&mut px, pw, ph, &p, &inputs, float);
                     (px, "cpu")
                 }
             };

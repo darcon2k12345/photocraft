@@ -6,29 +6,29 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
 use serde_json::json;
 
-use crate::{PhotocraftApp, Services};
+use crate::{PatronusPhotoApp, Services};
 
 const SCALE_EFFECTS: &str = "layer.layerStyle.scaleEffects";
 
 /// The app with a document open and `command`'s dialog shown through `dialogs::run`.
-fn dialog(command: &str) -> Harness<'static, Box<PhotocraftApp>> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Services::default());
+fn dialog(command: &str) -> Harness<'static, Box<PatronusPhotoApp>> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Services::default());
     app.run("file.new", json!({"width": 64, "height": 64})).unwrap();
     super::filter_dialog::open(&mut app, command).unwrap();
     let mut h = Harness::builder()
         .with_context(app.ctx().clone())
         .with_size(egui::vec2(900.0, 700.0))
-        .build_ui_state(|ui, app: &mut Box<PhotocraftApp>| crate::dialogs::run(app, ui), app);
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+        .build_ui_state(|ui, app: &mut Box<PatronusPhotoApp>| crate::dialogs::run(app, ui), app);
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     h.run();
     h
 }
 
-fn sliders(h: &Harness<'_, Box<PhotocraftApp>>) -> usize {
+fn sliders(h: &Harness<'_, Box<PatronusPhotoApp>>) -> usize {
     h.query_all_by_role(Role::Slider).count()
 }
 
-fn scale(h: &Harness<'_, Box<PhotocraftApp>>) -> f64 {
+fn scale(h: &Harness<'_, Box<PatronusPhotoApp>>) -> f64 {
     h.get_by_role_and_label(Role::SpinButton, "Scale").accesskit_node().numeric_value().expect("the Scale field has a number")
 }
 

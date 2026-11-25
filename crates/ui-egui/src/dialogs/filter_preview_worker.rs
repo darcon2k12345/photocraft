@@ -6,12 +6,12 @@
 
 use std::sync::mpsc::{Receiver, TryRecvError};
 
-use photocraft_engine::jobs::JobCtx;
+use patronusphoto_engine::jobs::JobCtx;
 
 use crate::filter_dialog::FilterPreviewKey;
 
 pub(crate) struct Computed {
-    pub result: Option<(std::sync::Arc<photocraft_doc::Document>, photocraft_compose::Buffer)>,
+    pub result: Option<(std::sync::Arc<patronusphoto_doc::Document>, patronusphoto_compose::Buffer)>,
     pub ms: f64,
 }
 
@@ -94,7 +94,7 @@ impl Worker {
 }
 
 /// Stop and release previews of closed dialogs even when their canvas is no longer being drawn.
-pub(crate) fn discard_closed(app: &mut crate::PhotocraftApp) {
+pub(crate) fn discard_closed(app: &mut crate::PatronusPhotoApp) {
     use craft::ui::dialog::StackDialog as _;
     use craft::ui::patterns::form_dialogs::HostedParamDialog;
     // An open parameter dialog with its Preview box on keeps the preview alive; a smart filter edit also needs
@@ -120,7 +120,7 @@ mod tests {
 
     fn key(dialog: u64, revision: u64, colors: u32) -> FilterPreviewKey {
         FilterPreviewKey {
-            doc: photocraft_doc::DocId(1),
+            doc: patronusphoto_doc::DocId(1),
             revision,
             sources: Vec::new(),
             dialog: craft::ui::dialog::DialogId::unique(dialog),
@@ -183,7 +183,7 @@ mod tests {
         assert_ne!(original, key(1, 3, 64));
         assert_ne!(original, key(1, 2, 128));
         let mut layer = original.clone();
-        layer.active = Some(photocraft_doc::LayerId(4));
+        layer.active = Some(patronusphoto_doc::LayerId(4));
         assert_ne!(original, layer);
     }
 

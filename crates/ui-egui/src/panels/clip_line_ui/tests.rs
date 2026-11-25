@@ -1,8 +1,8 @@
 //! The commands an Alt-click on the line between two layers runs (#967). Where the line is and the
 //! click that reports it are craft-layers' (`LayersEvent::ClipLine`).
 
-use photocraft_doc::LayerId;
-use photocraft_engine::Session;
+use patronusphoto_doc::LayerId;
+use patronusphoto_engine::Session;
 use serde_json::json;
 
 use super::ClipLine;

@@ -8,12 +8,12 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// The options bar with the Rectangle tool active and a pixel layer targeted.
-fn bar() -> Harness<'static, Box<PhotocraftApp>> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn bar() -> Harness<'static, Box<PatronusPhotoApp>> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 80, "height": 80})).unwrap();
     app.ui.tool = Tool::Rectangle;
     let mut h =
@@ -23,7 +23,7 @@ fn bar() -> Harness<'static, Box<PhotocraftApp>> {
 }
 
 /// Types `text` into Radius, then Tabs out of it.
-fn type_radius(h: &mut Harness<'static, Box<PhotocraftApp>>, text: &str) {
+fn type_radius(h: &mut Harness<'static, Box<PatronusPhotoApp>>, text: &str) {
     h.query_all_by_role(Role::SpinButton).find(|n| n.accesskit_node().label().as_deref() == Some("Radius")).expect("the Radius field").click();
     h.run_steps(1);
     h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::A);
@@ -34,11 +34,11 @@ fn type_radius(h: &mut Harness<'static, Box<PhotocraftApp>>, text: &str) {
 }
 
 /// How many alerts are open.
-fn alerts(h: &Harness<'static, Box<PhotocraftApp>>) -> usize {
+fn alerts(h: &Harness<'static, Box<PatronusPhotoApp>>) -> usize {
     crate::dialogs::alerts::alerts(h.state()).len()
 }
 
-fn radius(h: &Harness<'static, Box<PhotocraftApp>>) -> f32 {
+fn radius(h: &Harness<'static, Box<PatronusPhotoApp>>) -> f32 {
     h.state().ui.tool_options.corner_radius
 }
 

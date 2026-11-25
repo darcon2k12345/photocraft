@@ -9,11 +9,11 @@
 //! `ui.dialog.confirm` deletes a layer mask, and `ui.dialog.cancel` keeps the mask.
 
 use craft::ui::dialog::{PromptAnswer, PromptChoice, PromptKind, StandardPrompt};
-use photocraft_doc::LayerId;
+use patronusphoto_doc::LayerId;
 use serde_json::{Value, json};
 
 use super::alerts;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::mask_thumbs_ui::MaskKind;
 
 /// Marks the params of a [`drop_action`], which [`intercept`] answers with the prompt.
@@ -36,7 +36,7 @@ pub fn drop_action(layer: u64, kind: MaskKind) -> (String, Value) {
 }
 
 /// Opens the prompt for a [`drop_action`]; `None` for every other command.
-pub fn intercept(app: &mut PhotocraftApp, command: &str, params: &Value) -> Option<Result<Value, String>> {
+pub fn intercept(app: &mut PatronusPhotoApp, command: &str, params: &Value) -> Option<Result<Value, String>> {
     let vector = match command {
         LAYER_MASK_DELETE => false,
         VECTOR_MASK_DELETE => true,
@@ -63,7 +63,7 @@ pub fn intercept(app: &mut PhotocraftApp, command: &str, params: &Value) -> Opti
 
 /// The `PROMPTS` entry: Proceed applies a layer mask (or deletes a vector mask), Alternate deletes a
 /// layer mask, Cancel keeps it. `false` for another family's answer.
-pub(crate) fn answer(app: &mut PhotocraftApp, _ctx: &egui::Context, answer: &mut PromptAnswer) -> bool {
+pub(crate) fn answer(app: &mut PatronusPhotoApp, _ctx: &egui::Context, answer: &mut PromptAnswer) -> bool {
     let Some(tag) = answer.take_tag::<MaskTrash>() else { return false };
     let command = match (tag.vector, answer.choice) {
         (true, PromptChoice::Proceed) => VECTOR_MASK_DELETE,
@@ -77,9 +77,9 @@ pub(crate) fn answer(app: &mut PhotocraftApp, _ctx: &egui::Context, answer: &mut
 }
 
 /// Runs `command` on the mask when the document, the layer and its mask are still the ones asked about.
-fn confirm(app: &mut PhotocraftApp, tag: &MaskTrash, command: &str) -> Result<Value, String> {
+fn confirm(app: &mut PatronusPhotoApp, tag: &MaskTrash, command: &str) -> Result<Value, String> {
     let state = app.session.active().ok_or(tl!("The document is closed"))?;
-    let has_mask = |l: &photocraft_doc::Layer| if tag.vector { l.vector_mask.is_some() } else { l.mask.is_some() };
+    let has_mask = |l: &patronusphoto_doc::Layer| if tag.vector { l.vector_mask.is_some() } else { l.mask.is_some() };
     if state.doc.id.0 != tag.doc || !state.doc.layer(LayerId(tag.layer)).is_some_and(has_mask) {
         return Err(tl!("The layer or its mask changed. Drag the mask onto the Trash again.").into());
     }

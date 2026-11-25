@@ -17,16 +17,16 @@ use craft::imaging::ui::warp::pin::{
 use craft::imaging::ui::{PreviewMap, TransformPreview};
 use craft::ui::contract::{Bind, Show as _};
 use craft::ui::runtime::memory::{self, SaveKey};
-use photocraft_algo::puppet::{ITERATIONS, PuppetDensity, PuppetMesh, PuppetMode, PuppetPin, PuppetSolver, PuppetWarp, build_mesh};
-use photocraft_doc::{DocId, Document, LayerId};
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use patronusphoto_algo::puppet::{ITERATIONS, PuppetDensity, PuppetMesh, PuppetMode, PuppetPin, PuppetSolver, PuppetWarp, build_mesh};
+use patronusphoto_doc::{DocId, Document, LayerId};
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::Surface;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// Where Mode, Density, Expansion and Show Mesh are remembered between runs.
-const SETTINGS_KEY: SaveKey = SaveKey::new("photocraft.puppetWarp");
+const SETTINGS_KEY: SaveKey = SaveKey::new("patronusphoto.puppetWarp");
 
 /// The text of a remesh that leaves no pixels to move.
 const NO_PIXELS: &str = "Could not use Puppet Warp: no opaque pixels at this density and expansion";
@@ -208,7 +208,7 @@ impl PuppetSession {
 
 /// Runs `f` on the open session and saves the settings when it changed them, so every path that changes one (the
 /// canvas, the bar, the control channel, undo) saves it once. `None` without a session.
-fn update<R>(app: &mut PhotocraftApp, f: impl FnOnce(&mut PuppetSession) -> R) -> Option<R> {
+fn update<R>(app: &mut PatronusPhotoApp, f: impl FnOnce(&mut PuppetSession) -> R) -> Option<R> {
     let s = app.distort.puppet.as_mut()?;
     let before = s.warp.settings();
     let out = f(s);
@@ -221,7 +221,7 @@ fn update<R>(app: &mut PhotocraftApp, f: impl FnOnce(&mut PuppetSession) -> R) -
 
 /// Applies one edit to the session. An `Err` (a refused remesh) is also kept as the bar's notice; any other edit
 /// clears the notice.
-fn apply_edit(app: &mut PhotocraftApp, edit: PinEdit) -> Result<(), String> {
+fn apply_edit(app: &mut PatronusPhotoApp, edit: PinEdit) -> Result<(), String> {
     update(app, |s| {
         let result = s.warp.apply(edit, &mut s.solver);
         s.notice = result.clone().err();
@@ -232,23 +232,23 @@ fn apply_edit(app: &mut PhotocraftApp, edit: PinEdit) -> Result<(), String> {
 
 /// Applies a pin edit from a test, as the canvas or the bar would.
 #[cfg(test)]
-pub(crate) fn session_apply(app: &mut PhotocraftApp, edit: PinEdit) -> Result<(), String> {
+pub(crate) fn session_apply(app: &mut PatronusPhotoApp, edit: PinEdit) -> Result<(), String> {
     apply_edit(app, edit)
 }
 
 /// ⌘Z while the session is open: steps the session back, not the document history. The caller ends a running pin drag
 /// first. False when there is nothing to undo or no session.
-pub fn undo(app: &mut PhotocraftApp) -> bool {
+pub fn undo(app: &mut PatronusPhotoApp) -> bool {
     update(app, |s| s.warp.undo(&mut s.solver)).unwrap_or(false)
 }
 
 /// ⌘⇧Z while the session is open: steps the session forward. False when there is nothing to redo or no session.
-pub fn redo(app: &mut PhotocraftApp) -> bool {
+pub fn redo(app: &mut PatronusPhotoApp) -> bool {
     update(app, |s| s.warp.redo(&mut s.solver)).unwrap_or(false)
 }
 
 /// Starts Puppet Warp on the active layer.
-pub fn begin(app: &mut PhotocraftApp, ctx: &egui::Context, command: &str) -> Result<(), String> {
+pub fn begin(app: &mut PatronusPhotoApp, ctx: &egui::Context, command: &str) -> Result<(), String> {
     if let Some(why) = app.session.disabled_reason(command) {
         return Err(why);
     }
@@ -290,7 +290,7 @@ pub fn begin(app: &mut PhotocraftApp, ctx: &egui::Context, command: &str) -> Res
 }
 
 /// Commits the session: one `edit.puppetWarp` step. Pins that all sit where they attached run no command.
-pub fn commit(app: &mut PhotocraftApp) {
+pub fn commit(app: &mut PatronusPhotoApp) {
     let Some(s) = app.distort.puppet.take() else { return };
     let Some(pins) = s.warp.result() else { return };
     let mut params = serde_json::to_value(warp_of(pins, s.warp.options())).unwrap_or_default();
@@ -299,7 +299,7 @@ pub fn commit(app: &mut PhotocraftApp) {
 }
 
 /// Control channel: `edit.puppetWarp {"ui": {...}}` while the mode is active.
-pub fn control(app: &mut PhotocraftApp, ui: &Value) -> Result<Value, String> {
+pub fn control(app: &mut PatronusPhotoApp, ui: &Value) -> Result<Value, String> {
     let flag = |key: &str| ui.get(key).and_then(Value::as_bool) == Some(true);
     if flag("commit") {
         commit(app);
@@ -346,7 +346,7 @@ pub fn control(app: &mut PhotocraftApp, ui: &Value) -> Result<Value, String> {
 /// The warped pixels, the mesh lines and the pins, in the canvas body at `at`. Each pass applies only the edits its own
 /// pointer and key input produced, so a second pass in one frame applies nothing the first did; Enter commits and
 /// Escape with no drag cancels.
-pub fn canvas(app: &mut PhotocraftApp, ui: &mut egui::Ui, at: egui::Rect) {
+pub fn canvas(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, at: egui::Rect) {
     let Some(size) = app.session.active().map(|st| [st.doc.size.width, st.doc.size.height]) else { return };
     let Some(s) = app.distort.puppet.as_ref() else { return };
     let b = s.bounds;
@@ -368,7 +368,7 @@ pub fn canvas(app: &mut PhotocraftApp, ui: &mut egui::Ui, at: egui::Rect) {
 
 /// The options bar: Mode, Density, Expansion, Show Mesh, the selected pin's depth and rotation, Remove All Pins,
 /// commit and cancel.
-pub fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn options_bar(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let Some(s) = app.distort.puppet.as_ref() else { return };
     let output = PinWarpBar::new(&s.warp).notice(s.notice.as_deref()).show(ui);
     for edit in output.edits {

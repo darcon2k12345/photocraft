@@ -3,10 +3,10 @@
 //! drags the whole component, and releasing ⌘/Ctrl goes back to that.
 
 use egui::Modifiers;
-use photocraft_doc::Path;
+use patronusphoto_doc::Path;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::{ToolEvent, tool_event};
 use crate::state::Tool;
 
@@ -14,8 +14,8 @@ const SAVED: &str = "Path 1";
 const SQUARE: [[f64; 2]; 4] = [[100.0, 300.0], [300.0, 300.0], [300.0, 500.0], [100.0, 500.0]];
 
 /// The closed square 100,300–300,500 saved as "Path 1", targeted, with Path Selection.
-fn setup() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn setup() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 800, "height": 600, "background": "white"})).unwrap();
     let square = json!({"subpaths": [{"closed": true, "knots": SQUARE}]});
     app.run("path.set", json!({"name": SAVED, "path": square})).unwrap();
@@ -24,7 +24,7 @@ fn setup() -> Box<PhotocraftApp> {
     app
 }
 
-fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2], mods: Modifiers) {
+fn drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2], mods: Modifiers) {
     tool_event(app, ToolEvent::Down { x: from[0], y: from[1], pressure: 1.0 }, mods);
     let mid = [(from[0] + to[0]) / 2.0, (from[1] + to[1]) / 2.0];
     tool_event(app, ToolEvent::Move { x: mid[0], y: mid[1], pressure: 1.0 }, mods);
@@ -32,22 +32,22 @@ fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2], mods: Modifiers) 
     tool_event(app, ToolEvent::Up { x: to[0], y: to[1] }, mods);
 }
 
-fn saved(app: &PhotocraftApp) -> Path {
+fn saved(app: &PatronusPhotoApp) -> Path {
     app.session.active().unwrap().doc.paths.iter().find(|p| p.name == SAVED).unwrap().path.clone()
 }
 
-fn anchors(app: &PhotocraftApp) -> Vec<[f64; 2]> {
+fn anchors(app: &PatronusPhotoApp) -> Vec<[f64; 2]> {
     saved(app).subpaths[0].knots.iter().map(|k| [k.anchor.x, k.anchor.y]).collect()
 }
 
 /// The anchors are where the pointer put them, to the sub-pixel precision of the screen-to-document mapping.
-fn assert_anchors(app: &PhotocraftApp, expected: &[[f64; 2]], message: &str) {
+fn assert_anchors(app: &PatronusPhotoApp, expected: &[[f64; 2]], message: &str) {
     let got = anchors(app);
     let same = got.len() == expected.len() && got.iter().zip(expected).all(|(a, b)| (a[0] - b[0]).abs() < 1e-3 && (a[1] - b[1]).abs() < 1e-3);
     assert!(same, "{message}: {got:?} vs {expected:?}");
 }
 
-fn undo_label(app: &PhotocraftApp) -> Option<String> {
+fn undo_label(app: &PatronusPhotoApp) -> Option<String> {
     app.session.active()?.history.undo_label().map(str::to_string)
 }
 

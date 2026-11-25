@@ -1,5 +1,5 @@
 [package]
-name = "photocraft-doc"
+name = "patronusphoto-doc"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -8,9 +8,9 @@ license.workspace = true
 workspace = true
 
 [dependencies]
-photocraft-geom = { workspace = true }
-photocraft-color = { workspace = true }
-photocraft-raster = { workspace = true }
+patronusphoto-geom = { workspace = true }
+patronusphoto-color = { workspace = true }
+patronusphoto-raster = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 # LayerId is plain data (the Layers panel keys its rows by it): the marker and its derive, without the UI.

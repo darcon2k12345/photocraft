@@ -11,7 +11,7 @@ use craft::ui::canvas::GuideKey;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The bit of a [`GuideKey`] that marks a vertical guide; the low bits hold the guide's index
 /// among the guides of its orientation, as the engine numbers them (`view.moveGuide {orientation, index}`).
@@ -31,7 +31,7 @@ pub fn unkey(key: GuideKey) -> (bool, usize) {
 }
 
 /// The selected guide's key in the active document's guides, while guides can be interacted with.
-pub fn selected_key(app: &PhotocraftApp) -> Option<GuideKey> {
+pub fn selected_key(app: &PatronusPhotoApp) -> Option<GuideKey> {
     selected(app).map(|(vertical, index)| key(vertical, index))
 }
 
@@ -45,7 +45,7 @@ pub struct SelectedGuide {
 
 /// The selected guide's orientation and index in the active document, while guides can be
 /// interacted with (shown, unlocked).
-pub fn selected(app: &PhotocraftApp) -> Option<(bool, usize)> {
+pub fn selected(app: &PatronusPhotoApp) -> Option<(bool, usize)> {
     let sel = app.ui.selected_guide?;
     if !interactive(app) || app.session.active_index() != Some(sel.doc) {
         return None;
@@ -56,24 +56,24 @@ pub fn selected(app: &PhotocraftApp) -> Option<(bool, usize)> {
 }
 
 /// Guides take clicks only while they're shown and unlocked.
-pub(crate) fn interactive(app: &PhotocraftApp) -> bool {
+pub(crate) fn interactive(app: &PatronusPhotoApp) -> bool {
     app.ui.extras.guides && app.ui.view.shows(app.ui.view.show.canvas_guides) && !app.ui.extras.lock_guides
 }
 
 /// Select guide `index` of the active document.
-pub fn select(app: &mut PhotocraftApp, vertical: bool, index: usize) {
+pub fn select(app: &mut PatronusPhotoApp, vertical: bool, index: usize) {
     let Some(doc) = app.session.active_index() else { return };
     let Some(guides) = app.session.active().map(|st| &st.doc.guides) else { return };
     let list = if vertical { &guides.vertical } else { &guides.horizontal };
     app.ui.selected_guide = list.get(index).map(|position| SelectedGuide { doc, vertical, position: *position });
 }
 
-pub fn clear(app: &mut PhotocraftApp) {
+pub fn clear(app: &mut PatronusPhotoApp) {
     app.ui.selected_guide = None;
 }
 
 /// Delete the selected guide (Delete, Clear Selected Guides). False when no guide is selected.
-pub fn delete_selected(app: &mut PhotocraftApp) -> Result<bool, String> {
+pub fn delete_selected(app: &mut PatronusPhotoApp) -> Result<bool, String> {
     let Some((vertical, index)) = selected(app) else { return Ok(false) };
     app.run("view.deleteGuide", delete_params(vertical, index))?;
     clear(app);

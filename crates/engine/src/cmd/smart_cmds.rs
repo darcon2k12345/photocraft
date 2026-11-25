@@ -19,18 +19,18 @@
 //! Converting a layer embeds it as an in-memory `.pcraft` bundle of a nested document (exactly
 //! lossless, layered, any depth/model). PSD placed layers keep their source in the preserved
 //! global `lnk2` block (found by uuid), and keep Photoshop's rendering until something changes,
-//! so an unedited PSD still round-trips byte for byte. PSD export (`photocraft_io::smart_map`)
+//! so an unedited PSD still round-trips byte for byte. PSD export (`patronusphoto_io::smart_map`)
 //! writes every smart object back as one: its source embedded in `lnk2` (a `.pcraft` source as a
 //! PSB), its smart filters in `filterFX` and its filter mask in `FEid`.
 
 use std::sync::{Arc, Mutex};
 
-use photocraft_algo::resample::translate_surface;
-use photocraft_algo::transform::Homography;
-use photocraft_color::{BlendMode, ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{DocId, Document, Layer, LayerContent, LayerId, LayerMask, Metadata, SmartContentsId, SmartFilter, SmartObject, SmartSource};
-use photocraft_geom::{Affine, Rect, Size};
-use photocraft_raster::Surface;
+use patronusphoto_algo::resample::translate_surface;
+use patronusphoto_algo::transform::Homography;
+use patronusphoto_color::{BlendMode, ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::{DocId, Document, Layer, LayerContent, LayerId, LayerMask, Metadata, SmartContentsId, SmartFilter, SmartObject, SmartSource};
+use patronusphoto_geom::{Affine, Rect, Size};
+use patronusphoto_raster::Surface;
 use serde_json::{Value, json};
 use stack_cache::{Stage, StageKey};
 
@@ -50,8 +50,8 @@ pub struct SmartLink {
 /// PSD placed-layer keys that describe the smart object's source; stale once we change it.
 const PLACED_KEYS: [&[u8; 4]; 3] = [b"SoLd", b"PlLd", b"SoLE"];
 
-/// Command id of a Photoshop smart filter PhotoCraft does not implement (kept verbatim from PSD).
-pub use photocraft_io::smart_map::UNSUPPORTED_FILTER;
+/// Command id of a Photoshop smart filter Patronus Photo does not implement (kept verbatim from PSD).
+pub use patronusphoto_io::smart_map::UNSUPPORTED_FILTER;
 
 fn other(msg: impl Into<String>) -> EngineError {
     EngineError::Other(msg.into())
@@ -65,12 +65,12 @@ fn bad(cmd: &str, msg: impl Into<String>) -> EngineError {
 
 /// Encodes a document as embedded smart-object contents: an in-memory `.pcraft` bundle.
 pub fn encode_source(doc: &Document) -> Result<Vec<u8>> {
-    photocraft_format::save_to_bytes(doc, &Default::default()).map_err(|e| other(format!("can't encode smart object contents: {e}")))
+    patronusphoto_format::save_to_bytes(doc, &Default::default()).map_err(|e| other(format!("can't encode smart object contents: {e}")))
 }
 
 /// Decodes smart-object contents (a `.pcraft` bundle, PSD/PSB, or any flat image format).
 pub fn decode_source(file_name: &str, bytes: &[u8]) -> Result<Document> {
-    decode_source_classified(file_name, bytes, photocraft_io::svg::is_svg(bytes))
+    decode_source_classified(file_name, bytes, patronusphoto_io::svg::is_svg(bytes))
 }
 
 /// Reuse the central format decision made by this render operation.
@@ -78,7 +78,7 @@ fn decode_source_classified(file_name: &str, bytes: &[u8], svg: bool) -> Result<
     if svg {
         // This API has no warning channel. Stack/source caches and contents edits must not
         // turn a partial SVG import into silently complete smart-object contents.
-        return photocraft_io::svg::import_svg_bounded_images_strict(file_name, bytes, 24_000_000)
+        return patronusphoto_io::svg::import_svg_bounded_images_strict(file_name, bytes, 24_000_000)
             .map(|imported| imported.document)
             .map_err(|e| other(format!("can't read SVG smart object contents: {e}")));
     }
@@ -250,7 +250,7 @@ pub fn specs() -> Vec<CommandSpec> {
             "layer.smartObjects.resetTransform",
             "Reset Transform",
             SO,
-            r##"{"layer":id?} (the placement returns to 100 % of the current contents' own size with rotation, skew, Distort, Perspective and the Warp cleared, centred on the average of the placement's four corners; the smart filters stay; refused with nothing changed when the object can't be re-rendered (a visible filter PhotoCraft doesn't have, or contents that can't be read); one undo step)"##,
+            r##"{"layer":id?} (the placement returns to 100 % of the current contents' own size with rotation, skew, Distort, Perspective and the Warp cleared, centred on the average of the placement's four corners; the smart filters stay; refused with nothing changed when the object can't be re-rendered (a visible filter Patronus Photo doesn't have, or contents that can't be read); one undo step)"##,
             has_smart,
             reset_transform
         ),

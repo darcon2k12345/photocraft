@@ -6,11 +6,11 @@ use craft::ui::contract::{Bind, ColumnSpec, Props as _, Show as _, ShowCollectio
 use craft::ui::list::ListRow;
 use craft::ui::runtime::env::Label;
 use craft::ui::table::Table;
-use photocraft_engine::analysis_cmds;
+use patronusphoto_engine::analysis_cmds;
 use serde_json::{Value, json};
 
 use super::export_log;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// One log row as the table shows it: the row id and the text of each column.
 struct Row {
@@ -47,7 +47,7 @@ fn cell_text(value: Option<&Value>) -> String {
 }
 
 /// The panel body: the actions row over the table of recorded measurements.
-pub(crate) fn body(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub(crate) fn body(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let log = &app.session.analysis.log;
     // The column keys are the static ones of `COLUMNS`, which the engine's own column list names.
     let columns: Vec<(&'static str, &'static str)> = analysis_cmds::log_columns(log)

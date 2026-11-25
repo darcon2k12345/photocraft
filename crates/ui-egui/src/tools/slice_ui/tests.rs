@@ -3,8 +3,8 @@ use craft::behavior::{EditEvent, GestureId, Mixed};
 
 use super::*;
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 100, "height": 80})).unwrap();
     app
 }
@@ -40,6 +40,6 @@ fn dragging_a_piece_moves_the_whole_covered_slice() {
     let after = DocRect::new(before.x0 + 5.0, before.y0, before.x1 + 5.0, before.y1);
     apply(&mut app, SliceEvent::moved(piece.number, EditEvent::commit(GestureId::new(1), Mixed::Same(before), after)));
     let doc = app.session.active().unwrap().doc.clone();
-    assert_eq!(doc.slices.list[0].rect, photocraft_geom::Rect::new(5, 0, 65, 60));
+    assert_eq!(doc.slices.list[0].rect, patronusphoto_geom::Rect::new(5, 0, 65, 60));
     assert_eq!(app.ui.slices.preview, None);
 }

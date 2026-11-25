@@ -1,8 +1,8 @@
 use craft_psd::atn::{self, AtnAction, AtnEvent, AtnFile, AtnItem};
 use craft_psd::descriptor::{Descriptor, Id, UnicodeString, Value as D};
-use photocraft_doc::{Adjustment, LayerContent};
-use photocraft_engine::actions_cmds::{ActionList, ActionsFile};
-use photocraft_engine::{Session, atn_cmds};
+use patronusphoto_doc::{Adjustment, LayerContent};
+use patronusphoto_engine::actions_cmds::{ActionList, ActionsFile};
+use patronusphoto_engine::{Session, atn_cmds};
 use serde_json::json;
 
 const CUBE: &[u8] = b"LUT_3D_SIZE 2\n1 1 1\n0 1 1\n1 0 1\n0 0 1\n1 1 0\n0 1 0\n1 0 0\n0 0 0\n";
@@ -40,11 +40,11 @@ fn fixture(depth: u32) -> Session {
 }
 
 fn pixels(s: &Session) -> Vec<[f32; 4]> {
-    photocraft_compose::flatten(&s.active().unwrap().doc).into_px()
+    patronusphoto_compose::flatten(&s.active().unwrap().doc).into_px()
 }
 
 fn saved(s: &Session) -> Vec<u8> {
-    photocraft_format::save_to_bytes(&s.active().unwrap().doc, &Default::default()).unwrap()
+    patronusphoto_format::save_to_bytes(&s.active().unwrap().doc, &Default::default()).unwrap()
 }
 
 /// Original invert tables exercise text CUBE/3DL and binary UTF-16 LOOK decoding.
@@ -132,8 +132,8 @@ fn encoded_lookup_keeps_its_bytes_in_a_saved_adjustment() {
         p.as_object_mut().unwrap().remove("__atnColorLookup");
         let mut s = fixture(8);
         s.execute("layer.newAdjustmentLayer.colorLookup", p).unwrap();
-        let psd = photocraft_io::export(&s.active().unwrap().doc, "psd", &Default::default()).unwrap().bytes;
-        let doc = photocraft_io::import("lookup.psd", &psd).unwrap().document;
+        let psd = patronusphoto_io::export(&s.active().unwrap().doc, "psd", &Default::default()).unwrap().bytes;
+        let doc = patronusphoto_io::import("lookup.psd", &psd).unwrap().document;
         let source = doc
             .walk()
             .into_iter()
@@ -247,7 +247,7 @@ fn recorded_dither_changes_float_pixels_within_its_documented_bound() {
     let plain = render(false);
     // Opaque, unsaturated fixture pixels include nonzero ordered offsets.
     assert!(plain.iter().all(|p| p[3] == 1.0 && p[..3].iter().all(|v| (0.01..0.99).contains(v))));
-    assert!((0..2).any(|y| (0..3).any(|x| photocraft_compose::adjust::bayer4(x, y) != 0.0)));
+    assert!((0..2).any(|y| (0..3).any(|x| patronusphoto_compose::adjust::bayer4(x, y) != 0.0)));
     let dithered = render(true);
     let mut changed = false;
     for (a, b) in dithered.iter().zip(&plain) {

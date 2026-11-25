@@ -4,10 +4,10 @@
 //! one document ([`import`]), with an optional additive beauty precomp from the AOVs.
 
 use craft_cms::Builtin;
-use photocraft_codecs::{self as codecs, ChannelLayout, DecodeOptions, Image, SampleType};
-use photocraft_color::{ColorMode, SampleType as DocSample};
-use photocraft_doc::{Document, Layer, LayerContent, Size};
-use photocraft_raster::Surface;
+use patronusphoto_codecs::{self as codecs, ChannelLayout, DecodeOptions, Image, SampleType};
+use patronusphoto_color::{ColorMode, SampleType as DocSample};
+use patronusphoto_doc::{Document, Layer, LayerContent, Size};
+use patronusphoto_raster::Surface;
 
 use crate::{ImportResult, IoError, flat::image_surface};
 

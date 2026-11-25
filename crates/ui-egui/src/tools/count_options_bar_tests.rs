@@ -7,7 +7,7 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 const EYE: &str = "Toggle visibility of count group";
@@ -15,8 +15,8 @@ const FOLDER: &str = "Create a new count group";
 const TRASH: &str = "Delete the currently selected count group";
 
 /// A 100 × 100 document with the Count tool and `groups` count groups (the first with a marker).
-fn app(groups: usize) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app(groups: usize) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 100, "height": 100})).unwrap();
     app.ui.tool = Tool::Count;
     if groups > 0 {
@@ -31,9 +31,9 @@ fn app(groups: usize) -> Box<PhotocraftApp> {
     app
 }
 
-fn harness(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
+fn harness(app: Box<PatronusPhotoApp>) -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(vec2(1400.0, 120.0)).build_ui_state(
-        |ui, app: &mut Box<PhotocraftApp>| {
+        |ui, app: &mut Box<PatronusPhotoApp>| {
             if !ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 return;
             }
@@ -41,16 +41,16 @@ fn harness(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::studio());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::studio());
     h.run_steps(4);
     h
 }
 
-fn disabled(h: &Harness<'static, Box<PhotocraftApp>>, label: &str) -> bool {
+fn disabled(h: &Harness<'static, Box<PatronusPhotoApp>>, label: &str) -> bool {
     h.get_by_label(label).accesskit_node().is_disabled()
 }
 
-fn combo_disabled(h: &Harness<'static, Box<PhotocraftApp>>) -> bool {
+fn combo_disabled(h: &Harness<'static, Box<PatronusPhotoApp>>) -> bool {
     h.get_all_by_role(egui::accesskit::Role::ComboBox).next().expect("the group dropdown").accesskit_node().is_disabled()
 }
 
@@ -93,7 +93,7 @@ fn count_bar_greys_what_cannot_act() {
 }
 
 /// Drags the visible "Marker Size" caption `dx` points right in four moves.
-fn scrub_marker_size(h: &mut Harness<'static, Box<PhotocraftApp>>, dx: f32) {
+fn scrub_marker_size(h: &mut Harness<'static, Box<PatronusPhotoApp>>, dx: f32) {
     let from = h
         .query_all(egui_kittest::kittest::by().label("Marker Size").include_labels())
         .find(|n| n.accesskit_node().role() == egui::accesskit::Role::Label)
@@ -116,7 +116,7 @@ fn scrub_marker_size(h: &mut Harness<'static, Box<PhotocraftApp>>, dx: f32) {
 #[test]
 fn one_size_scrub_is_one_history_step() {
     let mut h = harness(app(1));
-    let steps = |h: &Harness<'static, Box<PhotocraftApp>>| h.state().session.active().unwrap().history.past_len();
+    let steps = |h: &Harness<'static, Box<PatronusPhotoApp>>| h.state().session.active().unwrap().history.past_len();
     let before = steps(&h);
     scrub_marker_size(&mut h, 24.0);
     let size = h.state().session.active().unwrap().doc.measurement.count_groups[0].marker_size;

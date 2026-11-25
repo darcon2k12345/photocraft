@@ -3,21 +3,21 @@
 use craft::menu::Row;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
     app.run("view.newGuide", json!({"orientation": "vertical", "position": 10})).unwrap();
     app.run("view.newGuide", json!({"orientation": "vertical", "position": 20})).unwrap();
     app
 }
 
-fn item(app: &PhotocraftApp, id: &str) -> Row {
+fn item(app: &PatronusPhotoApp, id: &str) -> Row {
     crate::menus::menu_rows(app).into_iter().find(|r| r.command.id == id).unwrap_or_else(|| panic!("{id} is not in the menu"))
 }
 
-fn vertical(app: &PhotocraftApp) -> Vec<f64> {
+fn vertical(app: &PatronusPhotoApp) -> Vec<f64> {
     app.session.active().unwrap().doc.guides.vertical.clone()
 }
 

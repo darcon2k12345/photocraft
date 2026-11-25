@@ -11,7 +11,7 @@ use craft::ui::pickers::Select;
 use craft::ui::popover::Popover;
 use craft::ui::runtime::env::Label;
 
-use super::PhotocraftApp;
+use super::PatronusPhotoApp;
 use super::pen::{PATH_OPS, merge_target, tool_in_shape_mode, tool_path_op};
 
 /// Path alignment's Align entries: label and icon.
@@ -64,7 +64,7 @@ const ALIGN_TO: [&str; 2] = ["Selection", "Canvas"];
 /// Selection, Photoshop's: the operation of the selected path components, or with none selected how the next
 /// path combines with the shape or path it is drawn into; and Merge Shape Components. Its icon
 /// shows the selected components' operation, else the tool's.
-pub(super) fn path_operations_menu(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub(super) fn path_operations_menu(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     // New Layer makes a shape layer: Path mode, Path Selection and Direct Selection have none.
     let shape = tool_in_shape_mode(app);
     let current = crate::path_components::selected_op(app)
@@ -100,7 +100,7 @@ pub(super) fn path_operations_menu(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 /// The Path alignment button of the Shape tools. Every entry is greyed: the engine has no
 /// command that aligns or distributes the components of a path yet. The popover stays open while
 /// Align To is used.
-pub(super) fn path_alignment_menu(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub(super) fn path_alignment_menu(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let align_to: Vec<Entry<usize>> = ALIGN_TO.iter().enumerate().map(|(i, name)| Entry::new(i, label(tl!(name)))).collect();
     let choice = &mut app.ui.path_align_to;
     Row::new().show(ui, |ui, cx| {
@@ -136,7 +136,7 @@ pub(super) fn path_alignment_menu(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 
 /// The Path arrangement button of the Shape tools. Its entries are greyed: the engine
 /// has no command that reorders the components of a path yet.
-pub(super) fn path_arrangement_menu(_app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub(super) fn path_arrangement_menu(_app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let entries: Vec<Entry<usize>> = PATH_ARRANGE_ENTRIES.iter().enumerate().map(|(i, name)| Entry::new(i, label(tl!(name))).enabled(false)).collect();
     let button =
         IconButton::new(IconId::new("layers")).label(label(tl!("Path arrangement"))).popup(PopupKind::Menu).popup_mark(PopupMark::Menu).show(ui).response;

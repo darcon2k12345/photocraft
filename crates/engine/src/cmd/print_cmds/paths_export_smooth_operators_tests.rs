@@ -3,8 +3,8 @@
 
 use super::paths_export_path_blocks_tests::{body, doc_with};
 use super::*;
-use photocraft_doc::{Knot, Subpath};
-use photocraft_geom::Point;
+use patronusphoto_doc::{Knot, Subpath};
+use patronusphoto_geom::Point;
 
 /// A smooth knot at `(ax, ay)` with its incoming and outgoing handles.
 fn smooth(ax: f64, ay: f64, ix: f64, iy: f64, ox: f64, oy: f64) -> Knot {

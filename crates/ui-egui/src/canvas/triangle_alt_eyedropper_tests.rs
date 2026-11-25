@@ -5,11 +5,11 @@
 
 use craft::keymap::Mods;
 use egui::Modifiers;
-use photocraft_doc::{Color, Fill, LayerContent};
+use patronusphoto_doc::{Color, Fill, LayerContent};
 use serde_json::json;
 
 use super::shape_alt_samples;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing::in_gesture;
 use crate::canvas::{ToolEvent, tool_event};
 use crate::state::Tool;
@@ -24,8 +24,8 @@ const ALT: Mods = Mods { alt: true, ..Mods::NONE };
 
 /// The issue's test document: 800 × 600, white Background, a red (220,30,30) pixel layer at
 /// 100,100 to 300,250 (active), black foreground, the Triangle tool in Shape mode.
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 800, "height": 600, "background": "white"})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     app.run("select.rect", json!({"x": 100, "y": 100, "width": 200, "height": 150})).unwrap();
@@ -38,33 +38,33 @@ fn app() -> Box<PhotocraftApp> {
 }
 
 /// What a press could change: history states, layers, open dialogs and colour samplers.
-fn document_state(app: &PhotocraftApp) -> (usize, usize, usize, usize) {
+fn document_state(app: &PatronusPhotoApp) -> (usize, usize, usize, usize) {
     let st = app.session.active().unwrap();
     (st.history.past_len(), st.doc.layers.len(), app.framework.dialogs.stack().ids().count(), st.color_samplers.len())
 }
 
 /// The foreground colour in 8-bit RGB.
-fn foreground(app: &PhotocraftApp) -> [u8; 3] {
+fn foreground(app: &PatronusPhotoApp) -> [u8; 3] {
     let c = app.session.tools.foreground;
     [0, 1, 2].map(|i| (c[i] * 255.0).round() as u8)
 }
 
 /// The tool's Fill colour: a solid Fill follows the foreground (`vector_ui::shapes::tool_paint`).
-fn tool_fill(app: &PhotocraftApp) -> [u8; 3] {
+fn tool_fill(app: &PatronusPhotoApp) -> [u8; 3] {
     let o = &app.ui.tool_options;
     assert!(o.shape_fill && o.shape_fill_gradient.is_none(), "a solid Fill");
     foreground(app)
 }
 
 /// Press at `from` with `press` held, move to `to` with `rest`, release there with `rest`.
-fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2], press: Modifiers, rest: Modifiers) {
+fn drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2], press: Modifiers, rest: Modifiers) {
     tool_event(app, ToolEvent::Down { x: from[0], y: from[1], pressure: 1.0 }, press);
     tool_event(app, ToolEvent::Move { x: to[0], y: to[1], pressure: 1.0 }, rest);
     tool_event(app, ToolEvent::Up { x: to[0], y: to[1] }, rest);
 }
 
 /// The active layer's Fill colour in 8-bit RGB, which must be a shape layer with a solid Fill.
-fn active_shape_fill(app: &PhotocraftApp) -> [u8; 3] {
+fn active_shape_fill(app: &PatronusPhotoApp) -> [u8; 3] {
     let st = app.session.active().unwrap();
     let layer = st.doc.layer(st.active_layer.unwrap()).unwrap();
     let LayerContent::Shape(shape) = &layer.content else { panic!("a shape layer, not {:?}", layer.name) };

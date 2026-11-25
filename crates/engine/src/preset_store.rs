@@ -51,8 +51,8 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::io::Read;
 use std::sync::{Arc, Mutex, PoisonError};
 
-use photocraft_paint::tile::PREVIEW_SIDE;
-use photocraft_paint::{BrushPreset, BrushSettings, GrayTile, Pattern, PresetCaptures, StoredTile, TipShape};
+use patronusphoto_paint::tile::PREVIEW_SIDE;
+use patronusphoto_paint::{BrushPreset, BrushSettings, GrayTile, Pattern, PresetCaptures, StoredTile, TipShape};
 use serde::{Deserialize, Serialize};
 
 use crate::Session;
@@ -95,7 +95,7 @@ pub const MAX_GROUPS: usize = 4096;
 /// Most presets loaded from one group file.
 pub const MAX_PRESETS_PER_GROUP: usize = 50_000;
 
-const GROUP_FORMAT: &str = "photocraft-brush-group";
+const GROUP_FORMAT: &str = "patronusphoto-brush-group";
 
 /// Where the store's files live. File names are relative (`name.pcbrushes`, `tips/x.pctip`).
 pub trait PresetBackend: Send {
@@ -229,7 +229,7 @@ impl PresetBackend for DirBackend {
             return Err(format!("{name}: a symbolic link is not a preset file"));
         }
         // No-follow: a link swapped in after the check above is replaced, never written through.
-        photocraft_format::atomic_write_no_follow(&path, bytes).map_err(|e| format!("{name}: {e}"))
+        patronusphoto_format::atomic_write_no_follow(&path, bytes).map_err(|e| format!("{name}: {e}"))
     }
     fn remove(&self, name: &str) -> Result<(), String> {
         match std::fs::remove_file(self.path(name)?) {
@@ -298,7 +298,7 @@ impl TipRefs {
 #[serde(rename_all = "camelCase")]
 struct StoredPreset {
     name: String,
-    #[serde(deserialize_with = "photocraft_paint::brush::deserialize_preset_brush")]
+    #[serde(deserialize_with = "patronusphoto_paint::brush::deserialize_preset_brush")]
     brush: BrushSettings,
     #[serde(default)]
     tips: TipRefs,
@@ -530,7 +530,7 @@ pub struct PresetStore {
     cache: Mutex<TipCache>,
     /// The stored pattern last read in full, so painting with it again doesn't re-read its file
     /// (a texture can be tens of megabytes). One: the pattern in use.
-    pattern_cache: Mutex<Option<photocraft_doc::Pattern>>,
+    pattern_cache: Mutex<Option<patronusphoto_doc::Pattern>>,
 }
 
 /// A loaded store: the presets on disk plus what the session should hide.
@@ -546,7 +546,7 @@ pub struct Opened {
     pub warnings: Vec<String>,
     /// Recorded actions (`actions.json`). Empty when the file is missing or unreadable.
     pub actions: ActionList,
-    /// The stored action ids of a PhotoCraft file and the names loading gave them, for the
+    /// The stored action ids of a Patronus Photo file and the names loading gave them, for the
     /// shortcut keys attaching moves to names ([`MergedFile::ids`](craft::automation::actions::MergedFile::ids)).
     action_ids: Vec<(String, String)>,
     /// Imported and defined patterns (`patterns.json`), in library order; large ones as previews.
@@ -1058,7 +1058,7 @@ impl PresetStore {
 
     /// The full pixels of a stored pattern the library holds as a preview: the last one read is
     /// kept, so only switching patterns reads a file.
-    pub fn load_pattern(&self, id: &str) -> Result<photocraft_doc::Pattern, String> {
+    pub fn load_pattern(&self, id: &str) -> Result<patronusphoto_doc::Pattern, String> {
         let mut cache = self.pattern_cache.lock().unwrap_or_else(PoisonError::into_inner);
         if let Some(p) = cache.as_ref().filter(|p| p.id == id) {
             return Ok(p.clone());
@@ -1104,7 +1104,7 @@ impl PresetStore {
 
 fn builtin_names() -> &'static [String] {
     static NAMES: std::sync::OnceLock<Vec<String>> = std::sync::OnceLock::new();
-    NAMES.get_or_init(|| photocraft_paint::presets::builtin_shared().iter().map(|p| p.name.clone()).collect())
+    NAMES.get_or_init(|| patronusphoto_paint::presets::builtin_shared().iter().map(|p| p.name.clone()).collect())
 }
 
 impl Session {

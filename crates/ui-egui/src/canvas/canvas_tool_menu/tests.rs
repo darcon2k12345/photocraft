@@ -5,13 +5,13 @@ use craft::ui::patterns::form_dialogs::HostedParamDialog;
 use egui::{Modifiers, PointerButton, Pos2, pos2, vec2};
 use egui_kittest::{Harness, kittest::Queryable};
 
-pub(super) fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+pub(super) fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
     app
 }
 
-fn work_path(app: &mut PhotocraftApp) {
+fn work_path(app: &mut PatronusPhotoApp) {
     app.run(
         "path.set",
         json!({"name": "work", "path": {"subpaths": [{"closed": true, "knots": [
@@ -24,11 +24,11 @@ fn work_path(app: &mut PhotocraftApp) {
 }
 
 /// Opens the menu of `tool` at a fixed screen point for the document point `doc`, as a right-click would.
-pub(super) fn open_here(app: &mut PhotocraftApp, tool: Tool, doc: [f64; 2]) -> bool {
+pub(super) fn open_here(app: &mut PatronusPhotoApp, tool: Tool, doc: [f64; 2]) -> bool {
     open_at(app, tool, Mods::NONE, pos2(10.0, 10.0), doc, None)
 }
 
-pub(super) fn choose_open(app: &mut PhotocraftApp, command: &str) {
+pub(super) fn choose_open(app: &mut PatronusPhotoApp, command: &str) {
     assert!(open_here(app, Tool::Pen, [10.0, 10.0]));
     pick(app, command);
 }
@@ -39,39 +39,39 @@ pub(super) fn labels(rows: &[Row]) -> Vec<Option<&str>> {
 }
 
 /// `choose` on the app's own context.
-pub(super) fn pick(app: &mut PhotocraftApp, command: &str) {
+pub(super) fn pick(app: &mut PatronusPhotoApp, command: &str) {
     let ctx = app.ctx().clone();
     choose(app, &ctx, command);
 }
 
 /// Whether a hosted parameter dialog is open.
-pub(super) fn dialog_open(app: &PhotocraftApp) -> bool {
+pub(super) fn dialog_open(app: &PatronusPhotoApp) -> bool {
     app.framework.dialogs.is_open::<HostedParamDialog>()
 }
 
 /// Whether any dialog of the dialog host is open.
-pub(super) fn any_dialog(app: &PhotocraftApp) -> bool {
+pub(super) fn any_dialog(app: &PatronusPhotoApp) -> bool {
     !app.framework.dialogs.is_empty()
 }
 
 /// Closes every open dialog.
-pub(super) fn close_dialogs(app: &mut PhotocraftApp) {
+pub(super) fn close_dialogs(app: &mut PatronusPhotoApp) {
     app.framework.dialogs = DialogHost::new();
 }
 
 /// The open hosted parameter dialog.
-pub(super) fn hosted(app: &mut PhotocraftApp) -> &mut HostedParamDialog {
+pub(super) fn hosted(app: &mut PatronusPhotoApp) -> &mut HostedParamDialog {
     app.framework.dialogs.get_mut::<HostedParamDialog>().expect("a hosted parameter dialog is open")
 }
 
 /// Presses OK on the open hosted parameter dialog through the app's dialog path: a family that judges a held OK
 /// answers it, then its run takes the result.
-pub(super) fn confirm_hosted(app: &mut PhotocraftApp, ctx: &Context) {
+pub(super) fn confirm_hosted(app: &mut PatronusPhotoApp, ctx: &Context) {
     try_confirm_hosted(app, ctx).expect("OK was accepted");
 }
 
 /// [`confirm_hosted`] for a run that may be refused: the result of the dialog's OK.
-pub(super) fn try_confirm_hosted(app: &mut PhotocraftApp, ctx: &Context) -> Result<(), String> {
+pub(super) fn try_confirm_hosted(app: &mut PatronusPhotoApp, ctx: &Context) -> Result<(), String> {
     let id = app
         .framework
         .dialogs
@@ -83,17 +83,17 @@ pub(super) fn try_confirm_hosted(app: &mut PhotocraftApp, ctx: &Context) -> Resu
 }
 
 /// Pen clicks at document points `at`, as on the canvas.
-pub(super) fn pen_clicks(app: &mut PhotocraftApp, at: &[(f64, f64)]) {
+pub(super) fn pen_clicks(app: &mut PatronusPhotoApp, at: &[(f64, f64)]) {
     app.ui.tool = Tool::Pen;
     for &(x, y) in at {
         crate::canvas::testing::click(app, [x, y], Modifiers::NONE);
     }
 }
 
-pub(crate) fn harness(mut app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
+pub(crate) fn harness(mut app: Box<PatronusPhotoApp>) -> Harness<'static, Box<PatronusPhotoApp>> {
     app.sync_views();
     let mut h = Harness::builder().with_size(vec2(1000.0, 700.0)).with_context(app.ctx().clone()).build_ui_state(
-        |ui, app: &mut Box<PhotocraftApp>| {
+        |ui, app: &mut Box<PatronusPhotoApp>| {
             let ctx = ui.ctx().clone();
             if !ctx.fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 return;
@@ -102,12 +102,12 @@ pub(crate) fn harness(mut app: Box<PhotocraftApp>) -> Harness<'static, Box<Photo
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::default());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::default());
     h.run_steps(4);
     h
 }
 
-pub(crate) fn right_click(h: &mut Harness<'static, Box<PhotocraftApp>>, p: Pos2, modifiers: Modifiers) {
+pub(crate) fn right_click(h: &mut Harness<'static, Box<PatronusPhotoApp>>, p: Pos2, modifiers: Modifiers) {
     h.event(egui::Event::ModifiersChanged(modifiers));
     h.event(egui::Event::PointerMoved(p));
     h.run_steps(1);
@@ -119,7 +119,7 @@ pub(crate) fn right_click(h: &mut Harness<'static, Box<PhotocraftApp>>, p: Pos2,
 }
 
 /// The right button goes down at `at` with `mods` held and comes up as `gesture` says.
-fn secondary_press(h: &mut Harness<'static, Box<PhotocraftApp>>, at: Pos2, mods: Modifiers, gesture: Gesture) {
+fn secondary_press(h: &mut Harness<'static, Box<PatronusPhotoApp>>, at: Pos2, mods: Modifiers, gesture: Gesture) {
     let by = match gesture {
         Gesture::Still => return right_click(h, at, mods),
         Gesture::Moved => vec2(7.0, 3.0),
@@ -147,24 +147,24 @@ fn secondary_press(h: &mut Harness<'static, Box<PhotocraftApp>>, at: Pos2, mods:
     h.run_steps(1);
 }
 
-pub(super) fn screen_of(app: &PhotocraftApp, doc: [f32; 2]) -> Pos2 {
+pub(super) fn screen_of(app: &PatronusPhotoApp, doc: [f32; 2]) -> Pos2 {
     crate::canvas::testing::to_screen(app, [f64::from(doc[0]), f64::from(doc[1])])
 }
 
 /// What a right-click must leave as it was. The journal counts only strokes: the type edit menu reads its spelling
 /// suggestions through `edit.checkSpelling`'s `list`, a journaled read.
-fn document_state(app: &PhotocraftApp) -> impl PartialEq + use<> {
+fn document_state(app: &PatronusPhotoApp) -> impl PartialEq + use<> {
     let state = app.session.active().unwrap();
     let strokes = app.session.journal.iter().filter(|(id, _)| id == "paint.stroke").count();
     (state.doc.clone(), state.revision, state.history.past_len(), state.active_layer, state.selected_layers().to_vec(), strokes)
 }
 
-fn view_of(app: &PhotocraftApp) -> Option<(craft::behavior::kurbo::Point, f64)> {
+fn view_of(app: &PatronusPhotoApp) -> Option<(craft::behavior::kurbo::Point, f64)> {
     crate::canvas::document_display::active_view(app).map(|v| (v.center, v.zoom))
 }
 
 /// A type layer reading "Hello", being edited with every character selected.
-fn editing_type(app: &mut PhotocraftApp) -> u64 {
+fn editing_type(app: &mut PatronusPhotoApp) -> u64 {
     app.ui.tool = Tool::Type;
     let id = app.run("type.create", json!({"text": "Hello", "size": 12, "x": 4, "y": 20})).unwrap()["layer"].as_u64().unwrap();
     let ctx = app.ctx().clone();
@@ -172,15 +172,15 @@ fn editing_type(app: &mut PhotocraftApp) -> u64 {
     id
 }
 
-fn text_of(app: &PhotocraftApp, id: u64) -> Option<photocraft_doc::TextLayer> {
-    match &app.session.active().unwrap().doc.layer(photocraft_doc::LayerId(id)).unwrap().content {
+fn text_of(app: &PatronusPhotoApp, id: u64) -> Option<patronusphoto_doc::TextLayer> {
+    match &app.session.active().unwrap().doc.layer(patronusphoto_doc::LayerId(id)).unwrap().content {
         LayerContent::Text(t) => Some(t.clone()),
         _ => None,
     }
 }
 
 /// A committed type layer reading "Hello" over the middle of the canvas, no edit running.
-fn committed_type(app: &mut PhotocraftApp) -> u64 {
+fn committed_type(app: &mut PatronusPhotoApp) -> u64 {
     app.ui.tool = Tool::Type;
     let id = app.run("type.create", json!({"text": "Hello", "size": 14, "x": 1, "y": 22})).unwrap()["layer"].as_u64().unwrap();
     assert!(app.ui.text_edit.is_none());
@@ -189,7 +189,7 @@ fn committed_type(app: &mut PhotocraftApp) -> u64 {
 
 /// A 32 × 32 document with the Crop tool picked (Classic Mode, so the view stays put) and its
 /// untouched default frame.
-fn crop_app() -> Box<PhotocraftApp> {
+fn crop_app() -> Box<PatronusPhotoApp> {
     let mut app = app();
     app.ui.tool = Tool::Crop;
     app.ui.tool_options.crop.shield.classic_mode = true;
@@ -198,7 +198,7 @@ fn crop_app() -> Box<PhotocraftApp> {
 }
 
 /// Draws a crop frame from (4, 4) to (28, 28): a pending crop. Returns the frame.
-fn draw_crop(app: &mut PhotocraftApp) -> [f64; 4] {
+fn draw_crop(app: &mut PatronusPhotoApp) -> [f64; 4] {
     use crate::canvas::{ToolEvent, tool_event};
     tool_event(app, ToolEvent::Down { x: 4.0, y: 4.0, pressure: 1.0 }, Modifiers::NONE);
     tool_event(app, ToolEvent::Move { x: 16.0, y: 16.0, pressure: 1.0 }, Modifiers::NONE);
@@ -209,7 +209,7 @@ fn draw_crop(app: &mut PhotocraftApp) -> [f64; 4] {
 }
 
 /// The Crop tool's frame as `[x0, y0, x1, y1]`, `None` while it shows none.
-fn frame_of(app: &PhotocraftApp) -> Option<[f64; 4]> {
+fn frame_of(app: &PatronusPhotoApp) -> Option<[f64; 4]> {
     crate::crop_ui::frame(app).map(|f| [f.rect.x0, f.rect.y0, f.rect.x1, f.rect.y1])
 }
 
@@ -361,7 +361,7 @@ fn kind_name(kind: &MenuKind) -> &'static str {
     }
 }
 
-fn row_app(row: &Case) -> Box<PhotocraftApp> {
+fn row_app(row: &Case) -> Box<PatronusPhotoApp> {
     let mut app = if matches!(row.setup, Setup::UntouchedCrop | Setup::PendingCrop) { crop_app() } else { self::app() };
     match row.setup {
         // Zoomed needs a canvas to run its view command: `context_popup_table` zooms once the canvas shows.
@@ -498,7 +498,7 @@ fn every_canvas_menu_row_runs_a_known_command() {
                 menu_local(id)
                     || items.iter().any(|i| i.command.id == *id)
                     || crate::shortcut_dispatch::RUNTIME_COMMANDS.iter().any(|(runtime, _)| runtime == id)
-                    || photocraft_engine::commands::find(id).is_some(),
+                    || patronusphoto_engine::commands::find(id).is_some(),
                 "{name}: {label}: unknown command {id}"
             );
         }
@@ -511,7 +511,7 @@ fn type_layer_menu_targets_the_type_under_the_pointer() {
     let id = committed_type(&mut app);
     app.run("layer.new.layer", json!({})).unwrap();
     let ctx = app.ctx().clone();
-    let active = |app: &PhotocraftApp| app.session.active().unwrap().active_layer.map(|l| l.0);
+    let active = |app: &PatronusPhotoApp| app.session.active().unwrap().active_layer.map(|l| l.0);
     assert_ne!(active(&app), Some(id));
     // Away from the type, or with a Type Mask tool, nothing opens and nothing is selected.
     assert!(!open_here(&mut app, Tool::Type, [30.0, 2.0]));
@@ -534,7 +534,7 @@ fn type_layer_menu_targets_the_type_under_the_pointer() {
 /// Two selected type layers: the one right-clicked becomes active, and the selection stays.
 #[test]
 fn type_layer_menu_in_a_multiselection_acts_on_the_clicked_type() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
     app.ui.tool = Tool::Type;
     let top = app.run("type.create", json!({"text": "Top", "size": 30, "x": 10, "y": 40})).unwrap()["layer"].as_u64().unwrap();
@@ -682,7 +682,7 @@ fn pen_options_bar_makes_a_selection_from_the_path() {
 
 /// A document with the Pen tool picked and a Work Path. Every route to the Stroke Path dialog ends in
 /// `pen_dialogs::open`, so driving that covers the Paths panel's routes.
-fn stroke_app() -> Box<PhotocraftApp> {
+fn stroke_app() -> Box<PatronusPhotoApp> {
     let mut app = app();
     app.ui.tool = Tool::Pen;
     work_path(&mut app);
@@ -690,14 +690,14 @@ fn stroke_app() -> Box<PhotocraftApp> {
     app
 }
 
-fn open_stroke(app: &mut PhotocraftApp) {
+fn open_stroke(app: &mut PatronusPhotoApp) {
     pen_dialogs::open(app, "path.stroke", "work");
     assert!(dialog_open(app), "Stroke Path… opens a dialog");
     assert_eq!(hosted(app).fields().text("name"), Some("work"), "the Work Path is stroked");
 }
 
 /// The Simulate Pressure the freshly opened dialog starts with; the dialog is closed again.
-fn pressure_on_open(app: &mut PhotocraftApp) -> Option<bool> {
+fn pressure_on_open(app: &mut PatronusPhotoApp) -> Option<bool> {
     open_stroke(app);
     let on = hosted(app).fields().bool("simulatePressure");
     let ctx = app.ctx().clone();
@@ -705,11 +705,11 @@ fn pressure_on_open(app: &mut PhotocraftApp) -> Option<bool> {
     on
 }
 
-fn set_pressure(app: &mut PhotocraftApp, on: bool) {
+fn set_pressure(app: &mut PatronusPhotoApp, on: bool) {
     hosted(app).set_field("simulatePressure", on.into());
 }
 
-fn strokes(app: &PhotocraftApp) -> usize {
+fn strokes(app: &PatronusPhotoApp) -> usize {
     app.session.journal.iter().filter(|(id, _)| id == "path.stroke").count()
 }
 
@@ -787,7 +787,7 @@ fn crop_menu_rows_act_like_the_options_bar() {
     let mut app = crop_app();
     let ctx = app.ctx().clone();
     draw_crop(&mut app);
-    let reopen = |app: &mut PhotocraftApp| {
+    let reopen = |app: &mut PatronusPhotoApp| {
         assert!(open_here(app, Tool::Crop, [10.0, 10.0]));
         app.ui.canvas_tool_menu.clone().unwrap()
     };

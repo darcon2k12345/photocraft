@@ -1,6 +1,6 @@
 //! #14191: the fill continues straight bands and stripes through the hole.
 //!
-//! The measured document (both the reference application and PhotoCraft main f143ce5849):
+//! The measured document (both the reference application and Patronus Photo main f143ce5849):
 //! 600 x 400, RGB, 8 bit, one Background layer. Top half blue 60,120,200 with a light 120,170,230
 //! band 10 px high every 40 px (at y 0, 40, 80, 120, 160); bottom half vertical stripes 20 px wide,
 //! 40,140,60 at x = 0 mod 40 and 80,180,90 at x = 20 mod 40; a red 220,30,30 square from 260,160 to
@@ -9,7 +9,7 @@
 //! area as Rectangular on this document.
 //!
 //! The reference application keeps the bands and the stripes in their original phase through the
-//! hole and keeps the blue / green boundary at y 200. PhotoCraft main runs the blue half down into
+//! hole and keeps the blue / green boundary at y 200. Patronus Photo main runs the blue half down into
 //! the green one: 300,165 -> 64,124,201 instead of the light band 120,170,230, and 300,205 ->
 //! 65,127,205, 285,220 -> 64,127,205, 300,240 -> 62,124,202 instead of the green stripes.
 

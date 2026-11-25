@@ -146,7 +146,7 @@ pub fn constrain(tool: Tool, axis: &mut Option<Axis>, start: [f64; 2], last: [f6
 
 /// Where the ⇧-click line preview starts (#257): the end of the last stroke on the active
 /// document, while ⇧ is held with a painting tool and nothing is being painted.
-pub fn line_preview_start(app: &crate::PhotocraftApp, tool: Tool, shift: bool) -> Option<[f64; 2]> {
+pub fn line_preview_start(app: &crate::PatronusPhotoApp, tool: Tool, shift: bool) -> Option<[f64; 2]> {
     if !shift || !connects(tool) || crate::canvas::tools::in_gesture(app) {
         return None;
     }
@@ -158,13 +158,13 @@ pub fn line_preview_start(app: &crate::PhotocraftApp, tool: Tool, shift: bool) -
 /// ended to the pointer (`pointer`, document units) shows the line a click will paint, with the
 /// brush footprint at the pointer (shown here only when the painting cursor doesn't already show
 /// the tip). Nothing shows without a start (see [`line_preview_start`]) or with a non-finite one.
-pub(crate) fn show_line_preview(ui: &mut egui::Ui, app: &crate::PhotocraftApp, pointer: Point, tool: Tool, shift: bool) {
+pub(crate) fn show_line_preview(ui: &mut egui::Ui, app: &crate::PatronusPhotoApp, pointer: Point, tool: Tool, shift: bool) {
     let Some(from) = line_preview_start(app, tool, shift) else { return };
     if !(from[0].is_finite() && from[1].is_finite()) {
         return;
     }
     StraightLinePreview::new(tl!("Line preview"), Point::new(from[0], from[1]), pointer).show(ui);
-    use photocraft_engine::prefs::PaintingCursor;
+    use patronusphoto_engine::prefs::PaintingCursor;
     if matches!(app.session.prefs().cursors.painting, PaintingCursor::Standard | PaintingCursor::Precise) {
         let half = f64::from(app.session.tools.brush.size) / 2.0;
         let cell = Rect::new(pointer.x - half, pointer.y - half, pointer.x + half, pointer.y + half);
@@ -175,7 +175,7 @@ pub(crate) fn show_line_preview(ui: &mut egui::Ui, app: &crate::PhotocraftApp, p
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::PhotocraftApp;
+    use crate::PatronusPhotoApp;
     use crate::canvas::{ToolEvent, tool_event};
     use serde_json::json;
 
@@ -257,20 +257,20 @@ mod tests {
         }
     }
 
-    fn app() -> Box<PhotocraftApp> {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    fn app() -> Box<PatronusPhotoApp> {
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
         app.run("file.new", json!({"width": 120, "height": 120, "background": "transparent"})).unwrap();
         app.run("tools.setBrush", json!({"brush": {"size": 4, "hardness": 1.0}})).unwrap();
         app.session.tools.brush.smoothing.amount = 0.0;
         app
     }
 
-    fn last_stroke_points(app: &PhotocraftApp) -> Vec<[f64; 2]> {
+    fn last_stroke_points(app: &PatronusPhotoApp) -> Vec<[f64; 2]> {
         let p = app.session.journal.iter().rev().find(|(id, _)| id == "paint.stroke").map(|(_, p)| p.clone()).unwrap();
         p["points"].as_array().unwrap().iter().map(|q| [q[0].as_f64().unwrap(), q[1].as_f64().unwrap()]).collect()
     }
 
-    fn alpha(app: &PhotocraftApp, x: i32, y: i32) -> f32 {
+    fn alpha(app: &PatronusPhotoApp, x: i32, y: i32) -> f32 {
         app.session.documents()[0].doc.layers[0].surface().unwrap().rgba(x, y)[3]
     }
 
@@ -372,7 +372,7 @@ mod tests {
         for tool in [Tool::Burn, Tool::BackgroundEraser] {
             let mut app = app();
             app.run("edit.fill", json!({"color": "#808080"})).unwrap();
-            let px = |app: &PhotocraftApp, x, y| app.session.documents()[0].doc.layers[0].surface().unwrap().rgba(x, y);
+            let px = |app: &PatronusPhotoApp, x, y| app.session.documents()[0].doc.layers[0].surface().unwrap().rgba(x, y);
             let gray = px(&app, 100, 60);
             app.ui.tool = tool;
             // The tool's own brush, which the press would swap in.

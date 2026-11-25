@@ -12,15 +12,15 @@ use super::*;
 
 /// A 300 × 200 document with two notes (the second without author) and the Notes panel open,
 /// nothing selected; the harness draws the analysis windows.
-fn harness() -> Harness<'static, PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn harness() -> Harness<'static, PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 300, "height": 200})).unwrap();
     app.run("notes.add", json!({"x": 20, "y": 20, "author": "Ann", "text": "first"})).unwrap();
     app.run("notes.add", json!({"x": 120, "y": 80, "author": "", "text": "second"})).unwrap();
     app.ui.analysis.notes = true;
     app.ui.analysis.note_selected = None;
     let mut h = Harness::builder().with_size(vec2(1400.0, 900.0)).build_ui_state(
-        |ui, app: &mut PhotocraftApp| {
+        |ui, app: &mut PatronusPhotoApp| {
             if !ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 return;
             }
@@ -28,12 +28,12 @@ fn harness() -> Harness<'static, PhotocraftApp> {
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, Default::default());
+    PatronusPhotoApp::setup_context(&h.ctx, Default::default());
     h.run_steps(4);
     h
 }
 
-fn disabled(h: &Harness<'static, PhotocraftApp>, label: &str) -> bool {
+fn disabled(h: &Harness<'static, PatronusPhotoApp>, label: &str) -> bool {
     h.get_by_label(label).accesskit_node().is_disabled()
 }
 

@@ -4,7 +4,7 @@
 use super::*;
 
 /// (layer name, linked file's file name) of every linked layer, top to bottom.
-fn linked_layers(doc: &photocraft_doc::Document) -> Vec<(String, String)> {
+fn linked_layers(doc: &patronusphoto_doc::Document) -> Vec<(String, String)> {
     doc.walk()
         .iter()
         .filter_map(|(_, _, l)| match &l.content {
@@ -25,7 +25,7 @@ fn base(file: &str) -> String {
 /// `other` (a second placement of `b/logo.png` whose name does not start with `logo`).
 fn package_the_document(tag: &str) -> (String, Session, serde_json::Value) {
     let dir = {
-        let d = std::env::temp_dir().join(format!("photocraft-pkg-rename-{}-{tag}", std::process::id()));
+        let d = std::env::temp_dir().join(format!("patronusphoto-pkg-rename-{}-{tag}", std::process::id()));
         let _ = std::fs::remove_dir_all(&d);
         std::fs::create_dir_all(&d).unwrap();
         d.to_string_lossy().replace('\\', "/")
@@ -54,7 +54,7 @@ fn package_the_document(tag: &str) -> (String, Session, serde_json::Value) {
 fn a_layer_named_after_a_renamed_link_takes_the_new_base_name() {
     let (dir, s, r) = package_the_document("rename");
     let docp = r["document"].as_str().unwrap();
-    let back = photocraft_io::import("Print Me.pcraft", &std::fs::read(docp).unwrap()).unwrap().document;
+    let back = patronusphoto_io::import("Print Me.pcraft", &std::fs::read(docp).unwrap()).unwrap().document;
     let packaged = linked_layers(&back);
     let open = linked_layers(&s.active().unwrap().doc);
     assert_eq!(packaged.len(), 4, "{packaged:?}");

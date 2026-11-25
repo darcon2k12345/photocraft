@@ -8,16 +8,16 @@ use craft::ui::dialog::DialogId;
 use craft::ui::patterns::form_dialogs::{DialogFields, HostedParamDialog, Param, ParamDialog, ParamKind};
 use craft::ui::runtime::commands::CommandRef;
 use egui_kittest::Harness;
-use photocraft_engine::actions_cmds::{Action, ActionStep};
-use photocraft_engine::{EngineError, Session};
+use patronusphoto_engine::actions_cmds::{Action, ActionStep};
+use patronusphoto_engine::{EngineError, Session};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::control::{ControlRequest, Reply, handle};
 
 /// Draw the actual dialog host over one selected command, without a GPU or file service.
-fn harness(command: &str, params: Value) -> Harness<'static, Box<PhotocraftApp>> {
-    let mut app = PhotocraftApp::new(Session::new(), Default::default());
+fn harness(command: &str, params: Value) -> Harness<'static, Box<PatronusPhotoApp>> {
+    let mut app = PatronusPhotoApp::new(Session::new(), Default::default());
     app.background_jobs = false;
     app.run("file.new", json!({"width":8,"height":6})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
@@ -28,13 +28,13 @@ fn harness(command: &str, params: Value) -> Harness<'static, Box<PhotocraftApp>>
     app.ui.actions.panel.selected = Some(ActionSelection::Step(0, 0));
     let mut h =
         Harness::builder().with_context(app.ctx().clone()).with_size(egui::vec2(1000.0, 760.0)).build_ui_state(|ui, app| crate::dialogs::run(app, ui), app);
-    PhotocraftApp::setup_context(&h.ctx, Default::default());
+    PatronusPhotoApp::setup_context(&h.ctx, Default::default());
     h.run_steps(3);
     h
 }
 
 /// One control request through the public channel; the reply is the request's answer.
-fn control(h: &mut Harness<'static, Box<PhotocraftApp>>, method: &str, params: Value) -> Value {
+fn control(h: &mut Harness<'static, Box<PatronusPhotoApp>>, method: &str, params: Value) -> Value {
     let ctx = h.ctx.clone();
     let (request, _reply) = ControlRequest::new(method, params);
     let reply = match handle(h.state_mut(), &ctx, &request) {
@@ -46,7 +46,7 @@ fn control(h: &mut Harness<'static, Box<PhotocraftApp>>, method: &str, params: V
 }
 
 /// Open by firing the panel menu's Record Again row, preserving its selected-step and enablement checks.
-fn open(h: &mut Harness<'static, Box<PhotocraftApp>>) -> DialogId {
+fn open(h: &mut Harness<'static, Box<PatronusPhotoApp>>) -> DialogId {
     let ctx = h.ctx.clone();
     assert!(super::menu::run_fired(h.state_mut(), &ctx, &CommandRef::from(ActionsPanelCommands::RecordAgain)), "the Actions panel owns the row");
     h.run_steps(3);
@@ -54,33 +54,33 @@ fn open(h: &mut Harness<'static, Box<PhotocraftApp>>) -> DialogId {
 }
 
 /// Sets one field of dialog `id` as an agent would.
-fn set_field(h: &mut Harness<'static, Box<PhotocraftApp>>, id: DialogId, field: &str, value: Value) -> Value {
+fn set_field(h: &mut Harness<'static, Box<PatronusPhotoApp>>, id: DialogId, field: &str, value: Value) -> Value {
     control(h, "ui.dialog.set", json!({"dialog": id, "field": field, "value": value}))
 }
 
 /// Answers OK on dialog `id`; the error is the reason the dialog refused.
-fn confirm(h: &mut Harness<'static, Box<PhotocraftApp>>, id: DialogId) -> Result<(), String> {
+fn confirm(h: &mut Harness<'static, Box<PatronusPhotoApp>>, id: DialogId) -> Result<(), String> {
     let reply = control(h, "ui.dialog.confirm", json!({"dialog": id}));
     if reply["ok"] == true { Ok(()) } else { Err(reply["error"].as_str().unwrap_or("refused").to_string()) }
 }
 
 /// Cancels dialog `id`.
-fn cancel(h: &mut Harness<'static, Box<PhotocraftApp>>, id: DialogId) {
+fn cancel(h: &mut Harness<'static, Box<PatronusPhotoApp>>, id: DialogId) {
     control(h, "ui.dialog.cancel", json!({"dialog": id}));
 }
 
 /// The number the open dialog `id` lists under `key`, whatever kind of hosted dialog it is.
-fn number(h: &Harness<'static, Box<PhotocraftApp>>, id: DialogId, key: &str) -> Option<f64> {
+fn number(h: &Harness<'static, Box<PatronusPhotoApp>>, id: DialogId, key: &str) -> Option<f64> {
     h.state().framework.dialogs.open_dialogs().into_iter().find(|d| d.id == id)?.fields?.get(key)?.as_f64()
 }
 
 /// Whether dialog `id` is still open.
-fn is_open(h: &Harness<'static, Box<PhotocraftApp>>, id: DialogId) -> bool {
+fn is_open(h: &Harness<'static, Box<PatronusPhotoApp>>, id: DialogId) -> bool {
     h.state().framework.dialogs.stack().contains(id)
 }
 
 /// A resize with different recorded and document sizes exposes seeding from the wrong source.
-fn sizing() -> Harness<'static, Box<PhotocraftApp>> {
+fn sizing() -> Harness<'static, Box<PatronusPhotoApp>> {
     harness("image.imageSize", json!({"width":4,"height":3,"resample":"nearest"}))
 }
 
@@ -108,12 +108,12 @@ fn seeded_editor_cancels_or_updates_only_the_original_step() {
     assert_eq!(action.steps[0].params["width"].as_f64(), Some(6.0));
     assert!(action.disabled.contains(&0));
     assert!(action.dialogs.contains(&0));
-    assert_eq!(h.state().session.active().unwrap().doc.size, photocraft_engine::doc::Size::new(6, 5));
+    assert_eq!(h.state().session.active().unwrap().doc.size, patronusphoto_engine::doc::Size::new(6, 5));
     assert!(h.state().session.active().unwrap().doc.selection.is_none());
 }
 
 /// Permit initial settings while denying a later edit even if the current gate is removed.
-fn limited_resize(id: &str, params: &Value) -> photocraft_engine::Result<()> {
+fn limited_resize(id: &str, params: &Value) -> patronusphoto_engine::Result<()> {
     if id == "image.imageSize" && params.get("width").and_then(Value::as_f64).is_some_and(|w| w >= 10.0) {
         Err(EngineError::Other("resize denied".into()))
     } else {
@@ -189,12 +189,12 @@ fn another_dialog_cannot_consume_the_selected_step() {
     assert_eq!(h.state().session.actions.list, original, "the impostor's answer does not touch the stored step");
     assert!(is_open(&h, real), "the real editor is still waiting for its own answer");
     confirm(&mut h, real).unwrap();
-    assert_eq!(h.state().session.active().unwrap().doc.size, photocraft_engine::doc::Size::new(4, 3));
+    assert_eq!(h.state().session.active().unwrap().doc.size, patronusphoto_engine::doc::Size::new(4, 3));
 }
 
 /// One pass of the preview routes the canvas draws: the filter route, then the adjustment route. The canvas asks them
 /// both before it draws, and each checks the retained caller itself.
-fn preview_routes(app: &mut PhotocraftApp, ctx: &egui::Context) {
+fn preview_routes(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     crate::canvas::ensure_filter_preview(app, 0, ctx);
     crate::dialogs::adjust_preview::display_doc(app, 0);
 }
@@ -202,7 +202,7 @@ fn preview_routes(app: &mut PhotocraftApp, ctx: &egui::Context) {
 static PREVIEW_CHECKS: AtomicUsize = AtomicUsize::new(0);
 
 /// Count actual preview authorization and refuse LUT paths or edited blur and gamma settings.
-fn preview_gate(id: &str, params: &Value) -> photocraft_engine::Result<()> {
+fn preview_gate(id: &str, params: &Value) -> patronusphoto_engine::Result<()> {
     if matches!(id, "filter.blur.gaussianBlur" | "image.adjustments.levels" | "image.adjustments.colorLookup") {
         PREVIEW_CHECKS.fetch_add(1, Ordering::SeqCst);
         if params.get("file").is_some() || ["radius", "gamma"].iter().any(|key| params.get(key).and_then(Value::as_f64).is_some_and(|v| v > 2.0)) {
@@ -219,9 +219,12 @@ fn filter_and_adjustment_previews_retain_permissions_before_evaluation() {
         let params = if command.starts_with("filter.") {
             json!({"radius":1})
         } else {
-            photocraft_engine::adjust_params::to_params(
-                &photocraft_engine::adjust_params::default_for(command.strip_prefix("image.adjustments.").unwrap(), photocraft_engine::doc::ColorMode::Rgb)
-                    .unwrap(),
+            patronusphoto_engine::adjust_params::to_params(
+                &patronusphoto_engine::adjust_params::default_for(
+                    command.strip_prefix("image.adjustments.").unwrap(),
+                    patronusphoto_engine::doc::ColorMode::Rgb,
+                )
+                .unwrap(),
             )
         };
         let mut h = harness(command, params);

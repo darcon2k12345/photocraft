@@ -1,11 +1,11 @@
 use egui::vec2;
 use egui_kittest::{Harness, kittest::Queryable};
-use photocraft_doc::effects::{BevelTechnique, FxPaint, GlowSource};
-use photocraft_doc::{BlendMode, BlendRange, Effect, Knockout, StrokeFx};
+use patronusphoto_doc::effects::{BevelTechnique, FxPaint, GlowSource};
+use patronusphoto_doc::{BlendMode, BlendRange, Effect, Knockout, StrokeFx};
 use serde_json::{Value, json};
 
 use super::*;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 // PLAN: assumed facade paths for the framework types; the other layer-style test files import them from here.
 pub(super) use craft::color_ui::gradient::{ColorStop, GradientStops};
@@ -30,35 +30,35 @@ pub(super) fn defaults(kind: EffectKind) -> StyleParams {
 }
 
 /// An app with a `size` square document and one empty layer.
-pub(super) fn app_with_layer(size: u32) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+pub(super) fn app_with_layer(size: u32) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": size, "height": size})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     app
 }
 
 /// The draft the open Layer Style dialog `id` holds.
-pub(super) fn draft(app: &PhotocraftApp, id: DialogId) -> &LayerStyleDraft {
+pub(super) fn draft(app: &PatronusPhotoApp, id: DialogId) -> &LayerStyleDraft {
     app.framework.dialogs.get_by_id::<HostedLayerStyle>(id).expect("the Layer Style dialog is open").draft()
 }
 
 /// Edits the draft of the open Layer Style dialog `id`.
-pub(super) fn edit(app: &mut PhotocraftApp, id: DialogId, change: impl FnOnce(&mut LayerStyleDraft)) {
+pub(super) fn edit(app: &mut PatronusPhotoApp, id: DialogId, change: impl FnOnce(&mut LayerStyleDraft)) {
     change(app.framework.dialogs.get_mut_by_id::<HostedLayerStyle>(id).expect("the Layer Style dialog is open").draft_mut());
 }
 
 /// OK on dialog `id`, as the button does.
-pub(super) fn ok(app: &mut PhotocraftApp, id: DialogId) {
+pub(super) fn ok(app: &mut PatronusPhotoApp, id: DialogId) {
     let _ = crate::dialogs::testing::confirm(app, id);
 }
 
 /// Cancel on dialog `id`.
-pub(super) fn cancel(app: &mut PhotocraftApp, id: DialogId) {
+pub(super) fn cancel(app: &mut PatronusPhotoApp, id: DialogId) {
     let _ = crate::dialogs::testing::cancel(app, id);
 }
 
 /// The first instance of `kind` in the dialog's draft.
-pub(super) fn first_of(app: &PhotocraftApp, id: DialogId, kind: EffectKind) -> EffectId {
+pub(super) fn first_of(app: &PatronusPhotoApp, id: DialogId, kind: EffectKind) -> EffectId {
     draft(app, id).style.instances(kind).next().expect("the draft has the kind")
 }
 
@@ -79,19 +79,19 @@ fn text(style: &LayerStyle, id: EffectId, key: &str) -> Option<String> {
 }
 
 /// The effects of the active layer.
-pub(super) fn layer_effects(s: &photocraft_engine::Session) -> Vec<Effect> {
+pub(super) fn layer_effects(s: &patronusphoto_engine::Session) -> Vec<Effect> {
     let d = s.active().unwrap();
     d.doc.layer(d.active_layer.unwrap()).unwrap().effects.items.clone()
 }
 
-fn session() -> photocraft_engine::Session {
-    let mut s = photocraft_engine::Session::new();
+fn session() -> patronusphoto_engine::Session {
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 64, "height": 64})).unwrap();
     s.execute("layer.new.layer", json!({})).unwrap();
     s
 }
 
-fn strokes_of(s: &photocraft_engine::Session) -> Vec<StrokeFx> {
+fn strokes_of(s: &patronusphoto_engine::Session) -> Vec<StrokeFx> {
     layer_effects(s)
         .into_iter()
         .filter_map(|e| match e {
@@ -102,21 +102,21 @@ fn strokes_of(s: &photocraft_engine::Session) -> Vec<StrokeFx> {
 }
 
 /// The style the dialog shows for the active layer.
-fn drafted(s: &photocraft_engine::Session) -> LayerStyle {
+fn drafted(s: &patronusphoto_engine::Session) -> LayerStyle {
     let st = s.active().unwrap();
     let id = st.active_layer.unwrap();
     draft_of(st.doc.layer(id).unwrap(), st.doc.global_light.angle, st.doc.mode)
 }
 
 /// Opens the active layer's style as the dialog does and confirms it unchanged.
-fn reapply(s: &mut photocraft_engine::Session) {
+fn reapply(s: &mut patronusphoto_engine::Session) {
     let style = drafted(s);
     let id = s.active().unwrap().active_layer.unwrap();
     apply(&style, id, None, |cmd, p| s.execute(cmd, p).map_err(|e| e.to_string())).unwrap();
 }
 
 /// One round-trip row: runs `setup`, reads the draft, confirms it unchanged and checks the engine kept every effect.
-fn row(setup: &[(&str, Value)]) -> (photocraft_engine::Session, LayerStyle) {
+fn row(setup: &[(&str, Value)]) -> (patronusphoto_engine::Session, LayerStyle) {
     let mut s = session();
     for (cmd, p) in setup {
         s.execute(cmd, p.clone()).unwrap();
@@ -128,9 +128,9 @@ fn row(setup: &[(&str, Value)]) -> (photocraft_engine::Session, LayerStyle) {
     (s, style)
 }
 
-pub(super) fn harness(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
+pub(super) fn harness(app: Box<PatronusPhotoApp>) -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut h = Harness::builder().with_size(vec2(1500.0, 1000.0)).with_context(app.ctx().clone()).build_ui_state(
-        |ui, app: &mut Box<PhotocraftApp>| {
+        |ui, app: &mut Box<PatronusPhotoApp>| {
             app.framework.dialogs.run(ui);
             take(app, ui.ctx());
         },
@@ -151,7 +151,7 @@ fn the_gradient_drag_needs_its_layer() {
     s.execute("edit.fill", json!({"contents": "color", "color": "#ff0000"})).unwrap();
     assert_eq!(gradient_layer_bounds(&s, id), Some([64.0, 64.0]), "the dialog's layer");
     assert_eq!(gradient_layer_bounds(&s, empty), None, "an empty layer paints no gradient");
-    assert_eq!(gradient_layer_bounds(&s, photocraft_doc::LayerId(id.0 + 1000)), None, "a layer that is gone");
+    assert_eq!(gradient_layer_bounds(&s, patronusphoto_doc::LayerId(id.0 + 1000)), None, "a layer that is gone");
 }
 
 /// Double-clicking an effect row of a layer that isn't active selects that layer first, so the dialog holds its
@@ -214,8 +214,8 @@ fn open_and_confirm_preserves_two_strokes() {
     assert_eq!(style.instances(EffectKind::Stroke).count(), 2, "both instances load");
     let strokes = strokes_of(&s);
     assert_eq!((strokes[0].size, strokes[1].size), (3.0, 7.0));
-    assert_eq!(strokes[0].paint, FxPaint::Color(photocraft_color::Color::BLACK));
-    assert_eq!(strokes[1].paint, FxPaint::Color(photocraft_color::Color::WHITE));
+    assert_eq!(strokes[0].paint, FxPaint::Color(patronusphoto_color::Color::BLACK));
+    assert_eq!(strokes[1].paint, FxPaint::Color(patronusphoto_color::Color::WHITE));
     assert!(strokes[0].overprint);
 
     // Bevel: gloss anti-alias, technique and shading values.
@@ -291,7 +291,7 @@ fn pending_style_is_the_dialogs_and_leaves_the_document_alone() {
         .collect();
     assert_eq!(sizes, [9.0]);
     assert!(app.session.active().unwrap().doc.layer(layer).unwrap().effects.items.is_empty(), "the document is untouched");
-    let rgba = photocraft_engine::presets::styles::thumbnail(&app.session, &style, 32);
+    let rgba = patronusphoto_engine::presets::styles::thumbnail(&app.session, &style, 32);
     assert_eq!(rgba.len(), 32 * 32 * 4);
 }
 
@@ -309,8 +309,8 @@ fn baked_gradient_overlay_keeps_endpoint_colours_on_reopen() {
     reapply(&mut s);
     let Effect::GradientOverlay { gradient, .. } = &layer_effects(&s)[0] else { panic!() };
     assert!(gradient.stops.len() > 2);
-    assert_eq!(gradient.stops.first().unwrap().1, photocraft_color::Color::rgb(1.0, 0.0, 0.0));
-    assert_eq!(gradient.stops.last().unwrap().1, photocraft_color::Color::rgb(0.0, 0.0, 1.0));
+    assert_eq!(gradient.stops.first().unwrap().1, patronusphoto_color::Color::rgb(1.0, 0.0, 0.0));
+    assert_eq!(gradient.stops.last().unwrap().1, patronusphoto_color::Color::rgb(0.0, 0.0, 1.0));
 }
 
 #[test]
@@ -327,8 +327,8 @@ fn gradient_strokes_survive_the_dialog() {
     assert_eq!(strokes.len(), 1);
     assert!(
         matches!(&strokes[0].paint, FxPaint::Gradient(g) if g.stops.len() == 2
-            && g.stops[0].1 == photocraft_color::Color::rgb(1.0, 0.0, 0.0)
-            && g.stops[1].1 == photocraft_color::Color::rgb(0.0, 0.0, 1.0)),
+            && g.stops[0].1 == patronusphoto_color::Color::rgb(1.0, 0.0, 0.0)
+            && g.stops[1].1 == patronusphoto_color::Color::rgb(0.0, 0.0, 1.0)),
         "the gradient is carried, not reset",
     );
 }
@@ -361,7 +361,7 @@ fn preview_applies_the_style_without_touching_the_document() {
 #[test]
 fn blending_page_round_trips_advanced_blending_and_blend_if() {
     for mode in ["rgb", "cmyk", "grayscale"] {
-        let mut s = photocraft_engine::Session::new();
+        let mut s = patronusphoto_engine::Session::new();
         s.execute("file.new", json!({"width": 16, "height": 16, "mode": mode})).unwrap();
         s.execute("layer.new.layer", json!({})).unwrap();
         let (id, mut l, doc_mode, gray, light) = {
@@ -410,10 +410,10 @@ fn contour_picker_and_editor_edit_the_effect_curve() {
     assert!(answered, "the dialog takes the contour for its field");
     ok(&mut app, id);
     let Effect::DropShadow(sh) = &layer_effects(&app.session)[0] else { panic!("a drop shadow") };
-    assert_eq!(sh.contour, photocraft_engine::layer_style::builtin_contour("Cone").unwrap());
+    assert_eq!(sh.contour, patronusphoto_engine::layer_style::builtin_contour("Cone").unwrap());
 }
 
-fn shadow_angle(s: &photocraft_engine::Session) -> (f32, bool) {
+fn shadow_angle(s: &patronusphoto_engine::Session) -> (f32, bool) {
     let Some(Effect::DropShadow(sh)) = layer_effects(s).into_iter().find(|e| matches!(e, Effect::DropShadow(_))) else { panic!("a drop shadow") };
     (sh.angle, sh.use_global_light)
 }
@@ -512,8 +512,8 @@ fn unedited_bevel_shading_keeps_imported_precision() {
         s.execute("layer.layerStyle.bevelEmboss", json!({})).unwrap();
         s.edit("imported shading", |doc, active| {
             let Effect::BevelEmboss(b) = &mut doc.layer_mut(active.unwrap()).unwrap().effects.items[0] else { panic!("bevel") };
-            b.highlight_color = photocraft_color::Color::rgb(0.12345, 0.45678, 0.78901);
-            b.shadow_color = photocraft_color::Color::rgb(0.98765, 0.54321, 0.13579);
+            b.highlight_color = patronusphoto_color::Color::rgb(0.12345, 0.45678, 0.78901);
+            b.shadow_color = patronusphoto_color::Color::rgb(0.98765, 0.54321, 0.13579);
             b.highlight.opacity = 0.3525;
             b.shadow.opacity = 0.6175;
             Ok(())
@@ -596,7 +596,7 @@ fn an_inner_shadow_lit_by_the_global_light_still_takes_the_shown_angle() {
     assert_eq!(f64::from(after.angle), 45.0, "the field showed the light's 45, so OK stores 45");
 }
 
-fn overlay_color(doc: &photocraft_doc::Document, layer: photocraft_doc::LayerId) -> photocraft_color::Color {
+fn overlay_color(doc: &patronusphoto_doc::Document, layer: patronusphoto_doc::LayerId) -> patronusphoto_color::Color {
     match &doc.layer(layer).unwrap().effects.items[0] {
         Effect::ColorOverlay { color, .. } => *color,
         other => panic!("{other:?}"),
@@ -608,11 +608,11 @@ fn preview_off_shows_the_original_until_reenabled() {
     let mut app = app_with_layer(32);
     app.run("layer.layerStyle.colorOverlay", json!({"color": "#ff0000"})).unwrap();
     let layer = app.session.active().unwrap().active_layer.unwrap();
-    let red = photocraft_color::Color::rgb(1.0, 0.0, 0.0);
-    let green = photocraft_color::Color::rgb(0.0, 1.0, 0.0);
+    let red = patronusphoto_color::Color::rgb(1.0, 0.0, 0.0);
+    let green = patronusphoto_color::Color::rgb(0.0, 1.0, 0.0);
     let id = open(&mut app, Some(EffectKind::ColorOverlay.key())).unwrap();
     let overlay = first_of(&app, id, EffectKind::ColorOverlay);
-    let shown = |app: &PhotocraftApp| preview_document(app).map_or_else(|| app.session.active().unwrap().doc.clone(), |p| p.0);
+    let shown = |app: &PatronusPhotoApp| preview_document(app).map_or_else(|| app.session.active().unwrap().doc.clone(), |p| p.0);
 
     edit(&mut app, id, |d| {
         d.preview = false;
@@ -628,7 +628,7 @@ fn preview_off_shows_the_original_until_reenabled() {
     assert_eq!(overlay_color(&app.session.active().unwrap().doc, layer), green, "OK commits with Preview off");
 }
 
-fn pixel(app: &mut PhotocraftApp) -> Vec<f32> {
+fn pixel(app: &mut PatronusPhotoApp) -> Vec<f32> {
     serde_json::from_value(app.run("document.pixel", json!({"x": 32, "y": 32})).unwrap()).unwrap()
 }
 

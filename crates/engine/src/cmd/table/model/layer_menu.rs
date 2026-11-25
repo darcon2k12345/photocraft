@@ -3,7 +3,7 @@ use crate::cmd::{
     bad, cmyk_param, color_param, has_doc, has_layer, has_selection, json, layer_copy, layer_panel_option, layer_param, mask_new_layer, merge_group, move_mask,
     parse_blend, pixels, set_clipped, set_mask, set_mask_and_deselect,
 };
-use photocraft_color::BlendMode;
+use patronusphoto_color::BlendMode;
 
 /// Layer menu, first run: new layers and groups to the solid color fill layer.
 pub fn specs_before_gradient() -> Vec<CommandSpec> {
@@ -294,7 +294,7 @@ fn merging() -> Vec<CommandSpec> {
                 let mut bg = Layer::raster("Background", fmt);
                 bg.locks.transparency = true;
                 bg.locks.position = true;
-                *crate::pixels_mut(&mut bg)? = photocraft_compose::flatten_to_surface(doc, fmt, Some([1.0, 1.0, 1.0]));
+                *crate::pixels_mut(&mut bg)? = patronusphoto_compose::flatten_to_surface(doc, fmt, Some([1.0, 1.0, 1.0]));
                 *active = Some(bg.id);
                 doc.layers = vec![bg].into();
                 Ok(())
@@ -412,7 +412,7 @@ fn set_props(s: &mut Session, p: &Value) -> Result<Value> {
         // The Background has no opacity, fill or blend mode: like Photoshop, setting
         // one that changes its look turns it into a normal layer ("Layer 0") first.
         let num = |k: &str| p.get(k).and_then(Value::as_f64).is_some_and(|v| v < 1.0);
-        let blends = p.get("blend").and_then(Value::as_str).and_then(parse_blend).is_some_and(|b| b != photocraft_color::BlendMode::Normal);
+        let blends = p.get("blend").and_then(Value::as_str).and_then(parse_blend).is_some_and(|b| b != patronusphoto_color::BlendMode::Normal);
         for &id in &ids {
             if num("opacity") || num("fill") || blends {
                 crate::extra_cmds::background_to_layer(doc, id);

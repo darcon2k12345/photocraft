@@ -1,24 +1,24 @@
-use photocraft_color::BlendMode;
-use photocraft_doc::{LabelColor, Layer, LayerContent, LayerId};
+use patronusphoto_color::BlendMode;
+use patronusphoto_doc::{LabelColor, Layer, LayerContent, LayerId};
 use serde_json::json;
 
 use super::*;
 use crate::new_layer_ui::testing::set;
 
 /// Background, then `A` and `B` (`B` active).
-fn app() -> (Box<PhotocraftApp>, LayerId, LayerId) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app() -> (Box<PatronusPhotoApp>, LayerId, LayerId) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 40, "height": 30})).unwrap();
     let a = LayerId(app.run("layer.new.layer", json!({"name": "A"})).unwrap()["layer"].as_u64().unwrap());
     let b = LayerId(app.run("layer.new.layer", json!({"name": "B"})).unwrap()["layer"].as_u64().unwrap());
     (app, a, b)
 }
 
-fn groups(app: &PhotocraftApp) -> Vec<Layer> {
+fn groups(app: &PatronusPhotoApp) -> Vec<Layer> {
     app.session.active().unwrap().doc.walk().into_iter().map(|(_, _, l)| l).filter(|l| l.is_group()).cloned().collect()
 }
 
-fn steps(app: &PhotocraftApp) -> usize {
+fn steps(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.past_len()
 }
 

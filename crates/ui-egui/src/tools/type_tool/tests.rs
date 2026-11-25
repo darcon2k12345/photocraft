@@ -5,8 +5,8 @@ use super::*;
 use crate::canvas::{ToolEvent, tool_event};
 use craft::text::ui::editor::TextEditorHost as _;
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 400, "height": 200})).unwrap();
     app.sync_views();
     app.ui.tool = crate::state::Tool::Type;
@@ -14,19 +14,19 @@ fn app() -> Box<PhotocraftApp> {
 }
 
 /// A plain click with the Type tool, through the canvas's own input path.
-fn click(app: &mut PhotocraftApp, x: f64, y: f64, mods: Modifiers) {
+fn click(app: &mut PatronusPhotoApp, x: f64, y: f64, mods: Modifiers) {
     tool_event(app, ToolEvent::Down { x, y, pressure: 1.0 }, mods);
     tool_event(app, ToolEvent::Up { x, y }, mods);
 }
 
 /// A drag from `from` to `to` in one move, with the button released at `to`.
-fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2]) {
+fn drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2]) {
     tool_event(app, ToolEvent::Down { x: from[0], y: from[1], pressure: 1.0 }, Modifiers::NONE);
     tool_event(app, ToolEvent::Move { x: to[0], y: to[1], pressure: 1.0 }, Modifiers::NONE);
     tool_event(app, ToolEvent::Up { x: to[0], y: to[1] }, Modifiers::NONE);
 }
 
-fn bar_pass(app: &mut PhotocraftApp) {
+fn bar_pass(app: &mut PatronusPhotoApp) {
     let ctx = app.ctx().clone();
     let input = egui::RawInput { screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1200.0, 800.0))), ..Default::default() };
     let _ = crate::testing::run_ui(&ctx, input, |ui| crate::type_tool::options_bar(app, ui));
@@ -47,13 +47,13 @@ fn lowering_the_recent_fonts_cap_applies_at_once() {
     assert!(app.ui.recent_fonts.is_empty(), "0 clears the list");
 }
 
-fn layer_text(app: &PhotocraftApp) -> String {
+fn layer_text(app: &PatronusPhotoApp) -> String {
     let ed = app.ui.text_edit.as_ref().unwrap();
     current_text(app, LayerId(ed.layer)).unwrap()
 }
 
 /// A committed type layer reading `s` at the same spot as the others (stacked variants, #4320).
-fn stacked_variant(app: &mut PhotocraftApp, s: &str) -> LayerId {
+fn stacked_variant(app: &mut PatronusPhotoApp, s: &str) -> LayerId {
     // A click on the stack's spot would edit the text under it, so the layer is made where the click would.
     app.ui.text_edit = None;
     let mut p = default_style_params(app);
@@ -64,12 +64,12 @@ fn stacked_variant(app: &mut PhotocraftApp, s: &str) -> LayerId {
     LayerId(app.run("type.create", p).unwrap()["layer"].as_u64().unwrap())
 }
 
-fn hide(app: &mut PhotocraftApp, id: LayerId) {
+fn hide(app: &mut PatronusPhotoApp, id: LayerId) {
     app.run("layer.setProps", json!({"layer": id.0, "visible": false})).unwrap();
 }
 
 /// Wraps `id` in a new group and returns the group.
-fn group_of(app: &mut PhotocraftApp, id: LayerId) -> LayerId {
+fn group_of(app: &mut PatronusPhotoApp, id: LayerId) -> LayerId {
     app.run("layer.select", json!({"layer": id.0, "mode": "replace"})).unwrap();
     app.run("layer.groupLayers", json!({})).unwrap();
     let doc = &app.session.active().unwrap().doc;
@@ -78,7 +78,7 @@ fn group_of(app: &mut PhotocraftApp, id: LayerId) -> LayerId {
 }
 
 /// Three type variants at one spot, bottom to top: A, B, C.
-fn variants() -> (Box<PhotocraftApp>, [LayerId; 3]) {
+fn variants() -> (Box<PatronusPhotoApp>, [LayerId; 3]) {
     let mut app = app();
     let ids = ["Variant A", "Variant B", "Variant C"].map(|s| stacked_variant(&mut app, s));
     (app, ids)
@@ -173,8 +173,8 @@ fn closed_path_forward_hit_after_last_caret() {
     for align in ["left", "center", "right"] {
         let mut app = app();
         app.ui.tool_options.type_align = align.into();
-        let path = photocraft_vector::shapes::rect(20.0, 20.0, 200.0, 100.0);
-        app.run("path.set", json!({"path": photocraft_engine::vector_cmds::path_json(&path)})).unwrap();
+        let path = patronusphoto_vector::shapes::rect(20.0, 20.0, 200.0, 100.0);
+        app.run("path.set", json!({"path": patronusphoto_engine::vector_cmds::path_json(&path)})).unwrap();
         click(&mut app, 20.0, 45.0, Modifiers::NONE);
         insert(&mut app, "ssssssssssss");
         let id = LayerId(app.ui.text_edit.as_ref().unwrap().layer);
@@ -194,8 +194,8 @@ fn closed_path_forward_hit_after_last_caret() {
 #[test]
 fn open_path_hits_keep_endpoint_clamping() {
     let mut app = app();
-    let path = photocraft_doc::vector::Path::new(vec![photocraft_doc::vector::Subpath::polyline(&[(20.0, 100.0), (380.0, 100.0)])]);
-    app.run("path.set", json!({"path": photocraft_engine::vector_cmds::path_json(&path)})).unwrap();
+    let path = patronusphoto_doc::vector::Path::new(vec![patronusphoto_doc::vector::Subpath::polyline(&[(20.0, 100.0), (380.0, 100.0)])]);
+    app.run("path.set", json!({"path": patronusphoto_engine::vector_cmds::path_json(&path)})).unwrap();
     click(&mut app, 200.0, 100.0, Modifiers::NONE);
     insert(&mut app, "ssss");
     let id = LayerId(app.ui.text_edit.as_ref().unwrap().layer);
@@ -207,15 +207,15 @@ fn open_path_hits_keep_endpoint_clamping() {
 #[test]
 fn closed_path_upstream_caret_rectangle_left_edge_roundtrip() {
     let mut app = app();
-    let path = photocraft_vector::shapes::rect(20.0, 20.0, 200.0, 100.0);
-    app.run("path.set", json!({"path": photocraft_engine::vector_cmds::path_json(&path)})).unwrap();
+    let path = patronusphoto_vector::shapes::rect(20.0, 20.0, 200.0, 100.0);
+    app.run("path.set", json!({"path": patronusphoto_engine::vector_cmds::path_json(&path)})).unwrap();
     click(&mut app, 20.0, 45.0, Modifiers::NONE);
     insert(&mut app, "ssssssssssss");
     let id = LayerId(app.ui.text_edit.as_ref().unwrap().layer);
     let (layout, _, _) = layout(&mut app, id).unwrap();
     let shape = text_layer(&app.session.active().unwrap().doc, id).unwrap().shape.clone();
-    let photocraft_doc::text::TextShape::Path { start, .. } = shape else {
-        assert!(matches!(shape, photocraft_doc::text::TextShape::Path { .. }), "outline click must attach path text");
+    let patronusphoto_doc::text::TextShape::Path { start, .. } = shape else {
+        assert!(matches!(shape, patronusphoto_doc::text::TextShape::Path { .. }), "outline click must attach path text");
         return;
     };
     // Independent rectangle perimeter oracle: never use the warp under test to
@@ -250,14 +250,14 @@ fn caret_hits_type_on_a_path_along_the_curve() {
     let mut app = app();
     app.session
         .edit("path", |doc, _| {
-            doc.work_path = Some(photocraft_doc::vector::Path::new(vec![photocraft_doc::vector::Subpath::polyline(&[(300.0, 10.0), (300.0, 195.0)])]));
+            doc.work_path = Some(patronusphoto_doc::vector::Path::new(vec![patronusphoto_doc::vector::Subpath::polyline(&[(300.0, 10.0), (300.0, 195.0)])]));
             Ok(())
         })
         .unwrap();
     click(&mut app, 300.0, 20.0, Modifiers::NONE);
     insert(&mut app, "ABCDEFGH");
     let id = LayerId(app.ui.text_edit.as_ref().unwrap().layer);
-    assert!(matches!(text_layer(&app.session.active().unwrap().doc, id).unwrap().shape, photocraft_doc::text::TextShape::Path { .. }));
+    assert!(matches!(text_layer(&app.session.active().unwrap().doc, id).unwrap().shape, patronusphoto_doc::text::TextShape::Path { .. }));
     // The type runs down the path: near its start the caret is at the beginning, far down at the end.
     assert_eq!(offset_at(&mut app, id, 300.0, 18.0), 0);
     // (The straight line would put both of these at the start: they are left of its first glyph.)
@@ -272,7 +272,7 @@ fn a_name_from_text_after_blank_lines_keeps_following_the_text() {
     insert(&mut app, "\n\nTitle");
     let id = app.ui.text_edit.as_ref().unwrap().layer;
     commit(&mut app);
-    let name = |app: &PhotocraftApp| app.session.active().unwrap().doc.layers.last().unwrap().name.clone();
+    let name = |app: &PatronusPhotoApp| app.session.active().unwrap().doc.layers.last().unwrap().name.clone();
     assert_eq!(name(&app), "Title");
     // Edited later, outside the session that created it (#483).
     app.run("type.edit", json!({"layer": id, "text": "\nSubtitle"})).unwrap();
@@ -359,16 +359,17 @@ fn closed_path_aligned_selection_highlights_every_visible_cluster() {
     for align in ["center", "right"] {
         let mut app = app();
         app.ui.tool_options.type_align = align.into();
-        let path = photocraft_vector::shapes::rect(20.0, 20.0, 200.0, 100.0);
-        app.run("path.set", json!({"path":photocraft_engine::vector_cmds::path_json(&path)})).unwrap();
+        let path = patronusphoto_vector::shapes::rect(20.0, 20.0, 200.0, 100.0);
+        app.run("path.set", json!({"path":patronusphoto_engine::vector_cmds::path_json(&path)})).unwrap();
         click(&mut app, 20.0, 45.0, Modifiers::NONE);
         insert(&mut app, "ssssssssssss");
         let id = LayerId(app.ui.text_edit.as_ref().unwrap().layer);
         let (l, _, _) = layout(&mut app, id).unwrap();
         assert!(l.bounds().unwrap()[0] < 0.0, "{align} must exercise negative text coordinates");
         let text_layer = text_layer(&app.session.active().unwrap().doc, id).unwrap();
-        let rendered = photocraft_text::render::layout_deform(&l, text_layer).unwrap();
-        let visible = l.clusters.iter().filter(|c| rendered.place_glyph(f64::from(c.x + c.advance / 2.0)) != photocraft_text::warp::Placement::Hidden).count();
+        let rendered = patronusphoto_text::render::layout_deform(&l, text_layer).unwrap();
+        let visible =
+            l.clusters.iter().filter(|c| rendered.place_glyph(f64::from(c.x + c.advance / 2.0)) != patronusphoto_text::warp::Placement::Hidden).count();
         assert_eq!(visible, l.clusters.len(), "{align}: every cluster is visible on the path");
         let quads = LayerHost::new(&mut app, id).selection_quads(0..l.clusters.len()).len();
         assert_eq!(quads, visible, "{align}: the selection highlights every visible cluster");

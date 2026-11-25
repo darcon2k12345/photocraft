@@ -8,10 +8,10 @@ use serde_json::json;
 use super::*;
 use crate::new_layer_ui::testing::{fields, set};
 
-fn harness() -> Harness<'static, Box<PhotocraftApp>> {
+fn harness() -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut h = Harness::builder().with_size(vec2(1440.0, 900.0)).with_max_steps(64).build_eframe(|cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), crate::Services::default())
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), crate::Services::default())
     });
     h.state_mut().run("file.new", json!({"width": 400, "height": 300})).unwrap();
     h.state_mut().ui.tool = crate::state::Tool::Brush;
@@ -20,7 +20,7 @@ fn harness() -> Harness<'static, Box<PhotocraftApp>> {
 }
 
 /// The open New Brush Preset dialog, if there is one (and never two).
-fn dialog(app: &PhotocraftApp) -> Option<DialogId> {
+fn dialog(app: &PatronusPhotoApp) -> Option<DialogId> {
     let open: Vec<DialogId> = app
         .framework
         .dialogs
@@ -54,7 +54,7 @@ fn ok_saves_under_the_name_with_the_boxes_as_set() {
     h.run_steps(3);
     assert!(dialog(h.state()).is_none());
     let p = h.state().session.tools.presets.iter().find(|p| p.name == "Chalk 1").expect("saved");
-    assert_eq!(p.captures, photocraft_paint::PresetCaptures { size: false, tool_settings: true, color: true });
+    assert_eq!(p.captures, patronusphoto_paint::PresetCaptures { size: false, tool_settings: true, color: true });
     assert!(h.state().session.tools.presets.iter().any(|p| p.name == "Chalk"), "the preset it came from is still there");
     assert_eq!(h.state().session.tools.current_preset.as_deref(), Some("Chalk 1"));
 
@@ -72,7 +72,7 @@ fn ok_saves_under_the_name_with_the_boxes_as_set() {
 /// Include Color unticked-by-Tool-Settings with it ticked earlier: the preset doesn't take the colour.
 #[test]
 fn include_color_needs_include_tool_settings() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     let id = open(&mut app, None);
     set(&mut app, id, "name", json!("Mine")).unwrap();
@@ -81,5 +81,5 @@ fn include_color_needs_include_tool_settings() {
     set(&mut app, id, "toolSettings", json!(false)).unwrap();
     crate::dialogs::confirm(&mut app, &ctx, id).unwrap();
     let p = app.session.tools.presets.iter().find(|p| p.name == "Mine").unwrap();
-    assert_eq!(p.captures, photocraft_paint::PresetCaptures { size: true, tool_settings: false, color: false });
+    assert_eq!(p.captures, patronusphoto_paint::PresetCaptures { size: true, tool_settings: false, color: false });
 }

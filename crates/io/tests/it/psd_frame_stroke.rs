@@ -3,10 +3,10 @@
 //! along the outline even when nothing is placed in the frame (#4381).
 
 use craft_psd::{PsdFile, SectionType, TaggedBlock};
-use photocraft_color::{Color, ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{Document, Fill, Group, Layer, LayerContent, Path, ShapeStroke, Size, StrokeAlign, Subpath, VectorMask};
-use photocraft_io::vector_map::{parse_vstk, vstk_bytes};
-use photocraft_io::*;
+use patronusphoto_color::{Color, ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::{Document, Fill, Group, Layer, LayerContent, Path, ShapeStroke, Size, StrokeAlign, Subpath, VectorMask};
+use patronusphoto_io::vector_map::{parse_vstk, vstk_bytes};
+use patronusphoto_io::*;
 
 fn red_inside(width: f32) -> ShapeStroke {
     ShapeStroke { width, align: StrokeAlign::Inside, paint: Fill::Solid(Color::rgb(1.0, 0.0, 0.0)), ..ShapeStroke::default() }
@@ -32,7 +32,7 @@ fn frame_stroke(d: &Document) -> Option<ShapeStroke> {
 }
 
 fn px(d: &Document, x: i32, y: i32) -> [f32; 4] {
-    photocraft_compose::flatten_to_surface(d, PixelFormat::RGBA8.with_sample(SampleType::F32), None).rgba(x, y)
+    patronusphoto_compose::flatten_to_surface(d, PixelFormat::RGBA8.with_sample(SampleType::F32), None).rgba(x, y)
 }
 
 /// The group's own record (its top, `lsct` 1 or 2) in a PSD file.
@@ -110,7 +110,7 @@ fn a_frame_stroke_without_a_vector_mask_or_width_draws_nothing() {
 #[test]
 fn an_isolated_frame_draws_its_outside_stroke_past_the_outline() {
     let mut d = frame_doc(SampleType::U8, Some(ShapeStroke { align: StrokeAlign::Outside, ..red_inside(3.0) }));
-    d.layers[1].blend = photocraft_color::BlendMode::Normal;
+    d.layers[1].blend = patronusphoto_color::BlendMode::Normal;
     let p = px(&d, 18, 30);
     assert!(p[0] > 0.98 && p[1] < 0.02, "{p:?}");
     assert!(px(&d, 22, 30)[1] > 0.98, "inside stays white");

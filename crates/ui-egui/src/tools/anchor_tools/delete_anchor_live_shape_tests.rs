@@ -6,7 +6,7 @@ use craft::ui::dialog::{DialogId, StackDialog as _, StandardPrompt};
 use serde_json::{Value, json};
 
 use super::delete_anchor_targeted_path_tests::{click, select_layer, select_saved_path, setup_asking, shape_path, steps};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::dialogs::alerts;
 use crate::dialogs::live_shape_prompt::LiveShapeAsk;
 use crate::state::Tool;
@@ -15,28 +15,28 @@ use crate::state::Tool;
 const CORNER: [f64; 2] = [650.0, 250.0];
 
 /// The tool with the live rectangle active.
-fn live(tool: Tool) -> (Box<PhotocraftApp>, u64) {
+fn live(tool: Tool) -> (Box<PatronusPhotoApp>, u64) {
     let (mut app, shape) = setup_asking(tool);
     select_layer(&mut app, shape);
     (app, shape)
 }
 
-fn info(app: &mut PhotocraftApp, shape: u64) -> Value {
+fn info(app: &mut PatronusPhotoApp, shape: u64) -> Value {
     app.run("shape.info", json!({"layer": shape})).unwrap()
 }
 
 /// The open question.
-fn question(app: &PhotocraftApp) -> Option<DialogId> {
+fn question(app: &PatronusPhotoApp) -> Option<DialogId> {
     alerts::prompt_tagged::<LiveShapeAsk>(app)
 }
 
 /// Answers the question `id` the way `ui.dialog.confirm` does, so the answer acts inside the call.
-fn confirm(app: &mut PhotocraftApp, id: DialogId) {
+fn confirm(app: &mut PatronusPhotoApp, id: DialogId) {
     let ctx = app.ctx().clone();
     crate::dialogs::confirm(app, &ctx, id).unwrap();
 }
 
-fn corners(app: &mut PhotocraftApp, shape: u64) -> usize {
+fn corners(app: &mut PatronusPhotoApp, shape: u64) -> usize {
     shape_path(app, shape)["subpaths"][0]["knots"].as_array().unwrap().len()
 }
 

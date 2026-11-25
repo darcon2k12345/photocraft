@@ -11,17 +11,17 @@ use craft::ui::patterns::form_dialogs::{
 };
 use craft::ui::patterns::presets::{GroupPath, NamedPresetEvent, PresetLibrary};
 use craft::ui::runtime::env::UnitKind;
-use photocraft_color::ColorMode;
-use photocraft_engine::document_preset_cmds::DocumentSettings;
+use patronusphoto_color::ColorMode;
+use patronusphoto_engine::document_preset_cmds::DocumentSettings;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The SAVED-tier key of the last created settings (without their name): the next New Document opens on them.
-pub(crate) const LAST_CREATED: SaveKey = SaveKey::new("photocraft.file.new");
+pub(crate) const LAST_CREATED: SaveKey = SaveKey::new("patronusphoto.file.new");
 
 /// The SAVED-tier key of the dialog's place and size.
-const WINDOW: SaveKey = SaveKey::new("photocraft.file.new.window");
+const WINDOW: SaveKey = SaveKey::new("patronusphoto.file.new.window");
 
 /// The colour modes the dialog offers, with the engine's mode of each.
 const MODES: [(ColorMode, DialogMode); 5] = [
@@ -33,7 +33,7 @@ const MODES: [(ColorMode, DialogMode); 5] = [
 ];
 
 /// Opens File › New on the last created settings and returns the dialog's id.
-pub(crate) fn open(app: &mut PhotocraftApp) -> DialogId {
+pub(crate) fn open(app: &mut PatronusPhotoApp) -> DialogId {
     let options = app.new_document_options();
     // An image on the clipboard is offered as the Clipboard preset; the dialog opens on it, at its size.
     let clipboard = app.new_document_clipboard();
@@ -50,7 +50,7 @@ pub(crate) fn open(app: &mut PhotocraftApp) -> DialogId {
             .background_color(background)
             .profiles(profiles.clone())
             .custom_pixel_aspects(custom.clone())
-            .app_name("PhotoCraft")
+            .app_name("Patronus Photo")
             .remember(WINDOW);
         if let Some(size) = clipboard {
             dialog = dialog.clipboard(size);
@@ -71,7 +71,7 @@ pub(crate) fn open(app: &mut PhotocraftApp) -> DialogId {
 /// The dialog's pump (a `TAKERS` row). Each call carries only what the dialog queued since the last one: a colour
 /// request, the saved-preset edits and the answer of a closed dialog are each taken once, so a second call in the
 /// same frame finds nothing to do.
-pub(crate) fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
+pub(crate) fn take(app: &mut PatronusPhotoApp, _ctx: &egui::Context) {
     carry_color(app);
     store_preset_events(app);
     if let Some(DialogResult::Ok(result)) = app.framework.dialogs.take::<HostedNewDocument>() {
@@ -81,7 +81,7 @@ pub(crate) fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
 
 /// Opens the colour picker for the dialog's background colour request, and hands the picked colour back.
 /// A cancelled picker needs no answer: Background Contents only changes when `set_color` answers.
-fn carry_color(app: &mut PhotocraftApp) {
+fn carry_color(app: &mut PatronusPhotoApp) {
     let Some((id, request)) = app.framework.dialogs.get_mut::<HostedNewDocument>().map(|dialog| (dialog.id(), dialog.pick_color())) else { return };
     if let Some(request) = request {
         crate::color_picker_ui::open_for_request(app, id, request);
@@ -95,7 +95,7 @@ fn carry_color(app: &mut PhotocraftApp) {
 
 /// Runs the dialog's saved-preset edits on the engine's preset store. The dialog has already applied each to its own
 /// library, so a created preset's value is read from it by name.
-fn store_preset_events(app: &mut PhotocraftApp) {
+fn store_preset_events(app: &mut PatronusPhotoApp) {
     let Some(dialog) = app.framework.dialogs.get_mut::<HostedNewDocument>() else { return };
     let commands: Vec<(&str, Value)> = dialog
         .take_preset_events()
@@ -119,7 +119,7 @@ fn store_preset_events(app: &mut PhotocraftApp) {
 
 /// Creates the document from what Create answered. Only a created document updates the last created settings, the
 /// recent list and the pixel aspect ratio, so a failed Create changes none of them.
-fn create(app: &mut PhotocraftApp, options: &DocumentOptions) {
+fn create(app: &mut PatronusPhotoApp, options: &DocumentOptions) {
     if let Err(error) = app.run("file.new", create_params(options)) {
         app.ui.status = error;
         return;
@@ -139,19 +139,19 @@ fn create(app: &mut PhotocraftApp, options: &DocumentOptions) {
 
 /// View › Pixel Aspect Ratio's saved custom ratios as the dialog's own entries: `(id, name)` with the view's
 /// `custom:<ratio>:<name>` ids, in the view menu's order. The names are the user's.
-fn custom_pixel_aspects(app: &PhotocraftApp) -> Vec<(String, String)> {
+fn custom_pixel_aspects(app: &PatronusPhotoApp) -> Vec<(String, String)> {
     app.ui.shell.custom_pars.iter().map(|c| (format!("custom:{}:{}", c.ratio, c.name), c.name.clone())).collect()
 }
 
 /// `id` while the dialog lists it, else Square Pixels: the dialog shows an id it no longer lists (a custom ratio
 /// deleted since it was remembered) as Square Pixels, and Create gives what it showed.
-fn listed_pixel_aspect(app: &PhotocraftApp, id: &str) -> String {
+fn listed_pixel_aspect(app: &PatronusPhotoApp, id: &str) -> String {
     let listed = PIXEL_ASPECTS.iter().any(|(known, _)| *known == id) || custom_pixel_aspects(app).iter().any(|(custom, _)| custom == id);
     if listed { id.to_owned() } else { SQUARE_PIXELS.to_owned() }
 }
 
 /// The engine's saved document presets as the dialog's library, in the engine's order.
-fn saved_library(app: &PhotocraftApp) -> PresetLibrary<DocumentOptions> {
+fn saved_library(app: &PatronusPhotoApp) -> PresetLibrary<DocumentOptions> {
     let mut library = PresetLibrary::new();
     for preset in &app.session.presets.documents {
         let mut options = to_options(&preset.settings);
@@ -166,12 +166,12 @@ fn saved_library(app: &PhotocraftApp) -> PresetLibrary<DocumentOptions> {
 /// The Color Profile lists of the dialog: per mode, the working space (with its profile's description), then the
 /// built-in and installed profiles of that mode's colour space. A profile is named by what `file.new`'s `profile`
 /// takes: a built-in id or a path.
-pub(crate) fn profiles(app: &PhotocraftApp) -> Vec<ColorProfiles> {
-    let installed = photocraft_engine::installed_profiles::installed();
+pub(crate) fn profiles(app: &PatronusPhotoApp) -> Vec<ColorProfiles> {
+    let installed = patronusphoto_engine::installed_profiles::installed();
     MODES
         .iter()
         .map(|(mode, dialog_mode)| {
-            let space = photocraft_engine::color_cmds::mode_space(*mode);
+            let space = patronusphoto_engine::color_cmds::mode_space(*mode);
             let mut others: Vec<String> = craft::cms::Builtin::ALL.iter().filter(|b| b.profile().color_space == space).map(|b| b.id().to_string()).collect();
             others.extend(installed.iter().filter(|i| i.is_destination() && i.color_space == space).map(|i| i.path.clone()));
             ColorProfiles::new(*dialog_mode, app.session.color.working(*mode).description.clone(), others)

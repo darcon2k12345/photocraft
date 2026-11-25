@@ -84,20 +84,20 @@ impl Host {
 }
 
 struct Desktop {
-    h: Harness<'static, Box<PhotocraftApp>>,
+    h: Harness<'static, Box<PatronusPhotoApp>>,
     host: Rc<RefCell<Host>>,
 }
 
 impl Desktop {
     /// The whole app in an eframe harness whose floated panels open OS windows on the stand-in host.
-    fn new(app: Box<PhotocraftApp>) -> Self {
+    fn new(app: Box<PatronusPhotoApp>) -> Self {
         let size = vec2(1400.0, 900.0);
         let host = Rc::new(RefCell::new(Host { size, ..Default::default() }));
         let shared = host.clone();
         egui::Context::set_immediate_viewport_renderer(move |ctx, viewport| Host::render(&shared, ctx, viewport));
         let app = std::cell::Cell::new(Some(app));
         let h = Harness::builder().with_size(size).with_step_dt(1.0 / 60.0).with_max_steps(64).build_eframe(move |cc| {
-            PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+            PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
             cc.egui_ctx.set_embed_viewports(false);
             app.take().expect("one app")
         });
@@ -179,16 +179,16 @@ impl Desktop {
     }
 }
 
-fn app_with_document() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app_with_document() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
     app
 }
 
-/// A key pressed in a panel's own window reaches PhotoCraft's shortcut dispatch: the runtime routes each
+/// A key pressed in a panel's own window reaches Patronus Photo's shortcut dispatch: the runtime routes each
 /// window's input, and the dispatch must not read the main window only.
 #[test]
-fn keys_pressed_in_a_panel_window_run_photocrafts_shortcuts() {
+fn keys_pressed_in_a_panel_window_run_patronusphotos_shortcuts() {
     let mut desktop = Desktop::new(app_with_document());
     let viewport = desktop.float_and_focus("layers");
     desktop.h.state_mut().ui.tool = crate::state::Tool::Move;
@@ -239,7 +239,7 @@ fn a_menu_key_typed_in_a_panel_windows_text_field_goes_to_the_field() {
     assert!(desktop.host.borrow().windows[&viewport].paste_requested, "the field's window asks for the clipboard text");
 }
 
-/// PhotoCraft's dialogs are framework layers, so the runtime's modal blocking reaches the panel windows:
+/// Patronus Photo's dialogs are framework layers, so the runtime's modal blocking reaches the panel windows:
 /// under a dialog the window takes no click and no key, and once it is closed the window works again.
 #[test]
 fn a_dialog_blocks_the_panel_windows() {

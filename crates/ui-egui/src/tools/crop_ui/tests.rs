@@ -1,5 +1,5 @@
 use super as crop_ui;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::{ToolEvent, tool_event};
 use crate::state::Tool;
 use craft::behavior::geometry::CropBox;
@@ -7,16 +7,16 @@ use craft::behavior::kurbo::Rect;
 use craft::draw::ui::crop::{CropFill, CropLength, CropRatio, CropSettings, CropTool, ResolutionUnit};
 use craft::ui::runtime::env::UnitKind;
 use egui::Modifiers;
-use photocraft_doc::{Color, ColorMode, Document, SampleType, Size};
+use patronusphoto_doc::{Color, ColorMode, Document, SampleType, Size};
 use serde_json::json;
 
 const NONE: Modifiers = Modifiers::NONE;
 
-fn app(depth: SampleType) -> Box<PhotocraftApp> {
+fn app(depth: SampleType) -> Box<PatronusPhotoApp> {
     let doc = Document::with_background("crop", Size::new(200, 100), ColorMode::Rgb, depth, Color::WHITE);
-    let mut s = photocraft_engine::Session::new();
+    let mut s = patronusphoto_engine::Session::new();
     s.add_document(doc, None);
-    let mut app = PhotocraftApp::new(s, crate::Services::default());
+    let mut app = PatronusPhotoApp::new(s, crate::Services::default());
     app.ui.tool = Tool::Crop;
     // These tests pin Classic Mode (the frame moves and turns over the image).
     app.ui.tool_options.crop.shield.classic_mode = true;
@@ -26,7 +26,7 @@ fn app(depth: SampleType) -> Box<PhotocraftApp> {
 }
 
 /// The crop tool the tests set frames on.
-fn tool(app: &mut PhotocraftApp) -> &mut CropTool {
+fn tool(app: &mut PatronusPhotoApp) -> &mut CropTool {
     &mut app.canvas_tools.crop.tool
 }
 
@@ -34,7 +34,7 @@ fn boxed(x0: f64, y0: f64, x1: f64, y1: f64, angle: f64) -> CropBox {
     CropBox::new(Rect::new(x0, y0, x1, y1), angle)
 }
 
-fn drag(app: &mut PhotocraftApp, pts: &[[f64; 2]], mods: Modifiers) {
+fn drag(app: &mut PatronusPhotoApp, pts: &[[f64; 2]], mods: Modifiers) {
     let (first, last) = (pts[0], pts[pts.len() - 1]);
     // The frame's handles take presses from the pass that drew them: a frame set since the last pass is shown first.
     crate::canvas::testing::frame(app);
@@ -47,7 +47,7 @@ fn drag(app: &mut PhotocraftApp, pts: &[[f64; 2]], mods: Modifiers) {
     tool_event(app, ToolEvent::Up { x: last[0], y: last[1] }, mods);
 }
 
-fn doc_size(app: &PhotocraftApp) -> Size {
+fn doc_size(app: &PatronusPhotoApp) -> Size {
     app.session.active().unwrap().doc.size
 }
 
@@ -201,7 +201,7 @@ fn edit_undo_steps_the_crop_box_not_the_document() {
 /// wait for the crop, as they do for Free Transform.
 #[test]
 fn history_jumps_wait_for_a_pending_crop() {
-    let size = |app: &PhotocraftApp| app.session.active().map(|st| (st.doc.size.width, st.doc.size.height));
+    let size = |app: &PatronusPhotoApp| app.session.active().map(|st| (st.doc.size.width, st.doc.size.height));
     let mut app = app(SampleType::U8);
     app.run("history.newSnapshot", json!({})).unwrap();
     app.run("image.canvasSize", json!({"width": 300, "height": 200})).unwrap();
@@ -261,7 +261,7 @@ fn a_pending_crop_greys_the_menus_photoshop_greys() {
     }
     drag(&mut app, &[[10.0, 10.0], [50.0, 40.0]], NONE);
     assert!(crop_ui::pending(&app));
-    let allows = |app: &PhotocraftApp, id: &str| crate::menus::allows(app, &craft::keymap::CommandRef::new(id));
+    let allows = |app: &PatronusPhotoApp, id: &str| crate::menus::allows(app, &craft::keymap::CommandRef::new(id));
     let kept = [
         "file.close",
         "file.save",
@@ -381,8 +381,8 @@ fn another_tool_commits_a_drawn_frame_at_8_and_16_bit() {
 }
 
 /// A layer 300..350 × 200..260 on a 400 × 300 canvas: the snap target of the two snap trials.
-fn board() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn board() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
     app.sync_views();
     app.ui.views[0].zoom = 1.0;

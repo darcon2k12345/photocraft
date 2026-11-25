@@ -4,7 +4,7 @@
 //!
 //! * The composite is in [`composite_profile`] (the document profile for RGB, its gray curve as
 //!   RGB for gray documents, sRGB for CMYK — read through the document's CMYK profile, see
-//!   `photocraft_color::convert::CmykSpace` — and Lab).
+//!   `patronusphoto_color::convert::CmykSpace` — and Lab).
 //! * Linear composites (EXR/HDR, linear profiles) are stored in the 8-bit canvas texture
 //!   sRGB-encoded ([`CanvasDisplay::encode_srgb`]) so shadows keep their precision; the display
 //!   source profile is then the same primaries with the sRGB curve.
@@ -22,9 +22,9 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 
 use craft_cms::{Builtin, ColorSpace, Curve, Intent, Profile, Transform};
-use photocraft_compose::Buffer;
-use photocraft_doc::Document;
-use photocraft_raster::Rgba8Image;
+use patronusphoto_compose::Buffer;
+use patronusphoto_doc::Document;
+use patronusphoto_raster::Rgba8Image;
 
 use crate::color_cmds::{ColorState, composite_profile, mode_space, profile_from_bytes, resolve_profile};
 use crate::{EngineError, Result};
@@ -80,7 +80,7 @@ impl CanvasDisplay {
         par_pixels(&mut px, &buf.px, |out, src| {
             for (o, p) in out.iter_mut().zip(src) {
                 // Capped at the largest half float; NaN is dropped by the texel conversion.
-                let enc = |v: f32| photocraft_color::convert::linear_to_srgb(v.clamp(0.0, 65504.0));
+                let enc = |v: f32| patronusphoto_color::convert::linear_to_srgb(v.clamp(0.0, 65504.0));
                 *o = [enc(p[0]), enc(p[1]), enc(p[2]), p[3]];
             }
         });
@@ -91,7 +91,7 @@ impl CanvasDisplay {
 /// Linear → sRGB-encoded 8-bit codes, indexed by the linear value in 1/65535 steps.
 fn encode_table() -> &'static [u8] {
     static T: OnceLock<Vec<u8>> = OnceLock::new();
-    T.get_or_init(|| (0..=65535u32).map(|i| (photocraft_color::convert::linear_to_srgb(i as f32 / 65535.0) * 255.0 + 0.5) as u8).collect())
+    T.get_or_init(|| (0..=65535u32).map(|i| (patronusphoto_color::convert::linear_to_srgb(i as f32 / 65535.0) * 255.0 + 0.5) as u8).collect())
 }
 
 fn encode_rgba8(buf: &Buffer) -> Rgba8Image {
@@ -360,7 +360,7 @@ impl ColorState {
                 (None, None, _) => Err("this platform doesn't report display profiles".into()),
             }
         } else {
-            resolve_profile(spec, None, Some(photocraft_color::ColorMode::Rgb)).map_err(|e| e.to_string())
+            resolve_profile(spec, None, Some(patronusphoto_color::ColorMode::Rgb)).map_err(|e| e.to_string())
         };
         let usable = found.and_then(|p| {
             if p.color_space != ColorSpace::Rgb {

@@ -6,12 +6,12 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use serde_json::{Value, json};
 
-use crate::{PhotocraftApp, Services};
+use crate::{PatronusPhotoApp, Services};
 
 /// The desktop policy's verdict on file commands: only the in-memory ones run.
-fn deny_file(id: &str, _: &Value) -> photocraft_engine::Result<()> {
+fn deny_file(id: &str, _: &Value) -> patronusphoto_engine::Result<()> {
     if id.starts_with("file.") && !matches!(id, "file.new" | "file.close" | "file.closeAll" | "file.closeOthers") {
-        Err(photocraft_engine::EngineError::Other(format!("automation command `{id}` is disabled")))
+        Err(patronusphoto_engine::EngineError::Other(format!("automation command `{id}` is disabled")))
     } else {
         Ok(())
     }
@@ -19,27 +19,27 @@ fn deny_file(id: &str, _: &Value) -> photocraft_engine::Result<()> {
 
 /// The Home screen with `path` as its one recent file, under the desktop's automation policy.
 /// The framework start screen is drawn through `canvas::document_area`, as in the app.
-fn home(path: &str) -> Harness<'static, (Box<PhotocraftApp>, bool)> {
+fn home(path: &str) -> Harness<'static, (Box<PatronusPhotoApp>, bool)> {
     let services = Services {
         automation_authorize: Some(deny_file),
         automation_command: Some(Box::new(|id, p| deny_file(id, p).map_err(|e| e.to_string()))),
         import: Some(Box::new(|name, bytes, opts| {
-            photocraft_io::import_with_options(name, bytes, opts).map(|r| (r.document, r.warnings)).map_err(|e| e.to_string())
+            patronusphoto_io::import_with_options(name, bytes, opts).map(|r| (r.document, r.warnings)).map_err(|e| e.to_string())
         })),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     app.background_jobs = false;
     app.push_recent(path);
     let mut h = Harness::builder().with_size(egui::vec2(900.0, 760.0)).with_context(app.ctx().clone()).build_ui_state(
-        |ui, (app, ready): &mut (Box<PhotocraftApp>, bool)| {
+        |ui, (app, ready): &mut (Box<PatronusPhotoApp>, bool)| {
             if *ready {
                 egui::CentralPanel::default().frame(egui::Frame::NONE).show(ui, |ui| crate::canvas::document_area(app, ui));
             }
         },
         (app, false),
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::default());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::default());
     h.state_mut().1 = true;
     h.run_steps(3);
     h
@@ -47,7 +47,7 @@ fn home(path: &str) -> Harness<'static, (Box<PhotocraftApp>, bool)> {
 
 /// Click the row, as synthetic input when `automation` is set. The framework start screen names
 /// a recent row by its file name, so that name is the access label the click finds.
-fn click(h: &mut Harness<'static, (Box<PhotocraftApp>, bool)>, automation: bool) {
+fn click(h: &mut Harness<'static, (Box<PatronusPhotoApp>, bool)>, automation: bool) {
     h.get_by_label("outsideroot.png").click();
     h.state_mut().0.automation_input = automation;
     h.step();
@@ -63,10 +63,10 @@ fn synthetic_click_on_a_home_recent_row_is_judged_as_open_recent() {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let file = dir.join("outsideroot.png");
-    let image = photocraft_codecs::Image::from_u8(4, 4, photocraft_codecs::ChannelLayout::Rgba, [10u8, 200, 30, 255].repeat(16)).unwrap();
-    std::fs::write(&file, photocraft_codecs::encode(&image, photocraft_codecs::Format::Png, &Default::default()).unwrap()).unwrap();
+    let image = patronusphoto_codecs::Image::from_u8(4, 4, patronusphoto_codecs::ChannelLayout::Rgba, [10u8, 200, 30, 255].repeat(16)).unwrap();
+    std::fs::write(&file, patronusphoto_codecs::encode(&image, patronusphoto_codecs::Format::Png, &Default::default()).unwrap()).unwrap();
     let path = file.to_string_lossy().into_owned();
-    let paths = |h: &Harness<'static, (Box<PhotocraftApp>, bool)>| h.state().0.session.documents().iter().map(|d| d.path.clone()).collect::<Vec<_>>();
+    let paths = |h: &Harness<'static, (Box<PatronusPhotoApp>, bool)>| h.state().0.session.documents().iter().map(|d| d.path.clone()).collect::<Vec<_>>();
 
     // The menu route to the same file is refused for synthetic input.
     let mut h = home(&path);

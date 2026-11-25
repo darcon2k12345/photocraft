@@ -1,13 +1,13 @@
 //! What the Brush Settings panel's events do: section events edit the brush copy the panel works
-//! on, buttons run the commands PhotoCraft's own palette runs. The brush edits leave as one
+//! on, buttons run the commands Patronus Photo's own palette runs. The brush edits leave as one
 //! `tools.setBrush` per gesture (`brush_panel::commit_gesture`).
 
 use craft::draw::ui::brush_settings::{BrushPanelAction, BrushSectionEvent};
-use photocraft_engine::BrushSettings;
+use patronusphoto_engine::BrushSettings;
 use serde_json::{Value, json};
 
 use super::brush_panel::{section_flag, section_lock};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// Applies the section list's events: edits to `brush`, a clicked pane row to `shown`. True when the "Brushes" link was clicked.
 pub(crate) fn apply_section_events(brush: &mut BrushSettings, shown: &mut usize, events: Vec<BrushSectionEvent<usize>>) -> bool {
@@ -38,7 +38,7 @@ pub(crate) fn reset(brush: &BrushSettings) -> BrushSettings {
 }
 
 /// Runs a button beside the stroke strip on `brush` (the panel's working copy).
-pub(crate) fn apply_action(app: &mut PhotocraftApp, brush: &mut BrushSettings, action: BrushPanelAction) {
+pub(crate) fn apply_action(app: &mut PatronusPhotoApp, brush: &mut BrushSettings, action: BrushPanelAction) {
     match action {
         BrushPanelAction::NewPreset => {
             crate::brush_preset_dialog::open(app, Some(brush));

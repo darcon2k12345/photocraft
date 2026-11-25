@@ -3,12 +3,12 @@
 
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use photocraft_ui_egui::PhotocraftApp;
-use photocraft_ui_egui::control::{ControlRequest, Reply, handle};
-use photocraft_ui_egui::crop_ui;
+use patronusphoto_ui_egui::PatronusPhotoApp;
+use patronusphoto_ui_egui::control::{ControlRequest, Reply, handle};
+use patronusphoto_ui_egui::crop_ui;
 use serde_json::json;
 
-type App = Harness<'static, Box<PhotocraftApp>>;
+type App = Harness<'static, Box<PatronusPhotoApp>>;
 
 /// The label of the Fill help button in the bar.
 const HELP_BUTTON: &str = "Displays pop-up help for the fill methods";
@@ -16,8 +16,8 @@ const HELP_BUTTON: &str = "Displays pop-up help for the fill methods";
 /// The app with the Crop tool in Classic Mode (a drag draws a frame) and English labels.
 fn app() -> App {
     let mut h = Harness::builder().with_size(egui::vec2(1440.0, 320.0)).with_max_steps(64).with_accessibility_check(false).build_eframe(|cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), Default::default());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), Default::default());
         app.session.prefs.edit(|p| p.interface.language = "en".into());
         app.run("file.new", json!({"name": "crop bar", "width": 800, "height": 600})).expect("new document");
         app.ui.tool_options.crop.shield.classic_mode = true;

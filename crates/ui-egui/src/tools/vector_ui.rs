@@ -5,14 +5,14 @@
 use egui::Color32;
 #[cfg(test)]
 use egui::vec2;
-use photocraft_doc::vector::Path;
-use photocraft_doc::{Document, LayerContent};
-use photocraft_geom::Affine;
+use patronusphoto_doc::vector::Path;
+use patronusphoto_doc::{Document, LayerContent};
+use patronusphoto_geom::Affine;
 use serde_json::{Value, json};
 
 use craft::draw::ui::{EditSubpath, VectorMode};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::shape_paint_ui::paint_param;
 use crate::state::{Tool, ToolOptions};
 
@@ -61,10 +61,10 @@ pub(crate) use pen::freeform_finish_owned;
 
 /// Copy only the selected arrow's live parameters into new-arrow defaults.
 /// Existing shapes and geometry are not modified.
-fn copy_arrow_to_tool_defaults(app: &mut PhotocraftApp, id: photocraft_doc::LayerId) {
+fn copy_arrow_to_tool_defaults(app: &mut PatronusPhotoApp, id: patronusphoto_doc::LayerId) {
     let values = app.session.active().and_then(|st| st.doc.layer(id)).and_then(|layer| match &layer.content {
         LayerContent::Shape(sh) => match sh.live.as_ref() {
-            Some(photocraft_doc::vector::LiveShape::ArrowLine { start, end, width, length, concavity, weight, .. }) => {
+            Some(patronusphoto_doc::vector::LiveShape::ArrowLine { start, end, width, length, concavity, weight, .. }) => {
                 {
                     // Live dimensions may exceed new-arrow input limits after scaling.
                     // Clamp only the defaults, never the existing shape.
@@ -137,7 +137,7 @@ pub struct Resumed {
     /// The subpath's index in the path.
     pub index: usize,
     /// The subpath as it was when drawing resumed.
-    pub was: photocraft_doc::vector::Subpath,
+    pub was: patronusphoto_doc::vector::Subpath,
 }
 
 impl PenPath {
@@ -244,7 +244,7 @@ pub(crate) struct PenOwner {
     source: Weak<Document>,
     target: PenTarget,
     options: ToolOptions,
-    layer: Option<photocraft_doc::LayerId>,
+    layer: Option<patronusphoto_doc::LayerId>,
     vector_mask: bool,
     foreground: [f32; 4],
     background: [f32; 4],
@@ -275,7 +275,7 @@ enum PenTarget {
 /// Where the Pen draws now: a new shape layer (Shape mode), else the work or saved path selected
 /// in the Paths panel (the new path joins it, #4721), else the targeted vector mask, else a new
 /// Work Path that replaces the old one.
-pub(crate) fn capture_pen_owner(app: &PhotocraftApp) -> Option<PenOwner> {
+pub(crate) fn capture_pen_owner(app: &PatronusPhotoApp) -> Option<PenOwner> {
     let st = app.session.active()?;
     let target = if app.ui.tool_options.vector_mode == VectorMode::Shape {
         let open_stroke = shapes::open_pen_stroke_param(app);
@@ -301,7 +301,7 @@ pub(crate) fn capture_pen_owner(app: &PhotocraftApp) -> Option<PenOwner> {
 }
 
 impl PenOwner {
-    fn valid(&self, app: &PhotocraftApp) -> bool {
+    fn valid(&self, app: &PatronusPhotoApp) -> bool {
         app.session.active().is_some_and(|st| st.doc.id == self.document && st.revision == self.revision && self.source.ptr_eq(&Arc::downgrade(&st.doc)))
     }
 }
@@ -313,7 +313,7 @@ pub(crate) struct VectorOwner {
     doc: DocId,
     document: Weak<Document>,
     revision: u64,
-    layer: Option<photocraft_doc::LayerId>,
+    layer: Option<patronusphoto_doc::LayerId>,
     selected_path: Option<String>,
     vector_mask: bool,
     mode: VectorMode,
@@ -322,7 +322,7 @@ pub(crate) struct VectorOwner {
 
 impl VectorOwner {
     /// The owner of a gesture that begins now; `None` with no document.
-    pub(crate) fn capture(app: &PhotocraftApp) -> Option<Self> {
+    pub(crate) fn capture(app: &PatronusPhotoApp) -> Option<Self> {
         let st = app.session.active()?;
         Some(Self {
             doc: st.doc.id,
@@ -337,7 +337,7 @@ impl VectorOwner {
     }
 
     /// Whether the document, revision and target are still the ones the gesture began on.
-    pub(crate) fn valid(&self, app: &PhotocraftApp) -> bool {
+    pub(crate) fn valid(&self, app: &PatronusPhotoApp) -> bool {
         Self::capture(app).is_some_and(|now| {
             self.doc == now.doc
                 && self.document.ptr_eq(&now.document)
@@ -351,21 +351,21 @@ impl VectorOwner {
     }
 }
 
-use photocraft_doc::DocId;
+use patronusphoto_doc::DocId;
 use std::sync::{Arc, Weak};
 
 use path_ops::{selected_document_geometry, targeted_vector_mask_id};
 use shapes::{fill_param, stroke_param};
 
 /// Whether Edit Undo currently belongs to the active tool's live or refused Freeform draft.
-pub(crate) fn pen_can_undo(app: &PhotocraftApp) -> bool {
+pub(crate) fn pen_can_undo(app: &PatronusPhotoApp) -> bool {
     app.ui.pen.as_ref().is_some_and(|pen| {
         pen.owns_undo(app.ui.tool) && pen.owner.as_ref().is_some_and(|owner| owner.valid(app)) && (!pen.draft.knots.is_empty() || pen.resumes.is_some())
     })
 }
 
 /// Commit a valid source-owned draft on a tab switch; otherwise cancel with an actionable diagnostic.
-pub(crate) fn cancel_stale_pen(app: &mut PhotocraftApp) -> bool {
+pub(crate) fn cancel_stale_pen(app: &mut PatronusPhotoApp) -> bool {
     // A live shape layer's draft follows the document through Undo, Redo and History (#12909).
     pen::sync_live_draft_from_layer(app);
     let Some(pen) = app.ui.pen.as_ref() else { return false };

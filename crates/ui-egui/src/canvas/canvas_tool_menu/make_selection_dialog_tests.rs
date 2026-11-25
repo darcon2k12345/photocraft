@@ -9,7 +9,7 @@ use egui_kittest::kittest::{NodeT, Queryable};
 use serde_json::{Value, json};
 
 use super::tests::{choose_open, dialog_open};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 const OPERATIONS: [&str; 4] = ["New Selection", "Add to Selection", "Subtract from Selection", "Intersect with Selection"];
@@ -17,8 +17,8 @@ const MODES: [&str; 4] = ["replace", "add", "subtract", "intersect"];
 
 /// A document with the reference's closed triangle as the Work Path, with or without a selection
 /// (a rectangle the triangle overlaps).
-fn app(selection: bool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app(selection: bool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 400, "height": 500})).unwrap();
     let knots = json!([[100, 300], [300, 300], [200, 450]]);
     app.run("path.set", json!({"name": "work", "path": {"subpaths": [{"closed": true, "knots": knots}]}})).unwrap();
@@ -30,47 +30,47 @@ fn app(selection: bool) -> Box<PhotocraftApp> {
 }
 
 /// The app's dialog pass: the host draws the dialogs and the families take their answers.
-fn draw(ui: &mut egui::Ui, app: &mut Box<PhotocraftApp>) {
+fn draw(ui: &mut egui::Ui, app: &mut Box<PatronusPhotoApp>) {
     crate::dialogs::run(app, ui);
 }
 
 /// The Pen canvas menu's Make Selection… dialog, drawn as the window shows it.
-fn dialog(mut app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
+fn dialog(mut app: Box<PatronusPhotoApp>) -> Harness<'static, Box<PatronusPhotoApp>> {
     choose_open(&mut app, "path.toSelection");
     assert!(dialog_open(&app), "Make Selection… opened its dialog");
     let ctx = app.ctx().clone();
     let mut h = Harness::builder().with_size(egui::vec2(900.0, 700.0)).with_context(ctx).build_ui_state(draw, app);
-    PhotocraftApp::setup_context(&h.ctx, Default::default());
+    PatronusPhotoApp::setup_context(&h.ctx, Default::default());
     h.run_steps(4);
     h
 }
 
-fn click(h: &mut Harness<'_, Box<PhotocraftApp>>, label: &str) {
+fn click(h: &mut Harness<'_, Box<PatronusPhotoApp>>, label: &str) {
     h.get_by_label(label).click();
     h.run_steps(3);
 }
 
-fn steps(app: &PhotocraftApp) -> Vec<String> {
+fn steps(app: &PatronusPhotoApp) -> Vec<String> {
     app.session.active().unwrap().history.entries().iter().map(|e| e.to_string()).collect()
 }
 
-fn last_step(app: &PhotocraftApp) -> Option<String> {
+fn last_step(app: &PatronusPhotoApp) -> Option<String> {
     steps(app).last().cloned()
 }
 
-fn selection_bounds(app: &PhotocraftApp) -> Option<[i32; 4]> {
+fn selection_bounds(app: &PatronusPhotoApp) -> Option<[i32; 4]> {
     let r = app.session.active().unwrap().doc.selection.as_ref()?.content_bounds();
     Some([r.x0, r.y0, r.x1, r.y1])
 }
 
 /// The params of the last command run.
-fn last_params(app: &PhotocraftApp) -> Value {
+fn last_params(app: &PatronusPhotoApp) -> Value {
     let (id, params) = app.session.journal.last().cloned().unwrap();
     assert_eq!(id, "path.toSelection");
     params
 }
 
-fn enabled(h: &Harness<'_, Box<PhotocraftApp>>, label: &str) -> bool {
+fn enabled(h: &Harness<'_, Box<PatronusPhotoApp>>, label: &str) -> bool {
     !h.get_by_label(label).accesskit_node().is_disabled()
 }
 

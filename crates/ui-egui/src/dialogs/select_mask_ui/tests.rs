@@ -2,12 +2,12 @@ use super::*;
 
 /// A 160 × 100 document: warm on the left (x < 80), cool on the right, with the top-left
 /// 20 × 20 selected.
-fn app_with_selection() -> Box<PhotocraftApp> {
+fn app_with_selection() -> Box<PatronusPhotoApp> {
     app_sized(160, 100)
 }
 
-fn app_sized(w: i32, h: i32) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app_sized(w: i32, h: i32) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.session.execute("file.new", json!({"width": w, "height": h, "depth": 8})).unwrap();
     app.session
         .edit("paint", |doc, _| {
@@ -24,35 +24,35 @@ fn app_sized(w: i32, h: i32) -> Box<PhotocraftApp> {
 
 /// Sends `v` to the open workspace the way `ui.menu.invoke`'s `{ui: …}` does; the reply merges the workspace's
 /// fields with the app facts.
-fn try_ui(app: &mut PhotocraftApp, v: Value) -> Result<Value, String> {
+fn try_ui(app: &mut PatronusPhotoApp, v: Value) -> Result<Value, String> {
     let ctx = app.ctx().clone();
     crate::control::dialogs::workspace_ui(app, &ctx, "select.selectAndMask", &v)
 }
 
-fn ui(app: &mut PhotocraftApp, v: Value) -> Value {
+fn ui(app: &mut PatronusPhotoApp, v: Value) -> Value {
     try_ui(app, v).unwrap()
 }
 
 /// The workspace's fields and app facts as the control reply gives them.
-fn fields(app: &mut PhotocraftApp) -> Value {
+fn fields(app: &mut PatronusPhotoApp) -> Value {
     ui(app, json!({}))
 }
 
-fn selected(app: &mut PhotocraftApp) -> u64 {
+fn selected(app: &mut PatronusPhotoApp) -> u64 {
     ui(app, json!({"waitPreview": true}))["selectedProxyPixels"].as_u64().unwrap()
 }
 
-fn cov(app: &PhotocraftApp, x: i32, y: i32) -> f32 {
+fn cov(app: &PatronusPhotoApp, x: i32, y: i32) -> f32 {
     app.session.active().unwrap().doc.selection.as_ref().map_or(0.0, |s| s.sample_channel(x, y, 0))
 }
 
 /// The source the open workspace shows.
-fn src(app: &PhotocraftApp) -> Arc<PcSelectMaskSource> {
+fn src(app: &PatronusPhotoApp) -> Arc<PcSelectMaskSource> {
     source(app).expect("Select and Mask is open")
 }
 
 /// Lets the workspace's source follow the document, as the app does each pass.
-fn follow(app: &mut PhotocraftApp) {
+fn follow(app: &mut PatronusPhotoApp) {
     let ctx = app.ctx().clone();
     take(app, &ctx);
 }
@@ -132,7 +132,7 @@ fn edits_scale_to_the_reduced_copy() {
 }
 
 /// Queues one pointer event and runs frames, so the tool host delivers it to the workspace's canvas.
-fn pointer(h: &mut egui_kittest::Harness<'_, Box<PhotocraftApp>>, event: Value) {
+fn pointer(h: &mut egui_kittest::Harness<'_, Box<PatronusPhotoApp>>, event: Value) {
     call(h.state_mut(), "ui.pointer", json!({"events": [event]}));
     h.run_steps(3);
 }
@@ -145,7 +145,7 @@ fn real_time_refinement_previews_the_stroke_being_drawn() {
         open(&mut app).unwrap();
         let mut h = egui_kittest::Harness::builder()
             .with_context(app.ctx().clone())
-            .build_ui_state(|ui, app: &mut PhotocraftApp| app.framework.dialogs.run(ui), app);
+            .build_ui_state(|ui, app: &mut PatronusPhotoApp| app.framework.dialogs.run(ui), app);
         h.run_steps(3);
         ui(h.state_mut(), json!({"realTimeRefinement": real_time}));
         selected(h.state_mut());
@@ -195,7 +195,7 @@ fn the_preview_reuses_the_edits_it_applied() {
 /// on a repainted image previews what OK would commit.
 #[test]
 fn the_preview_recomputes_the_edits_after_the_document_changes() {
-    let warm = |app: &mut PhotocraftApp| {
+    let warm = |app: &mut PatronusPhotoApp| {
         app.session
             .edit("paint", |doc, _| {
                 doc.layers[0].surface_mut().unwrap().fill_rect(Rect::new(0, 0, 160, 100), &[0.85, 0.55, 0.25, 1.0]);
@@ -269,7 +269,7 @@ fn a_preview_of_an_old_revision_is_dropped() {
     assert_eq!(selected(&mut app), 160 * 100, "the new preview shows the new selection");
 }
 
-fn call(app: &mut PhotocraftApp, method: &str, params: Value) -> Value {
+fn call(app: &mut PatronusPhotoApp, method: &str, params: Value) -> Value {
     let (req, _rx) = crate::control::ControlRequest::new(method, params);
     let ctx = app.ctx().clone();
     match crate::control::handle(app, &ctx, &req) {
@@ -279,7 +279,7 @@ fn call(app: &mut PhotocraftApp, method: &str, params: Value) -> Value {
 }
 
 /// A second document with its own selection, the first one active again.
-fn two_documents() -> Box<PhotocraftApp> {
+fn two_documents() -> Box<PatronusPhotoApp> {
     let mut app = app_with_selection();
     app.session.execute("file.new", json!({"width": 160, "height": 100, "depth": 8})).unwrap();
     app.session.execute("select.rect", json!({"x": 100, "y": 50, "width": 30, "height": 30})).unwrap();
@@ -288,7 +288,7 @@ fn two_documents() -> Box<PhotocraftApp> {
     app
 }
 
-fn fingerprint(app: &PhotocraftApp, i: usize) -> (u64, Option<f32>, Option<f32>) {
+fn fingerprint(app: &PatronusPhotoApp, i: usize) -> (u64, Option<f32>, Option<f32>) {
     let st = &app.session.documents()[i];
     let sel = st.doc.selection.as_ref();
     (st.revision, sel.map(|s| s.sample_channel(10, 10, 0)), sel.map(|s| s.sample_channel(120, 50, 0)))
@@ -381,7 +381,7 @@ fn the_reason_a_stale_workspace_closed_is_reported() {
 #[test]
 fn sparse_large_preview_counts_its_selected_pixels() {
     let area = Rect::new(0, 0, 100_000, 100_000);
-    let mut selection = Surface::new(photocraft_color::PixelFormat::GRAY8);
+    let mut selection = Surface::new(patronusphoto_color::PixelFormat::GRAY8);
     selection.write_pixel(99_999, 99_999, &[1.0]);
     selection.write_pixel(2, 3, &[0.5]);
     selection.write_pixel(-1, -1, &[1.0]);
@@ -389,7 +389,7 @@ fn sparse_large_preview_counts_its_selected_pixels() {
     let small = Rect::new(0, 0, 10, 10);
     assert_eq!(selected_pixels(Some(&selection), small), 1);
 
-    let mut inverted = Surface::with_default(photocraft_color::PixelFormat::GRAY8, &[1.0]);
+    let mut inverted = Surface::with_default(patronusphoto_color::PixelFormat::GRAY8, &[1.0]);
     inverted.write_pixel(2, 3, &[0.0]);
     let smaller = Rect::new(0, 0, 1000, 1000);
     assert_eq!(selected_pixels(Some(&inverted), smaller), 999_999);

@@ -8,22 +8,22 @@ use craft::ui::runtime::commands::CommandState;
 use serde_json::json;
 
 use super::{command_states, panel_rows};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::new_layer_ui::testing::{fields, top};
 
-fn doc_app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn doc_app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 32, "height": 24})).unwrap();
     app.run("layer.new.layer", json!({"name": "Ink"})).unwrap();
     app
 }
 
-fn layer_count(app: &PhotocraftApp) -> usize {
+fn layer_count(app: &PatronusPhotoApp) -> usize {
     app.session.active().map_or(0, |st| st.doc.walk().len())
 }
 
 /// The panel menu's rows, by command id; a separator is `None`.
-fn row_ids(app: &PhotocraftApp) -> Vec<Option<String>> {
+fn row_ids(app: &PatronusPhotoApp) -> Vec<Option<String>> {
     panel_rows(app)
         .into_iter()
         .filter_map(|row| match row {
@@ -35,7 +35,7 @@ fn row_ids(app: &PhotocraftApp) -> Vec<Option<String>> {
 }
 
 /// Runs Duplicate Layer… as the panel row and Layer › Duplicate Layer… do; the `name` field of the dialog it opens.
-fn open_dialog(app: &mut PhotocraftApp) -> Option<String> {
+fn open_dialog(app: &mut PatronusPhotoApp) -> Option<String> {
     let ctx = egui::Context::default();
     crate::menus::invoke(app, &ctx, "layer.duplicate", json!({})).unwrap();
     crate::dialogs::testing::show(app);
@@ -46,7 +46,7 @@ fn open_dialog(app: &mut PhotocraftApp) -> Option<String> {
 }
 
 /// The state the panel publishes for Duplicate Layer…, if any.
-fn duplicate_state(app: &PhotocraftApp) -> Option<CommandState> {
+fn duplicate_state(app: &PatronusPhotoApp) -> Option<CommandState> {
     command_states(app).into_iter().find(|(c, _)| *c == CommandRef::new("layer.duplicate")).map(|(_, s)| s)
 }
 
@@ -84,7 +84,7 @@ fn several_selected_layers_read_duplicate_layers() {
 
 #[test]
 fn duplicate_layer_is_greyed_without_a_document() {
-    let no_doc = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let no_doc = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     assert!(!crate::menus::is_enabled(&no_doc, "layer.duplicate"), "greyed without a document");
     assert!(crate::menus::is_enabled(&doc_app(), "layer.duplicate"));
 }

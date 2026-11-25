@@ -1,5 +1,5 @@
 //! Painting symmetry on the framework: the menu, the guides, the transform session and its tool.
-use crate::{PhotocraftApp, state::Tool};
+use crate::{PatronusPhotoApp, state::Tool};
 use craft::behavior::kurbo::{Point, Size};
 use craft::draw::ui::symmetry::{
     Symmetry, SymmetryChoice, SymmetryCommand, SymmetryEvent, SymmetryHandles, SymmetryMenu, SymmetryMode as FwMode, SymmetryOverlay, SymmetryPathRow,
@@ -8,8 +8,8 @@ use craft::draw::ui::symmetry::{
 use craft::ui::contract::{Bind, Show as _};
 use craft::ui::display::{Divider, Shade, Text};
 use craft::ui::runtime::env::Env;
-use photocraft_doc::Document;
-use photocraft_paint::symmetry::{PresetSymmetry, SymmetryMode};
+use patronusphoto_doc::Document;
+use patronusphoto_paint::symmetry::{PresetSymmetry, SymmetryMode};
 use serde::{Serialize, Serializer, ser::SerializeStruct};
 use serde_json::json;
 use std::sync::Arc;
@@ -71,12 +71,12 @@ fn from_framework(s: Symmetry) -> Option<PresetSymmetry> {
     PresetSymmetry::new(mode_from_framework(s.mode)?, [s.center.x, s.center.y], s.rotation)
 }
 
-fn preset(app: &PhotocraftApp) -> Option<PresetSymmetry> {
+fn preset(app: &PatronusPhotoApp) -> Option<PresetSymmetry> {
     app.session.active()?.symmetry.as_ref()?.preset()
 }
 
 /// Whether Transform Symmetry can open: a painting tool with a preset symmetry and nothing else editing.
-pub fn can_transform(app: &PhotocraftApp) -> bool {
+pub fn can_transform(app: &PatronusPhotoApp) -> bool {
     matches!(app.ui.tool, Tool::Brush | Tool::Pencil | Tool::Eraser)
         && !crate::canvas::tools::in_gesture(app)
         && preset(app).is_some()
@@ -89,7 +89,7 @@ pub fn can_transform(app: &PhotocraftApp) -> bool {
 }
 
 /// Opens Transform Symmetry on the active document's preset.
-pub fn begin(app: &mut PhotocraftApp) -> Result<(), String> {
+pub fn begin(app: &mut PatronusPhotoApp) -> Result<(), String> {
     if !can_transform(app) {
         return Err("no preset symmetry available to transform".into());
     }
@@ -101,7 +101,7 @@ pub fn begin(app: &mut PhotocraftApp) -> Result<(), String> {
 }
 
 /// Stores the previewed symmetry as one command and closes the session.
-pub fn commit(app: &mut PhotocraftApp) {
+pub fn commit(app: &mut PatronusPhotoApp) {
     if let Some(t) = app.ui.symmetry_transform.take()
         && let Some(p) = from_framework(t.session.preview())
     {
@@ -110,12 +110,12 @@ pub fn commit(app: &mut PhotocraftApp) {
 }
 
 /// Drops the session; the stored symmetry stays as it was.
-pub fn cancel(app: &mut PhotocraftApp) {
+pub fn cancel(app: &mut PatronusPhotoApp) {
     app.ui.symmetry_transform = None;
 }
 
 /// Whether Transform Symmetry is open (the options bar shows its commit and cancel buttons).
-pub fn is_open(app: &PhotocraftApp) -> bool {
+pub fn is_open(app: &PatronusPhotoApp) -> bool {
     app.ui.symmetry_transform.is_some()
 }
 
@@ -126,7 +126,7 @@ pub fn bar_members(ui: &mut egui::Ui) {
     Divider::vertical().show(ui);
 }
 
-fn valid(app: &PhotocraftApp, t: &Transform) -> bool {
+fn valid(app: &PatronusPhotoApp, t: &Transform) -> bool {
     app.session.active_index() == Some(t.document)
         && app.ui.tool == t.tool
         && can_transform(app)
@@ -135,7 +135,7 @@ fn valid(app: &PhotocraftApp, t: &Transform) -> bool {
 }
 
 /// The painting symmetry button and its menu, shown in the options bar of the painting tools.
-pub fn menu(ui: &mut egui::Ui, app: &mut PhotocraftApp) {
+pub fn menu(ui: &mut egui::Ui, app: &mut PatronusPhotoApp) {
     let words = Env::of(ui).words::<SymmetryWords>();
     let current = match app.session.active().and_then(|s| s.symmetry.as_ref()) {
         None => SymmetryChoice::Off,
@@ -170,7 +170,7 @@ pub fn menu(ui: &mut egui::Ui, app: &mut PhotocraftApp) {
 }
 
 /// Runs what the menu picked. The one place a symmetry command is mapped to the app's commands.
-fn pick(app: &mut PhotocraftApp, ctx: &egui::Context, command: SymmetryCommand) {
+fn pick(app: &mut PatronusPhotoApp, ctx: &egui::Context, command: SymmetryCommand) {
     let result = match command {
         SymmetryCommand::Off => app.run("paint.symmetryDisable", json!({})),
         SymmetryCommand::Mode(m) => match mode_from_framework(m) {
@@ -188,7 +188,7 @@ fn pick(app: &mut PhotocraftApp, ctx: &egui::Context, command: SymmetryCommand) 
 
 /// The guides and, in a session, the handles, inside the canvas body at `at`. A session whose window lost focus is
 /// dropped; a second pass in the frame repeats that and applies only its own input.
-pub fn canvas_controls(ui: &mut egui::Ui, app: &mut PhotocraftApp, at: egui::Rect) {
+pub fn canvas_controls(ui: &mut egui::Ui, app: &mut PatronusPhotoApp, at: egui::Rect) {
     if !ui.ctx().input(|i| i.focused) {
         cancel(app);
     }
@@ -221,12 +221,12 @@ pub fn canvas_controls(ui: &mut egui::Ui, app: &mut PhotocraftApp, at: egui::Rec
 /// The canvas tool over a session taken out of the app for the pass, while it belongs to the active document. The
 /// canvas runs it ahead of the painting tool, so a press away from the handles never paints. The tool borrows the
 /// session only, so the pass can take the app.
-pub fn session_tool<'a>(app: &PhotocraftApp, t: &'a Transform) -> Option<SymmetryTool<'a>> {
+pub fn session_tool<'a>(app: &PatronusPhotoApp, t: &'a Transform) -> Option<SymmetryTool<'a>> {
     (app.session.active_index() == Some(t.document)).then(|| SymmetryTool::new(&t.session, valid(app, t)))
 }
 
 /// Applies what the session's tool reported: `Apply` stores the symmetry, `Discard` drops the session.
-pub fn finish_tool(app: &mut PhotocraftApp, events: Vec<SymmetryEvent>) {
+pub fn finish_tool(app: &mut PatronusPhotoApp, events: Vec<SymmetryEvent>) {
     for event in events {
         match event {
             SymmetryEvent::Apply(_) => commit(app),

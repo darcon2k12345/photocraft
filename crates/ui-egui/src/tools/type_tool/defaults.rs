@@ -1,9 +1,9 @@
 use super::editing::edit_home;
 use super::insertion_style;
-use super::{LayerId, PhotocraftApp, TextLayer, hex, json, text_layer};
+use super::{LayerId, PatronusPhotoApp, TextLayer, hex, json, text_layer};
 
 /// Representative for the displayed properties: the edit layer, else a selected type layer.
-pub(crate) fn target(app: &PhotocraftApp) -> Option<(u64, Option<[usize; 2]>)> {
+pub(crate) fn target(app: &PatronusPhotoApp) -> Option<(u64, Option<[usize; 2]>)> {
     if let Some(ed) = &app.ui.text_edit {
         let (a, b) = (ed.caret.min(ed.anchor), ed.caret.max(ed.anchor));
         return Some((ed.layer, (a < b).then_some([a, b])));
@@ -17,14 +17,14 @@ pub(crate) fn target(app: &PhotocraftApp) -> Option<(u64, Option<[usize; 2]>)> {
 }
 
 /// The type layer whose properties the Type controls and dialogs show (see [`target`]).
-pub(crate) fn target_text(app: &PhotocraftApp) -> Option<&TextLayer> {
+pub(crate) fn target_text(app: &PatronusPhotoApp) -> Option<&TextLayer> {
     let (id, _) = target(app)?;
     text_layer(&target_doc(app)?.doc, LayerId(id))
 }
 
 /// The document [`target`]'s layer is in: a text edit's own, which can stay in a background
 /// document where the same layer id may name another layer, else the active one.
-pub(super) fn target_doc(app: &PhotocraftApp) -> Option<&photocraft_engine::DocState> {
+pub(super) fn target_doc(app: &PatronusPhotoApp) -> Option<&patronusphoto_engine::DocState> {
     match &app.ui.text_edit {
         Some(ed) => app.session.documents().get(edit_home(app, ed)?),
         None => app.session.active(),
@@ -33,7 +33,7 @@ pub(super) fn target_doc(app: &PhotocraftApp) -> Option<&photocraft_engine::DocS
 
 /// Snapshot the mutation scope separately from the representative used to display properties.
 /// An inline edit remains on its layer/range; layer selection formats every selected type layer.
-pub(crate) fn formatting_params(app: &PhotocraftApp) -> Option<serde_json::Value> {
+pub(crate) fn formatting_params(app: &PatronusPhotoApp) -> Option<serde_json::Value> {
     if let Some(ed) = &app.ui.text_edit {
         let mut params = json!({"layer": ed.layer, "coalesce": ed.session});
         let (a, b) = (ed.caret.min(ed.anchor), ed.caret.max(ed.anchor));
@@ -49,7 +49,7 @@ pub(crate) fn formatting_params(app: &PhotocraftApp) -> Option<serde_json::Value
 
 /// Scale of the target layer's transform. Like Photoshop, sizes show and edit as the layer
 /// appears: a 12 pt layer scaled 200% (common in PSDs) reads 24 pt.
-pub(super) fn shown_scale(app: &PhotocraftApp) -> f32 {
+pub(super) fn shown_scale(app: &PatronusPhotoApp) -> f32 {
     let Some((id, _)) = target(app) else { return 1.0 };
     let Some(t) = app.session.active().and_then(|st| text_layer(&st.doc, LayerId(id))) else { return 1.0 };
     let m = t.transform.m;
@@ -60,12 +60,12 @@ pub(super) fn shown_scale(app: &PhotocraftApp) -> f32 {
 /// The styles a new Type-tool layer will receive. Use the same command parameters for the
 /// panels and creation so defaults also survive action recording/replay. The older options-bar
 /// fields remain authoritative, and text colour continues to follow the foreground colour.
-pub(super) fn default_style_params(app: &PhotocraftApp) -> serde_json::Value {
+pub(super) fn default_style_params(app: &PatronusPhotoApp) -> serde_json::Value {
     let o = &app.ui.tool_options;
     let mut p = json!({});
     // Settings are editable JSON: only recognized formatting keys may reach type.create.
     // In particular a stray `text`, `box`, or `coalesce` key must not become a create parameter.
-    let (mut c, mut para) = (photocraft_doc::text::CharStyle::default(), photocraft_doc::text::ParagraphStyle::default());
+    let (mut c, mut para) = (patronusphoto_doc::text::CharStyle::default(), patronusphoto_doc::text::ParagraphStyle::default());
     for (key, value) in &o.type_style_defaults {
         // These belong to the existing options-bar fields. Apart from being redundant,
         // parsing a saved font key here would wait for the background font scan.
@@ -74,12 +74,12 @@ pub(super) fn default_style_params(app: &PhotocraftApp) -> serde_json::Value {
         }
         let one = json!({ (key): value });
         if !finite_style_value(value)
-            || photocraft_engine::type_cmds::check_size_tracking(&one).is_err()
-            || photocraft_engine::type_cmds::check_kerning(&one).is_err()
+            || patronusphoto_engine::type_cmds::check_size_tracking(&one).is_err()
+            || patronusphoto_engine::type_cmds::check_kerning(&one).is_err()
         {
             continue;
         }
-        if photocraft_engine::type_cmds::apply_char_props(&mut c, &one) | photocraft_engine::type_cmds::apply_para_props(&mut para, &one) {
+        if patronusphoto_engine::type_cmds::apply_char_props(&mut c, &one) | patronusphoto_engine::type_cmds::apply_para_props(&mut para, &one) {
             p[key] = value.clone();
         }
     }
@@ -108,13 +108,13 @@ fn finite_style_value(value: &serde_json::Value) -> bool {
     }
 }
 
-pub(super) fn default_styles(app: &PhotocraftApp) -> (photocraft_doc::text::CharStyle, photocraft_doc::text::ParagraphStyle) {
+pub(super) fn default_styles(app: &PatronusPhotoApp) -> (patronusphoto_doc::text::CharStyle, patronusphoto_doc::text::ParagraphStyle) {
     let (mut c, mut para) = app.session.type_defaults.clone().unwrap_or_default();
     let mut p = default_style_params(app);
     // The saved panels can appear on the very first frame. Style parsing resolves the named
     // font through shared(), which waits for the font scan; display the saved names meanwhile,
     // and let fonts_ready/axis_sliders expose the font controls when try_shared is ready.
-    if photocraft_text::try_shared().is_none() {
+    if patronusphoto_text::try_shared().is_none() {
         c.font_family = app.ui.tool_options.type_font.clone();
         c.font_style = app.ui.tool_options.type_style.clone();
         c.postscript_name = None;
@@ -123,14 +123,14 @@ pub(super) fn default_styles(app: &PhotocraftApp) -> (photocraft_doc::text::Char
             p.remove("fontStyle");
         }
     }
-    photocraft_engine::type_cmds::apply_char_props(&mut c, &p);
-    photocraft_engine::type_cmds::apply_para_props(&mut para, &p);
+    patronusphoto_engine::type_cmds::apply_char_props(&mut c, &p);
+    patronusphoto_engine::type_cmds::apply_para_props(&mut para, &p);
     (c, para)
 }
 
 /// Change tool defaults without creating a document edit. The engine owns the style schema;
 /// keep its property names rather than maintaining another style parser in the shell.
-pub(super) fn apply_defaults(app: &mut PhotocraftApp, props: &serde_json::Value) {
+pub(super) fn apply_defaults(app: &mut PatronusPhotoApp, props: &serde_json::Value) {
     let Some(props) = props.as_object() else { return };
     let o = &mut app.ui.tool_options;
     for (key, value) in props {
@@ -186,7 +186,7 @@ pub(super) fn apply_defaults(app: &mut PhotocraftApp, props: &serde_json::Value)
 /// Apply only the supplied properties to the text-edit scope or selected type layers; without
 /// a type target, prepare the defaults for the next layer instead. `coalesce` is the gesture's history key
 /// (`history_keys::coalesce`); a running type session's key wins.
-pub(super) fn apply(app: &mut PhotocraftApp, props: serde_json::Value, coalesce: Option<String>) {
+pub(super) fn apply(app: &mut PatronusPhotoApp, props: serde_json::Value, coalesce: Option<String>) {
     if insertion_style::set_font(app, &props) {
         return;
     }
@@ -208,7 +208,7 @@ pub(super) fn apply(app: &mut PhotocraftApp, props: serde_json::Value, coalesce:
 
 /// Open the shared Color Picker with a snapshot of the text target. Sampling or cancelling
 /// the dialog never changes the text selection, tool colours, or document history.
-pub fn open_color_picker(app: &mut PhotocraftApp, rgb: [f32; 3]) -> craft::ui::dialog::DialogId {
+pub fn open_color_picker(app: &mut PatronusPhotoApp, rgb: [f32; 3]) -> craft::ui::dialog::DialogId {
     if let Some(params) = formatting_params(app) {
         crate::color_picker_ui::open_for_command(app, "Color Picker (Text Color)", rgb, "type.setStyle", params)
     } else {
@@ -218,7 +218,7 @@ pub fn open_color_picker(app: &mut PhotocraftApp, rgb: [f32; 3]) -> craft::ui::d
 
 /// While characters are selected in a type layer, a new foreground colour (Color and Swatches
 /// panels, the Color Picker) recolours them, in the editing session's history step.
-pub fn foreground_changed(app: &mut PhotocraftApp) {
+pub fn foreground_changed(app: &mut PatronusPhotoApp) {
     let Some((layer, Some(range))) = target(app) else { return };
     let Some(ed) = app.ui.text_edit.as_ref() else { return };
     let p = json!({"layer": layer, "range": range, "color": hex(app.session.tools.foreground), "coalesce": ed.session});

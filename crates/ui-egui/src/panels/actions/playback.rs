@@ -13,9 +13,9 @@ use craft::ui::runtime::env::Label;
 use serde_json::{Value, json};
 use web_time::{Duration, Instant};
 
-use photocraft_engine::prefs::{Actions, PlaybackPerformance};
+use patronusphoto_engine::prefs::{Actions, PlaybackPerformance};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::dialogs::params::{self, ParamFamily};
 
 /// The marker a paced playback leaves where a step dialog's id would be (see [`super::waiting_dialog`]).
@@ -41,13 +41,13 @@ pub(crate) struct Timer {
 }
 
 /// Native Play and control-channel menu clicks may open editors and wait between steps.
-pub(super) fn is_interactive(app: &PhotocraftApp) -> bool {
+pub(super) fn is_interactive(app: &PatronusPhotoApp) -> bool {
     !app.automation_input && !app.programmatic_playback
 }
 
 /// How long a person's Play waits after a step, or `None` when it goes straight on (Accelerated,
 /// and always for agents).
-pub(super) fn step_pause(app: &PhotocraftApp) -> Option<Duration> {
+pub(super) fn step_pause(app: &PatronusPhotoApp) -> Option<Duration> {
     if !is_interactive(app) {
         return None;
     }
@@ -61,7 +61,7 @@ pub(super) fn step_pause(app: &PhotocraftApp) -> Option<Duration> {
 
 /// Park `action` after its step `i` (`ran` steps of it so far): it continues from the next step
 /// after `wait`. Returns the `paused` value the runner reports.
-pub(super) fn pace(app: &mut PhotocraftApp, action: &str, i: usize, id: &str, ran: u64, wait: Duration) -> Value {
+pub(super) fn pace(app: &mut PatronusPhotoApp, action: &str, i: usize, id: &str, ran: u64, wait: Duration) -> Value {
     let rev = app.session.actions.list.revision();
     let gate = app.session.authorize;
     let pb = &mut app.paused_playbacks;
@@ -79,18 +79,18 @@ pub(super) fn pace(app: &mut PhotocraftApp, action: &str, i: usize, id: &str, ra
 }
 
 /// The token of the paced playback that is waiting, if any.
-pub(super) fn waiting(app: &PhotocraftApp) -> Option<u64> {
+pub(super) fn waiting(app: &PatronusPhotoApp) -> Option<u64> {
     app.paused_playbacks.timer.map(|t| t.token)
 }
 
 /// Whether a paced playback is waiting for its next step.
-pub(crate) fn pending(app: &PhotocraftApp) -> bool {
+pub(crate) fn pending(app: &PatronusPhotoApp) -> bool {
     app.paused_playbacks.timer.is_some()
 }
 
 /// End a waiting paced playback where it is: the steps it applied stay, in one history state when
 /// the option is on. Returns whether one was waiting.
-pub(crate) fn stop(app: &mut PhotocraftApp) -> bool {
+pub(crate) fn stop(app: &mut PatronusPhotoApp) -> bool {
     let Some(timer) = app.paused_playbacks.timer.take() else { return false };
     super::runner::stopped(app, timer.token);
     true
@@ -99,7 +99,7 @@ pub(crate) fn stop(app: &mut PhotocraftApp) -> bool {
 /// Once per frame: play the next step when its wait is over, or end the playback on Esc, an edit of
 /// the action list or a new recording. A frame's Esc belongs to its first pass; a second pass of the frame finds
 /// the wait already ended (or no Esc) and applies only its own input.
-pub(crate) fn tick(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(crate) fn tick(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     let Some(timer) = app.paused_playbacks.timer else { return };
     let esc = !app.dialog_open() && crate::window_keys::take_escape(ctx);
     let changed = timer.rev != app.session.actions.list.revision() || app.session.actions.recording.is_some();
@@ -146,17 +146,17 @@ fn rows(performance: &str, seconds: f64, single: bool) -> Vec<Param> {
 }
 
 /// Playback Options…: the saved options, Pause For's seconds kept while another mode is chosen.
-pub(super) fn open_dialog(app: &mut PhotocraftApp) -> Result<Value, String> {
+pub(super) fn open_dialog(app: &mut PatronusPhotoApp) -> Result<Value, String> {
     let saved = &app.session.prefs().actions;
     let (performance, seconds, single) = (saved.performance.name().to_owned(), f64::from(saved.pause_seconds()), saved.create_single_history_state);
     let id = params::open_param(app, KEY, DialogFields::new(), Value::Null, move |fields: &mut DialogFields| {
-        ParamDialog::command(KEY, tl!("Playback Options"), rows(&performance, seconds, single)).values(Bind::bound(fields)).alert_title(tl!("PhotoCraft"))
+        ParamDialog::command(KEY, tl!("Playback Options"), rows(&performance, seconds, single)).values(Bind::bound(fields)).alert_title(tl!("Patronus Photo"))
     });
     Ok(json!({"dialog": id.value()}))
 }
 
 /// Refuses seconds that are not a whole number in range, which the field cannot show.
-fn check(_app: &mut PhotocraftApp, result: &ParamResult) -> Result<(), Label> {
+fn check(_app: &mut PatronusPhotoApp, result: &ParamResult) -> Result<(), Label> {
     match result.fields.number("seconds").and_then(whole_seconds) {
         Some(_) => Ok(()),
         None => Err(Label::from(tl!("Pause For takes a whole number of seconds"))),
@@ -164,7 +164,7 @@ fn check(_app: &mut PhotocraftApp, result: &ParamResult) -> Result<(), Label> {
 }
 
 /// OK: stores the options (`actions.setPlayback`) as the dialog holds them.
-fn run(app: &mut PhotocraftApp, _ctx: &egui::Context, result: ParamResult) {
+fn run(app: &mut PatronusPhotoApp, _ctx: &egui::Context, result: ParamResult) {
     let fields = &result.fields;
     let request = json!({
         "performance": fields.text("performance"),

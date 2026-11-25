@@ -5,8 +5,8 @@ use super::*;
 use crate::canvas::testing; // PLAN: canvas-widgets-w14 makes `canvas::testing` reachable from `tools` (cw.P2b)
 
 /// Creates a 200 by 200 document with Freeform Pen selected in the requested drawing mode.
-fn app(mode: VectorMode) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app(mode: VectorMode) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 200})).unwrap();
     app.sync_views();
     app.ui.tool = Tool::FreeformPen;
@@ -15,7 +15,7 @@ fn app(mode: VectorMode) -> Box<PhotocraftApp> {
 }
 
 /// Finishes a trace with the owner captured now, as a stroke that began and ended in this state does.
-fn finish(app: &mut PhotocraftApp, points: &[[f64; 3]], straight: &[usize]) {
+fn finish(app: &mut PatronusPhotoApp, points: &[[f64; 3]], straight: &[usize]) {
     let owner = capture_pen_owner(app).unwrap();
     freeform_finish_owned(app, points, straight, owner);
 }
@@ -30,12 +30,12 @@ fn trace(closed: bool, offset: f64) -> Vec<[f64; 3]> {
 }
 
 /// Counts committed undo steps, excluding the initial document state.
-fn steps(app: &PhotocraftApp) -> usize {
+fn steps(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.past_len()
 }
 
 /// Checks that a successful stroke adds exactly one step with the expected undo label.
-fn assert_step(app: &PhotocraftApp, before: usize, name: &str) {
+fn assert_step(app: &PatronusPhotoApp, before: usize, name: &str) {
     let h = &app.session.active().unwrap().history;
     assert_eq!(h.past_len(), before + 1, "one step per stroke");
     assert_eq!(h.undo_label(), Some(name));
@@ -218,7 +218,7 @@ fn control_pointer_strokes_commit_only_on_release_with_the_freeform_label() {
     for mode in [VectorMode::Path, VectorMode::Shape] {
         let mut app = app(mode);
         // `ui.pointer` queues its input for the canvas, which takes it in the passes `testing::control` runs.
-        let call = |app: &mut PhotocraftApp, params| {
+        let call = |app: &mut PatronusPhotoApp, params| {
             let reply = testing::control(app, "ui.pointer", params);
             assert_eq!(reply["ok"], true, "{reply}");
         };

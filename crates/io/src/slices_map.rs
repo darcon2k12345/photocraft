@@ -8,8 +8,8 @@
 use std::collections::HashMap;
 
 use craft_psd::slices::{SliceRecord, SlicesResource};
-use photocraft_doc::slices::{self, Slice, SliceKind, SliceOrigin, Slices};
-use photocraft_doc::{Document, LayerId, Rect};
+use patronusphoto_doc::slices::{self, Slice, SliceKind, SliceOrigin, Slices};
+use patronusphoto_doc::{Document, LayerId, Rect};
 
 /// Image resource id of the slices.
 pub const SLICES: u16 = craft_psd::slices::SLICES;
@@ -137,7 +137,7 @@ pub fn export_resource(doc: &Document, layer_ids: &HashMap<LayerId, u32>) -> (Op
 #[cfg(test)]
 mod tests {
     use super::*;
-    use photocraft_doc::{ColorMode, Layer, SampleType, Size};
+    use patronusphoto_doc::{ColorMode, Layer, SampleType, Size};
 
     #[test]
     fn slices_survive_a_psd_round_trip() {

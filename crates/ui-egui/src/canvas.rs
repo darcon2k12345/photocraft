@@ -1,22 +1,22 @@
 //! Document canvas: display texture cache, view transform, tool dispatch, extra document windows.
 //!
-//! Rendering is CPU (`photocraft-compose`) for now, uploaded into an egui texture. Brush strokes
+//! Rendering is CPU (`patronusphoto-compose`) for now, uploaded into an egui texture. Brush strokes
 //! update only their damage rectangle (`set_partial`). The wgpu compositor (M5) will replace this
 //! with direct GPU rendering behind the same `CanvasCache` interface.
 
 use craft::behavior::PressPhase;
 use egui::Rect;
-use photocraft_doc::Document;
+use patronusphoto_doc::Document;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::View;
 
 #[cfg(test)]
 use egui::{Color32, Pos2, Stroke, TextureOptions, Vec2, pos2, vec2};
 #[cfg(test)]
-use photocraft_doc::LayerContent;
+use patronusphoto_doc::LayerContent;
 #[cfg(test)]
-use photocraft_geom::Rect as DRect;
+use patronusphoto_geom::Rect as DRect;
 #[cfg(test)]
 use serde_json::json;
 
@@ -134,20 +134,20 @@ pub fn fmt_zoom(pct: f32) -> String {
 
 pub fn mode_label(doc: &Document) -> &'static str {
     match doc.mode {
-        photocraft_doc::ColorMode::Rgb => "RGB",
-        photocraft_doc::ColorMode::Grayscale => "Gray",
-        photocraft_doc::ColorMode::Cmyk => "CMYK",
-        photocraft_doc::ColorMode::Lab => "Lab",
-        photocraft_doc::ColorMode::Indexed => "Indexed",
-        photocraft_doc::ColorMode::Bitmap => "Bitmap",
-        photocraft_doc::ColorMode::Duotone => "Duotone",
-        photocraft_doc::ColorMode::Multichannel => "Multichannel",
+        patronusphoto_doc::ColorMode::Rgb => "RGB",
+        patronusphoto_doc::ColorMode::Grayscale => "Gray",
+        patronusphoto_doc::ColorMode::Cmyk => "CMYK",
+        patronusphoto_doc::ColorMode::Lab => "Lab",
+        patronusphoto_doc::ColorMode::Indexed => "Indexed",
+        patronusphoto_doc::ColorMode::Bitmap => "Bitmap",
+        patronusphoto_doc::ColorMode::Duotone => "Duotone",
+        patronusphoto_doc::ColorMode::Multichannel => "Multichannel",
     }
 }
 
 /// Per-frame reconciliation of the camera with its document: a resize re-centres it. Returns the pixel aspect the view
 /// is drawn with.
-fn sync_view_to_document(app: &PhotocraftApp, view: &mut View, doc: &Document) -> f32 {
+fn sync_view_to_document(app: &PatronusPhotoApp, view: &mut View, doc: &Document) -> f32 {
     let size = [doc.size.width, doc.size.height];
     if view.doc_size != size {
         // Like Photoshop: keep the zoom level, re-centre the resized document.
@@ -164,7 +164,7 @@ fn sync_view_to_document(app: &PhotocraftApp, view: &mut View, doc: &Document) -
 /// window); `primary` is the main window's, where the tools are active. Returns the view after the pass and the
 /// canvas's output, whose press the caller reads (a press activates its document).
 pub fn canvas_view(
-    app: &mut PhotocraftApp,
+    app: &mut PatronusPhotoApp,
     ui: &mut egui::Ui,
     host: document_display::CanvasHost,
     rect: Rect,
@@ -258,12 +258,12 @@ mod art_history_shift_click_tests;
 #[cfg(test)]
 mod rotation_preview_isolation_tests {
     use craft::ui::dialog::DialogId;
-    use photocraft_engine::channel_cmds::ChannelTarget;
+    use patronusphoto_engine::channel_cmds::ChannelTarget;
 
     use super::*;
 
     /// Opens the filter dialog of `command` and returns its id.
-    fn open(app: &mut PhotocraftApp, command: &str) -> DialogId {
+    fn open(app: &mut PatronusPhotoApp, command: &str) -> DialogId {
         let id = crate::filter_dialog::open(app, command).expect("the dialog opens");
         // The Preview box is on from the dialog's first drawn pass.
         for _ in 0..2 {
@@ -273,30 +273,30 @@ mod rotation_preview_isolation_tests {
     }
 
     /// A harness running the app's dialogs, for the Preview box's clicks.
-    fn dialogs_harness(app: Box<PhotocraftApp>) -> egui_kittest::Harness<'static, Box<PhotocraftApp>> {
+    fn dialogs_harness(app: Box<PatronusPhotoApp>) -> egui_kittest::Harness<'static, Box<PatronusPhotoApp>> {
         let mut h = egui_kittest::Harness::builder()
             .with_size(egui::vec2(1200.0, 900.0))
             .with_context(app.ctx().clone())
-            .build_ui_state(|ui, app: &mut Box<PhotocraftApp>| crate::dialogs::run(app, ui), app);
+            .build_ui_state(|ui, app: &mut Box<PatronusPhotoApp>| crate::dialogs::run(app, ui), app);
         h.run_steps(2);
         h
     }
 
     /// Clicks the open dialog's Preview box.
-    fn toggle_preview(h: &mut egui_kittest::Harness<'static, Box<PhotocraftApp>>) {
+    fn toggle_preview(h: &mut egui_kittest::Harness<'static, Box<PatronusPhotoApp>>) {
         use egui_kittest::kittest::Queryable;
         h.get_by_role_and_label(egui::accesskit::Role::CheckBox, "Preview").click();
         h.run_steps(2);
     }
 
     /// Writes a field of the hosted dialog `id`, as the form's control would.
-    fn set(app: &mut PhotocraftApp, ctx: &egui::Context, id: DialogId, field: &str, value: serde_json::Value) {
+    fn set(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: DialogId, field: &str, value: serde_json::Value) {
         app.framework.dialogs.set_json_field(ctx, id, field, value).unwrap_or_else(|e| panic!("the dialog has a `{field}` field: {e}"));
     }
 
     #[test]
     fn channel_overlay_shows_filter_preview_and_restores_on_cancel() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.background_jobs = false;
         app.run("file.new", json!({"width":16,"height":16})).unwrap();
         app.run("channel.new", json!({"name":"Alpha","fill":"black"})).unwrap();
@@ -331,7 +331,7 @@ mod rotation_preview_isolation_tests {
     }
 
     /// The whole of document 0's channel view as the canvas draws it over the composite.
-    fn overlay_pixels(app: &mut PhotocraftApp, ctx: &egui::Context) -> Vec<Color32> {
+    fn overlay_pixels(app: &mut PatronusPhotoApp, ctx: &egui::Context) -> Vec<Color32> {
         use craft::ui::canvas::{PixelRect, RasterSource};
         let source = raster_source::OverlayPrep::new(app, ctx, 0, None, None).expect("a channel view").source(app);
         let size = source.size();
@@ -342,13 +342,13 @@ mod rotation_preview_isolation_tests {
 
     fn assert_filter_preview_target(target: ChannelTarget) {
         for depth in [8, 16, 32] {
-            let mut session = photocraft_engine::Session::new();
+            let mut session = patronusphoto_engine::Session::new();
             session.execute("file.new", json!({"width":16,"height":16,"depth":depth})).unwrap();
             session.execute("channel.new", json!({"name":"Alpha","fill":"black"})).unwrap();
             session
                 .edit("Fixture", |doc, active| {
                     let layer = doc.layer_mut(active.unwrap()).unwrap();
-                    layer.mask = Some(photocraft_doc::LayerMask::hide_all());
+                    layer.mask = Some(patronusphoto_doc::LayerMask::hide_all());
                     for y in 0..16 {
                         for x in 0..8 {
                             layer.surface_mut().unwrap().write_pixel(x, y, &[0.0, 0.25, 0.5, 1.0]);
@@ -364,7 +364,7 @@ mod rotation_preview_isolation_tests {
                 })
                 .unwrap();
             session.active_mut().unwrap().channel_view.target = target;
-            let mut app = PhotocraftApp::new(session, crate::Services::default());
+            let mut app = PatronusPhotoApp::new(session, crate::Services::default());
             app.background_jobs = false;
             let ctx = app.ctx().clone();
             let dialog = open(&mut app, "filter.blur.gaussianBlur");
@@ -397,7 +397,7 @@ mod rotation_preview_isolation_tests {
 
     #[test]
     fn filter_preview_refreshes_when_channel_target_changes() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.background_jobs = false;
         app.run("file.new", json!({"width":16,"height":16})).unwrap();
         for name in ["First", "Second"] {
@@ -435,14 +435,16 @@ mod rotation_preview_isolation_tests {
     #[test]
     fn filter_preview_overlay_matches_quick_mask_and_mixed_color_views() {
         for quick_mask in [false, true] {
-            let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
             app.background_jobs = false;
             app.run("file.new", json!({"width":16,"height":16})).unwrap();
             app.session
                 .edit("Fixture", |doc, active| {
                     if quick_mask {
-                        doc.quick_mask =
-                            Some(photocraft_doc::AlphaChannel::new("Quick Mask", photocraft_raster::Surface::new(photocraft_color::PixelFormat::GRAY8)));
+                        doc.quick_mask = Some(patronusphoto_doc::AlphaChannel::new(
+                            "Quick Mask",
+                            patronusphoto_raster::Surface::new(patronusphoto_color::PixelFormat::GRAY8),
+                        ));
                     }
                     for y in 0..16 {
                         for x in 0..8 {
@@ -479,7 +481,7 @@ mod rotation_preview_isolation_tests {
     /// working space from Color Settings, not the built-in default.
     #[test]
     fn profile_dialogs_preview_through_the_profile_they_choose() {
-        let mut session = photocraft_engine::Session::new();
+        let mut session = patronusphoto_engine::Session::new();
         session.color.settings.monitor_profile = "srgb".into();
         session.color.settings.working_rgb = "display-p3".into();
         session.execute("file.new", json!({"width": 4, "height": 4})).unwrap();
@@ -495,14 +497,14 @@ mod rotation_preview_isolation_tests {
                 Ok(())
             })
             .unwrap();
-        let mut app = PhotocraftApp::new(session, crate::Services::default());
-        let shown_pixels = |app: &PhotocraftApp, doc: &Document| {
+        let mut app = PatronusPhotoApp::new(session, crate::Services::default());
+        let shown_pixels = |app: &PatronusPhotoApp, doc: &Document| {
             let (display, _) = canvas_display(app, doc, None);
-            display_image(display.as_deref(), &photocraft_compose::flatten(doc)).pixels[0]
+            display_image(display.as_deref(), &patronusphoto_compose::flatten(doc)).pixels[0]
         };
         let original = app.session.active().unwrap().doc.clone();
         let before = shown_pixels(&app, &original);
-        let preview = |app: &mut PhotocraftApp, command: &str, profile: &str| {
+        let preview = |app: &mut PatronusPhotoApp, command: &str, profile: &str| {
             let ctx = app.ctx().clone();
             let dialog = open(app, command);
             set(app, &ctx, dialog, "profile", json!(profile));
@@ -515,7 +517,7 @@ mod rotation_preview_isolation_tests {
             app.filter_preview = None;
             result
         };
-        let description = |doc: &Document| photocraft_engine::color_cmds::profile_from_bytes(doc.icc_profile.as_ref().unwrap()).unwrap().description.clone();
+        let description = |doc: &Document| patronusphoto_engine::color_cmds::profile_from_bytes(doc.icc_profile.as_ref().unwrap()).unwrap().description.clone();
 
         let assigned = preview(&mut app, "edit.assignProfile", "prophoto-compat");
         assert_eq!(description(&assigned), craft::cms::Builtin::ProPhotoCompat.description());
@@ -534,9 +536,9 @@ mod rotation_preview_isolation_tests {
     /// GPU adapter; checking the result also verifies Preview off and document integrity.
     #[test]
     fn rotation_preview_is_computed_headlessly_without_mutating_document() {
-        let mut session = photocraft_engine::Session::new();
+        let mut session = patronusphoto_engine::Session::new();
         session.execute("file.new", json!({"width": 96, "height": 48})).unwrap();
-        let mut app = PhotocraftApp::new(session, crate::Services::default());
+        let mut app = PatronusPhotoApp::new(session, crate::Services::default());
         assert!(app.gpu.is_none());
         let ctx = app.ctx().clone();
         let dialog = open(&mut app, "image.rotation.arbitrary");
@@ -560,9 +562,9 @@ mod rotation_preview_isolation_tests {
     /// background tab, even if that tab has a valid canvas index.
     #[test]
     fn filter_preview_is_not_returned_for_inactive_document() {
-        let mut session = photocraft_engine::Session::new();
+        let mut session = patronusphoto_engine::Session::new();
         session.execute("file.new", json!({"width": 96, "height": 48})).unwrap();
-        let mut app = PhotocraftApp::new(session, crate::Services::default());
+        let mut app = PatronusPhotoApp::new(session, crate::Services::default());
         let ctx = app.ctx().clone();
         let dialog = open(&mut app, "image.rotation.arbitrary");
         set(&mut app, &ctx, dialog, "angle", json!(90.0));
@@ -627,8 +629,8 @@ mod pixel_alignment_tests;
 #[cfg(test)]
 mod multi_channel_ui_tests {
     use super::*;
-    fn app() -> Box<PhotocraftApp> {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    fn app() -> Box<PatronusPhotoApp> {
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.session.execute("file.new", json!({"width":64,"height":64})).unwrap();
         app.sync_views();
         app.run("channel.target", json!({"colors":[0,2]})).unwrap();
@@ -647,7 +649,7 @@ mod multi_channel_ui_tests {
         for depth in [8, 16, 32] {
             for view in ["gray", "overlay"] {
                 for colors in [vec![0], vec![0, 2]] {
-                    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+                    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
                     app.run("file.new", json!({"width":64,"height":64,"depth":depth})).unwrap();
                     app.run("layer.layerMask.revealAll", json!({})).unwrap();
                     app.run("channel.target", json!({"colors":colors})).unwrap();
@@ -685,7 +687,7 @@ mod multi_channel_ui_tests {
     #[test]
     fn colour_rows_left_selected_still_paint_an_adjustment_layers_mask() {
         for colors in [vec![0], vec![0, 2]] {
-            let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
             app.run("file.new", json!({"width":64,"height":64})).unwrap();
             app.run("channel.target", json!({"colors":colors})).unwrap();
             app.run("layer.newAdjustmentLayer.levels", json!({})).unwrap();
@@ -712,7 +714,7 @@ mod multi_channel_ui_tests {
     /// rasterizing, which paints only after the prompt.
     #[test]
     fn targeting_a_mask_over_colour_rows_edits_the_mask_everywhere() {
-        let set = |app: &mut PhotocraftApp, p: serde_json::Value| {
+        let set = |app: &mut PatronusPhotoApp, p: serde_json::Value| {
             let (req, _) = crate::control::ControlRequest::new("ui.set", p);
             let ctx = app.ctx().clone();
             assert!(matches!(crate::control::handle(app, &ctx, &req), crate::control::Reply::Done(v) if v["ok"] != false));
@@ -761,7 +763,7 @@ mod multi_channel_ui_tests {
         app.run("channel.target", json!({"colors":[0,2]})).unwrap();
         set(&mut app, json!({"maskTarget": true}));
         app.sync_views();
-        assert!(matches!(app.session.active().unwrap().channel_view.target, photocraft_engine::channel_cmds::ChannelTarget::Color(_)), "a fill layer");
+        assert!(matches!(app.session.active().unwrap().channel_view.target, patronusphoto_engine::channel_cmds::ChannelTarget::Color(_)), "a fill layer");
         let mut app = self::app();
         app.run("layer.smartObjects.convertToSmartObject", json!({})).unwrap();
         app.run("channel.target", json!({"colors":[0,2]})).unwrap();

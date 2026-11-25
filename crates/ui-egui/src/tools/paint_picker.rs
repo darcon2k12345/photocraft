@@ -2,19 +2,19 @@
 //! panel's `PaintChip::recent`). They live in `Preferences::recent_colors`, so they survive a
 //! restart.
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// How many Recently Used Colors are kept (one row of the popover).
 pub(crate) const MAX_RECENT: usize = 15;
 
 /// The Recently Used Colors, newest first (at most [`MAX_RECENT`]; unreadable entries skipped).
-pub(crate) fn recent_colors(session: &photocraft_engine::Session) -> Vec<[f32; 3]> {
+pub(crate) fn recent_colors(session: &patronusphoto_engine::Session) -> Vec<[f32; 3]> {
     session.prefs().recent_colors.iter().filter_map(|h| crate::color_picker_ui::parse_hex(h)).take(MAX_RECENT).collect()
 }
 
 /// Put `rgb` at the front of the Recently Used Colors (once), as Photoshop does for a colour that
 /// was used.
-pub(crate) fn remember(app: &mut PhotocraftApp, rgb: [f32; 3]) {
+pub(crate) fn remember(app: &mut PatronusPhotoApp, rgb: [f32; 3]) {
     if rgb.iter().any(|c| !c.is_finite()) {
         return;
     }
@@ -33,7 +33,7 @@ mod tests {
 
     #[test]
     fn remember_moves_a_colour_to_the_front_once_and_caps_the_row() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
         for i in 0..20 {
             remember(&mut app, [i as f32 / 255.0, 0.0, 0.0]);
         }

@@ -9,10 +9,10 @@ use craft::ui::patterns::form_dialogs::{DialogFields, Param, ParamDialog, ParamK
 use craft::ui::primitives::textures::TextureCache;
 use craft::ui::runtime::env::Label;
 use egui::{Color32, pos2, vec2};
-use photocraft_paint::{BrushPreset, BrushSettings};
+use patronusphoto_paint::{BrushPreset, BrushSettings};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::dialogs::params;
 use crate::theme::Tokens;
 
@@ -39,13 +39,13 @@ fn taken<'a>(names: impl IntoIterator<Item = &'a str>, name: &str) -> bool {
     names.into_iter().any(|n| n.eq_ignore_ascii_case(name.trim()))
 }
 
-fn preset_names(app: &PhotocraftApp) -> Vec<String> {
+fn preset_names(app: &PatronusPhotoApp) -> Vec<String> {
     app.session.tools.presets.iter().map(|p| p.name.clone()).collect()
 }
 
 /// Open the dialog for the tool's brush, or for `brush` (the Brush Settings panel's copy, which
 /// may be ahead of the tool's by a frame). Returns the dialog's id.
-pub fn open(app: &mut PhotocraftApp, brush: Option<&BrushSettings>) -> DialogId {
+pub fn open(app: &mut PatronusPhotoApp, brush: Option<&BrushSettings>) -> DialogId {
     let tools = &app.session.tools;
     let names = preset_names(app);
     let suggested = suggested_name(&tools.presets, tools.current_preset.as_deref());
@@ -118,7 +118,7 @@ fn problem(names: &[String], typed: &str) -> Option<&'static str> {
 }
 
 /// OK: save the preset with the boxes as chosen. It becomes the current brush, as in Photoshop.
-pub(crate) fn run(app: &mut PhotocraftApp, _ctx: &egui::Context, result: ParamResult) {
+pub(crate) fn run(app: &mut PatronusPhotoApp, _ctx: &egui::Context, result: ParamResult) {
     let f = &result.fields;
     if let Some(why) = problem(&preset_names(app), name(f)) {
         return super::alerts::report(app, Err(why.into()));

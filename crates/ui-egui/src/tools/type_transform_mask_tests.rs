@@ -6,17 +6,17 @@
 
 use egui::{Modifiers, PointerButton, Pos2, vec2};
 use egui_kittest::Harness;
-use photocraft_doc::{LayerContent, LayerId, TextLayer};
-use photocraft_geom::Affine;
+use patronusphoto_doc::{LayerContent, LayerId, TextLayer};
+use patronusphoto_geom::Affine;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::app::framework::BuildApp;
 use crate::canvas::testing::{ToolEvent, to_screen, tool_event};
 use crate::state::Tool;
 
-fn new_app(tool: Tool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn new_app(tool: Tool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 800, "height": 400})).unwrap();
     app.sync_views();
     // The drag's endpoints assert where they land, which snapping would move.
@@ -26,15 +26,15 @@ fn new_app(tool: Tool) -> Box<PhotocraftApp> {
     app
 }
 
-fn click(app: &mut PhotocraftApp, x: f64, y: f64, mods: Modifiers) {
+fn click(app: &mut PatronusPhotoApp, x: f64, y: f64, mods: Modifiers) {
     tool_event(app, ToolEvent::Down { x, y, pressure: 1.0 }, mods);
     tool_event(app, ToolEvent::Up { x, y }, mods);
 }
 
 /// The canvas harness, as `type_tool/canvas_tests.rs` builds it.
-fn harness(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
+fn harness(app: Box<PatronusPhotoApp>) -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut h = Harness::builder().allow_missing_glyphs().with_context(app.ctx().clone()).with_size(vec2(1200.0, 800.0)).with_pixels_per_point(1.0).build_app(
-        |ui, app: &mut PhotocraftApp| {
+        |ui, app: &mut PatronusPhotoApp| {
             egui::CentralPanel::default().show(ui, |ui| crate::canvas::document_area(app, ui));
         },
         app,
@@ -48,13 +48,13 @@ fn type_command() -> Modifiers {
     Modifiers { command: true, ctrl: true, ..Modifiers::NONE }
 }
 
-fn hold(h: &mut Harness<'static, Box<PhotocraftApp>>, mods: Modifiers) {
+fn hold(h: &mut Harness<'static, Box<PatronusPhotoApp>>, mods: Modifiers) {
     h.event(egui::Event::ModifiersChanged(mods));
     h.run_steps(1);
 }
 
 /// Sets the main view's zoom and centre through the `ui.set` view command, as `canvas_tests` does.
-fn set_view(h: &mut Harness<'static, Box<PhotocraftApp>>, zoom: f32, center: [f32; 2]) {
+fn set_view(h: &mut Harness<'static, Box<PatronusPhotoApp>>, zoom: f32, center: [f32; 2]) {
     let ctx = h.ctx.clone();
     let (req, _rx) = crate::control::ControlRequest::new("ui.set", json!({"zoom": zoom, "center": center}));
     let app = h.state_mut();
@@ -62,12 +62,12 @@ fn set_view(h: &mut Harness<'static, Box<PhotocraftApp>>, zoom: f32, center: [f3
     h.run_steps(2);
 }
 
-fn transform_press(h: &mut Harness<'static, Box<PhotocraftApp>>, p: Pos2, down: bool, mods: Modifiers) {
+fn transform_press(h: &mut Harness<'static, Box<PatronusPhotoApp>>, p: Pos2, down: bool, mods: Modifiers) {
     h.event(egui::Event::PointerButton { pos: p, button: PointerButton::Primary, pressed: down, modifiers: mods });
     h.run_steps(1);
 }
 
-fn transform_drag(h: &mut Harness<'static, Box<PhotocraftApp>>, a: Pos2, b: Pos2, mods: Modifiers) {
+fn transform_drag(h: &mut Harness<'static, Box<PatronusPhotoApp>>, a: Pos2, b: Pos2, mods: Modifiers) {
     hold(h, mods);
     h.hover_at(a);
     h.run_steps(1);
@@ -80,12 +80,12 @@ fn transform_drag(h: &mut Harness<'static, Box<PhotocraftApp>>, a: Pos2, b: Pos2
     hold(h, Modifiers::NONE);
 }
 
-fn text(app: &PhotocraftApp, id: LayerId) -> TextLayer {
+fn text(app: &PatronusPhotoApp, id: LayerId) -> TextLayer {
     let LayerContent::Text(t) = &app.session.active().unwrap().doc.layer(id).unwrap().content else { panic!("a text layer") };
     t.clone()
 }
 
-fn selection_bounds(app: &PhotocraftApp) -> Option<photocraft_geom::Rect> {
+fn selection_bounds(app: &PatronusPhotoApp) -> Option<patronusphoto_geom::Rect> {
     app.session.active().unwrap().doc.selection.as_ref().map(|s| s.content_bounds())
 }
 

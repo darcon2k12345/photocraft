@@ -11,10 +11,10 @@ use craft::ui::contract::{Bind, Show as _};
 use craft::ui::runtime::env::UnitKind;
 use craft::ui::style::DataColor;
 use egui::Color32;
-use photocraft_engine::prefs::{GuidesGridAndSlices, LineStyle, Unit};
+use patronusphoto_engine::prefs::{GuidesGridAndSlices, LineStyle, Unit};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::document_display::CanvasHost;
 use crate::canvas::tools::Family;
 use crate::guide_select;
@@ -35,7 +35,7 @@ pub(crate) fn grid_major_px(g: &GuidesGridAndSlices, dpi: f64, size: [f64; 2], p
 
 /// A `#rrggbb` preference colour.
 fn pref_rgb(s: &str, fallback: [u8; 3]) -> [u8; 3] {
-    photocraft_engine::prefs::parse_hex(s).map_or(fallback, |c| [c[0], c[1], c[2]])
+    patronusphoto_engine::prefs::parse_hex(s).map_or(fallback, |c| [c[0], c[1], c[2]])
 }
 
 /// The framework's line for a Guides, Grid & Slices line style.
@@ -67,7 +67,7 @@ fn round(v: f64) -> f64 {
 
 /// The guides `rulers::show` hands to `Guides`: `list` (the document's, or a dialog's preview) keyed with
 /// [`guide_select::key`], drawn in the preference style, in each guide's own colour or `color`.
-fn guides_of(list: &photocraft_doc::Guides, color: [u8; 3], line: GuideLine, locked: bool) -> Vec<Guide> {
+fn guides_of(list: &patronusphoto_doc::Guides, color: [u8; 3], line: GuideLine, locked: bool) -> Vec<Guide> {
     let mut out = Vec::with_capacity(list.vertical.len() + list.horizontal.len());
     for (vertical, positions) in [(true, &list.vertical), (false, &list.horizontal)] {
         for (index, &position) in positions.iter().enumerate() {
@@ -85,7 +85,7 @@ fn guides_of(list: &photocraft_doc::Guides, color: [u8; 3], line: GuideLine, loc
 /// Whether `tool` takes guides with the platform command key held: the selection tools and every tool on which ⌘ is
 /// the Move tool (`tools::takes_command_stand_in`), not while a lasso outline is open, Free Transform runs or type
 /// is being edited. A tool's own drag holds the pointer, so the guides get no press during one.
-fn moves_with_command(app: &PhotocraftApp, tool: Tool) -> bool {
+fn moves_with_command(app: &PatronusPhotoApp, tool: Tool) -> bool {
     let takes = crate::canvas::tools::takes_command_stand_in(tool) || crate::canvas::tools::family(tool) == Family::Selection;
     let idle = !app.canvas_tools.selection.outline_open() && app.ui.transform.is_none() && app.ui.text_edit.is_none();
     takes && idle
@@ -94,7 +94,7 @@ fn moves_with_command(app: &PhotocraftApp, tool: Tool) -> bool {
 /// The rulers of document `host.idx`'s canvas, which the canvas shows along its top and left edges while View >
 /// Rulers is on: the view lies inside them. `zero` holds the zero point they edit; the document's own is set here.
 /// Only the active document's canvas takes the pointer. [`run_rulers`] runs what they reported.
-pub(crate) fn strips<'a>(app: &PhotocraftApp, host: CanvasHost, zero: &'a mut Point) -> Option<Rulers<'a>> {
+pub(crate) fn strips<'a>(app: &PatronusPhotoApp, host: CanvasHost, zero: &'a mut Point) -> Option<Rulers<'a>> {
     let doc = app.session.documents().get(host.idx)?.doc.clone();
     *zero = Point::new(doc.ruler_origin[0], doc.ruler_origin[1]);
     let primary = app.session.active_index() == Some(host.idx);
@@ -105,7 +105,7 @@ pub(crate) fn strips<'a>(app: &PhotocraftApp, host: CanvasHost, zero: &'a mut Po
 /// tools: the grid and the guides, with every edit run as its engine command. Only the active document's
 /// canvas takes the pointer; another tile or window shows them as they are. Returns the guides' output, which
 /// `canvas_tool_menu::run` reads for the guide menu.
-pub(crate) fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui, host: CanvasHost, ruler: Option<GuideDrag>) -> Option<GuidesOutput> {
+pub(crate) fn show(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, host: CanvasHost, ruler: Option<GuideDrag>) -> Option<GuidesOutput> {
     let doc = app.session.documents().get(host.idx).map(|state| state.doc.clone())?;
     let primary = app.session.active_index() == Some(host.idx);
     let content = ui.max_rect();
@@ -174,7 +174,7 @@ pub(crate) fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui, host: CanvasHost,
 }
 
 /// The rulers' zero point and unit pick, as engine commands.
-pub(crate) fn run_rulers(app: &mut PhotocraftApp, rulers: &craft::ui::canvas::RulersOutput) {
+pub(crate) fn run_rulers(app: &mut PatronusPhotoApp, rulers: &craft::ui::canvas::RulersOutput) {
     let result = match rulers.zero.events.ended() {
         // A double click on the corner and the menu's Reset Zero Point set the origin back.
         Some(EditEvent::Set { after, .. }) if *after == Point::ZERO => app.run("view.resetRulerOrigin", json!({})).map(drop),
@@ -195,7 +195,7 @@ pub(crate) fn run_rulers(app: &mut PhotocraftApp, rulers: &craft::ui::canvas::Ru
 /// guides were given: only its keys decode to a document guide, and a committed guide with another key is the one a
 /// ruler drag created. The guides report an edit, a click or a selection only in the pass that took the input, so a
 /// second pass of a frame runs nothing again. A click with no drag commits nothing: it only selects (or, with ⌥, turns).
-fn run_guides(app: &mut PhotocraftApp, ctx: &egui::Context, shown: &[Guide], output: &GuidesOutput) {
+fn run_guides(app: &mut PatronusPhotoApp, ctx: &egui::Context, shown: &[Guide], output: &GuidesOutput) {
     let passed = |key: GuideKey| shown.iter().find(|guide| guide.key == key);
     // Where the selection lands after the commands ran: (vertical, position). A guide the commands placed is at its
     // rounded position; one they left alone keeps the document's own.
@@ -264,7 +264,7 @@ fn run_guides(app: &mut PhotocraftApp, ctx: &egui::Context, shown: &[Guide], out
 }
 
 /// Selects the active document's guide of an orientation at `position`, if there is one.
-fn select_position(app: &mut PhotocraftApp, vertical: bool, position: f64) {
+fn select_position(app: &mut PatronusPhotoApp, vertical: bool, position: f64) {
     let index = app.session.active().and_then(|st| {
         let list = if vertical { &st.doc.guides.vertical } else { &st.doc.guides.horizontal };
         list.iter().position(|p| *p == position)

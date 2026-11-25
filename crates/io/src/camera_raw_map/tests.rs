@@ -1,6 +1,6 @@
 use super::*;
 use crate::smart_map::{UNSUPPORTED_FILTER, filter_from_item, item_for_filter};
-use photocraft_color::BlendMode;
+use patronusphoto_color::BlendMode;
 
 // Parameter values observed in the supplied 18.4 PSD. No source pixels or private
 // document metadata are included in this synthetic regression fixture.
@@ -168,13 +168,13 @@ fn active_unimplemented_controls_and_malformed_curves_stay_opaque() {
 #[test]
 #[ignore = "requires a user-supplied Camera Raw PSD"]
 fn all_sliders_fixture() {
-    let path = std::env::var("PHOTOCRAFT_CAMERA_RAW_PSD").expect("set PHOTOCRAFT_CAMERA_RAW_PSD");
+    let path = std::env::var("PATRONUSPHOTO_CAMERA_RAW_PSD").expect("set PATRONUSPHOTO_CAMERA_RAW_PSD");
     let doc = crate::import("fixture.psd", &std::fs::read(path).unwrap()).unwrap().document;
     let original = doc
         .walk()
         .into_iter()
         .find_map(|(_, _, layer)| {
-            let photocraft_doc::LayerContent::Smart(sm) = &layer.content else { return None };
+            let patronusphoto_doc::LayerContent::Smart(sm) = &layer.content else { return None };
             sm.smart_filters.iter().find_map(|f| {
                 let item = item_for_filter(f).ok()?;
                 get_desc(&item, "Fltr").is_some_and(|d| d.class_id.is(CLASS)).then_some(item)

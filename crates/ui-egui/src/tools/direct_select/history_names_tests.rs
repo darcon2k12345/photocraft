@@ -6,12 +6,12 @@ use egui::Modifiers;
 use serde_json::json;
 
 use super::convert_point_history_tests::{added, click, drag};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// A square work path; knot 1 at (120, 40) is smooth with handles at (100, 40) and (140, 40).
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 200, "height": 200})).unwrap();
     app.sync_views();
     app.ui.tool = Tool::DirectSelection;

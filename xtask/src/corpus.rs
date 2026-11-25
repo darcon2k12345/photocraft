@@ -8,19 +8,19 @@ use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::corpus_pins::{
-    self, AG_PSD_COMMIT, HEIC_RS_COMMIT, OPENEXR_COMMIT, PHOTOCRAFT_CORPUS_COMMIT, PHOTOCRAFT_CORPUS_GIMP_COMMIT, PILLOW_HEIF_COMMIT, PNGSUITE_SHA256,
+    self, AG_PSD_COMMIT, HEIC_RS_COMMIT, OPENEXR_COMMIT, PATRONUSPHOTO_CORPUS_COMMIT, PATRONUSPHOTO_CORPUS_GIMP_COMMIT, PILLOW_HEIF_COMMIT, PNGSUITE_SHA256,
     PNGSUITE_URL, PSD_TOOLS_COMMIT,
 };
 use crate::pinned::{PinnedCorpus, USER_AGENT};
 use crate::{cargo, root, run};
 
 /// Crates with corpus tests (behind their `corpus` feature).
-pub const CORPUS_CRATES: &[&str] = &["photocraft-io", "photocraft-engine"];
+pub const CORPUS_CRATES: &[&str] = &["patronusphoto-io", "patronusphoto-engine"];
 /// Opt-in corpus crates: fetched and tested only with `test-corpus --pixls`.
-pub const PIXLS_CRATES: &[&str] = &["photocraft-raw"];
+pub const PIXLS_CRATES: &[&str] = &["patronusphoto-raw"];
 
 /// Corpus crates with a `heif` feature: test-corpus enables it so the HEIF corpus tests run.
-const HEIF_CRATES: &[&str] = &["photocraft-io"];
+const HEIF_CRATES: &[&str] = &["patronusphoto-io"];
 
 /// Paths whose changes make `test-corpus --changed` run (the file-format and rendering crates,
 /// and the engine's `.atn` import and export).
@@ -86,19 +86,19 @@ pub fn cmd(args: &[&str]) -> Result<(), String> {
     Ok(())
 }
 
-/// The authoring clone of photocraft-corpus: `$PHOTOCRAFT_CORPUS_REPO`, else `../photocraft-corpus`.
+/// The authoring clone of patronusphoto-corpus: `$PATRONUSPHOTO_CORPUS_REPO`, else `../patronusphoto-corpus`.
 fn local_clone() -> Result<PathBuf, String> {
-    if let Some(p) = std::env::var_os("PHOTOCRAFT_CORPUS_REPO").filter(|v| !v.is_empty()) {
+    if let Some(p) = std::env::var_os("PATRONUSPHOTO_CORPUS_REPO").filter(|v| !v.is_empty()) {
         return Ok(PathBuf::from(p));
     }
-    let sibling = root().parent().map(|p| p.join("photocraft-corpus"));
+    let sibling = root().parent().map(|p| p.join("patronusphoto-corpus"));
     sibling.filter(|s| s.join("photoshop").is_dir()).ok_or_else(|| {
-        "no local photocraft-corpus clone: expected ../photocraft-corpus next to this checkout, or set PHOTOCRAFT_CORPUS_REPO=<path>".to_string()
+        "no local patronusphoto-corpus clone: expected ../patronusphoto-corpus next to this checkout, or set PATRONUSPHOTO_CORPUS_REPO=<path>".to_string()
     })
 }
 
 /// Fetches every corpus that is missing or stale (verified ones are left alone). With `local`,
-/// `corpus/photoshop` and `corpus/gimp` are copied from the authoring clone of photocraft-corpus instead. With
+/// `corpus/photoshop` and `corpus/gimp` are copied from the authoring clone of patronusphoto-corpus instead. With
 /// `update`, every pinned corpus is refetched and its manifest rewritten (`--update-manifest`).
 pub fn fetch_all(local: bool, update: bool) -> Result<(), String> {
     fetch_pngsuite()?;
@@ -108,7 +108,7 @@ pub fn fetch_all(local: bool, update: bool) -> Result<(), String> {
 }
 
 /// Calls `fetch(corpus, from_clone, update)` for every pinned corpus; `from_clone` is set for
-/// the photocraft-corpus sets (`corpus/photoshop`, `corpus/gimp`) when `local`.
+/// the patronusphoto-corpus sets (`corpus/photoshop`, `corpus/gimp`) when `local`.
 fn fetch_pinned(local: bool, update: bool, mut fetch: impl FnMut(&PinnedCorpus, bool, bool) -> Result<(), String>) -> Result<(), String> {
     for c in corpus_pins::ALL {
         let ours = std::ptr::eq(*c, &corpus_pins::PHOTOSHOP) || std::ptr::eq(*c, &corpus_pins::GIMP);
@@ -137,11 +137,11 @@ fn list() {
   cargo xtask test-corpus       fetch, then run every corpus test (--release --features corpus)
 
   corpus/photoshop/  [{}] our Photoshop-authored oracles (MIT OR Apache-2.0), from
-                     https://github.com/storytold/photocraft-corpus at {PHOTOCRAFT_CORPUS_COMMIT}
+                     https://github.com/storytold/photocraft-corpus at {PATRONUSPHOTO_CORPUS_COMMIT}
                      manifest xtask/photoshop-corpus.sha256. Fetch: --photoshop
-                     (--photoshop --local copies from ../photocraft-corpus or $PHOTOCRAFT_CORPUS_REPO)
+                     (--photoshop --local copies from ../patronusphoto-corpus or $PATRONUSPHOTO_CORPUS_REPO)
   corpus/gimp/       [{}] our GIMP-authored XCF oracles with GIMP's PNG renderings (MIT OR Apache-2.0),
-                     from the same repository at {PHOTOCRAFT_CORPUS_GIMP_COMMIT}
+                     from the same repository at {PATRONUSPHOTO_CORPUS_GIMP_COMMIT}
                      manifest xtask/gimp-corpus.sha256. Fetch: --gimp (--gimp --local copies from the clone)
   corpus/psd/        [{}] 170 small psd-tools + ag-psd files (MIT), psd-tools@{} and
                      ag-psd@{}, manifest xtask/psd-corpus.sha256. Fetch: --psd
@@ -431,7 +431,7 @@ pub fn test_cmd(args: &[&str]) -> Result<(), String> {
         match *a {
             "-p" | "--package" => {
                 let name = it.next().ok_or("-p needs a crate name")?;
-                let full = if name.starts_with("photocraft-") { (*name).to_string() } else { format!("photocraft-{name}") };
+                let full = if name.starts_with("patronusphoto-") { (*name).to_string() } else { format!("patronusphoto-{name}") };
                 if !CORPUS_CRATES.contains(&full.as_str()) && !PIXLS_CRATES.contains(&full.as_str()) {
                     return Err(format!("{full} has no corpus tests (crates: {} or the opt-in {})", CORPUS_CRATES.join(", "), PIXLS_CRATES.join(", ")));
                 }
@@ -447,8 +447,8 @@ pub fn test_cmd(args: &[&str]) -> Result<(), String> {
     // `--pixls` opts in (and fetches), and a raw change under --changed does too: the raw
     // corpus tests are not part of the default set until a maintainer decides otherwise.
     let wants_pixls = ours.contains(&"--pixls") || crates.iter().any(|c| PIXLS_CRATES.contains(&c.as_str())) || raw_changed;
-    if wants_pixls && !crates.iter().any(|c| c == "photocraft-raw") {
-        crates.push("photocraft-raw".to_string());
+    if wants_pixls && !crates.iter().any(|c| c == "patronusphoto-raw") {
+        crates.push("patronusphoto-raw".to_string());
     }
     if wants_pixls {
         crate::pinned::fetch_pixls(false)?;

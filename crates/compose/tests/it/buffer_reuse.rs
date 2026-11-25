@@ -1,6 +1,6 @@
-use photocraft_compose::Buffer;
-use photocraft_geom::Rect;
-use photocraft_raster::scratch;
+use patronusphoto_compose::Buffer;
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::scratch;
 
 /// Restores idle release even when an assertion fails.
 struct IdleReleaseOff;

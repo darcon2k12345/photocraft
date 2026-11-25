@@ -3,12 +3,12 @@ use craft::draw::ui::transform::TransformEdit;
 use craft::imaging::ui::warp::{CylinderValues, WarpMesh};
 
 use super::begin::warps_type;
-use super::{BezierMesh, PhotocraftApp, Warp, WarpStyle, json};
+use super::{BezierMesh, PatronusPhotoApp, Warp, WarpStyle, json};
 use crate::state::SessionWarp;
 
 /// Gives the session `warp` as its new warp (one `TransformEdit::Warp`), keeping whether it is on
 /// a type layer. The one place the warp glue writes the session's warp.
-pub(super) fn set_warp(app: &mut PhotocraftApp, warp: Warp) {
+pub(super) fn set_warp(app: &mut PatronusPhotoApp, warp: Warp) {
     let now = app.nudge_bundle.now;
     let on_type = app.ui.transform.as_ref().and_then(|t| t.session.warp()).map_or_else(|| warps_type(app), |w| w.on_type);
     if let Some(t) = app.ui.transform.as_mut() {
@@ -27,7 +27,7 @@ fn bezier_of(mesh: &WarpMesh) -> BezierMesh {
 /// (`matches!(out.edit, Some(WarpEdit::Split { .. }))`): the armed Split tool is one-shot, so it
 /// disarms. A pass with no events changes nothing, and a second pass of a frame has none, so it
 /// applies nothing twice.
-pub(crate) fn grid_edit(app: &mut PhotocraftApp, events: &EditEvents<WarpMesh>, split: bool) {
+pub(crate) fn grid_edit(app: &mut PatronusPhotoApp, events: &EditEvents<WarpMesh>, split: bool) {
     let Some(b) = app.ui.transform.as_ref().and_then(|t| t.session.warp()).map(|w| w.warp.bounds) else { return };
     let mut applied = false;
     for event in events.iter() {
@@ -47,7 +47,7 @@ pub(crate) fn grid_edit(app: &mut PhotocraftApp, events: &EditEvents<WarpMesh>, 
 /// Applies the cylinder's edits of this pass: every value it reports becomes the cylinder warp
 /// over the box, and a cancelled drag puts back the values it began with. A pass with no events
 /// changes nothing. A set of values that describe no cylinder is refused and the warp stays.
-pub(crate) fn cylinder_edit(app: &mut PhotocraftApp, events: &EditEvents<CylinderValues>) {
+pub(crate) fn cylinder_edit(app: &mut PatronusPhotoApp, events: &EditEvents<CylinderValues>) {
     let Some(b) = app.ui.transform.as_ref().and_then(|t| t.session.warp()).map(|w| w.warp.bounds) else { return };
     for event in events.iter() {
         let Some(values) = event.landed() else { continue };
@@ -66,7 +66,7 @@ pub(crate) fn cylinder_values(w: &Warp) -> Option<CylinderValues> {
 }
 
 /// Runs a warp-edit command against the mesh in the open Warp session and writes the mesh back.
-pub fn edit_session_warp(app: &mut PhotocraftApp, id: &str, params: &serde_json::Value) -> Result<(), String> {
+pub fn edit_session_warp(app: &mut PatronusPhotoApp, id: &str, params: &serde_json::Value) -> Result<(), String> {
     let Some(w) = app.ui.transform.as_ref().and_then(|t| t.session.warp()).map(|w| w.warp.clone()) else { return Err("not warping".into()) };
     if warps_type(app) {
         return Err("Warp on type takes only the warp styles".into());
@@ -84,7 +84,7 @@ pub fn edit_session_warp(app: &mut PhotocraftApp, id: &str, params: &serde_json:
 
 /// Applies a split-warp command to the mesh being edited (at the box centre unless `at`).
 // PLAN: sheet note 8 says a split without `at` arms `pv.split`; the base splits at the box centre and the menu's callers rely on it, and tools-w27 does not name the command-to-`WarpSplit` function arming would need, so this keeps the base rule.
-pub fn split(app: &mut PhotocraftApp, id: &str, at: Option<[f64; 2]>) -> Result<(), String> {
+pub fn split(app: &mut PatronusPhotoApp, id: &str, at: Option<[f64; 2]>) -> Result<(), String> {
     let mut p = json!({});
     if let Some(a) = at {
         p["at"] = json!(a);

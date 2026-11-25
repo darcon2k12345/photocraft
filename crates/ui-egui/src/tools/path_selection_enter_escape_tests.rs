@@ -3,17 +3,17 @@
 //! untargets the path. Neither adds a History step or moves a point.
 
 use egui::{Key, Modifiers};
-use photocraft_doc::vector::Path;
+use patronusphoto_doc::vector::Path;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::direct_select::{DirectSelection, PathRef, active_paths};
 use crate::state::Tool;
 
 /// 800 x 600 with the saved path "Path 1" (a square and a triangle) targeted, and the square
 /// selected as a component.
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 800, "height": 600, "background": "white"})).unwrap();
     let path = json!({"subpaths": [
         {"closed": true, "knots": [[100, 300], [300, 300], [300, 500], [100, 500]]},
@@ -29,26 +29,26 @@ fn app() -> Box<PhotocraftApp> {
     app
 }
 
-fn press(app: &mut PhotocraftApp, key: Key, modifiers: Modifiers) {
+fn press(app: &mut PatronusPhotoApp, key: Key, modifiers: Modifiers) {
     crate::canvas::testing::key(app, key, modifiers);
 }
 
-fn path_1(app: &PhotocraftApp) -> Path {
+fn path_1(app: &PatronusPhotoApp) -> Path {
     app.session.active().unwrap().doc.paths.iter().find(|p| p.name == "Path 1").unwrap().path.clone()
 }
 
-fn steps(app: &PhotocraftApp) -> usize {
+fn steps(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.entries().len()
 }
 
-fn nothing_selected(app: &PhotocraftApp) {
+fn nothing_selected(app: &PatronusPhotoApp) {
     assert!(crate::path_components::selected(app).is_none(), "no component is selected");
     assert_eq!(app.ui.direct_selection, DirectSelection::default());
 }
 
 /// Until Path Selection has its own arrow-key nudge (#10920), an arrow key must move nothing once
 /// the components are deselected.
-fn arrow_moves_nothing(app: &mut PhotocraftApp) {
+fn arrow_moves_nothing(app: &mut PatronusPhotoApp) {
     let (before, n) = (path_1(app), steps(app));
     press(app, Key::ArrowRight, Modifiers::NONE);
     assert_eq!(path_1(app), before, "the arrow key moves no point");

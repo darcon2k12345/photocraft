@@ -7,15 +7,15 @@ use craft_psd::{
     atn::{self, AtnAction, AtnEvent, AtnFile, AtnItem},
     descriptor::{Descriptor, Id, UnicodeString, Value as D},
 };
-use photocraft_color::{ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{Document, Layer, LayerContent, SmartObject, SmartSource};
-use photocraft_engine::{
+use patronusphoto_color::{ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::{Document, Layer, LayerContent, SmartObject, SmartSource};
+use patronusphoto_engine::{
     Session,
     actions_cmds::{Action, ActionList, ActionStep, ActionsFile},
     atn_cmds,
 };
-use photocraft_geom::{Affine, Size};
-use photocraft_raster::Surface;
+use patronusphoto_geom::{Affine, Size};
+use patronusphoto_raster::Surface;
 use serde_json::{Value, json};
 
 const FLAGS: [(&str, &str); 3] = [("Dthr", "dither"), ("Fltt", "flatten"), ("rasterizePlaced", "rasterizePlaced")];
@@ -48,13 +48,13 @@ fn recorded(d: Descriptor) -> Vec<u8> {
 }
 
 fn load(s: &mut Session, bytes: &[u8]) -> Value {
-    s.execute("actions.load", json!({"data": photocraft_engine::paint::tile::b64_encode(bytes)})).unwrap()
+    s.execute("actions.load", json!({"data": patronusphoto_engine::paint::tile::b64_encode(bytes)})).unwrap()
 }
 
 fn save(s: &mut Session) -> Vec<u8> {
     let saved = s.execute("actions.save", json!({"set": "Profile"})).unwrap();
     assert_eq!(saved["skipped"], json!([]));
-    photocraft_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap()
+    patronusphoto_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap()
 }
 
 /// Preserve absolute intent and keep unrepresentable intent settings as complete steps.
@@ -117,7 +117,7 @@ fn intent_fixture() -> Session {
 }
 
 fn rendered(s: &Session) -> Vec<[f32; 4]> {
-    photocraft_compose::flatten(&s.active().unwrap().doc).into_px()
+    patronusphoto_compose::flatten(&s.active().unwrap().doc).into_px()
 }
 
 /// Assert saved typed fields and independent pixel/model effects, not just paired adapters.

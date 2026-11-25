@@ -49,11 +49,11 @@ pub(crate) fn composite_stack_at_with<A: BufferAlloc>(
 /// Photoshop (psd-tools adjustment_nested_composition_4: 9.6 → 5.1 % of pixels off;
 /// exposure_grayscale passes). Blends stay in float (quantising them too made other files
 /// worse).
-pub fn adjustment_quantum(depth: photocraft_color::SampleType) -> Option<f32> {
+pub fn adjustment_quantum(depth: patronusphoto_color::SampleType) -> Option<f32> {
     match depth {
-        photocraft_color::SampleType::U8 => Some(255.0),
-        photocraft_color::SampleType::U16 => Some(32768.0),
-        photocraft_color::SampleType::F32 => None,
+        patronusphoto_color::SampleType::U8 => Some(255.0),
+        patronusphoto_color::SampleType::U16 => Some(32768.0),
+        patronusphoto_color::SampleType::F32 => None,
     }
 }
 
@@ -116,7 +116,7 @@ pub(crate) fn dissolve_noise(x: i32, y: i32) -> f32 {
 /// stops are all opaque). Normal blending at alpha 1 returns the layer's colour exactly, so the
 /// layers below can be skipped (the live Gradient tool's preview recomposites the whole canvas on
 /// every pointer move).
-pub fn occludes_below(layer: &Layer, mode: photocraft_color::ColorMode) -> bool {
+pub fn occludes_below(layer: &Layer, mode: patronusphoto_color::ColorMode) -> bool {
     let LayerContent::Fill(f) = &layer.content else { return false };
     let opaque = match f {
         Fill::Solid(c) => c.alpha >= 1.0,
@@ -131,7 +131,7 @@ pub fn occludes_below(layer: &Layer, mode: photocraft_color::ColorMode) -> bool 
         && !cached
         && layer.visible
         && !layer.clipped
-        && layer.blend == photocraft_color::BlendMode::Normal
+        && layer.blend == patronusphoto_color::BlendMode::Normal
         && layer.opacity >= 1.0
         && layer.fill_opacity >= 1.0
         && !layer.mask.as_ref().is_some_and(|m| m.enabled)
@@ -145,8 +145,8 @@ pub fn occludes_below(layer: &Layer, mode: photocraft_color::ColorMode) -> bool 
 /// RGB documents test Gray and R, G, B; grayscale (and duotone) documents their one channel.
 /// Other modes composite in display RGB, where ranges over their own channels have no exact
 /// equivalent, so (like channel restrictions) the setting round-trips but isn't applied there.
-pub fn blend_if_active(layer: &Layer, mode: photocraft_color::ColorMode) -> bool {
-    use photocraft_color::ColorMode as M;
+pub fn blend_if_active(layer: &Layer, mode: patronusphoto_color::ColorMode) -> bool {
+    use patronusphoto_color::ColorMode as M;
     matches!(mode, M::Rgb | M::Grayscale | M::Duotone) && !layer.blend_if.is_default()
 }
 
@@ -154,12 +154,12 @@ pub fn blend_if_active(layer: &Layer, mode: photocraft_color::ColorMode) -> bool
 /// (`this`, `None` where the layer has no content of its own there) and the colour beneath it
 /// (`under`, `None` where nothing is beneath). Every range multiplies in.
 fn blend_if_weight(layer: &Layer, cx: &Ctx, this: Option<[f32; 4]>, under: Option<[f32; 4]>) -> f32 {
-    use photocraft_color::ColorMode as M;
+    use patronusphoto_color::ColorMode as M;
     let bi = &layer.blend_if;
     // 8-bit RGB documents fade split points over both ends (#14855); deeper documents and the
     // one-channel modes (not measured) keep the plain ramp.
-    let levels = cx.depth == photocraft_color::SampleType::U8 && cx.mode == M::Rgb;
-    let w = |r: photocraft_doc::BlendRange, v: f32| if levels { r.weight_8bit(v) } else { r.weight(v) };
+    let levels = cx.depth == patronusphoto_color::SampleType::U8 && cx.mode == M::Rgb;
+    let w = |r: patronusphoto_doc::BlendRange, v: f32| if levels { r.weight_8bit(v) } else { r.weight(v) };
     let mut k = 1.0;
     for (side, px) in [this, under].into_iter().enumerate() {
         let Some(p) = px else { continue };
@@ -317,7 +317,7 @@ fn composite_layer_any_with<A: BufferAlloc>(
 /// effects outside it are clipped away; the backdrop there is untouched).
 fn composite_artboard_with<A: BufferAlloc>(
     layer: &Layer,
-    ab: &photocraft_doc::Artboard,
+    ab: &patronusphoto_doc::Artboard,
     clipped: &[Layer],
     backdrop: &mut Buffer,
     cx: &Ctx,

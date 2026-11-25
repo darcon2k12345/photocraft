@@ -5,8 +5,8 @@
 
 use crate::mixer::{MixerSettings, MixerState, apply_mixer_stroke};
 use crate::{BrushSettings, Stroke, StrokePoint};
-use photocraft_color::PixelFormat;
-use photocraft_raster::Surface;
+use patronusphoto_color::PixelFormat;
+use patronusphoto_raster::Surface;
 
 const Y: f64 = 100.0;
 

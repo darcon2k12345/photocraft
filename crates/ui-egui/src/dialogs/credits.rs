@@ -5,7 +5,7 @@
 use craft::ui::dialog::DialogId;
 use craft::ui::patterns::form_dialogs::{AboutInfo, AboutLink, AboutTab, Contributor as CreditedPerson, Credits, HostedAbout, HostedReport, ModelCredit};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// One contributor row as build.rs bakes it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -78,25 +78,29 @@ pub fn credits() -> Credits {
 }
 
 /// The About tab's contents: name, blurb, version, the community button and the project links.
-pub fn about_info(_app: &PhotocraftApp) -> AboutInfo {
-    AboutInfo::new("PhotoCraft", tl!("PhotoCraft — an open-source, native image editor written in Rust."), photocraft_engine::build_info::long_version())
-        .community(AboutLink::new(tl!("Join us on Discord"), crate::links::DISCORD))
-        .links([
-            AboutLink::new(tl!("PhotoCraft website"), crate::links::APP_PAGE),
-            AboutLink::new(tl!("GitHub"), crate::links::GITHUB),
-            AboutLink::new(tl!("ArtCraft"), crate::links::ARTCRAFT_WEBSITE),
-        ])
-        .built_with("egui · wgpu · photocraft-engine")
+pub fn about_info(_app: &PatronusPhotoApp) -> AboutInfo {
+    AboutInfo::new(
+        "Patronus Photo",
+        tl!("Patronus Photo — an open-source, native image editor written in Rust."),
+        patronusphoto_engine::build_info::long_version(),
+    )
+    .community(AboutLink::new(tl!("Join the discussion"), crate::links::DISCORD))
+    .links([
+        AboutLink::new(tl!("Patronus Photo releases"), crate::links::APP_PAGE),
+        AboutLink::new(tl!("GitHub"), crate::links::GITHUB),
+        AboutLink::new(tl!("Patronus"), crate::links::PATRONUS_WEBSITE),
+    ])
+    .built_with("egui · wgpu · patronusphoto-engine")
 }
 
 /// Opens the About dialog on `tab`.
-pub fn open_about(app: &mut PhotocraftApp, tab: AboutTab) -> DialogId {
+pub fn open_about(app: &mut PatronusPhotoApp, tab: AboutTab) -> DialogId {
     let dialog = HostedAbout::new(about_info(app), credits()).tab(tab);
     app.framework.dialogs.open(dialog)
 }
 
 /// Opens Help › System Info: the version line as the summary, the platform and graphics facts as lines.
-pub fn open_system_info(app: &mut PhotocraftApp) -> DialogId {
+pub fn open_system_info(app: &mut PatronusPhotoApp) -> DialogId {
     let mut lines = crate::gpu_status::system_info_ui(app);
     let summary = if lines.is_empty() { String::new() } else { lines.remove(0) };
     app.framework.dialogs.open(HostedReport::new(tl!("System Info"), summary, lines))
@@ -104,7 +108,7 @@ pub fn open_system_info(app: &mut PhotocraftApp) -> DialogId {
 
 /// The result pump (a `TAKERS` row): opens a link the About dialog took and copies System Info. Each call takes only
 /// what the dialogs filed since the last call.
-pub(crate) fn take(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(crate) fn take(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     if let Some(url) = app.framework.dialogs.get_mut::<HostedAbout>().and_then(HostedAbout::take_link) {
         crate::links::open(app, ctx, &url);
     }

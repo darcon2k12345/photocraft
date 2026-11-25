@@ -1,7 +1,7 @@
 //! Which words in an imported Visibility cell mean visible (#13933): only `true`.
 
 use super::*;
-use photocraft_doc::Layer;
+use patronusphoto_doc::Layer;
 
 /// Import one data set per `cells` entry into a document with a Visibility variable `show`, and
 /// return each set's stored visibility.

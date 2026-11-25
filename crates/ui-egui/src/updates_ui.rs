@@ -2,7 +2,7 @@
 
 use serde_json::Value;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The update checker's state (desktop); the web build has none.
 pub(crate) struct Runtime {
@@ -21,7 +21,7 @@ impl Default for Runtime {
     fn default() -> Self {
         Self {
             #[cfg(not(target_arch = "wasm32"))]
-            updater: craft::update::updater::Updater::new(&crate::UPDATE_APP, photocraft_engine::build_info::VERSION),
+            updater: craft::update::updater::Updater::new(&crate::UPDATE_APP, patronusphoto_engine::build_info::VERSION),
             #[cfg(not(target_arch = "wasm32"))]
             result_dialog: None,
             #[cfg(not(target_arch = "wasm32"))]
@@ -32,7 +32,7 @@ impl Default for Runtime {
 
 /// Help ▸ Check for Updates: starts a check whose outcome the result window shows.
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn check(app: &mut PhotocraftApp, _ctx: &egui::Context, _params: Value) -> Result<Value, String> {
+pub(crate) fn check(app: &mut PatronusPhotoApp, _ctx: &egui::Context, _params: Value) -> Result<Value, String> {
     app.updates_rt.updater.check_now();
     app.ui.updates_open = true;
     Ok(serde_json::json!({"status": "checking"}))
@@ -40,14 +40,14 @@ pub(crate) fn check(app: &mut PhotocraftApp, _ctx: &egui::Context, _params: Valu
 
 /// Update checks need a desktop install.
 #[cfg(target_arch = "wasm32")]
-pub(crate) fn check(_app: &mut PhotocraftApp, _ctx: &egui::Context, _params: Value) -> Result<Value, String> {
+pub(crate) fn check(_app: &mut PatronusPhotoApp, _ctx: &egui::Context, _params: Value) -> Result<Value, String> {
     Err("Update checks are not available here".into())
 }
 
 /// Once per pass: the check at start when the preference is on (the `Updater` runs it once per
 /// launch), else only the read of the last update's outcome (also once, inside the `Updater`).
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn tick(app: &mut PhotocraftApp) {
+pub(crate) fn tick(app: &mut PatronusPhotoApp) {
     use craft::update::updater::Status;
     if app.session.prefs().general.automatically_check_updates {
         app.updates_rt.updater.check_at_start();
@@ -62,16 +62,16 @@ pub(crate) fn tick(app: &mut PhotocraftApp) {
 
 /// The web build has no checker.
 #[cfg(target_arch = "wasm32")]
-pub(crate) fn tick(_app: &mut PhotocraftApp) {}
+pub(crate) fn tick(_app: &mut PatronusPhotoApp) {}
 
 /// The web build has no checker.
 #[cfg(target_arch = "wasm32")]
-pub(crate) fn show(_app: &mut PhotocraftApp, _ctx: &egui::Context) {}
+pub(crate) fn show(_app: &mut PatronusPhotoApp, _ctx: &egui::Context) {}
 
 /// Drives the updater's own prompt and the check-result dialog on the framework dialog host. Runs
 /// before `DialogHost::run`.
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn show(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(crate) fn show(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     use craft::update::stack_dialogs::{CheckChoice, UpdateCheckDialog};
     use craft::update::updater::{Action, Status};
 
@@ -110,7 +110,7 @@ pub(crate) fn show(app: &mut PhotocraftApp, ctx: &egui::Context) {
     let status = updater.status().clone();
     let dialogs = &mut app.framework.dialogs;
     if wanted {
-        if let Ok(id) = dialogs.open_unless_open(UpdateCheckDialog::new(photocraft_engine::build_info::VERSION)) {
+        if let Ok(id) = dialogs.open_unless_open(UpdateCheckDialog::new(patronusphoto_engine::build_info::VERSION)) {
             app.updates_rt.result_dialog = Some(id);
         }
         if let Some(dialog) = app.updates_rt.result_dialog.and_then(|id| dialogs.get_mut_by_id::<UpdateCheckDialog>(id)) {
@@ -123,23 +123,23 @@ pub(crate) fn show(app: &mut PhotocraftApp, ctx: &egui::Context) {
 
 /// The updater's installation progress or error line, for `ui.inspect`.
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn status_message(app: &PhotocraftApp) -> Option<String> {
+pub(crate) fn status_message(app: &PatronusPhotoApp) -> Option<String> {
     app.updates_rt.updater.status_message()
 }
 
 /// The web build has no updater, so no message.
 #[cfg(target_arch = "wasm32")]
-pub(crate) fn status_message(_app: &PhotocraftApp) -> Option<String> {
+pub(crate) fn status_message(_app: &PatronusPhotoApp) -> Option<String> {
     None
 }
 
 /// Offers `version` as an available release, as a check at start would, for the snapshot example.
 #[cfg(not(target_arch = "wasm32"))]
-pub fn preview_release(app: &mut PhotocraftApp, version: &str, url: &str) {
+pub fn preview_release(app: &mut PatronusPhotoApp, version: &str, url: &str) {
     app.updates_rt.updater.offer(craft::update::Release {
         tag: format!("v{version}"),
         version: craft::update::parse_version(version),
-        name: format!("PhotoCraft {version}"),
+        name: format!("Patronus Photo {version}"),
         html_url: url.into(),
         ..Default::default()
     });
@@ -150,12 +150,12 @@ pub fn preview_release(app: &mut PhotocraftApp, version: &str, url: &str) {
 mod tests {
     use super::*;
     use crate::{Services, menus};
-    use photocraft_engine::Session;
+    use patronusphoto_engine::Session;
     use std::sync::{Arc, Mutex, mpsc};
     use std::time::Duration;
 
-    fn app() -> Box<PhotocraftApp> {
-        PhotocraftApp::new(Session::new(), Services::default())
+    fn app() -> Box<PatronusPhotoApp> {
+        PatronusPhotoApp::new(Session::new(), Services::default())
     }
 
     #[test]
@@ -168,7 +168,7 @@ mod tests {
             Err("offline".into())
         });
         let mut app = app();
-        app.updates_rt.updater = craft::update::updater::Updater::new(&crate::UPDATE_APP, photocraft_engine::build_info::VERSION).with_source(source);
+        app.updates_rt.updater = craft::update::updater::Updater::new(&crate::UPDATE_APP, patronusphoto_engine::build_info::VERSION).with_source(source);
         app.session.edit_prefs(|p| p.general.automatically_check_updates = false);
 
         tick(&mut app);
@@ -186,7 +186,7 @@ mod tests {
     fn update_window_is_drivable_and_bad_state_changes_are_atomic() {
         let mut app = app();
         let ctx = app.ctx().clone();
-        let call = |app: &mut PhotocraftApp, method: &str, params: Value| {
+        let call = |app: &mut PatronusPhotoApp, method: &str, params: Value| {
             let (req, _) = crate::control::ControlRequest::new(method, params);
             match crate::control::handle(app, &ctx, &req) {
                 crate::control::Reply::Done(value) => value,

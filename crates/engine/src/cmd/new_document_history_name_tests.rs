@@ -14,8 +14,8 @@ fn history(s: &Session) -> (Value, Value) {
 
 /// Open an 8 × 8 PNG from memory as `name`, the way File › Open admits a file.
 fn open_png(s: &mut Session, name: &str) {
-    let img = photocraft_codecs::Image::from_u8(8, 8, photocraft_codecs::ChannelLayout::Rgb, vec![128; 8 * 8 * 3]).unwrap();
-    let bytes = photocraft_codecs::encode(&img, photocraft_codecs::Format::Png, &Default::default()).unwrap();
+    let img = patronusphoto_codecs::Image::from_u8(8, 8, patronusphoto_codecs::ChannelLayout::Rgb, vec![128; 8 * 8 * 3]).unwrap();
+    let bytes = patronusphoto_codecs::encode(&img, patronusphoto_codecs::Format::Png, &Default::default()).unwrap();
     crate::file_cmds::open_bytes_as(s, name, &bytes, None, None).unwrap();
 }
 

@@ -12,11 +12,11 @@
 //! targeted channel when the caller didn't pass a target. Targeting a single colour channel keeps
 //! those commands from touching the other colour channels of the layer ([`restrict_to_color`]).
 
-use photocraft_algo::selection::{self as sel, SelectionMode};
-use photocraft_color::{BlendMode, Color, ColorMode, PixelFormat, blend::blend_channel};
-use photocraft_doc::{AlphaChannel, ColorIndicates, Document, Layer, LayerContent, LayerId};
-use photocraft_geom::Rect;
-use photocraft_raster::{Surface, from_rgba, to_rgba};
+use patronusphoto_algo::selection::{self as sel, SelectionMode};
+use patronusphoto_color::{BlendMode, Color, ColorMode, PixelFormat, blend::blend_channel};
+use patronusphoto_doc::{AlphaChannel, ColorIndicates, Document, Layer, LayerContent, LayerId};
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::{Surface, from_rgba, to_rgba};
 use serde::Serialize;
 use serde_json::{Value, json};
 

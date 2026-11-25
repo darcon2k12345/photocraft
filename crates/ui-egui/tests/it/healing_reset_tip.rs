@@ -8,7 +8,7 @@ use serde_json::{Value, json};
 /// added. The Healing Brush gets a black line to sample, as white healed into white is white
 /// whatever the tip.
 fn stroke(cmd: &str, brush: Value) -> Vec<f32> {
-    let mut s = photocraft_engine::Session::new();
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 200, "height": 200, "background": "white"})).unwrap();
     let mut p = json!({"points": [[100, 100], [140, 100]]});
     if cmd == "paint.healingBrush" {

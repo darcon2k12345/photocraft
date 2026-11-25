@@ -9,8 +9,8 @@ use super::*;
 use crate::canvas::testing::{ToolEvent, tool_event};
 
 /// A 200 × 150 document with the Perspective Crop tool chosen and no session.
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
     app.sync_views();
     app.ui.tool = Tool::PerspectiveCrop;

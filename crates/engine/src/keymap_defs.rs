@@ -1,4 +1,4 @@
-//! The commands PhotoCraft binds keys to, as craft-keymap's catalog, and the conversion between a
+//! The commands Patronus Photo binds keys to, as craft-keymap's catalog, and the conversion between a
 //! keymap's overrides and the preferences' `shortcuts` / `alternateShortcuts` maps.
 //!
 //! It lives in the engine because the engine's headless `edit.keyboardShortcuts {"importKys": …}`
@@ -73,7 +73,7 @@ pub fn command_defs() -> Vec<CommandDef> {
             match kind {
                 BindKind::Command if !menu.is_empty() => def = def.with_path(path()),
                 BindKind::Command => {}
-                // Foreign sets file a tool under "Tools" although PhotoCraft's menus do not list it.
+                // Foreign sets file a tool under "Tools" although Patronus Photo's menus do not list it.
                 BindKind::Tool => {
                     def = def.with_kind(CommandKind::Tool { group: default.map(str::to_owned) }).with_import_path(path());
                 }

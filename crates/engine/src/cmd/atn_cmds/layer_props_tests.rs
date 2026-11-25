@@ -1,7 +1,7 @@
 use super::*;
 use crate::actions_cmds::{ActionList, ActionStep, ActionsFile};
 
-/// PhotoCraft's own roundtrip accepts a combined Set, but Photoshop applies only its rename.
+/// Patronus Photo's own roundtrip accepts a combined Set, but Photoshop applies only its rename.
 #[test]
 fn compound_properties_export_as_separate_sets_with_rename_last() {
     for target in [None, Some("Original")] {

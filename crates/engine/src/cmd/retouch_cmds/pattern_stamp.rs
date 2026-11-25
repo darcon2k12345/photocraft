@@ -9,13 +9,13 @@
 //! Impressionist was not measured: those strokes lay their dabs over the pixels in Normal, as
 //! they did before Behind existed.
 
-use photocraft_color::{BlendMode, ColorMode, PixelFormat};
-use photocraft_compose::pattern::{Placement, Tile, render};
-use photocraft_doc::{LayerId, Pattern};
-use photocraft_geom::Rect;
-use photocraft_paint::retouch::{Footprint, Region, alpha_index, apply_coverage, apply_dab_stroke, over_native};
-use photocraft_paint::{Stroke, StrokePoint};
-use photocraft_raster::{Surface, from_rgba_into, to_rgba};
+use patronusphoto_color::{BlendMode, ColorMode, PixelFormat};
+use patronusphoto_compose::pattern::{Placement, Tile, render};
+use patronusphoto_doc::{LayerId, Pattern};
+use patronusphoto_geom::Rect;
+use patronusphoto_paint::retouch::{Footprint, Region, alpha_index, apply_coverage, apply_dab_stroke, over_native};
+use patronusphoto_paint::{Stroke, StrokePoint};
+use patronusphoto_raster::{Surface, from_rgba_into, to_rgba};
 use serde_json::{Value, json};
 
 use super::{bad, blend_param, damage_json, flag, has_pixel_layer, parse_brush, reject_huge_stroke};
@@ -29,7 +29,7 @@ pub const INDEXED_REFUSAL: &str = "Could not fill because the pattern and image 
 
 /// The reference refuses every pattern in an Indexed Color document before painting: RGB,
 /// Grayscale, CMYK, Lab and Indexed ones from another image. It paints only a pattern with the
-/// document's own colour table, which PhotoCraft can't tell apart, so that one is refused too.
+/// document's own colour table, which Patronus Photo can't tell apart, so that one is refused too.
 /// Bitmap, Duotone and Multichannel documents weren't measured and paint as before.
 fn mode_refusal(s: &Session) -> Result<()> {
     if s.active().is_some_and(|st| st.doc.mode == ColorMode::Indexed) { Err(EngineError::Other(INDEXED_REFUSAL.into())) } else { Ok(()) }
@@ -91,7 +91,7 @@ impl Setup {
         reject_huge_stroke(CMD, &stroke)?;
         let seed = p.get("seed").and_then(Value::as_u64).unwrap_or_else(|| {
             let bytes = p.get("points").map(std::string::ToString::to_string).unwrap_or_default();
-            photocraft_paint::rng::seed_from_bytes(bytes.as_bytes())
+            patronusphoto_paint::rng::seed_from_bytes(bytes.as_bytes())
         });
         stroke.brush.seed = seed;
         Ok(Self { stroke, id, mode, behind, aligned, impressionist, pat, tile, phase, scale, angle, seed })
@@ -327,8 +327,8 @@ fn stamp_dab(
         return;
     }
     let i = fp.index as u64;
-    let jx = photocraft_paint::rng::rand_signed(seed, i, STREAM_PHASE_X) * tw;
-    let jy = photocraft_paint::rng::rand_signed(seed, i, STREAM_PHASE_Y) * th;
+    let jx = patronusphoto_paint::rng::rand_signed(seed, i, STREAM_PHASE_X) * tw;
+    let jy = patronusphoto_paint::rng::rand_signed(seed, i, STREAM_PHASE_Y) * th;
     let place = placement((phase.0 + jx, phase.1 + jy), scale, angle);
     let rgba = render(tile, &place, r);
     let rw = r.width() as usize;
@@ -351,7 +351,7 @@ fn stamp_dab(
                 }
             } else {
                 let d = to_rgba(fmt, dst);
-                let o = photocraft_color::blend::composite(mode, d, *px, k);
+                let o = patronusphoto_color::blend::composite(mode, d, *px, k);
                 from_rgba_into(fmt, o, &mut enc);
                 if let Some(src) = enc.get(..n) {
                     dst.copy_from_slice(src);
@@ -374,7 +374,7 @@ mod tests {
     use super::*;
 
     fn stroke(points: &[(f64, f64)], size: f32) -> Stroke {
-        let brush = photocraft_paint::BrushSettings { size, ..Default::default() };
+        let brush = patronusphoto_paint::BrushSettings { size, ..Default::default() };
         Stroke { brush, points: points.iter().map(|&(x, y)| StrokePoint::new(x, y, 1.0)).collect() }
     }
 

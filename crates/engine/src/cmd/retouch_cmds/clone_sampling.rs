@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use crate::presets::clone_source::uses_slot;
 use craft_cms::{Transform, TransformOptions};
-use photocraft_color::ColorMode;
+use patronusphoto_color::ColorMode;
 
 use super::sampling::{SampleLayers, composite_region, sample, sample_layers};
 use super::{Document, EngineError, LayerId, PixelFormat, Rect, Region, Result, SampleType, Session, Surface, Value, bad, periodic, targets_pixels};
@@ -168,7 +168,7 @@ fn convert_region(mut region: Region, from: PixelFormat, to: PixelFormat, transf
                 dst[colors] = if from.alpha { src.get(colors).copied().unwrap_or(1.0) } else { 1.0 };
             }
         } else {
-            dst.copy_from_slice(&photocraft_raster::convert_pixel(&from, &to, src));
+            dst.copy_from_slice(&patronusphoto_raster::convert_pixel(&from, &to, src));
         }
     }
     Ok(out)

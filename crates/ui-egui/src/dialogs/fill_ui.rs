@@ -11,16 +11,16 @@ use craft::ui::dialog::DialogId;
 use craft::ui::patterns::form_dialogs::{DialogFields, FieldValue, Param, ParamDialog, ParamKind, ParamResult};
 use craft::ui::runtime::env::Label;
 use craft::ui::runtime::memory::SaveKey;
-use photocraft_color::BlendMode;
+use patronusphoto_color::BlendMode;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::dialogs::blend_options::{blending_params, blending_rows};
 use crate::dialogs::params::{captured, open_param};
 
 /// The command of the dialog, which is also its dialog key.
 pub const COMMAND: &str = "edit.fill";
-const REMEMBER: &str = "photocraft.dialog.edit.fill";
+const REMEMBER: &str = "patronusphoto.dialog.edit.fill";
 
 /// The Contents menu: (param, label), in Photoshop's order. Color reads without an ellipsis: choosing it opens nothing.
 pub const CONTENTS: [(&str, &str); 9] = [
@@ -70,7 +70,7 @@ fn defaults(foreground: [f32; 3], first_pattern: Option<String>) -> DialogFields
 }
 
 /// Open Fill with the current editing target captured, so live UI changes cannot redirect confirmation.
-pub fn open(app: &mut PhotocraftApp) -> DialogId {
+pub fn open(app: &mut PatronusPhotoApp) -> DialogId {
     let target = app.with_mask_target(COMMAND, json!({}));
     let target = target.get("target").cloned().unwrap_or_else(|| crate::canvas::paint_target(app));
     // Alpha and Quick Mask belong to the document, independently of its active layer.
@@ -133,7 +133,7 @@ pub(crate) fn owns(key: &str) -> bool {
 }
 
 /// OK is held until the document and layer are the ones the dialog opened on.
-pub(crate) fn check(app: &mut PhotocraftApp, result: &ParamResult) -> Result<(), Label> {
+pub(crate) fn check(app: &mut PatronusPhotoApp, result: &ParamResult) -> Result<(), Label> {
     let captured = &captured(app, &result.key);
     let st = app.session.active().ok_or_else(|| Label::from(tl!("The document is closed")))?;
     if captured.get("document").and_then(Value::as_u64) != Some(st.doc.id.0) || captured.get("layer").is_some_and(|layer| layer != &json!(st.active_layer)) {
@@ -143,7 +143,7 @@ pub(crate) fn check(app: &mut PhotocraftApp, result: &ParamResult) -> Result<(),
 }
 
 /// Fill with the confirmed choices; they are remembered only when the fill succeeded.
-pub(crate) fn run(app: &mut PhotocraftApp, ctx: &egui::Context, result: ParamResult) {
+pub(crate) fn run(app: &mut PatronusPhotoApp, ctx: &egui::Context, result: ParamResult) {
     let captured = captured(app, &result.key);
     match app.run(COMMAND, params(&result.fields, &captured)) {
         Ok(_) => result.remember(ctx),

@@ -4,16 +4,16 @@
 //! Keys go through a full app frame, so the canvas editor takes them as on the canvas.
 
 use egui::Modifiers;
-use photocraft_doc::{LayerContent, LayerId};
-use photocraft_raster::Surface;
+use patronusphoto_doc::{LayerContent, LayerId};
+use patronusphoto_raster::Surface;
 use serde_json::json;
 
 use super::commit_tests::{edit_active, type_new};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
-fn new_app(tool: Tool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn new_app(tool: Tool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 400, "height": 200})).unwrap();
     // A selection away from the text, which a Type Mask session must leave as it is.
     app.run("select.rect", json!({"x": 300, "y": 150, "width": 60, "height": 30})).unwrap();
@@ -22,12 +22,12 @@ fn new_app(tool: Tool) -> Box<PhotocraftApp> {
     app
 }
 
-fn press(mut app: Box<PhotocraftApp>, k: egui::Key, modifiers: Modifiers) -> Box<PhotocraftApp> {
+fn press(mut app: Box<PatronusPhotoApp>, k: egui::Key, modifiers: Modifiers) -> Box<PatronusPhotoApp> {
     crate::canvas::testing::key(&mut app, k, modifiers);
     app
 }
 
-fn command_period(app: Box<PhotocraftApp>) -> Box<PhotocraftApp> {
+fn command_period(app: Box<PatronusPhotoApp>) -> Box<PatronusPhotoApp> {
     press(app, egui::Key::Period, Modifiers::COMMAND)
 }
 
@@ -47,19 +47,19 @@ impl std::fmt::Debug for Snapshot {
     }
 }
 
-fn snapshot(app: &PhotocraftApp) -> Snapshot {
+fn snapshot(app: &PatronusPhotoApp) -> Snapshot {
     let st = app.session.active().unwrap();
     Snapshot { selection: st.doc.selection.clone(), history: st.history.entries(), layers: st.doc.layers.iter().map(|l| l.id).collect() }
 }
 
-fn text_of(app: &PhotocraftApp, id: LayerId) -> String {
+fn text_of(app: &PatronusPhotoApp, id: LayerId) -> String {
     match &app.session.active().unwrap().doc.layer(id).unwrap().content {
         LayerContent::Text(t) => t.text.clone(),
         other => panic!("{}", other.kind_name()),
     }
 }
 
-fn size_of(app: &PhotocraftApp, id: LayerId) -> f32 {
+fn size_of(app: &PatronusPhotoApp, id: LayerId) -> f32 {
     match &app.session.active().unwrap().doc.layer(id).unwrap().content {
         LayerContent::Text(t) => t.runs[0].style.size_pt,
         other => panic!("{}", other.kind_name()),

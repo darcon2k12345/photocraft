@@ -1,11 +1,11 @@
 //! Opt-in Profile dithering preserves representation, alpha, wide paths and atomic refusal.
 
 use craft_cms::{Builtin, Intent, Transform};
-use photocraft_color::{ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{Document, Layer, LayerContent};
-use photocraft_engine::Session;
-use photocraft_geom::{Rect, Size, TileCoord};
-use photocraft_raster::Surface;
+use patronusphoto_color::{ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::{Document, Layer, LayerContent};
+use patronusphoto_engine::Session;
+use patronusphoto_geom::{Rect, Size, TileCoord};
+use patronusphoto_raster::Surface;
 use serde_json::{Value, json};
 
 const GRAY: [f32; 4] = [128.0 / 255.0, 128.0 / 255.0, 128.0 / 255.0, 83.0 / 255.0];

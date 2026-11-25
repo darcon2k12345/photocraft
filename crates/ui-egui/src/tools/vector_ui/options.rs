@@ -14,7 +14,7 @@ use craft::ui::text::NumberField;
 use super::path_menus::{path_alignment_menu, path_arrangement_menu, path_operations_menu};
 use super::path_ops::{active_path_name, indexed_document};
 use super::shapes::is_shape_tool;
-use super::{LayerContent, PhotocraftApp, Tool, Value, copy_arrow_to_tool_defaults, json};
+use super::{LayerContent, PatronusPhotoApp, Tool, Value, copy_arrow_to_tool_defaults, json};
 use crate::history_keys;
 
 // ---------------------------------------------------------------------------------------------
@@ -34,7 +34,7 @@ fn label(text: &str) -> Label {
 }
 
 /// The document's pixels per inch, which sizes lengths typed in inches or points.
-fn document_ppi(app: &PhotocraftApp) -> f64 {
+fn document_ppi(app: &PatronusPhotoApp) -> f64 {
     app.session.active().map_or(72.0, |st| f64::from(st.doc.resolution_dpi))
 }
 
@@ -49,7 +49,7 @@ const SHAPE_TOOL_MODES: [(VectorMode, bool); 2] = [(VectorMode::Shape, true), (V
 const SHAPE_ONLY: [(VectorMode, bool); 1] = [(VectorMode::Shape, true)];
 
 /// Options bar for vector tools; false for other tools.
-pub fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui, tool: Tool) -> bool {
+pub fn options_bar(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, tool: Tool) -> bool {
     if !(is_shape_tool(tool)
         || matches!(
             tool,
@@ -67,7 +67,7 @@ pub fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui, tool: Tool) -> bo
 }
 
 /// The cells of the bar for `tool`.
-fn bar(app: &mut PhotocraftApp, ui: &mut egui::Ui, tool: Tool, open: &mut BarOpen) {
+fn bar(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, tool: Tool, open: &mut BarOpen) {
     let target = selected_shape(&app.session);
     // Direct Selection shares the Path Selection bar (#13219).
     if matches!(tool, Tool::PathSelection | Tool::DirectSelection) && !crate::direct_select::active_paths(app).is_empty() {
@@ -157,7 +157,7 @@ fn bar(app: &mut PhotocraftApp, ui: &mut egui::Ui, tool: Tool, open: &mut BarOpe
 }
 
 /// The Pen, Freeform Pen and Curvature Pen bar.
-fn pen_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui, tool: Tool, open: &mut BarOpen) {
+fn pen_bar(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, tool: Tool, open: &mut BarOpen) {
     // Photoshop's Pen lists Shape, Path and a greyed Pixels; the other pens keep theirs.
     let offered: &[(VectorMode, bool)] = if tool == Tool::Pen { &PEN_MODES } else { &OTHER_PEN_MODES };
     let mode_before = app.ui.tool_options.vector_mode;
@@ -236,7 +236,7 @@ fn pen_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui, tool: Tool, open: &mut Ba
 
 /// Path mode's "Make:" row, as in Photoshop's options bar: Selection…, Mask and Shape, from the
 /// path being drawn or the active path; all greyed without one.
-fn make_buttons(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+fn make_buttons(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     hint(ui, tl!("Make:"));
     let pending = app.ui.pen.as_ref().is_some_and(|p| p.draft.knots.len() >= 2);
     let has_path = pending || active_path_name(app).is_some();
@@ -266,7 +266,7 @@ fn make_buttons(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 /// Make: Mask: a vector mask on the active layer from the path being drawn (finished
 /// first, as the canvas menu's Create Vector Mask does) or the active path. The command records
 /// the History step Add Vector Mask and turns the Background into a normal layer in that edit.
-fn make_mask(app: &mut PhotocraftApp) -> Result<(), String> {
+fn make_mask(app: &mut PatronusPhotoApp) -> Result<(), String> {
     if app.ui.pen.as_ref().is_some_and(|p| p.draft.knots.len() >= 2) && !super::pen::pen_commit(app, false) {
         return Err(app.ui.status.clone());
     }
@@ -281,7 +281,7 @@ pub(crate) fn draws_path(o: &crate::state::ToolOptions) -> bool {
 }
 
 /// Whether the active layer supplies the selected-shape options.
-pub(super) fn selected_shape(session: &photocraft_engine::Session) -> Option<photocraft_doc::LayerId> {
+pub(super) fn selected_shape(session: &patronusphoto_engine::Session) -> Option<patronusphoto_doc::LayerId> {
     let st = session.active()?;
     let layer = st.active_layer?;
     matches!(st.doc.layer(layer)?.content, LayerContent::Shape(_)).then_some(layer)
@@ -290,8 +290,8 @@ pub(super) fn selected_shape(session: &photocraft_engine::Session) -> Option<pho
 // ---------------------------------------------------------------------------------------------
 // Properties (shape layers)
 
-pub(super) fn solid_paint(c: [f32; 4]) -> photocraft_doc::Fill {
-    photocraft_doc::Fill::Solid(photocraft_doc::Color::rgba(c[0], c[1], c[2], c[3]))
+pub(super) fn solid_paint(c: [f32; 4]) -> patronusphoto_doc::Fill {
+    patronusphoto_doc::Fill::Solid(patronusphoto_doc::Color::rgba(c[0], c[1], c[2], c[3]))
 }
 
 pub(crate) fn enabled_stroke_width(width: f32) -> f32 {
@@ -309,8 +309,8 @@ pub(super) fn corner_radii_patch(radii: [f64; 4], corner: usize, radius: f32) ->
 }
 
 /// The framework's live shape for the layer's.
-fn live_of(live: &photocraft_doc::vector::LiveShape) -> fw::LiveShape {
-    use photocraft_doc::vector::LiveShape as Doc;
+fn live_of(live: &patronusphoto_doc::vector::LiveShape) -> fw::LiveShape {
+    use patronusphoto_doc::vector::LiveShape as Doc;
     match live {
         Doc::Rect { rect, radii } => fw::LiveShape::rect(rect[2], rect[3], *radii),
         Doc::Ellipse { rect } => fw::LiveShape::ellipse(rect[2], rect[3]),
@@ -336,11 +336,11 @@ struct Edit {
     field: &'static str,
     patch: Value,
     recent: Option<[f32; 3]>,
-    gradient: Option<photocraft_doc::Fill>,
+    gradient: Option<patronusphoto_doc::Fill>,
 }
 
 /// The gradient a chip's `paint` stands for over `base`; `None` for a paint that is no gradient.
-fn picked_gradient(paint: &Paint, base: &photocraft_doc::Fill) -> Option<photocraft_doc::Fill> {
+fn picked_gradient(paint: &Paint, base: &patronusphoto_doc::Fill) -> Option<patronusphoto_doc::Fill> {
     match paint {
         Paint::Gradient(preview) => Some(crate::shape_paint_ui::gradient_fill(preview, base)),
         _ => None,
@@ -350,7 +350,7 @@ fn picked_gradient(paint: &Paint, base: &photocraft_doc::Fill) -> Option<photocr
 /// The `shape.edit` patch of `change` on the layer `sh`; `None` when the change is no edit. `gradients` are the fill's
 /// and the stroke's [`ChipLibrary::gradient`](crate::shape_paint_ui::ChipLibrary::gradient), which a gradient paint
 /// is laid over.
-fn edit_of(change: &fw::ShapeChange, sh: &photocraft_doc::ShapeLayer, gradients: &[photocraft_doc::Fill; 2]) -> Option<Edit> {
+fn edit_of(change: &fw::ShapeChange, sh: &patronusphoto_doc::ShapeLayer, gradients: &[patronusphoto_doc::Fill; 2]) -> Option<Edit> {
     let plain = |field, patch| Some(Edit { field, patch, recent: None, gradient: None });
     let width_now = sh.stroke.as_ref().map_or(0.0, |s| s.width);
     match change {
@@ -390,16 +390,16 @@ fn edit_of(change: &fw::ShapeChange, sh: &photocraft_doc::ShapeLayer, gradients:
         }
         fw::ShapeChange::Size { width, height, .. } => {
             let rect = match sh.live.as_ref()? {
-                photocraft_doc::vector::LiveShape::Rect { rect, .. }
-                | photocraft_doc::vector::LiveShape::Ellipse { rect }
-                | photocraft_doc::vector::LiveShape::Polygon { rect, .. }
-                | photocraft_doc::vector::LiveShape::Triangle { rect, .. } => *rect,
+                patronusphoto_doc::vector::LiveShape::Rect { rect, .. }
+                | patronusphoto_doc::vector::LiveShape::Ellipse { rect }
+                | patronusphoto_doc::vector::LiveShape::Polygon { rect, .. }
+                | patronusphoto_doc::vector::LiveShape::Triangle { rect, .. } => *rect,
                 _ => return None,
             };
             plain("wh", json!({"rect": [rect[0], rect[1], width.round(), height.round()]}))
         }
         fw::ShapeChange::Radii(new) => {
-            let Some(photocraft_doc::vector::LiveShape::Rect { radii, .. }) = sh.live.as_ref() else { return None };
+            let Some(patronusphoto_doc::vector::LiveShape::Rect { radii, .. }) = sh.live.as_ref() else { return None };
             let mut next = *radii;
             let mut patch = json!({"radii": next});
             for (corner, radius) in new.iter().enumerate() {
@@ -425,7 +425,7 @@ fn edit_of(change: &fw::ShapeChange, sh: &photocraft_doc::ShapeLayer, gradients:
 ///
 /// Each pass reads the layer fresh and applies only the events the panel reports in that pass, so a
 /// second pass in the same frame applies nothing the first already did.
-pub fn shape_properties(app: &mut PhotocraftApp, ui: &mut egui::Ui, id: photocraft_doc::LayerId) {
+pub fn shape_properties(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, id: patronusphoto_doc::LayerId) {
     let Some(st) = app.session.active() else { return };
     let doc = st.doc.id;
     let locks = st.doc.effective_locks(id);
@@ -467,7 +467,7 @@ pub fn shape_properties(app: &mut PhotocraftApp, ui: &mut egui::Ui, id: photocra
 
     let mut applied = false;
     let mut recent: Option<[f32; 3]> = None;
-    let mut remembered: Vec<photocraft_doc::Fill> = Vec::new();
+    let mut remembered: Vec<patronusphoto_doc::Fill> = Vec::new();
     let prefix = |field: &str| format!("shape-{doc:?}-{}-{field}", id.0);
     for event in &events {
         let Some(change) = event.value() else { continue };

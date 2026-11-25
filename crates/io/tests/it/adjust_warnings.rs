@@ -3,11 +3,11 @@
 
 use craft_psd::descriptor::{Descriptor, Id, UnicodeString, Value, VersionedDescriptor};
 use craft_psd::{Compression, LayerFlags, LayerRecord, PsdFile, TaggedBlock, Version, testgen};
-use photocraft_color::{ColorMode, SampleType};
-use photocraft_doc::{Adjustment, Document, Layer, LayerContent};
-use photocraft_geom::Size;
-use photocraft_io::*;
-use photocraft_raster::Surface;
+use patronusphoto_color::{ColorMode, SampleType};
+use patronusphoto_doc::{Adjustment, Document, Layer, LayerContent};
+use patronusphoto_geom::Size;
+use patronusphoto_io::*;
+use patronusphoto_raster::Surface;
 
 fn reopen(adj: Adjustment, path: &str, opts: &ExportOptions) -> (Document, Vec<String>) {
     let mut d = Document::new("a", Size::new(16, 16), ColorMode::Rgb, SampleType::U8);
@@ -122,7 +122,7 @@ fn photoshop_layout_color_lookup_round_trips_through_psb() {
     };
     assert_eq!(name, "frost.cube");
     // The loaded `.cube` file is kept as its source, so a later save can embed it unchanged.
-    assert_eq!(source.format, photocraft_doc::adjust::LutFormat::Cube);
+    assert_eq!(source.format, patronusphoto_doc::adjust::LutFormat::Cube);
     assert_eq!(source.bytes.as_slice(), b"LUT_3D_SIZE 2\n0 0 0\n0 1 1\n0 1 0\n1 1 0\n0 0 1\n1 0 1\n0 1 1\n1 1 1\n");
     assert_eq!(*size, 2);
     let want: Vec<f32> = [0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0].into();
@@ -137,7 +137,7 @@ fn photoshop_layout_color_lookup_round_trips_through_psb() {
     let mut bg = Surface::new(d.pixel_format());
     bg.fill_rect(d.bounds(), &[1.0, 0.0, 0.0, 1.0]);
     d.layers.insert(0, Layer::new("bg", LayerContent::Raster(bg)));
-    let px = photocraft_compose::flatten(&d).px[0];
+    let px = patronusphoto_compose::flatten(&d).px[0];
     assert!(px[0] < 0.05 && (px[1] - 1.0).abs() < 0.05 && (px[2] - 1.0).abs() < 0.05, "{px:?}");
 }
 

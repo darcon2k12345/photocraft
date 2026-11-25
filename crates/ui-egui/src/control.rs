@@ -1,4 +1,4 @@
-//! PhotoCraft's control methods, for agents, tests and (soon) MCP: the method table that
+//! Patronus Photo's control methods, for agents, tests and (soon) MCP: the method table that
 //! craft-automation's control channel runs.
 //!
 //! A transport thread (TCP in the desktop app, a channel in tests) sends [`ControlRequest`]s;
@@ -47,7 +47,7 @@
 pub use craft::automation::{ControlRequest, ControlResponse, REPLY_DEADLINE, Reply};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 pub(crate) mod dialogs;
@@ -65,7 +65,7 @@ use params::screen_point;
 /// Run a command the way automation does (script events off). Long commands may run as
 /// background jobs: by default the reply waits for the job's result (backward compatible); with
 /// `wait` false it is `{job, pending: true}` at once.
-fn run_waiting(app: &mut PhotocraftApp, wait: bool, run: impl FnOnce(&mut PhotocraftApp) -> Result<Value, String>) -> Reply {
+fn run_waiting(app: &mut PatronusPhotoApp, wait: bool, run: impl FnOnce(&mut PatronusPhotoApp) -> Result<Value, String>) -> Reply {
     let events_enabled = app.session.prefs().script_events.enabled;
     if events_enabled {
         app.session.edit_prefs(|prefs| prefs.script_events.enabled = false);
@@ -84,7 +84,7 @@ fn run_waiting(app: &mut PhotocraftApp, wait: bool, run: impl FnOnce(&mut Photoc
 }
 
 /// The methods that only hand the window input (it reaches a region as a hand's does) or only read: every other method
-/// may change what a settling region shows, so it counts as a command run (`PhotocraftApp::commands_run`).
+/// may change what a settling region shows, so it counts as a command run (`PatronusPhotoApp::commands_run`).
 const INPUT_OR_READ: &[&str] = &[
     "engine.commands",
     "jobs.list",
@@ -101,7 +101,7 @@ const INPUT_OR_READ: &[&str] = &[
     "ui.wheel",
 ];
 
-pub fn handle(app: &mut PhotocraftApp, ctx: &egui::Context, req: &ControlRequest) -> Reply {
+pub fn handle(app: &mut PatronusPhotoApp, ctx: &egui::Context, req: &ControlRequest) -> Reply {
     if !INPUT_OR_READ.contains(&req.method.as_str()) {
         app.commands_run += 1;
         ctx.request_repaint();

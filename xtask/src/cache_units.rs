@@ -104,7 +104,7 @@ mod tests {
             eprintln!("cargo-nextest unavailable; skipping mixed-stream integration test");
             return;
         }
-        let dir = std::env::temp_dir().join(format!("photocraft-cache-units-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("patronusphoto-cache-units-{}", std::process::id()));
         std::fs::create_dir_all(dir.join("src")).unwrap();
         std::fs::write(dir.join("Cargo.toml"), "[package]\nname = \"cache-unit-fixture\"\nversion = \"0.1.0\"\nedition = \"2021\"\n").unwrap();
         std::fs::write(dir.join("src/lib.rs"), "#[test] fn one() {}\n").unwrap();

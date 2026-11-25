@@ -4,7 +4,7 @@
 use egui::Modifiers;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing;
 use crate::canvas_tool_menu::MenuKind;
 use crate::state::Tool;
@@ -16,8 +16,8 @@ enum Outcome {
     Erase,
 }
 
-fn app(mode: &str, erase_preference: bool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app(mode: &str, erase_preference: bool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     // The erase stroke commits in the click's own pass, so its journal entry is there when the click returns.
     app.background_jobs = false;
     app.run("file.new", json!({"width": 64, "height": 64, "background": "white"})).unwrap();

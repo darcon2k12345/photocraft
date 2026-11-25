@@ -14,7 +14,7 @@
 use std::sync::Arc;
 
 use craft_cms::{Builtin, Profile, Transform, TransformOptions};
-use photocraft_color::ColorMode;
+use patronusphoto_color::ColorMode;
 use serde_json::{Value, json};
 
 use crate::Session;
@@ -224,12 +224,12 @@ impl SwatchConv {
             SwatchColor::Hsb(v) => hsb_to_rgb(v),
             SwatchColor::Cmyk(v) => {
                 let v = v.map(unit);
-                eval(&self.cmyk, &v).unwrap_or_else(|| photocraft_color::convert::cmyk_to_rgb(v))
+                eval(&self.cmyk, &v).unwrap_or_else(|| patronusphoto_color::convert::cmyk_to_rgb(v))
             }
             SwatchColor::Lab([l, a, b]) => {
                 // ICC v4 Lab encoding (the Lab D50 profile's device values).
                 let enc = [unit(finite(l) / 100.0), unit((finite(a) + 128.0) / 255.0), unit((finite(b) + 128.0) / 255.0)];
-                eval(&self.lab, &enc).unwrap_or_else(|| photocraft_color::convert::lab_to_srgb([finite(l), finite(a), finite(b)]))
+                eval(&self.lab, &enc).unwrap_or_else(|| patronusphoto_color::convert::lab_to_srgb([finite(l), finite(a), finite(b)]))
             }
             SwatchColor::Gray(k) => {
                 let level = 1.0 - unit(k);

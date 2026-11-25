@@ -12,7 +12,7 @@ use craft::ui::canvas::ShieldColor;
 use craft::ui::dialog::DialogId;
 
 use super::{PickTarget, rgb_hex};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// A live target as it was when its picker opened.
 enum Before {
@@ -31,7 +31,7 @@ pub(crate) struct Live {
 }
 
 /// Starts previewing picker `picker` when its `target` has a live target.
-pub(super) fn begin(app: &mut PhotocraftApp, picker: DialogId, target: &PickTarget) {
+pub(super) fn begin(app: &mut PatronusPhotoApp, picker: DialogId, target: &PickTarget) {
     let before = match target {
         PickTarget::Request { parent, key } => Before::Row { parent: *parent, key: key.clone() },
         PickTarget::CropShield => {
@@ -46,7 +46,7 @@ pub(super) fn begin(app: &mut PhotocraftApp, picker: DialogId, target: &PickTarg
 #[cfg(test)]
 /// The dialogs an open picker is previewing in: they record no ⌘Z step meanwhile, so a Cancel leaves
 /// no trace and an OK is one step.
-pub(crate) fn previewed_dialogs(app: &PhotocraftApp) -> Vec<DialogId> {
+pub(crate) fn previewed_dialogs(app: &PatronusPhotoApp) -> Vec<DialogId> {
     app.color_picker_live
         .iter()
         .filter_map(|l| match &l.before {
@@ -58,7 +58,7 @@ pub(crate) fn previewed_dialogs(app: &PhotocraftApp) -> Vec<DialogId> {
 
 /// The colour picker `picker` shows: `Some(None)` while it is the one it opened on, `None` once the
 /// picker is closed.
-fn picked(app: &PhotocraftApp, picker: DialogId) -> Option<Option<Srgba>> {
+fn picked(app: &PatronusPhotoApp, picker: DialogId) -> Option<Option<Srgba>> {
     let d = app.framework.dialogs.get_by_id::<ColorPickerDialog>(picker)?;
     let color = d.current()?.color;
     let opening = d.opening().map(|o| o.color);
@@ -75,7 +75,7 @@ fn same(a: Option<Srgba>, b: Option<Srgba>) -> bool {
 
 /// Shows `color` in the target, or what it was (`None`). `shown` is what the target showed until now. A shield that
 /// no longer holds the shown colour was set elsewhere while the picker was open, and keeps that choice.
-fn show(app: &mut PhotocraftApp, before: &mut Before, shown: Option<Srgba>, color: Option<Srgba>) -> Result<(), String> {
+fn show(app: &mut PatronusPhotoApp, before: &mut Before, shown: Option<Srgba>, color: Option<Srgba>) -> Result<(), String> {
     match before {
         Before::Row { parent, key } => {
             app.framework.dialogs.preview_color(*parent, key, color);
@@ -103,7 +103,7 @@ fn show(app: &mut PhotocraftApp, before: &mut Before, shown: Option<Srgba>, colo
 
 /// Shows each open picker's colour in its target, and puts back the target of a picker that closed
 /// without [`end`]. True when a target changed (the caller repaints, so the parent redraws).
-pub(crate) fn sync(app: &mut PhotocraftApp) -> bool {
+pub(crate) fn sync(app: &mut PatronusPhotoApp) -> bool {
     if app.color_picker_live.is_empty() {
         return false;
     }
@@ -134,7 +134,7 @@ pub(crate) fn sync(app: &mut PhotocraftApp) -> bool {
 
 /// Picker `picker` is closing (OK or Cancel): put its target back as it was when it opened and stop
 /// previewing. OK then sets the target.
-pub(crate) fn end(app: &mut PhotocraftApp, picker: DialogId) {
+pub(crate) fn end(app: &mut PatronusPhotoApp, picker: DialogId) {
     let Some(i) = app.color_picker_live.iter().position(|l| l.picker == picker) else { return };
     let mut l = app.color_picker_live.remove(i);
     let _ = show(app, &mut l.before, l.shown, None);

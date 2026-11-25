@@ -8,11 +8,11 @@ use craft::ui::dialog::{Alert, HostedAlert};
 use craft::ui::patterns::blend_keys::{BlendKeyEntry, blend_entries};
 use craft::ui::runtime::env::{Env, Label};
 use craft::ui::text::RangeAlert;
-use photocraft_doc::BlendMode;
-use photocraft_paint::BrushSettings;
+use patronusphoto_doc::BlendMode;
+use patronusphoto_paint::BrushSettings;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::brush_mode_menu;
 use crate::state::Tool;
 
@@ -90,7 +90,7 @@ fn mode_entries() -> Vec<Entry<PaintMode>> {
 /// are fractions 0..1 in the brush and in the bar.
 // The framework's value structs are `#[non_exhaustive]`, so they are built from their defaults.
 #[allow(clippy::field_reassign_with_default)]
-fn paint_values(app: &PhotocraftApp, tool: Tool, b: &BrushSettings) -> PaintValues<PaintMode> {
+fn paint_values(app: &PatronusPhotoApp, tool: Tool, b: &BrushSettings) -> PaintValues<PaintMode> {
     let o = &app.ui.tool_options;
     let clear_flag = match tool {
         Tool::Brush => o.brush_clear,
@@ -140,7 +140,7 @@ fn paint_values(app: &PhotocraftApp, tool: Tool, b: &BrushSettings) -> PaintValu
 
 /// Writes the bar's `after` values onto `brush` and the tool options. Only what differs from
 /// `before` is written, so a Mode list that shows Clear because `~` is held does not store it.
-fn apply_values(app: &mut PhotocraftApp, tool: Tool, brush: &mut BrushSettings, before: &PaintValues<PaintMode>, after: &PaintValues<PaintMode>) {
+fn apply_values(app: &mut PatronusPhotoApp, tool: Tool, brush: &mut BrushSettings, before: &PaintValues<PaintMode>, after: &PaintValues<PaintMode>) {
     // The brush keeps at least 1 % opacity and flow (0 % paints nothing, #11812).
     // PLAN: PaintBar's Opacity and Flow fields range over 0..=100, so a typed 0 on the Eraser reports no
     // `out_of_range` and shows no alert (the old bar's range started at 1); pn.C18's owner decides the range.
@@ -197,8 +197,8 @@ fn apply_values(app: &mut PhotocraftApp, tool: Tool, brush: &mut BrushSettings, 
 
 /// The Eraser's range alert for a value typed out of range. One alert at a time: a second typed
 /// value while one is open adds none.
-fn open_range_alert(app: &mut PhotocraftApp, ui: &egui::Ui, range: &RangeAlert) {
-    let alert = Alert::range(tl!("PhotoCraft").to_owned(), range, &Env::of(ui));
+fn open_range_alert(app: &mut PatronusPhotoApp, ui: &egui::Ui, range: &RangeAlert) {
+    let alert = Alert::range(tl!("Patronus Photo").to_owned(), range, &Env::of(ui));
     // An `Err` is the alert that was not opened because one is already up.
     let _ = app.framework.dialogs.open_unless_open(HostedAlert::new(alert));
 }
@@ -208,7 +208,7 @@ fn open_range_alert(app: &mut PhotocraftApp, ui: &egui::Ui, range: &RangeAlert) 
 /// A pass applies only its own edits: the values are read from the app at the start of each pass
 /// and `PaintBar` reports an edit only in the pass that read the input, so a second pass in the
 /// same frame sees the stored result and writes nothing.
-pub(super) fn members(app: &mut PhotocraftApp, ui: &mut egui::Ui, tool: Tool) -> bool {
+pub(super) fn members(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, tool: Tool) -> bool {
     let Some(paint) = paint_tool(tool) else { return false };
     // The picker and its settings toggle are the host's; a Block-mode Eraser has no brush behind them.
     let block = crate::eraser_ui::block_mode(app, tool);
@@ -258,7 +258,7 @@ pub(super) fn members(app: &mut PhotocraftApp, ui: &mut egui::Ui, tool: Tool) ->
 }
 
 /// Puts a command's error on the status line.
-fn report(app: &mut PhotocraftApp, result: Result<serde_json::Value, String>) {
+fn report(app: &mut PatronusPhotoApp, result: Result<serde_json::Value, String>) {
     if let Err(e) = result {
         app.ui.status = e;
         app.ui.status_error = true;

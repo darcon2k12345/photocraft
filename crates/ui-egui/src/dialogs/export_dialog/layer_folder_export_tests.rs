@@ -4,10 +4,10 @@
 //! One file keeps the save dialog with the layer's name.
 
 use super::*;
-use photocraft_doc::{Color, Size};
+use patronusphoto_doc::{Color, Size};
 
 fn named(name: &str) -> Document {
-    Document::with_background(name, Size::new(4, 4), ColorMode::Rgb, photocraft_doc::SampleType::U8, Color::WHITE)
+    Document::with_background(name, Size::new(4, 4), ColorMode::Rgb, patronusphoto_doc::SampleType::U8, Color::WHITE)
 }
 
 #[test]
@@ -46,14 +46,14 @@ mod planted_link {
 
     /// A document with filled layers `a/b:c*?`, `Dup` and `Dup` (bottom to top), plus an empty layer. Its file dialogs
     /// stay open until the test answers them.
-    fn app() -> (Box<PhotocraftApp>, Vec<LayerId>, LayerId, Written, Arc<ScriptedFiles>) {
+    fn app() -> (Box<PatronusPhotoApp>, Vec<LayerId>, LayerId, Written, Arc<ScriptedFiles>) {
         let written = Written::default();
         let capture = written.clone();
         let files = Arc::new(ScriptedFiles::held());
         let services = crate::Services {
             files: Some(files.clone()),
             export: Some(Box::new(|doc, path, settings| {
-                photocraft_io::export(doc, path, &settings.io_options()).map(|r| (r.bytes, r.warnings)).map_err(|e| e.to_string())
+                patronusphoto_io::export(doc, path, &settings.io_options()).map(|r| (r.bytes, r.warnings)).map_err(|e| e.to_string())
             })),
             write: Some(Box::new(move |path, _| {
                 capture.borrow_mut().push(path.to_string());
@@ -61,7 +61,7 @@ mod planted_link {
             })),
             ..Default::default()
         };
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
         app.run("file.new", json!({"width": 40, "height": 30})).unwrap();
         app.run("layer.new.layer", json!({"name": "Blank"})).unwrap();
         let empty = app.session.active().unwrap().active_layer.unwrap();
@@ -76,7 +76,7 @@ mod planted_link {
 
     /// Layer › Export As on `ids` as PNG: Export asks for a destination, which the user answers with `path`. Returns the
     /// destination request.
-    fn export_layers_to(app: &mut PhotocraftApp, files: &ScriptedFiles, ids: &[LayerId], path: &std::path::Path) -> craft::host::PickRequest {
+    fn export_layers_to(app: &mut PatronusPhotoApp, files: &ScriptedFiles, ids: &[LayerId], path: &std::path::Path) -> craft::host::PickRequest {
         let ctx = app.ctx().clone();
         let id = open_layers(app, ids).unwrap();
         app.framework.dialogs.set_json_field(&ctx, id, "format", json!("png")).unwrap();

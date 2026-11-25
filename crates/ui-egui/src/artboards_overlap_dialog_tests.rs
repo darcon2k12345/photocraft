@@ -1,7 +1,7 @@
 //! #13629: the Artboards to Files dialog has the radio pair Include Overlapping Areas (selected
 //! by default) / Artboard Content Only right below the prefix, and OK passes the choice to
 //! `file.export.artboardsToFiles` as `content`. Layer Comps to Files has no such choice.
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use craft::ui::dialog::DialogId;
 use craft::ui::patterns::form_dialogs::HostedParamDialog;
 use egui::accesskit::{Role, Toggled};
@@ -13,10 +13,10 @@ const ARTBOARDS: &str = "file.export.artboardsToFiles";
 const OVERLAPPING: &str = "Include Overlapping Areas";
 const CONTENT_ONLY: &str = "Artboard Content Only";
 
-type H = Harness<'static, Box<PhotocraftApp>>;
+type H = Harness<'static, Box<PatronusPhotoApp>>;
 
 fn harness() -> H {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 64, "height": 64})).unwrap();
     app.run("layer.new.artboard", json!({"rect": [0, 0, 64, 64]})).unwrap();
     app.run("layerComp.new", json!({"name": "Comp"})).unwrap();
@@ -25,8 +25,8 @@ fn harness() -> H {
         .with_size(egui::vec2(1440.0, 900.0))
         .with_max_steps(64)
         .with_context(app.ctx().clone())
-        .build_ui_state(|ui, app: &mut Box<PhotocraftApp>| crate::dialogs::run(app, ui), app);
-    PhotocraftApp::setup_context(&h.ctx, Default::default());
+        .build_ui_state(|ui, app: &mut Box<PatronusPhotoApp>| crate::dialogs::run(app, ui), app);
+    PatronusPhotoApp::setup_context(&h.ctx, Default::default());
     h
 }
 

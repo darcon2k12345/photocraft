@@ -99,9 +99,13 @@ mod tests {
     /// Pixel targets need a layer; a saved alpha remains independently addressable without one.
     #[test]
     fn review_missing_pixel_layer_does_not_fall_back_to_composite() {
-        let mut doc =
-            photocraft_doc::Document::new("Channels", photocraft_geom::Size::new(8, 8), photocraft_color::ColorMode::Rgb, photocraft_color::SampleType::U8);
-        doc.channels.push(photocraft_doc::AlphaChannel::new("Saved", photocraft_raster::Surface::new(photocraft_color::PixelFormat::GRAY8)));
+        let mut doc = patronusphoto_doc::Document::new(
+            "Channels",
+            patronusphoto_geom::Size::new(8, 8),
+            patronusphoto_color::ColorMode::Rgb,
+            patronusphoto_color::SampleType::U8,
+        );
+        doc.channels.push(patronusphoto_doc::AlphaChannel::new("Saved", patronusphoto_raster::Surface::new(patronusphoto_color::PixelFormat::GRAY8)));
         let mut s = Session::new();
         s.add_document(doc, None);
         assert!(resolve_tone_target(&s, false, &json!({"target":"pixels"})).is_err());

@@ -6,14 +6,14 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use photocraft_ui_egui::PhotocraftApp;
+use patronusphoto_ui_egui::PatronusPhotoApp;
 use serde_json::json;
 
 /// Cancels the open dialog `id` names (the `dialog` of a menu invoke reply), as its Cancel button does.
-fn close_dialog(harness: &mut egui_kittest::Harness<'_, Box<PhotocraftApp>>, id: serde_json::Value) {
+fn close_dialog(harness: &mut egui_kittest::Harness<'_, Box<PatronusPhotoApp>>, id: serde_json::Value) {
     let ctx = harness.ctx.clone();
-    let (request, _) = photocraft_ui_egui::control::ControlRequest::new("ui.dialog.cancel", json!({"dialog": id}));
-    let photocraft_ui_egui::control::Reply::Done(reply) = photocraft_ui_egui::control::handle(harness.state_mut(), &ctx, &request) else {
+    let (request, _) = patronusphoto_ui_egui::control::ControlRequest::new("ui.dialog.cancel", json!({"dialog": id}));
+    let patronusphoto_ui_egui::control::Reply::Done(reply) = patronusphoto_ui_egui::control::handle(harness.state_mut(), &ctx, &request) else {
         panic!("ui.dialog.cancel did not finish")
     };
     assert_eq!(reply["ok"], true, "the dialog closes: {reply}");
@@ -28,11 +28,11 @@ fn render(profile: &str, rgb: [f32; 3], reopen: bool) -> Option<([u8; 3], [u8; 3
     let observer_out = observer.clone();
     let built = std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
         egui_kittest::Harness::builder().with_size(egui::vec2(1000.0, 700.0)).with_pixels_per_point(1.0).with_max_steps(64).wgpu().build_eframe(move |cc| {
-            PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-            let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), Default::default());
+            PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+            let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), Default::default());
             if let Some(rs) = cc.wgpu_render_state.as_ref() {
-                ft.store(photocraft_gpu::Compositor::preferred_acc_format(&rs.adapter) == eframe::wgpu::TextureFormat::Rgba32Float, Ordering::SeqCst);
-                *observer_out.lock().expect("GPU observer lock") = Some(photocraft_ui_egui::gpu_canvas::GpuCanvas::new(rs));
+                ft.store(patronusphoto_gpu::Compositor::preferred_acc_format(&rs.adapter) == eframe::wgpu::TextureFormat::Rgba32Float, Ordering::SeqCst);
+                *observer_out.lock().expect("GPU observer lock") = Some(patronusphoto_ui_egui::gpu_canvas::GpuCanvas::new(rs));
                 app.set_wgpu(rs.clone());
             }
             app
@@ -57,7 +57,7 @@ fn render(profile: &str, rgb: [f32; 3], reopen: bool) -> Option<([u8; 3], [u8; 3
     if reopen {
         app.session.active_mut().expect("active document").revision = 1;
     }
-    let sample = |harness: &mut egui_kittest::Harness<'_, Box<PhotocraftApp>>| {
+    let sample = |harness: &mut egui_kittest::Harness<'_, Box<PatronusPhotoApp>>| {
         harness.run_steps(6);
         let img = harness.render().expect("render");
         // The document is fitted into the canvas area: its centre lies on the document.
@@ -76,13 +76,13 @@ fn render(profile: &str, rgb: [f32; 3], reopen: bool) -> Option<([u8; 3], [u8; 3
     if reopen {
         let doc = harness.state().session.active().expect("active document").doc.clone();
         let id = doc.id;
-        let bytes = photocraft_format::save_to_bytes(&doc, &photocraft_format::SaveOptions::default()).expect("save native document");
+        let bytes = patronusphoto_format::save_to_bytes(&doc, &patronusphoto_format::SaveOptions::default()).expect("save native document");
         drop(doc);
         let observer = observer.lock().expect("GPU observer lock").clone().expect("GPU observer");
-        let (request, _) = photocraft_ui_egui::control::ControlRequest::new("ui.menu.invoke", json!({"id":"filter.blur.gaussianBlur"}));
+        let (request, _) = patronusphoto_ui_egui::control::ControlRequest::new("ui.menu.invoke", json!({"id":"filter.blur.gaussianBlur"}));
         let ctx = harness.ctx.clone();
-        let response = photocraft_ui_egui::control::handle(harness.state_mut(), &ctx, &request);
-        let photocraft_ui_egui::control::Reply::Done(opened) = response else { panic!("the filter dialog did not open") };
+        let response = patronusphoto_ui_egui::control::handle(harness.state_mut(), &ctx, &request);
+        let patronusphoto_ui_egui::control::Reply::Done(opened) = response else { panic!("the filter dialog did not open") };
         let filter_dialog = opened["result"]["dialog"].clone();
         assert!(filter_dialog.as_str().is_some_and(|id| id.parse::<u64>().is_ok()), "the menu reply names the dialog: {opened}");
         harness.run_steps(6);
@@ -91,7 +91,7 @@ fn render(profile: &str, rgb: [f32; 3], reopen: bool) -> Option<([u8; 3], [u8; 3
         harness.state_mut().run("file.close", json!({})).expect("close");
         assert!(!observer.has(preview, [512, 512]), "close releases preview resources");
         // No repaint between close and reopen: sync_views must release the old resource/signature.
-        let reopened = photocraft_format::load_from_bytes(&bytes).expect("load native document");
+        let reopened = patronusphoto_format::load_from_bytes(&bytes).expect("load native document");
         assert_eq!(reopened.id, id, "native loading preserves document ID");
         harness.state_mut().session.add_document(reopened, None);
         harness.state_mut().sync_views();
@@ -101,18 +101,18 @@ fn render(profile: &str, rgb: [f32; 3], reopen: bool) -> Option<([u8; 3], [u8; 3
         close_dialog(&mut harness, filter_dialog);
         let after_reopen = sample(&mut harness);
         assert!((0..3).all(|i| gpu[i].abs_diff(after_reopen[i]) <= 1), "GPU native reopen changed display color: {gpu:?} -> {after_reopen:?}");
-        let (request, _) = photocraft_ui_egui::control::ControlRequest::new("ui.menu.invoke", json!({"id":"image.adjustments.brightnessContrast"}));
-        let photocraft_ui_egui::control::Reply::Done(opened) = photocraft_ui_egui::control::handle(harness.state_mut(), &ctx, &request) else {
+        let (request, _) = patronusphoto_ui_egui::control::ControlRequest::new("ui.menu.invoke", json!({"id":"image.adjustments.brightnessContrast"}));
+        let patronusphoto_ui_egui::control::Reply::Done(opened) = patronusphoto_ui_egui::control::handle(harness.state_mut(), &ctx, &request) else {
             panic!("the adjustment dialog did not open")
         };
         let adjustment_dialog = opened["result"]["dialog"].clone();
         assert!(adjustment_dialog.as_str().is_some_and(|id| id.parse::<u64>().is_ok()), "the menu reply names the dialog: {opened}");
-        photocraft_ui_egui::adjust_preview::display_doc(harness.state_mut(), 0).expect("adjustment preview");
+        patronusphoto_ui_egui::adjust_preview::display_doc(harness.state_mut(), 0).expect("adjustment preview");
         harness.state_mut().run("file.close", json!({})).expect("close adjustment owner");
-        assert!(photocraft_ui_egui::adjust_preview::shown_key(harness.state()).is_none(), "close drops adjustment preview state before same-ID reopen");
-        harness.state_mut().session.add_document(photocraft_format::load_from_bytes(&bytes).expect("reopen adjustment owner"), None);
+        assert!(patronusphoto_ui_egui::adjust_preview::shown_key(harness.state()).is_none(), "close drops adjustment preview state before same-ID reopen");
+        harness.state_mut().session.add_document(patronusphoto_format::load_from_bytes(&bytes).expect("reopen adjustment owner"), None);
         harness.state_mut().sync_views();
-        photocraft_ui_egui::adjust_preview::display_doc(harness.state_mut(), 0).expect("rebuilt adjustment preview");
+        patronusphoto_ui_egui::adjust_preview::display_doc(harness.state_mut(), 0).expect("rebuilt adjustment preview");
         close_dialog(&mut harness, adjustment_dialog);
     }
     harness.state_mut().ui.view.flip_horizontal = true;
@@ -127,7 +127,7 @@ fn close(a: [u8; 3], b: [f32; 3], tol: f32) -> bool {
 
 #[test]
 fn display_p3_is_converted_on_gpu_and_cpu_canvases() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     // P3 (0.8, 0.5, 0.3) → sRGB (216.7, 122.9, 64.3) (see engine display_color_tests); raw would be (204, 128, 77).
     let Some((gpu, cpu)) = render("display-p3", [0.8, 0.5, 0.3], true) else { return };
     assert!(close(cpu, [216.7, 122.9, 64.3], 2.0), "CPU canvas {cpu:?}");
@@ -136,7 +136,7 @@ fn display_p3_is_converted_on_gpu_and_cpu_canvases() {
 
 #[test]
 fn srgb_documents_are_unchanged() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some((gpu, cpu)) = render("srgb", [0.8, 0.5, 0.3], false) else { return };
     assert!(close(cpu, [204.0, 128.0, 77.0], 1.0), "CPU canvas {cpu:?}");
     assert!(close(gpu, [204.0, 128.0, 77.0], 1.0), "GPU canvas {gpu:?}");

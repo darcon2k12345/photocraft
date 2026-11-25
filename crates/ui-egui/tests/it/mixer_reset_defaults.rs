@@ -1,20 +1,20 @@
 //! #11945: Mixer Brush reset defaults belong to the UI tool, not command constructors.
 
 use egui::{RawInput, Shape};
-use photocraft_color::BlendMode;
-use photocraft_engine::{BrushSettings, Session};
-use photocraft_ui_egui::control::{ControlRequest, Reply, handle};
-use photocraft_ui_egui::{PhotocraftApp, Tool};
+use patronusphoto_color::BlendMode;
+use patronusphoto_engine::{BrushSettings, Session};
+use patronusphoto_ui_egui::control::{ControlRequest, Reply, handle};
+use patronusphoto_ui_egui::{PatronusPhotoApp, Tool};
 use serde_json::{Value, json};
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(Session::new(), Default::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(Session::new(), Default::default());
     app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
     app.sync_views();
     app
 }
 
-fn control(app: &mut PhotocraftApp, params: Value) {
+fn control(app: &mut PatronusPhotoApp, params: Value) {
     let ctx = app.ctx().clone();
     let (req, _rx) = ControlRequest::new("ui.menu.invoke", params);
     let Reply::Done(reply) = handle(app, &ctx, &req) else { panic!("reset must finish synchronously") };
@@ -22,26 +22,26 @@ fn control(app: &mut PhotocraftApp, params: Value) {
     app.sync_views();
 }
 
-fn pick(app: &mut PhotocraftApp, tool: Tool) {
+fn pick(app: &mut PatronusPhotoApp, tool: Tool) {
     app.ui.tool = tool;
-    photocraft_ui_egui::paint_mouse::sync_tool_brush(app);
+    patronusphoto_ui_egui::paint_mouse::sync_tool_brush(app);
     app.sync_views();
 }
 
-fn reset(app: &mut PhotocraftApp) {
+fn reset(app: &mut PatronusPhotoApp) {
     control(app, json!({"id": "tool.reset"}));
 }
 
-fn reset_all(app: &mut PhotocraftApp) {
+fn reset_all(app: &mut PatronusPhotoApp) {
     control(app, json!({"id": "tool.resetAll", "params": {"confirmed": true}}));
 }
 
-fn tip(app: &mut PhotocraftApp) -> [f64; 5] {
+fn tip(app: &mut PatronusPhotoApp) -> [f64; 5] {
     let b = app.run("brush.get", json!({})).unwrap();
     ["size", "hardness", "spacing", "angle", "roundness"].map(|k| (b[k].as_f64().unwrap() * 1e4).round() / 1e4)
 }
 
-fn scramble(app: &mut PhotocraftApp) {
+fn scramble(app: &mut PatronusPhotoApp) {
     let b = &mut app.session.tools.brush;
     (b.size, b.hardness, b.spacing, b.angle, b.roundness) = (57.0, 0.4, 0.6, 30.0, 0.5);
     (b.flip_x, b.flip_y, b.pressure_size) = (true, true, true);
@@ -53,7 +53,7 @@ fn scramble(app: &mut PhotocraftApp) {
     (m.load_after_stroke, m.clean_after_stroke, m.sample_all_layers) = (false, false, true);
 }
 
-fn assert_mixer_reset(app: &mut PhotocraftApp) {
+fn assert_mixer_reset(app: &mut PatronusPhotoApp) {
     assert_eq!(tip(app), [35.0, 0.0, 0.25, 0.0, 1.0]);
     let b = &app.session.tools.brush;
     assert_eq!((b.flip_x, b.flip_y, b.pressure_size), (false, false, false));
@@ -64,7 +64,7 @@ fn assert_mixer_reset(app: &mut PhotocraftApp) {
 }
 
 /// Check the actual painted chip label, scoped to its public response rectangle.
-fn assert_chip(app: &mut PhotocraftApp, label: &str) {
+fn assert_chip(app: &mut PatronusPhotoApp, label: &str) {
     fn has_text(shape: &Shape, rect: egui::Rect, label: &str) -> bool {
         match shape {
             Shape::Text(text) => text.galley.text() == label && rect.contains(text.pos),
@@ -74,12 +74,12 @@ fn assert_chip(app: &mut PhotocraftApp, label: &str) {
     }
     let ctx = app.ctx().clone();
     ctx.enable_accesskit();
-    PhotocraftApp::setup_context(&ctx, Default::default());
+    PatronusPhotoApp::setup_context(&ctx, Default::default());
     let screen_rect = Some(egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1400.0, 300.0)));
     let mut input = RawInput { screen_rect, ..Default::default() };
     // The app's public hook supplies the framework's current FrameInput/Env.
-    <PhotocraftApp as eframe::App>::raw_input_hook(app, &ctx, &mut input);
-    let mut out = ctx.run_ui(input, |ui| photocraft_ui_egui::panels::options_bar(app, ui));
+    <PatronusPhotoApp as eframe::App>::raw_input_hook(app, &ctx, &mut input);
+    let mut out = ctx.run_ui(input, |ui| patronusphoto_ui_egui::panels::options_bar(app, ui));
     // The framework owns the chip's id. Its named ComboBox bounds keep this an
     // assertion about the painted brush-size label, even beside other controls.
     let tree = craft::ui::testing::access::tree_of(&mut out);
@@ -184,7 +184,7 @@ fn constructors_and_implicit_mixer_commands_keep_global_defaults() {
     assert_eq!((m.wet, m.load, m.mix, m.flow), (0.5, 0.5, 0.5, 1.0));
     assert_eq!((m.load_after_stroke, m.clean_after_stroke, m.sample_all_layers), (true, true, false));
     // A session starts at 10% smoothing (ToolState::default), unlike the raw brush constructor.
-    let session_defaults = BrushSettings { smoothing: photocraft_paint::Smoothing { amount: 0.1, ..Default::default() }, ..BrushSettings::default() };
+    let session_defaults = BrushSettings { smoothing: patronusphoto_paint::Smoothing { amount: 0.1, ..Default::default() }, ..BrushSettings::default() };
     assert_eq!(Session::new().tools.brush, session_defaults);
     let mut implicit = app();
     let mut explicit = app();
@@ -220,6 +220,6 @@ fn first_use_without_reset_keeps_existing_inheritance() {
     scramble(&mut app);
     let old = app.session.tools.brush.clone();
     pick(&mut app, Tool::MixerBrush);
-    let expected = BrushSettings { mode: BlendMode::Normal, smoothing: photocraft_paint::Smoothing { amount: 0.1, ..Default::default() }, ..old };
+    let expected = BrushSettings { mode: BlendMode::Normal, smoothing: patronusphoto_paint::Smoothing { amount: 0.1, ..Default::default() }, ..old };
     assert_eq!(app.session.tools.brush, expected);
 }

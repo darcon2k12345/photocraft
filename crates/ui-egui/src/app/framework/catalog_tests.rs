@@ -4,7 +4,7 @@
 use craft::automation::actions::ActionStep;
 use serde_json::json;
 
-use super::{COMMAND_SOURCES, PhotocraftApp};
+use super::{COMMAND_SOURCES, PatronusPhotoApp};
 use crate::canvas::testing;
 use crate::state::Tool;
 
@@ -13,25 +13,25 @@ const TOOL_SOURCE: usize = 1;
 const SLICE_SOURCE: usize = 3;
 const ARTBOARD_SOURCE: usize = 5;
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     testing::frame(&mut app);
     app
 }
 
 /// How many times the rows and the overrides were built.
-fn builds(app: &PhotocraftApp) -> (usize, usize) {
+fn builds(app: &PatronusPhotoApp) -> (usize, usize) {
     (app.framework.catalog_builds, app.framework.overrides_builds)
 }
 
 /// How many times each keyed command source computed its states, by its place in [`COMMAND_SOURCES`]; `None` for a
 /// source that computes them every frame.
-fn keyed_runs(app: &PhotocraftApp) -> Vec<Option<usize>> {
+fn keyed_runs(app: &PatronusPhotoApp) -> Vec<Option<usize>> {
     COMMAND_SOURCES.iter().zip(&app.framework.held_states.runs).map(|(source, &runs)| source.key.map(|_| runs)).collect()
 }
 
 /// The revision of the states the runtime reads.
-fn held_revision(app: &PhotocraftApp) -> craft::ui::contract::Revision {
+fn held_revision(app: &PatronusPhotoApp) -> craft::ui::contract::Revision {
     app.framework.held_states.states.revision()
 }
 
@@ -40,7 +40,7 @@ fn ran(before: &[Option<usize>], after: &[Option<usize>]) -> Vec<usize> {
     before.iter().zip(after).enumerate().filter(|(_, (was, now))| was.is_some() && was != now).map(|(at, _)| at).collect()
 }
 
-fn frames(app: &mut PhotocraftApp, n: usize) {
+fn frames(app: &mut PatronusPhotoApp, n: usize) {
     for _ in 0..n {
         testing::frame(app);
     }
@@ -127,7 +127,7 @@ fn keyed_command_states_run_only_when_their_key_changes() {
     frames(&mut app, 2);
     let after = keyed_runs(&app);
     assert!(ran(&before, &after).contains(&SLICE_SOURCE) && ran(&before, &after).contains(&ARTBOARD_SOURCE), "a document opens");
-    let has_doc = |app: &PhotocraftApp| (COMMAND_SOURCES[ARTBOARD_SOURCE].states)(app)[0].1.is_enabled();
+    let has_doc = |app: &PatronusPhotoApp| (COMMAND_SOURCES[ARTBOARD_SOURCE].states)(app)[0].1.is_enabled();
     assert!(has_doc(&app));
 
     let before = keyed_runs(&app);

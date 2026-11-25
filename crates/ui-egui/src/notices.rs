@@ -10,7 +10,7 @@ use craft::ui::notices::{NoticeCenter, NoticeEnd, PostedNotice};
 use craft::ui::runtime::toast::ToastId;
 use serde::{Deserialize, Serialize};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 const CLIPBOARD_UNREADABLE: &str = "Pasting from other apps is unavailable";
 /// A full canvas refresh on the CPU compositor slower than this (ms) gets a notice.
@@ -47,7 +47,7 @@ impl Notice {
 }
 
 /// Show a notice (newest last); returns its id.
-pub fn post(app: &mut PhotocraftApp, title: impl Into<String>, lines: Vec<String>, tone: Tone, dismiss_pref: Option<&str>) -> u64 {
+pub fn post(app: &mut PatronusPhotoApp, title: impl Into<String>, lines: Vec<String>, tone: Tone, dismiss_pref: Option<&str>) -> u64 {
     let id = app.ui.alloc_id();
     app.ui.notices.push(Notice { id, title: title.into(), lines, tone, dismiss_pref: dismiss_pref.map(str::to_owned), args: Vec::new(), sticky: false });
     id
@@ -63,19 +63,19 @@ pub(crate) struct Live {
 }
 
 /// Drop notice `id`, whether it still waits in the outbox or is already a toast.
-pub fn remove(app: &mut PhotocraftApp, id: u64) {
+pub fn remove(app: &mut PatronusPhotoApp, id: u64) {
     app.ui.notices.retain(|notice| notice.id != id);
     take_posted(app, |posted_id, _| posted_id == id);
 }
 
 /// Drop every notice with this untranslated `title`.
-pub fn remove_titled(app: &mut PhotocraftApp, title: &str) {
+pub fn remove_titled(app: &mut PatronusPhotoApp, title: &str) {
     app.ui.notices.retain(|notice| notice.title != title);
     take_posted(app, |_, posted_title| posted_title == title);
 }
 
 /// Move the posted entries `matches` selects from the handle table to the removal list.
-fn take_posted(app: &mut PhotocraftApp, matches: impl Fn(u64, &str) -> bool) {
+fn take_posted(app: &mut PatronusPhotoApp, matches: impl Fn(u64, &str) -> bool) {
     let live = &mut app.notices_live;
     let (gone, kept): (Vec<_>, Vec<_>) = std::mem::take(&mut live.posted).into_iter().partition(|(id, title, _)| matches(*id, title));
     live.posted = kept;
@@ -83,14 +83,14 @@ fn take_posted(app: &mut PhotocraftApp, matches: impl Fn(u64, &str) -> bool) {
 }
 
 /// Whether a notice with this untranslated `title` is waiting or on screen.
-pub fn shown_titled(app: &PhotocraftApp, title: &str) -> bool {
+pub fn shown_titled(app: &PatronusPhotoApp, title: &str) -> bool {
     app.ui.notices.iter().any(|notice| notice.title == title) || app.notices_live.posted.iter().any(|(_, posted, _)| posted == title)
 }
 
 /// What a test sees after full UI passes: the notices still in the outbox, then the window's toast
 /// cards, each as (title, lines, tone).
 #[cfg(test)]
-pub(crate) fn shown(app: &PhotocraftApp, ctx: &egui::Context) -> Vec<(String, Vec<String>, Tone)> {
+pub(crate) fn shown(app: &PatronusPhotoApp, ctx: &egui::Context) -> Vec<(String, Vec<String>, Tone)> {
     use craft::ui::runtime::env::WindowKey;
     let waiting = app.ui.notices.iter().map(|n| (n.text(&n.title), n.lines.iter().map(|line| n.text(line)).collect(), n.tone));
     let cards = craft::ui::runtime::toast::cards(ctx, &WindowKey::main()).into_iter().map(|card| {
@@ -105,18 +105,18 @@ pub(crate) fn shown(app: &PhotocraftApp, ctx: &egui::Context) -> Vec<(String, Ve
 /// data-control protocol that other apps' images are read through, and there is no X server to
 /// fall back to, so the clipboard may hold an image all the same. Say so, and give the command
 /// that starts this install under XWayland, where the X11 clipboard works, when there is one.
-pub fn clipboard_unreadable(app: &mut PhotocraftApp) {
-    app.ui.status = tl!("Nothing to paste: PhotoCraft can't read the system clipboard here").into();
+pub fn clipboard_unreadable(app: &mut PatronusPhotoApp) {
+    app.ui.status = tl!("Nothing to paste: Patronus Photo can't read the system clipboard here").into();
     app.ui.status_error = false;
     if shown_titled(app, CLIPBOARD_UNREADABLE) {
         return;
     }
     // English templates, translated when drawn, as in `wayland_file_drop_guidance`.
     let mut lines =
-        vec!["PhotoCraft can't reach the system clipboard in this session. On Wayland, a Flatpak sandbox hides the protocol that images from other apps are read through.".to_owned()];
+        vec!["Patronus Photo can't reach the system clipboard in this session. On Wayland, a Flatpak sandbox hides the protocol that images from other apps are read through.".to_owned()];
     let mut args = Vec::new();
     if let Some(command) = &app.services.xwayland_command {
-        lines.push("To paste from other apps, start PhotoCraft under XWayland: `{command}`".to_owned());
+        lines.push("To paste from other apps, start Patronus Photo under XWayland: `{command}`".to_owned());
         args.push(("command".to_owned(), command.clone()));
     }
     let id = post(app, CLIPBOARD_UNREADABLE, lines, Tone::Neutral, None);
@@ -128,7 +128,7 @@ pub fn clipboard_unreadable(app: &mut PhotocraftApp) {
 /// A full refresh of document `doc` fell back to the CPU compositor (`reason`, the GPU's) and took
 /// `ms`. The canvas doesn't respond while it runs, so once per document say why it was slow and
 /// which edits will do it again (#1015).
-pub fn slow_cpu_refresh(app: &mut PhotocraftApp, doc: u64, ms: f64, reason: Option<&crate::render_path::CpuReason>) {
+pub fn slow_cpu_refresh(app: &mut PatronusPhotoApp, doc: u64, ms: f64, reason: Option<&crate::render_path::CpuReason>) {
     if matches!(reason, Some(crate::render_path::CpuReason::CompositorBuilding))
         || ms.is_nan()
         || ms < SLOW_CPU_REFRESH_MS
@@ -161,7 +161,7 @@ pub fn slow_cpu_refresh(app: &mut PhotocraftApp, doc: u64, ms: f64, reason: Opti
 
 /// Report import/export `warnings` for the file operation `what` (e.g. "Opened a.psd"): the status
 /// bar says how many there were, and a notice lists them. Nothing happens when there are none.
-pub fn io_warnings(app: &mut PhotocraftApp, what: &str, warnings: &[String]) {
+pub fn io_warnings(app: &mut PatronusPhotoApp, what: &str, warnings: &[String]) {
     let Some(first) = warnings.first() else { return };
     let n = warnings.len();
     let title = crate::i18n::fmt(&crate::i18n::trn(crate::i18n::current(), n as u64, "{what} with {n} warning", "{what} with {n} warnings"), &[("what", what)]);
@@ -173,7 +173,7 @@ pub fn io_warnings(app: &mut PhotocraftApp, what: &str, warnings: &[String]) {
 /// Report the files a folder run (Batch, Image Processor, …) could not process, one line each:
 /// the status bar shows the first as an error, and a notice titled with how many failed lists
 /// them all until dismissed (#10682).
-pub fn file_failures(app: &mut PhotocraftApp, what: &str, failures: &[String]) {
+pub fn file_failures(app: &mut PatronusPhotoApp, what: &str, failures: &[String]) {
     let Some(first) = failures.first() else { return };
     let n = failures.len();
     let title = crate::i18n::fmt(&crate::i18n::trn(crate::i18n::current(), n as u64, "{what}: {n} file failed", "{what}: {n} files failed"), &[("what", what)]);
@@ -184,7 +184,7 @@ pub fn file_failures(app: &mut PhotocraftApp, what: &str, failures: &[String]) {
 
 /// Report a failed file operation: the status bar shows it as an error and a notice keeps it on
 /// screen until dismissed.
-pub fn error(app: &mut PhotocraftApp, message: String) {
+pub fn error(app: &mut PatronusPhotoApp, message: String) {
     app.ui.status = message.clone();
     app.ui.status_error = true;
     post(app, message, Vec::new(), Tone::Bad, None);
@@ -194,12 +194,12 @@ pub fn error(app: &mut PhotocraftApp, message: String) {
 /// WebP damaged after some frames keeps its earlier frames and returns the decoder's warning in
 /// `warnings`, which must reach the user like any other import warning. Nothing happens when
 /// every frame came through.
-pub fn footage_warnings(app: &mut PhotocraftApp, result: &serde_json::Value, what: &str) {
+pub fn footage_warnings(app: &mut PatronusPhotoApp, result: &serde_json::Value, what: &str) {
     io_result_warnings(app, result, what);
 }
 
 /// Surface import or update warnings returned by a successful command.
-pub fn io_result_warnings(app: &mut PhotocraftApp, result: &serde_json::Value, what: &str) {
+pub fn io_result_warnings(app: &mut PatronusPhotoApp, result: &serde_json::Value, what: &str) {
     let warnings: Vec<String> = result["warnings"].as_array().into_iter().flatten().filter_map(serde_json::Value::as_str).map(str::to_owned).collect();
     io_warnings(app, what, &warnings);
 }
@@ -209,7 +209,7 @@ pub fn io_result_warnings(app: &mut PhotocraftApp, result: &serde_json::Value, w
 /// on it. A second pass in the same frame finds the outbox empty and the ends already reported, so
 /// it posts and writes nothing. A measuring run of the shell's body does none of it: the queue skips
 /// a post there, so the notice would leave the outbox without reaching the window; the real run posts it.
-pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn show(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let ctx = ui.ctx().clone();
     if craft::ui::runtime::measure::active(&ctx) {
         return;
@@ -252,19 +252,19 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 }
 
 /// Drop the handle-table entry of a toast that left the screen.
-fn forget(app: &mut PhotocraftApp, toast: ToastId) {
+fn forget(app: &mut PatronusPhotoApp, toast: ToastId) {
     app.notices_live.posted.retain(|(.., posted)| *posted != toast);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{PhotocraftApp, Services};
-    use photocraft_engine::Session;
+    use crate::{PatronusPhotoApp, Services};
+    use patronusphoto_engine::Session;
 
     #[test]
     fn wayland_session_does_not_post_unavailable_notice() {
-        let app = PhotocraftApp::new(Session::new(), Services { is_wayland: true, ..Default::default() });
+        let app = PatronusPhotoApp::new(Session::new(), Services { is_wayland: true, ..Default::default() });
         assert!(app.ui.notices.is_empty());
     }
 
@@ -272,27 +272,27 @@ mod tests {
     /// paste anyway, once while shown; a clipboard that simply holds no image stays a quiet no-op.
     #[test]
     fn unreadable_clipboard_paste_explains_the_sandbox() {
-        let command = "flatpak run --nosocket=wayland --socket=x11 ai.storyteller.photocraft";
+        let command = "flatpak run --nosocket=wayland --socket=x11 com.patronus.patronusphoto";
         let services = |unreadable: bool| Services {
             clipboard_get_image: Some(Box::new(move || if unreadable { Err("no clipboard backend".into()) } else { Ok(None) })),
             clipboard_unreadable: Some(Box::new(move || unreadable)),
             xwayland_command: Some(command.to_string()),
             ..Default::default()
         };
-        let mut app = PhotocraftApp::new(Session::new(), services(true));
+        let mut app = PatronusPhotoApp::new(Session::new(), services(true));
         let ctx = app.ctx().clone();
         for _ in 0..2 {
             let r = crate::menus::invoke(&mut app, &ctx, "edit.paste", serde_json::json!({})).unwrap();
             assert_eq!(r["pasted"], serde_json::json!(false));
         }
-        assert_eq!(app.ui.status, "Nothing to paste: PhotoCraft can't read the system clipboard here");
+        assert_eq!(app.ui.status, "Nothing to paste: Patronus Photo can't read the system clipboard here");
         let shown: Vec<_> = app.ui.notices.iter().filter(|notice| notice.title == CLIPBOARD_UNREADABLE).collect();
         assert_eq!(shown.len(), 1, "a second paste doesn't stack another notice");
         assert!(shown_titled(&app, CLIPBOARD_UNREADABLE));
         let guidance = english(shown[0]);
         assert!(guidance.contains(&format!("under XWayland: `{command}`")), "{guidance}");
 
-        let mut empty = PhotocraftApp::new(Session::new(), services(false));
+        let mut empty = PatronusPhotoApp::new(Session::new(), services(false));
         crate::menus::invoke(&mut empty, &ctx, "edit.paste", serde_json::json!({})).unwrap();
         assert_eq!(empty.ui.status, "Nothing to paste: the clipboard holds no image");
         assert!(empty.ui.notices.iter().all(|notice| notice.title != CLIPBOARD_UNREADABLE));
@@ -306,7 +306,7 @@ mod tests {
 
     #[test]
     fn preparing_compositor_does_not_warn_about_large_documents() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         slow_cpu_refresh(&mut app, 1, 60_000.0, Some(&crate::render_path::CpuReason::CompositorBuilding));
         assert!(app.ui.notices.is_empty());
         assert!(app.ui.slow_refresh_noticed.is_empty());
@@ -314,7 +314,7 @@ mod tests {
 
     #[test]
     fn a_slow_cpu_refresh_is_explained_once_per_document() {
-        let mut app = PhotocraftApp::new(Session::new(), Services::default());
+        let mut app = PatronusPhotoApp::new(Session::new(), Services::default());
         let over = crate::render_path::CpuReason::OverBudget { needed: 3600 << 20, budget: 3400 << 20 };
         slow_cpu_refresh(&mut app, 1, 400.0, Some(&over));
         slow_cpu_refresh(&mut app, 1, f64::NAN, Some(&over));
@@ -342,7 +342,7 @@ mod tests {
 
     #[test]
     fn import_warning_punctuation_is_localized_without_changing_english() {
-        let mut app = PhotocraftApp::new(Session::new(), Services::default());
+        let mut app = PatronusPhotoApp::new(Session::new(), Services::default());
         // English in every build; Czech too when the craft-i18n catalogs are embedded.
         let czech = crate::i18n::needs_catalogs().then(|| crate::i18n::Lang::from_code("cs").expect("cs registered"));
         for lang in std::iter::once(crate::i18n::Lang::EN).chain(czech) {

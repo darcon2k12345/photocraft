@@ -2,9 +2,9 @@
 
 use std::sync::Arc;
 
-use photocraft_color::{BlendMode, Color};
-use photocraft_doc::{Effect, Effects, FxCommon, FxPaint, Layer, LayerContent, LayerId, StrokeFx, StrokePosition};
-use photocraft_engine::Session;
+use patronusphoto_color::{BlendMode, Color};
+use patronusphoto_doc::{Effect, Effects, FxCommon, FxPaint, Layer, LayerContent, LayerId, StrokeFx, StrokePosition};
+use patronusphoto_engine::Session;
 use serde_json::json;
 
 fn styled_shape(depth: u32) -> (Session, LayerId) {

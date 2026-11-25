@@ -4,15 +4,15 @@ use craft::ui::patterns::blend_keys::{BlendKeyEntry, BlendShortcut};
 #[cfg(test)]
 use egui::Rect;
 use egui::vec2;
-use photocraft_color::BlendMode;
-use photocraft_doc::LayerId;
-use photocraft_engine::history_source_cmds::HistorySource;
+use patronusphoto_color::BlendMode;
+use patronusphoto_doc::LayerId;
+use patronusphoto_engine::history_source_cmds::HistorySource;
 use serde_json::{Value, json};
 
 use crate::state::Tool;
 #[cfg(test)]
 use crate::theme;
-use crate::{PhotocraftApp, icons};
+use crate::{PatronusPhotoApp, icons};
 
 pub mod actions;
 pub mod adjust_ui;
@@ -83,7 +83,7 @@ use toolbar::color_chips;
 pub use toolbar::toolbar;
 
 /// Photoshop's Shift+Alt letter position of blend mode `m`; `None` for the modes without a letter (Darker Color,
-/// Lighter Color, Subtract, Divide) and for PhotoCraft's own extra modes.
+/// Lighter Color, Subtract, Divide) and for Patronus Photo's own extra modes.
 pub(crate) fn blend_shortcut(m: BlendMode) -> Option<BlendShortcut> {
     Some(match m {
         BlendMode::Normal => BlendShortcut::Normal,
@@ -141,7 +141,7 @@ mod swatch_type_tests {
     /// selected type the moment it was selected.
     #[test]
     fn idle_color_panel_leaves_the_foreground_and_selected_type_alone() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 400, "height": 200})).unwrap();
         let id = app.run("type.create", json!({"text": "Hello world", "size": 40, "x": 20, "y": 100, "color": "#ffffff"})).unwrap()["layer"].as_u64().unwrap();
         app.run("tools.setColors", json!({"foreground": "#d8452e"})).unwrap();
@@ -151,11 +151,11 @@ mod swatch_type_tests {
         let mut h = Harness::builder()
             .with_context(app.ctx().clone())
             .with_size(vec2(300.0, 300.0))
-            .build_ui_state(|ui, app: &mut Box<PhotocraftApp>| crate::panels::color::panel(app, ui), app);
+            .build_ui_state(|ui, app: &mut Box<PatronusPhotoApp>| crate::panels::color::panel(app, ui), app);
         h.run_steps(4);
         assert_eq!(h.state().session.tools.foreground, fg);
         let st = h.state().session.active().unwrap();
-        let Some(photocraft_doc::LayerContent::Text(t)) = st.doc.layer(photocraft_doc::LayerId(id)).map(|l| &l.content) else { panic!("type layer") };
+        let Some(patronusphoto_doc::LayerContent::Text(t)) = st.doc.layer(patronusphoto_doc::LayerId(id)).map(|l| &l.content) else { panic!("type layer") };
         assert_eq!(t.char_runs().len(), 1, "still one white run");
     }
 }

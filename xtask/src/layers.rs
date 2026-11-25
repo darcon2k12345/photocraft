@@ -30,7 +30,7 @@ impl Class {
     }
 }
 
-/// The layering table. Names are package names without the `photocraft-`
+/// The layering table. Names are package names without the `patronusphoto-`
 /// prefix.
 pub const TABLE: &[(&str, Class)] = &[
     ("geom", Class::Layer(0)),
@@ -66,7 +66,7 @@ pub const TABLE: &[(&str, Class)] = &[
     ("testkit", Class::Testkit),
     ("oil-round-proof", Class::Testkit),
     // L7 apps and tooling
-    ("photocraft", Class::Exempt),
+    ("patronusphoto", Class::Exempt),
     ("cli", Class::Exempt),
     ("web", Class::Exempt),
     ("web-boot", Class::Exempt),
@@ -111,7 +111,7 @@ pub const UI_FEATURES: &[(&str, &[&str])] = &[("craft", &["ui", "ui-*", "screen-
 pub const UI_MIN_LAYER: u8 = 6;
 
 pub fn short_name(pkg: &str) -> &str {
-    pkg.strip_prefix("photocraft-").unwrap_or(pkg)
+    pkg.strip_prefix("patronusphoto-").unwrap_or(pkg)
 }
 
 pub fn classify(pkg: &str) -> Option<Class> {
@@ -177,7 +177,7 @@ impl std::fmt::Display for Violation {
                 write!(f, "{krate}: standalone crate must not depend on workspace crate {dep}")
             }
             Violation::TestkitAsNormalDep { krate } => {
-                write!(f, "{krate}: photocraft-testkit may only be a dev-dependency")
+                write!(f, "{krate}: patronusphoto-testkit may only be a dev-dependency")
             }
             Violation::UiBelowL6 { krate, dep, layer } => {
                 write!(f, "{krate} (L{layer}) depends on UI crate `{dep}`; UI toolkits are only allowed in L6+")
@@ -299,50 +299,50 @@ mod tests {
     #[test]
     fn clean_downward_graph_passes() {
         let g = [
-            c("photocraft-geom", &[("kurbo", Normal, false)]),
-            c("photocraft-doc", &[("photocraft-geom", Normal, true)]),
-            c("photocraft-engine", &[("photocraft-doc", Normal, true), ("photocraft-testkit", Dev, true)]),
-            c("photocraft-ui-egui", &[("photocraft-engine", Normal, true), ("egui", Normal, false)]),
-            c("photocraft-cli", &[("photocraft-ui-egui", Normal, true)]),
+            c("patronusphoto-geom", &[("kurbo", Normal, false)]),
+            c("patronusphoto-doc", &[("patronusphoto-geom", Normal, true)]),
+            c("patronusphoto-engine", &[("patronusphoto-doc", Normal, true), ("patronusphoto-testkit", Dev, true)]),
+            c("patronusphoto-ui-egui", &[("patronusphoto-engine", Normal, true), ("egui", Normal, false)]),
+            c("patronusphoto-cli", &[("patronusphoto-ui-egui", Normal, true)]),
         ];
         assert!(check(&g).is_empty(), "{:?}", check(&g));
     }
 
     #[test]
     fn upward_dependency_flagged() {
-        let v = check(&[c("photocraft-doc", &[("photocraft-engine", Normal, true)])]);
+        let v = check(&[c("patronusphoto-doc", &[("patronusphoto-engine", Normal, true)])]);
         assert!(matches!(v[..], [Violation::Upward { from: 1, to: 5, .. }]));
     }
 
     #[test]
     fn sideways_dependency_flagged() {
-        let v = check(&[c("photocraft-ops", &[("photocraft-algo", Normal, true)])]);
+        let v = check(&[c("patronusphoto-ops", &[("patronusphoto-algo", Normal, true)])]);
         assert!(matches!(v[..], [Violation::Upward { from: 2, to: 2, .. }]));
     }
 
     #[test]
     fn l0_foundation_chain_allowed_one_way() {
-        assert!(check(&[c("photocraft-raster", &[("photocraft-color", Normal, true), ("photocraft-geom", Normal, true)])]).is_empty());
-        assert!(check(&[c("photocraft-color", &[("photocraft-geom", Normal, true)])]).is_empty());
-        let v = check(&[c("photocraft-geom", &[("photocraft-raster", Normal, true)])]);
+        assert!(check(&[c("patronusphoto-raster", &[("patronusphoto-color", Normal, true), ("patronusphoto-geom", Normal, true)])]).is_empty());
+        assert!(check(&[c("patronusphoto-color", &[("patronusphoto-geom", Normal, true)])]).is_empty());
+        let v = check(&[c("patronusphoto-geom", &[("patronusphoto-raster", Normal, true)])]);
         assert!(matches!(v[..], [Violation::Upward { from: 0, to: 0, .. }]));
     }
 
     #[test]
     fn self_dev_dependency_ignored() {
-        assert!(check(&[c("photocraft-codecs", &[("photocraft-codecs", Dev, true)])]).is_empty());
+        assert!(check(&[c("patronusphoto-codecs", &[("patronusphoto-codecs", Dev, true)])]).is_empty());
     }
 
     #[test]
     fn upward_dev_dependency_flagged() {
-        let v = check(&[c("photocraft-geom", &[("photocraft-doc", Dev, true)])]);
+        let v = check(&[c("patronusphoto-geom", &[("patronusphoto-doc", Dev, true)])]);
         assert!(matches!(v[..], [Violation::Upward { kind: Dev, .. }]));
     }
 
     #[test]
     fn standalone_crates_have_no_workspace_deps() {
-        for s in ["photocraft-codecs", "photocraft-adobe-assets"] {
-            let v = check(&[c(s, &[("photocraft-geom", Normal, true)])]);
+        for s in ["patronusphoto-codecs", "patronusphoto-adobe-assets"] {
+            let v = check(&[c(s, &[("patronusphoto-geom", Normal, true)])]);
             assert!(matches!(v[..], [Violation::StandaloneHasWorkspaceDep { .. }]), "{s}");
             assert!(check(&[c(s, &[("image", Normal, false)])]).is_empty());
         }
@@ -351,31 +351,31 @@ mod tests {
     #[test]
     fn standalone_crates_have_no_exceptions() {
         // Standalone crates may not use each other, in either direction.
-        for (from, to) in [("photocraft-codecs", "photocraft-adobe-assets"), ("photocraft-adobe-assets", "photocraft-codecs")] {
+        for (from, to) in [("patronusphoto-codecs", "patronusphoto-adobe-assets"), ("patronusphoto-adobe-assets", "patronusphoto-codecs")] {
             let v = check(&[c(from, &[(to, Normal, true)])]);
             assert!(matches!(v[..], [Violation::StandaloneHasWorkspaceDep { .. }]), "{from} -> {to}");
         }
         // Nor layered crates.
-        let v = check(&[c("photocraft-codecs", &[("photocraft-geom", Normal, true)])]);
+        let v = check(&[c("patronusphoto-codecs", &[("patronusphoto-geom", Normal, true)])]);
         assert!(matches!(v[..], [Violation::StandaloneHasWorkspaceDep { .. }]));
     }
 
     #[test]
     fn standalone_is_usable_from_higher_layers() {
-        assert!(check(&[c("photocraft-io", &[("photocraft-codecs", Normal, true)])]).is_empty());
-        let v = check(&[c("photocraft-geom", &[("photocraft-codecs", Normal, true)])]);
+        assert!(check(&[c("patronusphoto-io", &[("patronusphoto-codecs", Normal, true)])]).is_empty());
+        let v = check(&[c("patronusphoto-geom", &[("patronusphoto-codecs", Normal, true)])]);
         assert!(matches!(v[..], [Violation::Upward { from: 0, to: 0, .. }]));
     }
 
     #[test]
     fn ui_crates_below_l6_flagged() {
         for dep in ["egui", "eframe", "winit", "egui_kittest", "craft-ui", "rfd", "bevy_ecs", "bevy"] {
-            let v = check(&[c("photocraft-engine", &[(dep, Normal, false)])]);
+            let v = check(&[c("patronusphoto-engine", &[(dep, Normal, false)])]);
             assert!(matches!(v[..], [Violation::UiBelowL6 { layer: 5, .. }]), "{dep}");
         }
-        assert!(check(&[c("photocraft-engine", &[("egui_extras_not", Normal, false)])]).is_empty());
-        assert!(check(&[c("photocraft-ui-egui", &[("craft-ui", Normal, false)])]).is_empty());
-        assert!(check(&[c("photocraft-platform", &[("winit", Normal, false)])]).is_empty());
+        assert!(check(&[c("patronusphoto-engine", &[("egui_extras_not", Normal, false)])]).is_empty());
+        assert!(check(&[c("patronusphoto-ui-egui", &[("craft-ui", Normal, false)])]).is_empty());
+        assert!(check(&[c("patronusphoto-platform", &[("winit", Normal, false)])]).is_empty());
     }
 
     fn with_features(name: &str, dep: &str, kind: DepKind, features: &[&str]) -> Crate {
@@ -387,24 +387,24 @@ mod tests {
     fn craft_facade_with_ui_features_flagged_below_l6() {
         // #15467: the facade's UI features bring the whole craft UI framework.
         for features in [&["ui"][..], &["imaging", "ui-app"], &["screen-testing"]] {
-            let v = check(&[with_features("photocraft-engine", "craft", Normal, features)]);
+            let v = check(&[with_features("patronusphoto-engine", "craft", Normal, features)]);
             assert!(matches!(&v[..], [Violation::UiBelowL6 { layer: 5, dep, .. }] if dep == "craft"), "{features:?}");
-            let v = check(&[with_features("photocraft-text", "craft", Dev, features)]);
+            let v = check(&[with_features("patronusphoto-text", "craft", Dev, features)]);
             assert!(matches!(v[..], [Violation::UiBelowL6 { layer: 2, .. }]), "dev {features:?}");
         }
         // Its non-UI parts stay usable below L6 (what text, io and engine use today), and L6 may use it all.
         for features in [&[][..], &["imaging"], &["font-catalog", "font-manager"], &["automation", "color-ui", "keymap", "platform", "settings"]] {
-            assert!(check(&[with_features("photocraft-engine", "craft", Normal, features)]).is_empty(), "{features:?}");
+            assert!(check(&[with_features("patronusphoto-engine", "craft", Normal, features)]).is_empty(), "{features:?}");
         }
-        assert!(check(&[with_features("photocraft-ui-egui", "craft", Normal, &["ui", "screen-testing"])]).is_empty());
+        assert!(check(&[with_features("patronusphoto-ui-egui", "craft", Normal, &["ui", "screen-testing"])]).is_empty());
         // Only the facade is judged by its features.
-        assert!(check(&[with_features("photocraft-engine", "craft-imaging", Normal, &["ui"])]).is_empty());
+        assert!(check(&[with_features("patronusphoto-engine", "craft-imaging", Normal, &["ui"])]).is_empty());
     }
 
     #[test]
     fn metadata_reads_dependency_features() {
         let meta: Value = serde_json::from_str(
-            r#"{"packages":[{"name":"photocraft-engine","dependencies":[
+            r#"{"packages":[{"name":"patronusphoto-engine","dependencies":[
                 {"name":"craft","kind":null,"features":["keymap","ui"]}]}]}"#,
         )
         .unwrap();
@@ -416,8 +416,8 @@ mod tests {
     /// The keymap's egui conversions bring egui; the plain keymap does not.
     #[test]
     fn keymap_egui_is_a_ui_feature() {
-        assert!(matches!(check(&[with_features("photocraft-engine", "craft", Normal, &["keymap-egui"])])[..], [Violation::UiBelowL6 { .. }]));
-        assert!(check(&[with_features("photocraft-engine", "craft", Normal, &["keymap"])]).is_empty());
+        assert!(matches!(check(&[with_features("patronusphoto-engine", "craft", Normal, &["keymap-egui"])])[..], [Violation::UiBelowL6 { .. }]));
+        assert!(check(&[with_features("patronusphoto-engine", "craft", Normal, &["keymap"])]).is_empty());
     }
 
     /// A UI feature turned on by the package's own `[features]` (also through a renamed dependency) counts; other
@@ -426,7 +426,7 @@ mod tests {
     fn metadata_reads_features_forwarded_by_the_package() {
         let meta = |features: &str, rename: &str| -> Value {
             serde_json::from_str(&format!(
-                r#"{{"packages":[{{"name":"photocraft-engine","features":{features},"dependencies":[
+                r#"{{"packages":[{{"name":"patronusphoto-engine","features":{features},"dependencies":[
                     {{"name":"craft","kind":null,"features":["keymap"]{rename}}}]}}]}}"#
             ))
             .unwrap()
@@ -445,25 +445,25 @@ mod tests {
 
     #[test]
     fn unregistered_crate_is_error() {
-        let v = check(&[c("photocraft-mystery", &[])]);
-        assert!(matches!(&v[..], [Violation::Unregistered { krate }] if krate == "photocraft-mystery"));
+        let v = check(&[c("patronusphoto-mystery", &[])]);
+        assert!(matches!(&v[..], [Violation::Unregistered { krate }] if krate == "patronusphoto-mystery"));
         assert!(v[0].to_string().contains("register"));
     }
 
     #[test]
     fn testkit_only_as_dev_dependency() {
-        let v = check(&[c("photocraft-raster", &[("photocraft-testkit", Normal, true)])]);
+        let v = check(&[c("patronusphoto-raster", &[("patronusphoto-testkit", Normal, true)])]);
         assert!(matches!(v[..], [Violation::TestkitAsNormalDep { .. }]));
-        assert!(check(&[c("photocraft-raster", &[("photocraft-testkit", Dev, true)])]).is_empty());
+        assert!(check(&[c("patronusphoto-raster", &[("patronusphoto-testkit", Dev, true)])]).is_empty());
         // testkit itself may use anything up to L5 but not L6 crates.
-        assert!(check(&[c("photocraft-testkit", &[("photocraft-engine", Normal, true)])]).is_empty());
-        assert!(!check(&[c("photocraft-testkit", &[("photocraft-ui-egui", Normal, true)])]).is_empty());
+        assert!(check(&[c("patronusphoto-testkit", &[("patronusphoto-engine", Normal, true)])]).is_empty());
+        assert!(!check(&[c("patronusphoto-testkit", &[("patronusphoto-ui-egui", Normal, true)])]).is_empty());
     }
 
     #[test]
     fn apps_and_xtask_exempt() {
-        for app in ["photocraft", "photocraft-cli", "photocraft-web", "photocraft-web-boot", "xtask"] {
-            assert!(check(&[c(app, &[("egui", Normal, false), ("photocraft-ui-egui", Normal, true)])]).is_empty());
+        for app in ["patronusphoto", "patronusphoto-cli", "patronusphoto-web", "patronusphoto-web-boot", "xtask"] {
+            assert!(check(&[c(app, &[("egui", Normal, false), ("patronusphoto-ui-egui", Normal, true)])]).is_empty());
         }
     }
 
@@ -471,17 +471,17 @@ mod tests {
     fn metadata_parsing() {
         let meta: Value = serde_json::from_str(
             r#"{"packages":[
-                {"name":"photocraft-doc","dependencies":[
-                    {"name":"photocraft-geom","kind":null,"path":"/x/crates/geom"},
+                {"name":"patronusphoto-doc","dependencies":[
+                    {"name":"patronusphoto-geom","kind":null,"path":"/x/crates/geom"},
                     {"name":"serde","kind":null},
                     {"name":"proptest","kind":"dev"}]},
-                {"name":"photocraft-geom","dependencies":[]}
+                {"name":"patronusphoto-geom","dependencies":[]}
             ]}"#,
         )
         .unwrap();
         let g = from_metadata(&meta).unwrap();
         assert_eq!(g.len(), 2);
-        let doc = g.iter().find(|c| c.name == "photocraft-doc").unwrap();
+        let doc = g.iter().find(|c| c.name == "patronusphoto-doc").unwrap();
         assert!(doc.deps[0].workspace && !doc.deps[1].workspace);
         assert_eq!(doc.deps[2].kind, Dev);
         assert!(check(&g).is_empty());

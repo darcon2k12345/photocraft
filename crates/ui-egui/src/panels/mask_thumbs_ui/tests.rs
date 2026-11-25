@@ -10,26 +10,26 @@ use craft::ui::primitives::textures::{ThumbRequest, ThumbSource};
 use egui::{Modifiers, PointerButton, Pos2, Rect, vec2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use photocraft_doc::LayerId;
+use patronusphoto_doc::LayerId;
 use serde_json::json;
 
 use super::super::layers_events::apply_layers_events;
 use super::super::layers_events::tests::{canvas_px, dotted, session};
 use super::super::layers_tree::{PhotoLayers, PhotoThumbs};
 use super::{MaskKind, vector_thumb_image};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
-fn app_of(session: photocraft_engine::Session) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(session, crate::Services::default());
+fn app_of(session: patronusphoto_engine::Session) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(session, crate::Services::default());
     app.background_jobs = false;
     app.sync_views();
     app
 }
 
-fn harness(session: photocraft_engine::Session, ppp: f32, dock_width: f32) -> Harness<'static, Box<PhotocraftApp>> {
+fn harness(session: patronusphoto_engine::Session, ppp: f32, dock_width: f32) -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut h = Harness::builder().with_size(vec2(1440.0, 1000.0)).with_pixels_per_point(ppp).with_max_steps(64).build_eframe(move |cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::with_context(cc.egui_ctx.clone(), session, crate::Services::default())
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        PatronusPhotoApp::with_context(cc.egui_ctx.clone(), session, crate::Services::default())
     });
     let ctx = h.ctx.clone();
     let (req, _rx) = crate::control::ControlRequest::new("ui.set", json!({"theme": "promedium", "dockWidth": dock_width}));
@@ -38,7 +38,7 @@ fn harness(session: photocraft_engine::Session, ppp: f32, dock_width: f32) -> Ha
     h
 }
 
-fn click_with(h: &mut Harness<'_, Box<PhotocraftApp>>, at: Pos2, modifiers: Modifiers) {
+fn click_with(h: &mut Harness<'_, Box<PatronusPhotoApp>>, at: Pos2, modifiers: Modifiers) {
     h.hover_at(at);
     h.event(egui::Event::ModifiersChanged(modifiers));
     h.run_steps(1);
@@ -50,25 +50,25 @@ fn click_with(h: &mut Harness<'_, Box<PhotocraftApp>>, at: Pos2, modifiers: Modi
     h.run_steps(2);
 }
 
-fn layer(app: &PhotocraftApp, id: u64) -> photocraft_doc::Layer {
+fn layer(app: &PatronusPhotoApp, id: u64) -> patronusphoto_doc::Layer {
     app.session.active().unwrap().doc.layer(LayerId(id)).unwrap().clone()
 }
 
-fn name(h: &Harness<'_, Box<PhotocraftApp>>, id: u64) -> String {
+fn name(h: &Harness<'_, Box<PatronusPhotoApp>>, id: u64) -> String {
     layer(h.state(), id).name
 }
 
-fn mask_rect(h: &Harness<'_, Box<PhotocraftApp>>, id: u64, kind: MaskKind) -> Rect {
+fn mask_rect(h: &Harness<'_, Box<PatronusPhotoApp>>, id: u64, kind: MaskKind) -> Rect {
     let part = if kind == MaskKind::Pixel { LayerPart::LayerMask } else { LayerPart::VectorMask };
     crate::layers_panel_nodes::thumb(h, &name(h, id), part)
 }
 
-fn mask_view(app: &PhotocraftApp) -> serde_json::Value {
-    photocraft_engine::inspect::document(app.session.active().unwrap())["layerMaskView"].clone()
+fn mask_view(app: &PatronusPhotoApp) -> serde_json::Value {
+    patronusphoto_engine::inspect::document(app.session.active().unwrap())["layerMaskView"].clone()
 }
 
 /// A click on a layer's thumbnail (`Some(part)`) or elsewhere on its row, as the panel reports it.
-fn click_row(app: &mut PhotocraftApp, ctx: &egui::Context, id: u64, part: Option<LayerPart>) {
+fn click_row(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: u64, part: Option<LayerPart>) {
     let select = LayerSelect::new(SelectionChange::Set(vec![LayerId(id)]), part);
     apply_layers_events(app, ctx, vec![LayersEvent::Select(select)]);
 }
@@ -84,8 +84,8 @@ fn the_chain_toggles_linking_and_it_survives_psd() {
     let l = layer(&app, masked);
     assert!(!l.mask.unwrap().linked && !l.vector_mask.unwrap().linked);
     let doc = (*app.session.active().unwrap().doc).clone();
-    let bytes = photocraft_io::export(&doc, "m.psd", &Default::default()).unwrap().bytes;
-    let back = photocraft_io::import("m.psd", &bytes).unwrap().document;
+    let bytes = patronusphoto_io::export(&doc, "m.psd", &Default::default()).unwrap().bytes;
+    let back = patronusphoto_io::import("m.psd", &bytes).unwrap().document;
     let l = back.walk().into_iter().map(|(_, _, l)| l.clone()).find(|l| l.name == "Masked").unwrap();
     assert!(!l.mask.unwrap().linked && !l.vector_mask.unwrap().linked, "unlinked state round-trips PSD");
     // Clicking the (now empty) chain slot links again.
@@ -110,7 +110,7 @@ fn vector_thumbnail_is_white_inside_grey_outside_at_the_document_aspect() {
 fn channels_list_the_layer_mask_and_keep_the_aspect() {
     let (s, masked, _) = session();
     let mut app = app_of(s);
-    let names = |app: &PhotocraftApp| crate::channels_panel::rows(app).iter().map(|row| row.name.to_string()).collect::<Vec<_>>();
+    let names = |app: &PatronusPhotoApp| crate::channels_panel::rows(app).iter().map(|row| row.name.to_string()).collect::<Vec<_>>();
     assert_eq!(names(&app), ["RGB", "Red", "Green", "Blue", "Masked Mask"], "the mask is a temporary row below the colour channels");
     // A layer without a mask has no mask row.
     app.run("layer.layerMask.delete", json!({"layer": masked})).unwrap();
@@ -121,7 +121,7 @@ fn channels_list_the_layer_mask_and_keep_the_aspect() {
 fn panels_never_panic_on_odd_documents() {
     // Rows and thumbnails work for a 1×1 and a very wide document, and for masks with nothing in them.
     for (w, hgt) in [(1, 1), (2000, 3)] {
-        let mut s = photocraft_engine::Session::new();
+        let mut s = patronusphoto_engine::Session::new();
         s.execute("file.new", json!({"width": w, "height": hgt})).unwrap();
         let id = s.execute("layer.new.layer", json!({})).unwrap()["layer"].as_u64().unwrap();
         s.execute("layer.layerMask.hideAll", json!({})).unwrap();
@@ -206,7 +206,7 @@ fn a_targeted_vector_mask_yields_to_alpha_quick_mask_and_explicit_targets() {
     let ctx = app.ctx().clone();
     click_row(&mut app, &ctx, masked, Some(LayerPart::VectorMask));
     assert!(app.ui.vector_mask_target && app.vector_mask_targeted());
-    let target = |app: &PhotocraftApp, p: serde_json::Value| app.with_mask_target("edit.transform.flipHorizontal", p);
+    let target = |app: &PatronusPhotoApp, p: serde_json::Value| app.with_mask_target("edit.transform.flipHorizontal", p);
     assert_eq!(target(&app, json!({}))["target"], "vectorMask");
     assert_eq!(target(&app, json!({"target": "pixels"}))["target"], "pixels", "an explicit target wins");
     let before = layer(&app, masked).vector_mask.unwrap().path;
@@ -214,7 +214,7 @@ fn a_targeted_vector_mask_yields_to_alpha_quick_mask_and_explicit_targets() {
     // Photoshop targets a new alpha channel on its own; the panel still says vector mask.
     app.run("channel.new", json!({"name": "Alpha", "fill": "white"})).unwrap();
     assert!(app.ui.vector_mask_target, "the panel keeps its vector-mask flag");
-    assert_eq!(app.session.active().unwrap().channel_view.target, photocraft_engine::channel_cmds::ChannelTarget::Alpha(0));
+    assert_eq!(app.session.active().unwrap().channel_view.target, patronusphoto_engine::channel_cmds::ChannelTarget::Alpha(0));
     assert!(target(&app, json!({})).get("target").is_none(), "the alpha channel wins");
     app.run("edit.transform.flipHorizontal", json!({})).unwrap();
     assert_eq!(layer(&app, masked).vector_mask.unwrap().path, before, "the vector mask stays put");
@@ -345,7 +345,7 @@ fn selecting_mask_thumbnail_toggles_swatches_to_mask_colors_and_back() {
 #[test]
 fn a_new_adjustment_or_fill_layer_shows_its_settings_until_the_mask_thumbnail_is_clicked() {
     for command in ["layer.newAdjustmentLayer.curves", "layer.newFillLayer.solidColor"] {
-        let mut s = photocraft_engine::Session::new();
+        let mut s = patronusphoto_engine::Session::new();
         s.execute("file.new", json!({"width": 200, "height": 100})).unwrap();
         s.execute("layer.new.layer", json!({})).unwrap();
         let mut app = app_of(s);
@@ -367,7 +367,7 @@ fn a_new_adjustment_or_fill_layer_shows_its_settings_until_the_mask_thumbnail_is
 }
 
 /// The group (by its place in the docking layout) that holds panel `id` is minimized.
-fn group_minimized(app: &PhotocraftApp, id: &str) -> bool {
+fn group_minimized(app: &PatronusPhotoApp, id: &str) -> bool {
     let layout = &app.ui.docking.layout();
     let place = layout.place(&id.into()).expect("the panel is docked");
     layout.group(&place).expect("its group").minimized
@@ -378,7 +378,7 @@ fn group_minimized(app: &PhotocraftApp, id: &str) -> bool {
 #[test]
 fn a_new_adjustment_layer_brings_properties_to_the_front() {
     use craft::behavior::dock::Action;
-    let mut s = photocraft_engine::Session::new();
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 200, "height": 100})).unwrap();
     let mut h = harness(s, 1.0, 290.0);
     let _ = crate::panel_docking::apply(h.state_mut(), vec![Action::set_minimized("properties".into(), true)]);

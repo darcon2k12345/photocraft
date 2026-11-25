@@ -3,19 +3,19 @@
 //! dragging the bottom-right handle by (−100, −60). Every test drives whole canvas passes.
 
 use egui::Modifiers;
-use photocraft_doc::LayerContent;
+use patronusphoto_doc::LayerContent;
 use serde_json::json;
 
 use super::box_scale;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing;
 use crate::state::Tool;
 
 const NONE: Modifiers = Modifiers::NONE;
 
 /// A 1000 × 700 document with the two measured rectangles, both selected, fitted on the screen.
-fn app_with_two_shapes(tool: Tool) -> (Box<PhotocraftApp>, u64, u64) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app_with_two_shapes(tool: Tool) -> (Box<PatronusPhotoApp>, u64, u64) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 1000, "height": 700, "background": "white"})).unwrap();
     app.run("shape.create", json!({"kind": "rect", "rect": [100, 98, 303, 203], "fill": "#e02020"})).unwrap();
     let a = app.session.active().unwrap().active_layer.unwrap();
@@ -29,9 +29,9 @@ fn app_with_two_shapes(tool: Tool) -> (Box<PhotocraftApp>, u64, u64) {
     (app, a.0, b.0)
 }
 
-fn bounds(app: &PhotocraftApp, id: u64) -> (f64, f64, f64, f64) {
+fn bounds(app: &PatronusPhotoApp, id: u64) -> (f64, f64, f64, f64) {
     let st = app.session.active().unwrap();
-    let LayerContent::Shape(sh) = &st.doc.layer(photocraft_doc::LayerId(id)).unwrap().content else { panic!("a shape layer") };
+    let LayerContent::Shape(sh) = &st.doc.layer(patronusphoto_doc::LayerId(id)).unwrap().content else { panic!("a shape layer") };
     sh.path.control_bounds().unwrap()
 }
 
@@ -40,22 +40,22 @@ fn near(got: (f64, f64, f64, f64), want: [f64; 4]) {
     assert!(got.iter().zip(want).all(|(g, w)| (g - w).abs() <= 1.0), "{got:?} vs {want:?}");
 }
 
-fn past(app: &PhotocraftApp) -> usize {
+fn past(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.past_len()
 }
 
-fn last_step(app: &PhotocraftApp) -> Option<String> {
+fn last_step(app: &PatronusPhotoApp) -> Option<String> {
     app.session.active().unwrap().history.entries().last().cloned()
 }
 
 /// A press at `from`, two moves and a release at `to`, as a mouse does it.
-fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2]) {
+fn drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2]) {
     press_and_drag(app, from, to);
     testing::release(app, to, NONE);
 }
 
 /// A press at `from` and two moves to `to`, the button still down.
-fn press_and_drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2]) {
+fn press_and_drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2]) {
     testing::press(app, from, NONE);
     testing::move_to(app, [(from[0] + to[0]) / 2.0, (from[1] + to[1]) / 2.0], NONE);
     testing::move_to(app, to, NONE);
@@ -102,7 +102,7 @@ fn box_scale_gives_the_scale_and_the_fixed_point_and_nothing_for_a_click() {
 fn a_corner_radius_widget_wins_over_the_box() {
     // One rectangle 40,40–160,120 with radii 20: its top-left widget sits inside the corner at (60, 60), not on the
     // box's handle at (40, 40). A press on the widget rounds the corners; a press on the handle scales.
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 260})).unwrap();
     app.run("shape.create", json!({"kind": "roundedRect", "rect": [40, 40, 120, 80], "radii": 20})).unwrap();
     let id = app.session.active().unwrap().active_layer.unwrap().0;
@@ -137,7 +137,7 @@ fn hidden_paths_hide_the_box_and_its_handles_take_no_press() {
 }
 
 /// Nothing scaled: both shapes as measured and no history step past `steps`.
-fn assert_unscaled(app: &PhotocraftApp, a: u64, b: u64, steps: usize, why: &str) {
+fn assert_unscaled(app: &PatronusPhotoApp, a: u64, b: u64, steps: usize, why: &str) {
     near(bounds(app, a), [100.0, 98.0, 403.0, 301.0]);
     near(bounds(app, b), [420.0, 318.0, 723.0, 451.0]);
     assert_eq!(past(app), steps, "{why}: no history step");
@@ -212,7 +212,7 @@ fn with_background_jobs_the_scale_step_is_named_and_the_one_before_is_kept() {
 #[test]
 fn the_pick_still_finds_shapes_just_past_their_path_bounds() {
     use crate::vector_ui::pick_shape_at;
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 1000, "height": 700, "background": "white"})).unwrap();
     // A stroke-only ellipse 200,200–400,300: picked by its outline alone.
     app.run("shape.create", json!({"kind": "ellipse", "rect": [200, 200, 200, 100], "fill": null, "stroke": {"width": 2}})).unwrap();

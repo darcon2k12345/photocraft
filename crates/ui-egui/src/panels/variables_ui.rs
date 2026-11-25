@@ -25,7 +25,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::borrow::Cow;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The page of the dialog that shows.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -118,8 +118,8 @@ pub struct VariablesState {
     pub cur: usize,
 }
 
-fn method_name(m: &photocraft_doc::PixelMethod) -> &'static str {
-    use photocraft_doc::PixelMethod::*;
+fn method_name(m: &patronusphoto_doc::PixelMethod) -> &'static str {
+    use patronusphoto_doc::PixelMethod::*;
     match m {
         Fit => "fit",
         Fill => "fill",
@@ -128,8 +128,8 @@ fn method_name(m: &photocraft_doc::PixelMethod) -> &'static str {
     }
 }
 
-fn align_name(a: &photocraft_doc::PixelAlign) -> &'static str {
-    use photocraft_doc::PixelAlign::*;
+fn align_name(a: &patronusphoto_doc::PixelAlign) -> &'static str {
+    use patronusphoto_doc::PixelAlign::*;
     match a {
         TopLeft => "topLeft",
         TopCenter => "topCenter",
@@ -145,15 +145,15 @@ fn align_name(a: &photocraft_doc::PixelAlign) -> &'static str {
 
 impl VariablesState {
     /// The document's variables as dialog state, on `page`, with the active data set selected.
-    pub fn from_doc(v: &photocraft_doc::Variables, page: Page) -> Self {
+    pub fn from_doc(v: &patronusphoto_doc::Variables, page: Page) -> Self {
         let defs = v
             .defs
             .iter()
             .map(|d| {
                 let (ty, method, align, clip) = match &d.kind {
-                    photocraft_doc::VarKind::Visibility => ("visibility", "fit", "center", false),
-                    photocraft_doc::VarKind::TextReplacement => ("textReplacement", "fit", "center", false),
-                    photocraft_doc::VarKind::PixelReplacement { method, align, clip } => ("pixelReplacement", method_name(method), align_name(align), *clip),
+                    patronusphoto_doc::VarKind::Visibility => ("visibility", "fit", "center", false),
+                    patronusphoto_doc::VarKind::TextReplacement => ("textReplacement", "fit", "center", false),
+                    patronusphoto_doc::VarKind::PixelReplacement { method, align, clip } => ("pixelReplacement", method_name(method), align_name(align), *clip),
                 };
                 VarDef { name: d.name.clone(), layer: d.layer.0, ty: ty.into(), method: method.into(), align: align.into(), clip }
             })
@@ -168,9 +168,9 @@ impl VariablesState {
                     .iter()
                     .map(|dv| {
                         let (kind, value) = match &dv.value {
-                            photocraft_doc::variables::Value::Visibility(b) => ("visibility", Cell::Flag(*b)),
-                            photocraft_doc::variables::Value::Text(t) => ("text", Cell::Text(t.clone())),
-                            photocraft_doc::variables::Value::Pixels(p) => ("pixels", Cell::Text(p.clone())),
+                            patronusphoto_doc::variables::Value::Visibility(b) => ("visibility", Cell::Flag(*b)),
+                            patronusphoto_doc::variables::Value::Text(t) => ("text", Cell::Text(t.clone())),
+                            patronusphoto_doc::variables::Value::Pixels(p) => ("pixels", Cell::Text(p.clone())),
                         };
                         SetValue { variable: dv.variable.clone(), kind: kind.into(), value }
                     })
@@ -365,7 +365,7 @@ impl StackDialog for VariablesDialog {
     type Result = VariablesAnswer;
 
     fn id(&self) -> DialogId {
-        dialog_id("photocraft.variables")
+        dialog_id("patronusphoto.variables")
     }
 
     /// An Apply click files its row in `apply` for [`take`]. A click is the pass's own input, so a second pass
@@ -433,13 +433,13 @@ impl StackDialog for VariablesDialog {
 }
 
 /// Layers available to bind, top to bottom: (id, display name, is-text).
-fn layer_options(app: &PhotocraftApp) -> Vec<(u64, String, bool)> {
+fn layer_options(app: &PatronusPhotoApp) -> Vec<(u64, String, bool)> {
     let Some(st) = app.session.active() else { return Vec::new() };
-    st.doc.walk().iter().map(|(_, _, l)| (l.id.0, l.name.clone(), matches!(l.content, photocraft_doc::LayerContent::Text(_)))).collect()
+    st.doc.walk().iter().map(|(_, _, l)| (l.id.0, l.name.clone(), matches!(l.content, patronusphoto_doc::LayerContent::Text(_)))).collect()
 }
 
 /// Menu entry points. Returns None for ids this module doesn't own.
-pub fn menu(app: &mut PhotocraftApp, id: &str, params: &Value) -> Option<Result<Value, String>> {
+pub fn menu(app: &mut PatronusPhotoApp, id: &str, params: &Value) -> Option<Result<Value, String>> {
     let has_params = params.as_object().is_some_and(|o| !o.is_empty());
     let page = match id {
         "image.variables.define" if !has_params => Page::Define,
@@ -456,7 +456,7 @@ pub fn menu(app: &mut PhotocraftApp, id: &str, params: &Value) -> Option<Result<
 }
 
 /// Saves the edited definitions and data sets, then applies `index` when given.
-fn save(app: &mut PhotocraftApp, state: &VariablesState, index: Option<usize>) -> Result<(), String> {
+fn save(app: &mut PatronusPhotoApp, state: &VariablesState, index: Option<usize>) -> Result<(), String> {
     app.run("image.variables.define", state.defs_params())?;
     app.run("image.variables.dataSets", state.data_sets_params())?;
     if let Some(index) = index {
@@ -467,13 +467,13 @@ fn save(app: &mut PhotocraftApp, state: &VariablesState, index: Option<usize>) -
 
 /// What OK does: saves the definitions and data sets. It applies nothing; the Data Sets page's
 /// Apply and Image › Apply Data Set… do.
-fn finish(app: &mut PhotocraftApp, answer: VariablesAnswer) -> Result<(), String> {
+fn finish(app: &mut PatronusPhotoApp, answer: VariablesAnswer) -> Result<(), String> {
     save(app, &answer.state, None)
 }
 
 /// The dialog's result pump (a `TAKERS` row): runs a pending Apply, then the result of a closed dialog. Each call
 /// runs only the request the dialog filed since the last call, and an answer is taken once.
-pub(crate) fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
+pub(crate) fn take(app: &mut PatronusPhotoApp, _ctx: &egui::Context) {
     let pending = app.framework.dialogs.get_mut::<VariablesDialog>().and_then(|d| d.apply.take().map(|index| (index, d.state.clone())));
     if let Some((index, state)) = pending {
         match save(app, &state, Some(index)) {

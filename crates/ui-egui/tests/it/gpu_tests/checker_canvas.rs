@@ -5,11 +5,11 @@
 //! These tests render the real app offscreen and read pixels back. They skip when no GPU adapter
 //! is available. The CPU canvas (no wgpu handed to the app) has its own pixel grid tests at the end.
 
-use photocraft_ui_egui::PhotocraftApp;
-use photocraft_ui_egui::control::{ControlRequest, handle};
+use patronusphoto_ui_egui::PatronusPhotoApp;
+use patronusphoto_ui_egui::control::{ControlRequest, handle};
 use serde_json::{Value, json};
 
-type Harness = egui_kittest::Harness<'static, Box<PhotocraftApp>>;
+type Harness = egui_kittest::Harness<'static, Box<PatronusPhotoApp>>;
 
 const LIGHT: u8 = 255;
 const DARK: u8 = 204;
@@ -26,8 +26,8 @@ fn harness_with(gpu: bool) -> Option<Harness> {
 fn harness_with_scale(gpu: bool, ppp: f32) -> Option<Harness> {
     let built = std::panic::catch_unwind(|| {
         egui_kittest::Harness::builder().with_size(egui::vec2(1400.0, 800.0)).with_pixels_per_point(ppp).with_max_steps(64).wgpu().build_eframe(|cc| {
-            PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-            let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), Default::default());
+            PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+            let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), Default::default());
             if let Some(rs) = cc.wgpu_render_state.as_ref().filter(|_| gpu) {
                 app.set_wgpu(rs.clone());
             }
@@ -118,7 +118,7 @@ fn render_on(h: &mut Harness, gpu: bool, zoom: f32, doc: u32, black: bool, grid:
     if black {
         // View geometry also works on scaled displays, independently of grid colour.
         let origin =
-            photocraft_ui_egui::canvas::active_view(h.state()).expect("view").to_screen(craft::behavior::kurbo::Point::ZERO) * h.ctx.pixels_per_point();
+            patronusphoto_ui_egui::canvas::active_view(h.state()).expect("view").to_screen(craft::behavior::kurbo::Point::ZERO) * h.ctx.pixels_per_point();
         return (img, origin.x.round() as u32, origin.y.round() as u32, (doc as f32 * zoom).round() as u32);
     }
     let r = h.state().last_canvas_rect;
@@ -132,7 +132,7 @@ fn render_on(h: &mut Harness, gpu: bool, zoom: f32, doc: u32, black: bool, grid:
 
 #[test]
 fn checker_cells_are_8_screen_pixels_at_every_zoom() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut h) = harness() else { return };
     h.run_steps(4);
     // The 8 px cell never changes with the zoom.
@@ -167,7 +167,7 @@ fn lit_columns(img: &Shot, x0: u32, y: u32, len: u32) -> Vec<u32> {
 
 #[test]
 fn pixel_grid_shows_above_500_percent_and_lightens_a_dark_pixel_by_about_a_quarter() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut h) = harness() else { return };
     h.run_steps(4);
     let (flat, x0, y0, _) = render(&mut h, 5.0, 48, true, true);
@@ -184,7 +184,7 @@ fn pixel_grid_shows_above_500_percent_and_lightens_a_dark_pixel_by_about_a_quart
 
 #[test]
 fn pixel_grid_is_not_drawn_over_empty_checker() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut h) = harness() else { return };
     h.run_steps(4);
     for zoom in [8.0f32, 16.0] {
@@ -200,7 +200,7 @@ fn pixel_grid_is_not_drawn_over_empty_checker() {
 
 #[test]
 fn cpu_pixel_grid_shows_above_500_percent_over_content() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     for ppp in [1.0, 2.0] {
         let Some(mut h) = harness_with_scale(false, ppp) else { return };
         h.run_steps(4);
@@ -220,7 +220,7 @@ fn cpu_pixel_grid_shows_above_500_percent_over_content() {
 
 #[test]
 fn cpu_pixel_grid_is_not_drawn_over_empty_checker() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut h) = harness_with(false) else { return };
     h.run_steps(4);
     // The CPU checker has soft cell edges of its own, so compare with and without the grid.
@@ -271,7 +271,7 @@ fn grid_line_contrast_over_grey(h: &mut Harness, grey: u8) -> i32 {
 
 #[test]
 fn pixel_grid_does_not_flip_colour_across_mid_tones() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut h) = harness() else { return };
     h.run_steps(4);
     // 0x87 and 0x90 sit either side of luma 0.55, where the line used to switch from a full white
@@ -296,8 +296,8 @@ fn pixel_grid_does_not_flip_colour_across_mid_tones() {
 /// it, which the `inside` assertion reads: on the GPU canvas its texture (`Rgba8Unorm` for 8-bit, `Rgba16Float` for
 /// 16/32-bit, see `canvas_16f.rs`). So every canvas and scale runs 8-bit, and the GPU canvas adds 16-bit at 1x and
 /// 32-bit at 2x.
-fn grid_depths(gpu: bool, ppp: f32) -> Vec<photocraft_color::SampleType> {
-    use photocraft_color::SampleType;
+fn grid_depths(gpu: bool, ppp: f32) -> Vec<patronusphoto_color::SampleType> {
+    use patronusphoto_color::SampleType;
     match (gpu, ppp > 1.0) {
         (true, false) => vec![SampleType::U8, SampleType::U16],
         (true, true) => vec![SampleType::U8, SampleType::F32],
@@ -306,11 +306,11 @@ fn grid_depths(gpu: bool, ppp: f32) -> Vec<photocraft_color::SampleType> {
 }
 
 fn pixel_grid_is_solid_and_visible_at_scale(gpu: bool, ppp: f32) {
-    let _gpu = photocraft_testkit::gpu_lock();
-    use photocraft_color::{ColorMode, PixelFormat};
-    use photocraft_doc::{Document, Layer, LayerContent, Size};
-    use photocraft_geom::Rect;
-    use photocraft_raster::Surface;
+    let _gpu = patronusphoto_testkit::gpu_lock();
+    use patronusphoto_color::{ColorMode, PixelFormat};
+    use patronusphoto_doc::{Document, Layer, LayerContent, Size};
+    use patronusphoto_geom::Rect;
+    use patronusphoto_raster::Surface;
 
     let Some(mut h) = harness_with_scale(gpu, ppp) else { return };
     for depth in grid_depths(gpu, ppp) {

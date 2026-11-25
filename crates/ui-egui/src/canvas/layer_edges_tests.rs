@@ -5,8 +5,8 @@ use serde_json::json;
 
 const ORIGINAL: DRect = DRect::new(100, 100, 300, 260);
 
-fn app(depth: u32) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app(depth: u32) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 600, "height": 400, "depth": depth, "background": "transparent"})).unwrap();
     app.run("select.rect", json!({"x": 100, "y": 100, "width": 200, "height": 160})).unwrap();
     app.run("edit.fill", json!({"color": "#e05030"})).unwrap();
@@ -23,7 +23,7 @@ fn app(depth: u32) -> Box<PhotocraftApp> {
 
 /// After a canvas pass, the Layer Edges outline of document `idx`, in document units, is the `expected` rectangle.
 /// The outline is the same path the canvas draws, so no view is needed to compare it.
-fn assert_edges(app: &mut PhotocraftApp, ctx: &egui::Context, idx: usize, primary: bool, expected: DRect) {
+fn assert_edges(app: &mut PatronusPhotoApp, ctx: &egui::Context, idx: usize, primary: bool, expected: DRect) {
     use craft::behavior::kurbo::Shape as _;
     let rect = Rect::from_min_size(Pos2::ZERO, vec2(600.0, 400.0));
     let view = View { zoom: 0.75, center: [300.0, 200.0], doc_size: [600, 400], pending: Vec::new(), ..Default::default() };
@@ -40,7 +40,7 @@ fn assert_edges(app: &mut PhotocraftApp, ctx: &egui::Context, idx: usize, primar
 
 fn context(ppp: f32) -> egui::Context {
     let ctx = egui::Context::default();
-    PhotocraftApp::setup_context(&ctx, crate::theme::AppTheme::pro());
+    PatronusPhotoApp::setup_context(&ctx, crate::theme::AppTheme::pro());
     ctx.set_pixels_per_point(ppp);
     ctx
 }

@@ -11,13 +11,13 @@ use craft::layers::ui::panel::{
 };
 use craft::layers::ui::tree::{LayerPart, LayerRowKey, LayerTree, SubRowGroup};
 use craft::ui::list::ThumbSize;
-use photocraft_doc::{LayerContent, LayerId};
-use photocraft_engine::Session;
+use patronusphoto_doc::{LayerContent, LayerId};
+use patronusphoto_engine::Session;
 use serde_json::{Value, json};
 
 use super::super::layers_tree::{self, PhotoLayers};
 use super::{apply_layers_events, menu_pick};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 type Event = LayersEvent<LayerId>;
 
@@ -67,8 +67,8 @@ fn smart_session() -> (Session, u64, u64, u64) {
     (s, a, b, c)
 }
 
-fn app_of(s: Session) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(s, crate::Services::default());
+fn app_of(s: Session) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(s, crate::Services::default());
     app.background_jobs = false;
     // The app's first frame binds the Paths panel selection to the open document.
     app.sync_views();
@@ -76,18 +76,18 @@ fn app_of(s: Session) -> Box<PhotocraftApp> {
 }
 
 /// Sends each event in its own pass on the app's context, so a later event reads what the earlier ones did.
-fn send(app: &mut PhotocraftApp, events: Vec<Event>) {
+fn send(app: &mut PatronusPhotoApp, events: Vec<Event>) {
     let ctx = app.ctx().clone();
     for event in events {
         apply_layers_events(app, &ctx, vec![event]);
     }
 }
 
-fn layer(app: &PhotocraftApp, id: u64) -> photocraft_doc::Layer {
+fn layer(app: &PatronusPhotoApp, id: u64) -> patronusphoto_doc::Layer {
     app.session.active().unwrap().doc.layer(LayerId(id)).unwrap().clone()
 }
 
-fn active(app: &PhotocraftApp) -> Option<LayerId> {
+fn active(app: &PatronusPhotoApp) -> Option<LayerId> {
     app.session.active().unwrap().active_layer
 }
 
@@ -105,7 +105,7 @@ fn select(ids: &[u64], part: Option<LayerPart>) -> Event {
 }
 
 /// A click on a Smart Filter row of `layer`: it picks the layer and the row.
-fn select_filter(app: &PhotocraftApp, layer: u64, command: &str) -> Event {
+fn select_filter(app: &PatronusPhotoApp, layer: u64, command: &str) -> Event {
     let row = LayerRowKey::Filters(LayerId(layer), Some(filter_row(app, layer, command)));
     LayersEvent::Select(LayerSelect::new(SelectionChange::Set(vec![LayerId(layer)]), None).on_row(&row))
 }
@@ -118,7 +118,7 @@ fn dropped(drop: LayerDrop<LayerId>) -> Event {
     LayersEvent::Drop(set(drop))
 }
 
-fn filter_commands(app: &PhotocraftApp, layer_id: u64) -> Vec<String> {
+fn filter_commands(app: &PatronusPhotoApp, layer_id: u64) -> Vec<String> {
     match &layer(app, layer_id).content {
         LayerContent::Smart(sm) => sm.smart_filters.iter().map(|f| f.command.clone()).collect(),
         _ => Vec::new(),
@@ -128,7 +128,7 @@ fn filter_commands(app: &PhotocraftApp, layer_id: u64) -> Vec<String> {
 /// The row a smart filter shows in: the stack lists the last filter first, so the filter at document
 /// index `i` of `n` is row `n - 1 - i` (A's two filters: Gaussian Blur is index 0, row 1; Offset is
 /// index 1, row 0).
-fn filter_row(app: &PhotocraftApp, layer_id: u64, command: &str) -> usize {
+fn filter_row(app: &PatronusPhotoApp, layer_id: u64, command: &str) -> usize {
     let commands = filter_commands(app, layer_id);
     let index = commands.iter().position(|c| c == command).expect("the filter is recorded");
     commands.len() - 1 - index
@@ -137,17 +137,17 @@ fn filter_row(app: &PhotocraftApp, layer_id: u64, command: &str) -> usize {
 const BLUR: &str = "filter.blur.gaussianBlur";
 const OFFSET: &str = "filter.other.offset";
 
-fn mask_view(app: &PhotocraftApp) -> Value {
-    photocraft_engine::inspect::document(app.session.active().unwrap())["layerMaskView"].clone()
+fn mask_view(app: &PatronusPhotoApp) -> Value {
+    patronusphoto_engine::inspect::document(app.session.active().unwrap())["layerMaskView"].clone()
 }
 
-pub(crate) fn canvas_px(app: &PhotocraftApp) -> Option<Vec<egui::Color32>> {
+pub(crate) fn canvas_px(app: &PatronusPhotoApp) -> Option<Vec<egui::Color32>> {
     let st = app.session.active().unwrap();
     let look = crate::channel_view::Look::of(&app.session);
-    crate::channel_view::render(&st.doc, &st.channel_view, photocraft_geom::Rect::new(0, 0, 200, 100), 1, look, st.active_layer)
+    crate::channel_view::render(&st.doc, &st.channel_view, patronusphoto_geom::Rect::new(0, 0, 200, 100), 1, look, st.active_layer)
 }
 
-fn selection_bounds(app: &PhotocraftApp) -> (i32, i32, u32, u32) {
+fn selection_bounds(app: &PatronusPhotoApp) -> (i32, i32, u32, u32) {
     let b = app.session.active().unwrap().doc.selection.clone().expect("a selection").content_bounds();
     (b.x0, b.y0, b.width(), b.height())
 }
@@ -164,7 +164,7 @@ fn lock_column_converts_the_background_and_unlocks_in_one_click() {
     app.run("file.new", json!({"width": 120, "height": 80})).unwrap();
     app.run("tools.setColors", json!({"background": "#ff0000"})).unwrap();
     app.run("tools.setBrush", json!({"brush": {"size": 12, "hardness": 1.0}})).unwrap();
-    let lock = |app: &mut PhotocraftApp| {
+    let lock = |app: &mut PatronusPhotoApp| {
         let id = app.session.active().unwrap().doc.layers[0].id;
         let toggle = LayerToggle::new(vec![LayerRowKey::Layer(id)], LayerColumn::Lock, set(true));
         apply_layers_events(app, &ctx, vec![LayersEvent::Toggle(toggle)]);
@@ -196,7 +196,7 @@ fn lock_column_converts_the_background_and_unlocks_in_one_click() {
 #[test]
 fn thumb_clicks_pick_commands_and_targets() {
     type Setup = fn() -> (Session, u64, u64);
-    type Case = (&'static str, Setup, fn(u64, u64) -> Vec<Event>, fn(&PhotocraftApp, u64, u64));
+    type Case = (&'static str, Setup, fn(u64, u64) -> Vec<Event>, fn(&PatronusPhotoApp, u64, u64));
     const BLACK: egui::Color32 = egui::Color32::BLACK;
     /// "Masked" (a) and "Badge" (b) with a rectangle selected, so the ⌘-click operations have something to combine with.
     fn with_selection(command: &'static str, params: Value) -> (Session, u64, u64) {
@@ -388,7 +388,7 @@ fn footer_and_drop_events_follow_the_targets() {
         let (s, a, b, c) = smart_session();
         (app_of(s), a, b, c)
     };
-    let picked = |app: &PhotocraftApp| {
+    let picked = |app: &PatronusPhotoApp| {
         let st = app.session.active().unwrap();
         crate::smart_ui::selected(&app.smart_filter_picks, &st.doc, st.active_layer)
     };
@@ -468,7 +468,7 @@ fn footer_and_drop_events_follow_the_targets() {
     let (mut app, a, b, _) = fresh();
     send(&mut app, vec![select(&[a], None)]);
     app.run("filter.cameraRaw", json!({"exposure": 1.0, "contrast": 20})).unwrap();
-    let raw = |app: &PhotocraftApp, id: u64| match &layer(app, id).content {
+    let raw = |app: &PatronusPhotoApp, id: u64| match &layer(app, id).content {
         LayerContent::Smart(sm) => sm.smart_filters.iter().find(|f| f.command == "filter.cameraRaw").map(|f| f.params.clone()),
         _ => None,
     };
@@ -530,7 +530,7 @@ fn menu_pick_values_run_their_rules() {
     let mut app = app_of(s);
     let ctx = app.ctx().clone();
     let on = Some(LayerRowKey::Layer(LayerId(masked)));
-    let pick = |app: &mut PhotocraftApp, row: &Option<LayerRowKey<LayerId>>, command: &str| {
+    let pick = |app: &mut PatronusPhotoApp, row: &Option<LayerRowKey<LayerId>>, command: &str| {
         let mut actions = Vec::new();
         menu_pick(app, &ctx, row, command, &mut actions);
         actions
@@ -577,7 +577,7 @@ fn menu_pick_values_run_their_rules() {
 /// is a view change only.
 #[test]
 fn activate_and_fx_events_open_the_right_editor() {
-    let top = |app: &PhotocraftApp| app.framework.dialogs.open_dialogs().pop().expect("a dialog opened");
+    let top = |app: &PatronusPhotoApp| app.framework.dialogs.open_dialogs().pop().expect("a dialog opened");
     let (s, a, _, c) = smart_session();
     let mut app = app_of(s);
     let ctx = app.ctx().clone();
@@ -609,7 +609,7 @@ fn activate_and_fx_events_open_the_right_editor() {
     app.run("layer.select", json!({"layer": a})).unwrap();
     app.run("filter.liquify", json!({"strokes": [stroke], "meshSize": 3.0})).unwrap();
     app.run("layer.select", json!({"layer": c})).unwrap();
-    let row = LayerRowKey::Filters(LayerId(a), Some(filter_row(&app, a, photocraft_engine::distort_cmds::LIQUIFY)));
+    let row = LayerRowKey::Filters(LayerId(a), Some(filter_row(&app, a, patronusphoto_engine::distort_cmds::LIQUIFY)));
     send(&mut app, vec![LayersEvent::activate(row, ActivateOn::Row)]);
     assert!(app.liquify.is_some(), "the Liquify workspace opens");
     crate::liquify_ui::record_stroke(&mut app, &[[6.0, 4.0, 1.0], [10.0, 4.0, 1.0]]);
@@ -617,7 +617,7 @@ fn activate_and_fx_events_open_the_right_editor() {
     crate::control::dialogs::workspace_ui(&mut app, &ctx, "filter.liquify", &json!({"commit": true})).unwrap();
     assert!(!app.ui.status_error, "{}", app.ui.status);
     let LayerContent::Smart(sm) = &layer(&app, a).content else { panic!("smart object") };
-    let liquify = sm.smart_filters.iter().find(|f| f.command == photocraft_engine::distort_cmds::LIQUIFY).unwrap();
+    let liquify = sm.smart_filters.iter().find(|f| f.command == patronusphoto_engine::distort_cmds::LIQUIFY).unwrap();
     assert_eq!(liquify.params["strokes"].as_array().map(Vec::len), Some(2), "the new stroke was kept");
 
     // The effects disclosure hides the effects and Smart Filters stacks together, as a view change only.

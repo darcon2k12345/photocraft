@@ -12,13 +12,13 @@
 #[cfg(test)]
 mod tests;
 
-use photocraft_codecs::{self as codecs, ChannelLayout, Format, Image, SampleType as CSample};
-use photocraft_color::{BlendMode, ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{Document, Layer, LayerContent};
+use patronusphoto_codecs::{self as codecs, ChannelLayout, Format, Image, SampleType as CSample};
+use patronusphoto_color::{BlendMode, ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::{Document, Layer, LayerContent};
 #[cfg(test)]
-use photocraft_format::zip::ZipWriter;
-use photocraft_geom::{Rect, Size};
-use photocraft_raster::{Interrupt, Surface};
+use patronusphoto_format::zip::ZipWriter;
+use patronusphoto_geom::{Rect, Size};
+use patronusphoto_raster::{Interrupt, Surface};
 
 use crate::{ExportResult, ImportResult, IoError};
 
@@ -257,8 +257,8 @@ impl Reader<'_, '_> {
     }
 
     fn stack(&mut self, stack: &[craft_ora::Node], depth: usize) -> Result<Vec<Node>> {
-        if depth > photocraft_doc::MAX_GROUP_DEPTH {
-            return Err(IoError::Unsupported(format!("layer groups nested deeper than {}", photocraft_doc::MAX_GROUP_DEPTH)));
+        if depth > patronusphoto_doc::MAX_GROUP_DEPTH {
+            return Err(IoError::Unsupported(format!("layer groups nested deeper than {}", patronusphoto_doc::MAX_GROUP_DEPTH)));
         }
         let mut out = Vec::new();
         for child in stack {
@@ -350,13 +350,13 @@ fn build(nodes: Vec<Node>, images: &[Image], fmt: PixelFormat, budget: &mut usiz
                     // narrow image or one offset across tile edges.
                     // The check stays before the write (it allocates the whole rect's tiles); only the
                     // tiles kept after `prune()` are charged.
-                    let tiles = usize::try_from(photocraft_raster::tile_storage_bytes(rect, &fmt)).unwrap_or(usize::MAX);
+                    let tiles = usize::try_from(patronusphoto_raster::tile_storage_bytes(rect, &fmt)).unwrap_or(usize::MAX);
                     if tiles > *budget {
                         return Err(invalid("decoded layers exceed the 1 GiB limit"));
                     }
                     surface.write_interleaved(rect, px.data());
                     surface.prune();
-                    let kept = usize::try_from(photocraft_raster::stored_tiles_bytes(surface.tile_count() as u64, &fmt)).unwrap_or(usize::MAX);
+                    let kept = usize::try_from(patronusphoto_raster::stored_tiles_bytes(surface.tile_count() as u64, &fmt)).unwrap_or(usize::MAX);
                     *budget = budget.saturating_sub(kept);
                 }
                 layer.content = LayerContent::Raster(surface);
@@ -559,7 +559,7 @@ impl Writer<'_> {
             LayerContent::Raster(s) => {
                 let r = s.content_bounds();
                 admit_layer(r)?;
-                (r, photocraft_compose::surface_to_buffer(s, r).into_px())
+                (r, patronusphoto_compose::surface_to_buffer(s, r).into_px())
             }
             _ => {
                 // Rendered as it shows on its own, before the layer's blending options.
@@ -571,9 +571,9 @@ impl Writer<'_> {
                 solo.clipped = false;
                 solo.mask = None;
                 solo.effects = Default::default();
-                let r = photocraft_compose::composite_bounds(&solo, canvas).unwrap_or(canvas).intersect(&canvas);
+                let r = patronusphoto_compose::composite_bounds(&solo, canvas).unwrap_or(canvas).intersect(&canvas);
                 admit_layer(r)?;
-                (r, photocraft_compose::render_layer(&solo, r).into_px())
+                (r, patronusphoto_compose::render_layer(&solo, r).into_px())
             }
         };
         if let Some(mask) = layer.mask.as_ref().filter(|m| m.enabled) {
@@ -592,8 +592,8 @@ impl Writer<'_> {
     }
 
     fn layers(&mut self, layers: &[Layer], depth: usize) -> Result<Vec<craft_ora::Node>> {
-        if depth > photocraft_doc::MAX_GROUP_DEPTH {
-            return Err(IoError::Unsupported(format!("layer groups nested deeper than {}", photocraft_doc::MAX_GROUP_DEPTH)));
+        if depth > patronusphoto_doc::MAX_GROUP_DEPTH {
+            return Err(IoError::Unsupported(format!("layer groups nested deeper than {}", patronusphoto_doc::MAX_GROUP_DEPTH)));
         }
         let mut nodes = Vec::new();
         // stack.xml lists the topmost layer first.
@@ -655,9 +655,9 @@ pub(crate) fn export(doc: &Document) -> Result<ExportResult> {
             stack,
         })
         .map_err(|e| IoError::Ora(e.to_string()))?;
-    let merged = photocraft_compose::flatten(doc);
+    let merged = patronusphoto_compose::flatten(doc);
     w.archive.add("mergedimage.png", &png(doc.size.width, doc.size.height, &merged.px, sample)?).map_err(|e| IoError::Ora(e.to_string()))?;
-    let thumb = photocraft_compose::thumbnail(doc, THUMBNAIL_SIDE);
+    let thumb = patronusphoto_compose::thumbnail(doc, THUMBNAIL_SIDE);
     let thumb = Image::from_raw(thumb.width, thumb.height, ChannelLayout::Rgba, CSample::U8, thumb.pixels)?;
     w.archive
         .add("Thumbnails/thumbnail.png", &codecs::encode(&thumb, Format::Png, &codecs::EncodeOptions::default())?)

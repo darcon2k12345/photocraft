@@ -9,10 +9,10 @@ use crate::common;
 
 use common::raster;
 use craft_psd::PsdFile;
-use photocraft_color::{ColorMode, SampleType};
-use photocraft_doc::Document;
-use photocraft_geom::{Rect, Size};
-use photocraft_io::*;
+use patronusphoto_color::{ColorMode, SampleType};
+use patronusphoto_doc::Document;
+use patronusphoto_geom::{Rect, Size};
+use patronusphoto_io::*;
 
 /// The unicode alpha channel names (resource 1045), empty without it.
 fn names(file: &PsdFile) -> Vec<String> {

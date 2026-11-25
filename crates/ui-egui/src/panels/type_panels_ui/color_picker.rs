@@ -4,11 +4,11 @@ use std::sync::Arc;
 use craft::color_ui::ui::{ColorPickerDialog, ColorPickerResult};
 use craft::theme::Srgba;
 use craft::ui::dialog::{DialogId, DialogResult};
-use photocraft_doc::{Color, DocId, Document};
+use patronusphoto_doc::{Color, DocId, Document};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-use crate::{PhotocraftApp, color_picker_ui, panel_docking};
+use crate::{PatronusPhotoApp, color_picker_ui, panel_docking};
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -64,7 +64,7 @@ fn color(doc: &Document, kind: Kind, id: u32) -> Result<Color, String> {
 
 /// Whether the target still names what it was opened on: the same document and revision, the same style open in
 /// Style Options on the front tab of its panel, and the style still has a colour.
-fn valid(app: &PhotocraftApp, t: &Target) -> bool {
+fn valid(app: &PatronusPhotoApp, t: &Target) -> bool {
     let Some(st) = app.session.active() else { return false };
     st.doc.id == t.document
         && st.revision == t.revision
@@ -74,7 +74,7 @@ fn valid(app: &PhotocraftApp, t: &Target) -> bool {
 }
 
 /// Validate before changing either the panel state or the dialog stack. Also used by automation.
-pub(crate) fn open(app: &mut PhotocraftApp, kind: Kind, id: u32) -> Result<DialogId, String> {
+pub(crate) fn open(app: &mut PatronusPhotoApp, kind: Kind, id: u32) -> Result<DialogId, String> {
     if app.dialog_open() {
         return Err("close the current dialog before opening a text style color picker".into());
     }
@@ -96,7 +96,7 @@ pub(crate) fn open(app: &mut PhotocraftApp, kind: Kind, id: u32) -> Result<Dialo
 }
 
 /// Once per pass before the host runs: cancels the picker when its target no longer holds.
-pub(crate) fn check(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(crate) fn check(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     let Some(t) = app.ui.type_panels.color_target.clone() else { return };
     if !valid(app, &t) {
         app.framework.dialogs.cancel_by_id(ctx, t.dialog);
@@ -106,7 +106,7 @@ pub(crate) fn check(app: &mut PhotocraftApp, ctx: &egui::Context) {
 }
 
 /// The picker finished: OK with a colour other than the style's runs one undo step; every result ends the target.
-pub(crate) fn answered(app: &mut PhotocraftApp, result: DialogResult<ColorPickerResult>) {
+pub(crate) fn answered(app: &mut PatronusPhotoApp, result: DialogResult<ColorPickerResult>) {
     let target = app.ui.type_panels.color_target.take();
     app.text_style_preview = None;
     let (DialogResult::Ok(answer), Some(t)) = (result, target) else { return };
@@ -123,7 +123,7 @@ pub(crate) fn answered(app: &mut PhotocraftApp, result: DialogResult<ColorPicker
 
 /// Takes the open picker's result and files it with [`answered`]; a picker that is gone without one ends the target.
 /// A taker of `dialogs::take_results`, so a confirm or cancel from the dialog's buttons or from automation both end here.
-pub(crate) fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
+pub(crate) fn take(app: &mut PatronusPhotoApp, _ctx: &egui::Context) {
     let Some(dialog) = app.ui.type_panels.color_target.as_ref().map(|t| t.dialog) else { return };
     if let Some(result) = app.framework.dialogs.take_by_id::<ColorPickerDialog>(dialog) {
         answered(app, result);
@@ -134,7 +134,7 @@ pub(crate) fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
 }
 
 /// CPU and GPU canvases use the same isolated document; unchanged frames reuse its Arc.
-pub(crate) fn display_doc(app: &mut PhotocraftApp, idx: usize) -> Option<(Arc<Document>, u64)> {
+pub(crate) fn display_doc(app: &mut PatronusPhotoApp, idx: usize) -> Option<(Arc<Document>, u64)> {
     let t = app.ui.type_panels.color_target.clone()?;
     let picked = app.framework.dialogs.get_by_id::<ColorPickerDialog>(t.dialog)?.current()?;
     let st = app.session.documents().get(idx)?;
@@ -148,7 +148,7 @@ pub(crate) fn display_doc(app: &mut PhotocraftApp, idx: usize) -> Option<(Arc<Do
     let hex = color_picker_ui::hex(picked.color.to_rgb_array());
     let key = (egui::Id::unique((t.document.0, t.revision, t.dialog.value(), t.kind.paragraph(), t.id, &hex)).value() & ((1 << 60) - 1)) | (1 << 60);
     if app.text_style_preview.as_ref().map(|p| p.key) != Some(key) {
-        let shown = photocraft_engine::type_styles_cmds::preview_options(&st.doc, &json!({"id": t.id, "attrs": {"color": hex}}), t.kind.paragraph())
+        let shown = patronusphoto_engine::type_styles_cmds::preview_options(&st.doc, &json!({"id": t.id, "attrs": {"color": hex}}), t.kind.paragraph())
             .map(Arc::new)
             .map_err(|e| e.to_string());
         if let Err(error) = &shown {

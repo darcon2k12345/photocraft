@@ -7,8 +7,8 @@
 
 use craft_psd::resources::{ImageResource, ResolutionInfo, ids};
 use craft_psd::{ColorMode as PsdMode, Compression, Header, ImageData, PsdFile};
-use photocraft_color::ColorMode;
-use photocraft_doc::{ColorTable, Document};
+use patronusphoto_color::ColorMode;
+use patronusphoto_doc::{ColorTable, Document};
 
 /// Indexed Color Table Count: the number of colours in the table (u16).
 pub(crate) const COLOR_TABLE_COUNT: u16 = 1046;
@@ -27,7 +27,7 @@ pub(crate) fn document_to_psd(
     doc: &Document,
     force_psb: bool,
     size_limit: Option<u64>,
-    patterns: Option<&[photocraft_doc::PsdGlobalBlock]>,
+    patterns: Option<&[patronusphoto_doc::PsdGlobalBlock]>,
 ) -> Result<Option<(PsdFile, Vec<String>)>, crate::IoError> {
     if !doc.channels.is_empty() || doc.quick_mask.is_some() {
         return Ok(None);
@@ -85,14 +85,14 @@ fn flattens_losslessly(doc: &Document) -> bool {
         [] => true,
         [l] => {
             l.visible
-                && matches!(l.content, photocraft_doc::LayerContent::Raster(_))
+                && matches!(l.content, patronusphoto_doc::LayerContent::Raster(_))
                 && l.mask.is_none()
                 && l.vector_mask.is_none()
                 && !l.clipped
                 && l.opacity >= 1.0
                 && l.fill_opacity >= 1.0
-                && l.blend == photocraft_color::BlendMode::Normal
-                && !(l.effects.enabled && l.effects.items.iter().any(photocraft_doc::Effect::enabled))
+                && l.blend == patronusphoto_color::BlendMode::Normal
+                && !(l.effects.enabled && l.effects.items.iter().any(patronusphoto_doc::Effect::enabled))
         }
         _ => false,
     }
@@ -118,7 +118,7 @@ fn indices(doc: &Document, t: &ColorTable) -> Vec<u8> {
         t.colors.iter().copied().enumerate().filter(|(i, _)| Some(*i) != t.transparent.map(usize::from)).map(|(i, c)| (i as u8, c)).unzip();
     let opaque = ColorTable { colors, transparent: None };
     let mut idx = Vec::with_capacity(doc.size.area() as usize);
-    let _ = photocraft_compose::render_bands(doc, doc.bounds(), 0, |band| -> Result<(), ()> {
+    let _ = patronusphoto_compose::render_bands(doc, doc.bounds(), 0, |band| -> Result<(), ()> {
         idx.extend(band.px.iter().map(|p| match t.transparent {
             Some(i) if p[3] < 0.5 => i,
             Some(_) => opaque_indices.get(opaque.nearest([p[0], p[1], p[2]])).copied().unwrap_or(0),
@@ -138,7 +138,7 @@ fn bits(doc: &Document) -> Vec<u8> {
     let w = doc.size.width as usize;
     let row = w.div_ceil(8);
     let mut out = Vec::with_capacity(row * doc.size.height as usize);
-    let _ = photocraft_compose::render_bands(doc, doc.bounds(), 0, |band| -> Result<(), ()> {
+    let _ = patronusphoto_compose::render_bands(doc, doc.bounds(), 0, |band| -> Result<(), ()> {
         for line in band.px.chunks(w.max(1)) {
             let mut bytes = vec![0u8; row];
             for (x, p) in line.iter().enumerate() {
@@ -157,8 +157,8 @@ fn bits(doc: &Document) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use photocraft_color::{Color, SampleType};
-    use photocraft_doc::Size;
+    use patronusphoto_color::{Color, SampleType};
+    use patronusphoto_doc::Size;
 
     fn document(width: u32, height: u32, depth: SampleType, mode: ColorMode, pixels: &[f32]) -> Document {
         let mut doc = Document::with_background("palette test", Size::new(width, height), ColorMode::Rgb, depth, Color::rgba(0.0, 0.0, 0.0, 1.0));

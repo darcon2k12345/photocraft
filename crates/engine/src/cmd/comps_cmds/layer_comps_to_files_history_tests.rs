@@ -1,6 +1,6 @@
 use super::*;
-use photocraft_doc::Layer;
-use photocraft_geom::Rect;
+use patronusphoto_doc::Layer;
+use patronusphoto_geom::Rect;
 
 /// A 64 x 48 document with a red layer A and a blue layer B and three comps: both shown, B hidden, A hidden.
 fn session() -> (Session, LayerId, LayerId, Vec<u64>) {
@@ -10,9 +10,9 @@ fn session() -> (Session, LayerId, LayerId, Vec<u64>) {
         .edit("setup", |doc, _| {
             let fmt = doc.pixel_format();
             let mut a = Layer::raster("A", fmt);
-            a.surface_mut().unwrap().fill_rect(Rect::new(4, 4, 14, 14), &photocraft_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 1.0]));
+            a.surface_mut().unwrap().fill_rect(Rect::new(4, 4, 14, 14), &patronusphoto_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 1.0]));
             let mut b = Layer::raster("B", fmt);
-            b.surface_mut().unwrap().fill_rect(Rect::new(30, 20, 40, 30), &photocraft_raster::from_rgba(&fmt, [0.0, 0.0, 1.0, 1.0]));
+            b.surface_mut().unwrap().fill_rect(Rect::new(30, 20, 40, 30), &patronusphoto_raster::from_rgba(&fmt, [0.0, 0.0, 1.0, 1.0]));
             let (ia, ib) = (a.id, b.id);
             doc.layers.push(a);
             doc.layers.push(b);
@@ -51,7 +51,7 @@ fn past(s: &Session) -> usize {
 }
 
 fn temp_dir(tag: &str) -> std::path::PathBuf {
-    let dir = std::env::temp_dir().join(format!("photocraft-comps-hist-{tag}-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("patronusphoto-comps-hist-{tag}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     dir
@@ -115,8 +115,8 @@ fn written_files_still_each_show_their_own_comp() {
     assert!(files[0].ends_with("doc_0000_Both.png"), "{files:?}");
     assert!(files[2].ends_with("doc_0002_NoA.png"), "{files:?}");
     let px = |path: &str, rect: Rect| {
-        let doc = photocraft_io::import("x.png", &std::fs::read(path).unwrap()).unwrap().document;
-        photocraft_compose::render(&doc, rect).px[0]
+        let doc = patronusphoto_io::import("x.png", &std::fs::read(path).unwrap()).unwrap().document;
+        patronusphoto_compose::render(&doc, rect).px[0]
     };
     let a_rect = Rect::new(8, 8, 9, 9);
     let b_rect = Rect::new(35, 25, 36, 26);

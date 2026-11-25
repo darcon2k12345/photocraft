@@ -1,5 +1,5 @@
 use super::*;
-use photocraft_color::ColorMode;
+use patronusphoto_color::ColorMode;
 
 const DEPTHS: [u64; 3] = [8, 16, 32];
 
@@ -260,7 +260,7 @@ fn paint_layer(s: &mut Session, f: impl Fn(i32, i32) -> [f32; 4]) {
         let mut data = Vec::new();
         for y in b.y0..b.y1 {
             for x in b.x0..b.x1 {
-                data.extend(photocraft_raster::from_rgba(&fmt, f(x, y)));
+                data.extend(patronusphoto_raster::from_rgba(&fmt, f(x, y)));
             }
         }
         surf.write_region(b, &data);
@@ -463,7 +463,7 @@ fn sponge_reduces_and_increases_saturation() {
     for depth in DEPTHS {
         let mut s = session(40, 20, depth, "rgb");
         paint_layer(&mut s, |_, _| [0.8, 0.4, 0.3, 1.0]);
-        let sat = |p: [f32; 4]| photocraft_algo::retouch::saturation([p[0], p[1], p[2]]);
+        let sat = |p: [f32; 4]| patronusphoto_algo::retouch::saturation([p[0], p[1], p[2]]);
         let s0 = sat(rgba(&s, 10, 10));
         s.execute("paint.sponge", json!({"points": [[2, 10], [38, 10]], "size": 8, "hardness": 100})).unwrap();
         let s1 = sat(rgba(&s, 10, 10));
@@ -533,7 +533,7 @@ fn sponge_float_rgb_and_lab_keep_the_existing_transfer() {
         let doc = &s.active().unwrap().doc;
         let fmt = doc.layer(s.active().unwrap().active_layer.unwrap()).unwrap().surface().unwrap().format();
         let mut expected = Surface::new(fmt);
-        expected.write_region(Rect::new(0, 0, 1, 1), &photocraft_raster::from_rgba(&fmt, [r, g, b, a]));
+        expected.write_region(Rect::new(0, 0, 1, 1), &patronusphoto_raster::from_rgba(&fmt, [r, g, b, a]));
         s.execute("paint.sponge", json!({"points": [[32, 32]], "size": 40, "hardness": 100, "spacing": 25, "flow": 50})).unwrap();
         for (actual, expected) in rgba(&s, 32, 32).into_iter().zip(expected.rgba(0, 0)) {
             assert!((actual - expected).abs() <= 1e-6, "{mode} {depth}-bit: {actual} vs {expected}");
@@ -627,7 +627,7 @@ fn protect_detail_sharpens_with_every_stamp_of_a_count_but_not_with_airbrush_rep
     // each has its own footprint, and a larger one must sharpen the ring only it covers (the
     // stamps after the first used to get no share at all). An airbrush click repeats the same
     // stamp, which adds nothing, so the measured click is kept.
-    let click = |set: &dyn Fn(&mut photocraft_paint::BrushSettings)| {
+    let click = |set: &dyn Fn(&mut patronusphoto_paint::BrushSettings)| {
         let mut s = session(80, 40, 8, "rgb");
         paint_layer(&mut s, |x, _| if x < 40 { [96.0 / 255.0, 96.0 / 255.0, 96.0 / 255.0, 1.0] } else { [160.0 / 255.0, 160.0 / 255.0, 160.0 / 255.0, 1.0] });
         set(&mut s.tools.brush);
@@ -635,12 +635,12 @@ fn protect_detail_sharpens_with_every_stamp_of_a_count_but_not_with_airbrush_rep
         // The whole image, row by row: a larger stamp's ring meets the step above and below the click.
         (0..40).flat_map(|y| (0..80).map(move |x| (x, y))).map(|(x, y)| (rgba(&s, x, y)[0] * 255.0).round() as i32).collect::<Vec<i32>>()
     };
-    let jitter = |b: &mut photocraft_paint::BrushSettings| {
+    let jitter = |b: &mut patronusphoto_paint::BrushSettings| {
         b.shape_dynamics.enabled = true;
         b.shape_dynamics.size.jitter = 1.0;
         b.shape_dynamics.size.minimum = 0.0;
     };
-    let count = |b: &mut photocraft_paint::BrushSettings| {
+    let count = |b: &mut patronusphoto_paint::BrushSettings| {
         jitter(b);
         b.scattering.enabled = true;
         b.scattering.count = 4;
@@ -654,13 +654,13 @@ fn protect_detail_sharpens_with_every_stamp_of_a_count_but_not_with_airbrush_rep
             count(&mut b);
             b.seed = seed;
             let mut dabs = Vec::new();
-            let step = photocraft_paint::dynamics::StepInput {
-                point: photocraft_paint::StrokePoint::new(40.0, 20.0, 1.0),
+            let step = patronusphoto_paint::dynamics::StepInput {
+                point: patronusphoto_paint::StrokePoint::new(40.0, 20.0, 1.0),
                 direction: 0.0,
                 initial_direction: 0.0,
                 step: 0,
             };
-            photocraft_paint::dynamics::DabBuilder::new(&b).build(&step, &mut dabs);
+            patronusphoto_paint::dynamics::DabBuilder::new(&b).build(&step, &mut dabs);
             dabs.len() == 4 && dabs[1..].iter().any(|d| d.radius > dabs[0].radius + 3.0)
         })
         .expect("a seed with a larger later stamp");
@@ -694,8 +694,8 @@ fn protect_detail_dabs_on_one_centre_apply_at_most_one_dab_at_each_pixel() {
     // Airbrush build-up held still with shape jitter lays dabs of changing size on one centre.
     // Together they apply each pixel's largest coverage once, so a held stroke stays bounded,
     // while a larger stamp still reaches the ring the smaller ones missed.
-    let dab = |x: f64, radius: f32| photocraft_paint::Dab {
-        center: photocraft_geom::Point { x, y: 50.0 },
+    let dab = |x: f64, radius: f32| patronusphoto_paint::Dab {
+        center: patronusphoto_geom::Point { x, y: 50.0 },
         radius,
         alpha: 1.0,
         angle: 0.0,
@@ -714,7 +714,7 @@ fn protect_detail_dabs_on_one_centre_apply_at_most_one_dab_at_each_pixel() {
     let mut shares = super::dab::ProtectDetailShares::default();
     let (mut applied, mut largest) = (std::collections::HashMap::new(), std::collections::HashMap::new());
     for (i, radius) in [10.0, 20.0, 15.0, 20.0, 5.0].into_iter().enumerate() {
-        let fp = photocraft_paint::retouch::footprint(&dab(50.0, radius), i, 1.0);
+        let fp = patronusphoto_paint::retouch::footprint(&dab(50.0, radius), i, 1.0);
         let (share, fresh) = shares.next(&fp);
         assert_eq!(share, 1.0, "dab {i}: the click's share");
         let w = fp.rect.width() as usize;
@@ -738,7 +738,7 @@ fn protect_detail_dabs_on_one_centre_apply_at_most_one_dab_at_each_pixel() {
         assert!((a - largest[p]).abs() < 1e-6 && *a <= 1.0, "pixel {p:?}: applied {a}, largest coverage {}", largest[p]);
     }
     // A dab on a new centre starts a new run: its full coverage at the share for 5 px moved.
-    let fp = photocraft_paint::retouch::footprint(&dab(55.0, 20.0), 5, 1.0);
+    let fp = patronusphoto_paint::retouch::footprint(&dab(55.0, 20.0), 5, 1.0);
     let (share, fresh) = shares.next(&fp);
     assert!((share - 0.5).abs() < 1e-6, "5 px over a quarter of 40 px: {share}");
     assert_eq!(fresh, fp.cov);
@@ -874,7 +874,7 @@ fn every_retouch_stroke_refuses_a_box_it_cannot_render() {
 /// for a stroke big enough to exhaust anything.
 #[test]
 fn the_budget_is_applied_to_the_rendered_extent_not_the_input_points() {
-    use photocraft_paint::{BrushSettings, Stroke, StrokePoint};
+    use patronusphoto_paint::{BrushSettings, Stroke, StrokePoint};
     let mut brush = BrushSettings { size: 24.0, hardness: 1.0, ..Default::default() };
     brush.scattering.enabled = true;
     brush.scattering.scatter.jitter = 6.0;
@@ -1237,7 +1237,7 @@ fn texture_surface(surf: &mut Surface, b: Rect) {
     surf.write_region(b, &data);
 }
 
-fn active_layer(s: &Session) -> &photocraft_doc::Layer {
+fn active_layer(s: &Session) -> &patronusphoto_doc::Layer {
     let d = s.active().unwrap();
     d.doc.layer(d.active_layer.unwrap()).unwrap()
 }
@@ -2124,10 +2124,10 @@ fn pattern_stamp_tile_seam_matches_an_untilled_reference() {
     let mut s = session(96, 96, 8, "rgb");
     stamp(&mut s, json!({"points": [[64, 48]], "size": 32, "hardness": 100, "phase": [0, 0]})).unwrap();
     let pat = s.patterns.items.iter().find(|p| p.name == "Checkerboard").cloned().expect("builtin");
-    let tile = photocraft_compose::pattern::Tile::new(&pat).expect("tile");
-    let place = photocraft_compose::pattern::Placement::new(photocraft_geom::Rect::EMPTY, false, (0.0, 0.0), 1.0, 0.0);
-    let col = photocraft_geom::Rect::new(64, 40, 65, 56);
-    let reference = photocraft_compose::pattern::render(&tile, &place, col);
+    let tile = patronusphoto_compose::pattern::Tile::new(&pat).expect("tile");
+    let place = patronusphoto_compose::pattern::Placement::new(patronusphoto_geom::Rect::EMPTY, false, (0.0, 0.0), 1.0, 0.0);
+    let col = patronusphoto_geom::Rect::new(64, 40, 65, 56);
+    let reference = patronusphoto_compose::pattern::render(&tile, &place, col);
     for (i, y) in (40..56).enumerate() {
         let got = rgba(&s, 64, y);
         let want = reference[i];
@@ -2147,13 +2147,13 @@ fn pattern_stamp_rejects_hostile_input() {
     assert!(s.execute("paint.patternStamp", json!({"points": [[1e7, 0]], "pattern": "Checkerboard", "size": 8})).is_err());
     assert!(s.execute("paint.patternStamp", json!({"points": [[f64::NAN, 0]], "pattern": "Checkerboard", "size": 8})).is_err());
     assert!(s.execute("paint.patternStamp", json!({"points": [[0, 0], [9000, 9000]], "pattern": "Checkerboard", "size": 5000, "hardness": 100})).is_err());
-    let fmt = photocraft_color::PixelFormat::new(photocraft_color::ColorMode::Rgb, photocraft_color::SampleType::U8, false);
-    s.patterns.items.push(photocraft_doc::Pattern {
+    let fmt = patronusphoto_color::PixelFormat::new(patronusphoto_color::ColorMode::Rgb, patronusphoto_color::SampleType::U8, false);
+    s.patterns.items.push(patronusphoto_doc::Pattern {
         id: "empty-pat".into(),
         name: "EmptyTile".into(),
         width: 0,
         height: 0,
-        surface: photocraft_raster::Surface::new(fmt),
+        surface: patronusphoto_raster::Surface::new(fmt),
     });
     assert!(s.execute("paint.patternStamp", json!({"points": [[8, 8]], "pattern": "EmptyTile", "size": 8})).is_err());
     s.execute("layer.setProps", json!({"locks": {"pixels": true}})).unwrap();
@@ -2277,7 +2277,7 @@ fn live_dodge_matches_the_commit_across_cells() {
             changed |= (want[0] - texture(x, y)[0]).abs() > 0.02;
             // The commit also lays the stroke's last dab, which the live stroke shows on release
             // (a soft tip reaches past its 20 px radius).
-            let reach = photocraft_paint::tip_reach(20.0, 0.3).ceil() as i32 + 2;
+            let reach = patronusphoto_paint::tip_reach(20.0, 0.3).ceil() as i32 + 2;
             if (x - 150).pow(2) + (y - 70).pow(2) > reach * reach {
                 worst = (0..4).map(|c| (got[c] - want[c]).abs()).fold(worst, f32::max);
             }
@@ -2377,7 +2377,7 @@ fn live_dab_strokes_commit_their_pixels_and_they_are_the_commands() {
 /// including features whose coverage is unnecessary to sequential effects (dual tips/Wet Edges).
 #[test]
 fn live_dab_batches_match_the_accumulating_renderer() {
-    use photocraft_paint::{GrayTile, StrokeRenderer, TipShape};
+    use patronusphoto_paint::{GrayTile, StrokeRenderer, TipShape};
 
     // 8 bits (integers, and the measured Smudge mode only 8-bit RGB gets in `dab.rs`) and 32 bits (floats): 16 bits
     // differs from 8 only in the raster's shared encode, which the live and the reference renderer both use (#15652).
@@ -2409,7 +2409,7 @@ fn live_dab_batches_match_the_accumulating_renderer() {
                     b.noise = true;
                     b.texture.enabled = true;
                     b.texture.each_tip = true;
-                    b.texture.pattern = photocraft_paint::Pattern::Tile(GrayTile::from_fn(3, 3, |x, y| (x + y) as f32 / 4.0));
+                    b.texture.pattern = patronusphoto_paint::Pattern::Tile(GrayTile::from_fn(3, 3, |x, y| (x + y) as f32 / 4.0));
                 }
                 "smoothing" => s.tools.brush.smoothing.amount = 0.65,
                 "smoothing_catch_up" => {
@@ -2450,7 +2450,7 @@ fn live_dab_batches_match_the_accumulating_renderer() {
                     }
                     done = reference.dabs().len();
                     if !damage.is_empty() {
-                        photocraft_paint::retouch::mix_back(&mut shown, &orig, &work, damage, stroke.brush.opacity, None, false);
+                        patronusphoto_paint::retouch::mix_back(&mut shown, &orig, &work, damage, stroke.brush.opacity, None, false);
                     }
                     bounds = bounds.union(&damage);
                     (bounds, shown.read_region(bounds))

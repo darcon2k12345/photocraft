@@ -2,11 +2,11 @@
 //! against the GPU passes (upload, render, readback), for per-pixel settings and for the spatial
 //! stages (Dehaze, Shadows and Highlights, Clarity, Texture) with them. "Source uploaded every
 //! time" also makes Dehaze's copy on the CPU every time, as a white balance drag does.
-//! `cargo run --release -p photocraft-gpu --example bench_camera_raw [-- --quick]`
+//! `cargo run --release -p patronusphoto-gpu --example bench_camera_raw [-- --quick]`
 use std::time::Instant;
 
-use photocraft_algo::camera_raw::{CameraRaw, DevelopInputs, Wheel, develop, per_pixel, spatial, white_black_points};
-use photocraft_gpu::CameraRawDevelop;
+use patronusphoto_algo::camera_raw::{CameraRaw, DevelopInputs, Wheel, develop, per_pixel, spatial, white_black_points};
+use patronusphoto_gpu::CameraRawDevelop;
 
 fn median(mut v: Vec<f64>) -> f64 {
     v.sort_by(f64::total_cmp);

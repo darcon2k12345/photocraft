@@ -7,17 +7,17 @@ use craft::automation::ui::actions::{ActionSelection, ActionsPanelCommands};
 use craft::ui::dialog::DialogId;
 use craft::ui::runtime::commands::CommandRef;
 use egui_kittest::Harness;
-use photocraft_engine::actions_cmds::{Action, ActionStep};
-use photocraft_engine::prefs::PlaybackPerformance;
-use photocraft_engine::{EngineError, Session, atn_cmds};
+use patronusphoto_engine::actions_cmds::{Action, ActionStep};
+use patronusphoto_engine::prefs::PlaybackPerformance;
+use patronusphoto_engine::{EngineError, Session, atn_cmds};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::control::{ControlRequest, Reply, handle};
 
 /// A real dialog host over one selected action in a set.
-fn harness() -> Harness<'static, Box<PhotocraftApp>> {
-    let mut app = PhotocraftApp::new(Session::new(), Default::default());
+fn harness() -> Harness<'static, Box<PatronusPhotoApp>> {
+    let mut app = PatronusPhotoApp::new(Session::new(), Default::default());
     app.background_jobs = false;
     app.run("file.new", json!({"width":16,"height":12})).unwrap();
     let mut a = Action::new("A", vec![]);
@@ -27,13 +27,13 @@ fn harness() -> Harness<'static, Box<PhotocraftApp>> {
     app.ui.actions.panel.expanded.insert("A".into());
     let mut h =
         Harness::builder().with_context(app.ctx().clone()).with_size(egui::vec2(1100.0, 900.0)).build_ui_state(|ui, app| crate::dialogs::run(app, ui), app);
-    PhotocraftApp::setup_context(&h.ctx, Default::default());
+    PatronusPhotoApp::setup_context(&h.ctx, Default::default());
     h.run_steps(3);
     h
 }
 
 /// One control request through the public channel; the reply is the request's answer.
-fn control(app: &mut PhotocraftApp, ctx: &egui::Context, method: &str, params: Value) -> Value {
+fn control(app: &mut PatronusPhotoApp, ctx: &egui::Context, method: &str, params: Value) -> Value {
     let (request, _reply) = ControlRequest::new(method, params);
     match handle(app, ctx, &request) {
         Reply::Done(reply) => reply,
@@ -42,7 +42,7 @@ fn control(app: &mut PhotocraftApp, ctx: &egui::Context, method: &str, params: V
 }
 
 /// Fire the panel menu row of `command` as a click on it would.
-fn fire(h: &mut Harness<'static, Box<PhotocraftApp>>, command: ActionsPanelCommands) -> Value {
+fn fire(h: &mut Harness<'static, Box<PatronusPhotoApp>>, command: ActionsPanelCommands) -> Value {
     let ctx = h.ctx.clone();
     let reply = control(h.state_mut(), &ctx, "ui.menu.invoke", json!({"id": CommandRef::from(command).id}));
     h.run_steps(3);
@@ -50,12 +50,12 @@ fn fire(h: &mut Harness<'static, Box<PhotocraftApp>>, command: ActionsPanelComma
 }
 
 /// The modal the last fired row opened.
-fn top_dialog(app: &PhotocraftApp) -> DialogId {
+fn top_dialog(app: &PatronusPhotoApp) -> DialogId {
     app.framework.dialogs.stack().top().expect("a dialog is open")
 }
 
 /// Fire the row of `command` and return the dialog it opened.
-fn open(h: &mut Harness<'static, Box<PhotocraftApp>>, command: ActionsPanelCommands) -> DialogId {
+fn open(h: &mut Harness<'static, Box<PatronusPhotoApp>>, command: ActionsPanelCommands) -> DialogId {
     fire(h, command);
     top_dialog(h.state())
 }
@@ -66,18 +66,18 @@ fn paused_dialog(played: &Value) -> DialogId {
 }
 
 /// The command key of open dialog `id`.
-fn dialog_key(app: &PhotocraftApp, id: DialogId) -> Option<String> {
+fn dialog_key(app: &PatronusPhotoApp, id: DialogId) -> Option<String> {
     app.framework.dialogs.open_dialogs().into_iter().find(|open| open.id == id).and_then(|open| open.key)
 }
 
 /// Sets one field of dialog `id` as an agent would.
-fn set_field(h: &mut Harness<'static, Box<PhotocraftApp>>, id: DialogId, field: &str, value: Value) -> Value {
+fn set_field(h: &mut Harness<'static, Box<PatronusPhotoApp>>, id: DialogId, field: &str, value: Value) -> Value {
     let ctx = h.ctx.clone();
     control(h.state_mut(), &ctx, "ui.dialog.set", json!({"dialog": id, "field": field, "value": value}))
 }
 
 /// Answers OK on dialog `id`; the error is the reason the dialog refused.
-fn confirm(h: &mut Harness<'static, Box<PhotocraftApp>>, id: DialogId) -> Result<(), String> {
+fn confirm(h: &mut Harness<'static, Box<PatronusPhotoApp>>, id: DialogId) -> Result<(), String> {
     let ctx = h.ctx.clone();
     let reply = control(h.state_mut(), &ctx, "ui.dialog.confirm", json!({"dialog": id}));
     h.run_steps(3);
@@ -85,14 +85,14 @@ fn confirm(h: &mut Harness<'static, Box<PhotocraftApp>>, id: DialogId) -> Result
 }
 
 /// Cancels dialog `id`.
-fn cancel(h: &mut Harness<'static, Box<PhotocraftApp>>, id: DialogId) {
+fn cancel(h: &mut Harness<'static, Box<PatronusPhotoApp>>, id: DialogId) {
     let ctx = h.ctx.clone();
     control(h.state_mut(), &ctx, "ui.dialog.cancel", json!({"dialog": id}));
     h.run_steps(3);
 }
 
 /// The steps of action `A`.
-fn steps(app: &PhotocraftApp) -> Vec<ActionStep> {
+fn steps(app: &PatronusPhotoApp) -> Vec<ActionStep> {
     app.session.actions.list.action(0).unwrap().steps.clone()
 }
 
@@ -115,18 +115,18 @@ fn insert_menu_item_chooser_cancels_or_records_descriptor_free_filter_event() {
     assert_eq!(dialog_key(h.state(), dialog).as_deref(), Some("filter.blur.gaussianBlur"));
     cancel(&mut h, dialog);
     h.state_mut().run("paint.stroke", json!({"points":[[6,6]],"size":3,"hardness":1,"color":"#000000"})).unwrap();
-    let original = photocraft_compose::flatten(&h.state().session.active().unwrap().doc).into_px();
+    let original = patronusphoto_compose::flatten(&h.state().session.active().unwrap().doc).into_px();
     let mut expected = Session::new();
     expected.add_document((*h.state().session.active().unwrap().doc).clone(), None);
     expected.execute("filter.blur.gaussianBlur", json!({"radius":2})).unwrap();
-    let expected = photocraft_compose::flatten(&expected.active().unwrap().doc).into_px();
+    let expected = patronusphoto_compose::flatten(&expected.active().unwrap().doc).into_px();
     assert_ne!(expected, original, "the Gaussian fixture has a visible effect");
     h.state_mut().session.actions.list.insert_step(0, 1, ActionStep::new("select.all", json!({}))).unwrap();
     let paused = h.state_mut().run("actions.play", json!({"action":"A"})).unwrap();
     let dialog = paused_dialog(&paused);
     assert_eq!(set_field(&mut h, dialog, "radius", json!(2))["ok"], true);
     confirm(&mut h, dialog).unwrap();
-    assert_eq!(photocraft_compose::flatten(&h.state().session.active().unwrap().doc).into_px(), expected);
+    assert_eq!(patronusphoto_compose::flatten(&h.state().session.active().unwrap().doc).into_px(), expected);
     assert!(h.state().session.active().unwrap().doc.selection.is_some(), "confirmation resumes the following step");
 }
 
@@ -169,7 +169,7 @@ fn control_playback_opens_menu_settings_only_for_menu_invocation() {
 
 /// One pass of the preview routes the canvas draws: the filter route, then the adjustment route. The canvas asks them
 /// both before it draws, and each checks the retained caller itself.
-fn preview_routes(app: &mut PhotocraftApp, ctx: &egui::Context) {
+fn preview_routes(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     crate::canvas::ensure_filter_preview(app, 0, ctx);
     crate::dialogs::adjust_preview::display_doc(app, 0);
 }
@@ -178,7 +178,7 @@ static MENU_PREVIEW_CHECKS: AtomicUsize = AtomicUsize::new(0);
 static MENU_PREVIEW_DENIALS: AtomicUsize = AtomicUsize::new(0);
 
 /// Count actual menu preview checks and deny an edited radius (the step's own radius is 1).
-fn deny_menu_radius(id: &str, params: &Value) -> photocraft_engine::Result<()> {
+fn deny_menu_radius(id: &str, params: &Value) -> patronusphoto_engine::Result<()> {
     if id == "filter.blur.gaussianBlur" {
         MENU_PREVIEW_CHECKS.fetch_add(1, Ordering::SeqCst);
         if params.get("radius").and_then(Value::as_f64).is_some_and(|radius| radius > 2.0) {
@@ -230,7 +230,7 @@ fn paused_menu_preview_keeps_the_requesting_gate_and_rejects_retargeting() {
 }
 
 /// Deny the default while allowing insertion of another mapped menu item.
-fn deny_image_size_choice(id: &str, params: &Value) -> photocraft_engine::Result<()> {
+fn deny_image_size_choice(id: &str, params: &Value) -> patronusphoto_engine::Result<()> {
     if id == "image.imageSize" || id == "actions.insertMenuItem" && params["id"] == "image.imageSize" {
         return Err(EngineError::Other("choice denied".into()));
     }

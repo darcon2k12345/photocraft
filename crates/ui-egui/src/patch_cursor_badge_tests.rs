@@ -4,12 +4,12 @@ use craft::behavior::CursorBadge;
 use craft::keymap::Mods;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 use crate::tool_feedback::patch_badge;
 
-fn app(tool: Tool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app(tool: Tool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 100, "height": 100})).unwrap();
     app.run("select.rect", json!({"x": 20, "y": 20, "width": 30, "height": 30})).unwrap();
     app.ui.tool = tool;

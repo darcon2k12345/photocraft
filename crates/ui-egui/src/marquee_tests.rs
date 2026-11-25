@@ -5,24 +5,24 @@
 use crate::app::framework::BuildApp as _;
 use egui::{Modifiers, PointerButton, Pos2, vec2};
 use egui_kittest::Harness;
-use photocraft_geom::Rect;
+use patronusphoto_geom::Rect;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
-fn harness(tool: Tool) -> Harness<'static, Box<PhotocraftApp>> {
+fn harness(tool: Tool) -> Harness<'static, Box<PatronusPhotoApp>> {
     harness_with_step_dt(tool, 0.25)
 }
 
-fn harness_with_step_dt(tool: Tool, step_dt: f32) -> Harness<'static, Box<PhotocraftApp>> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn harness_with_step_dt(tool: Tool, step_dt: f32) -> Harness<'static, Box<PatronusPhotoApp>> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
     app.sync_views();
     app.ui.extras.rulers = false;
     app.ui.tool = tool;
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(vec2(1000.0, 700.0)).with_step_dt(step_dt).build_app(
-        |ui, app: &mut PhotocraftApp| {
+        |ui, app: &mut PatronusPhotoApp| {
             let ctx = ui.ctx().clone();
             if !ctx.fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 return;
@@ -31,7 +31,7 @@ fn harness_with_step_dt(tool: Tool, step_dt: f32) -> Harness<'static, Box<Photoc
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     h.run_steps(4);
     // 100 %: one document pixel per point, so drags land on whole pixels.
     let v = &mut h.state_mut().ui.views[0];
@@ -43,28 +43,28 @@ fn harness_with_step_dt(tool: Tool, step_dt: f32) -> Harness<'static, Box<Photoc
 }
 
 /// Where the canvas shows document point `(x, y)`, through the view its last pass published.
-fn screen(h: &Harness<'static, Box<PhotocraftApp>>, x: f32, y: f32) -> Pos2 {
+fn screen(h: &Harness<'static, Box<PatronusPhotoApp>>, x: f32, y: f32) -> Pos2 {
     crate::canvas::testing::to_screen(h.state(), [f64::from(x), f64::from(y)])
 }
 
-fn mods(h: &mut Harness<'static, Box<PhotocraftApp>>, m: Modifiers) {
+fn mods(h: &mut Harness<'static, Box<PatronusPhotoApp>>, m: Modifiers) {
     h.event(egui::Event::ModifiersChanged(m));
     h.run_steps(1);
 }
 
-fn button(h: &mut Harness<'static, Box<PhotocraftApp>>, p: Pos2, down: bool, m: Modifiers) {
+fn button(h: &mut Harness<'static, Box<PatronusPhotoApp>>, p: Pos2, down: bool, m: Modifiers) {
     h.event(egui::Event::PointerButton { pos: p, button: PointerButton::Primary, pressed: down, modifiers: m });
     h.run_steps(1);
 }
 
 /// Move the pointer to document point `(x, y)` in a few steps.
-fn move_to(h: &mut Harness<'static, Box<PhotocraftApp>>, x: f32, y: f32) {
+fn move_to(h: &mut Harness<'static, Box<PatronusPhotoApp>>, x: f32, y: f32) {
     let p = screen(h, x, y);
     h.event(egui::Event::PointerMoved(p));
     h.run_steps(2);
 }
 
-fn press_at(h: &mut Harness<'static, Box<PhotocraftApp>>, x: f32, y: f32, m: Modifiers) {
+fn press_at(h: &mut Harness<'static, Box<PatronusPhotoApp>>, x: f32, y: f32, m: Modifiers) {
     let p = screen(h, x, y);
     h.event(egui::Event::PointerMoved(p));
     h.run_steps(1);
@@ -73,13 +73,13 @@ fn press_at(h: &mut Harness<'static, Box<PhotocraftApp>>, x: f32, y: f32, m: Mod
     move_to(h, x + 8.0, y + 6.0);
 }
 
-fn release_at(h: &mut Harness<'static, Box<PhotocraftApp>>, x: f32, y: f32, m: Modifiers) {
+fn release_at(h: &mut Harness<'static, Box<PatronusPhotoApp>>, x: f32, y: f32, m: Modifiers) {
     move_to(h, x, y);
     button(h, screen(h, x, y), false, m);
     h.run_steps(2);
 }
 
-fn selection(h: &Harness<'static, Box<PhotocraftApp>>) -> Rect {
+fn selection(h: &Harness<'static, Box<PatronusPhotoApp>>) -> Rect {
     h.state().session.active().unwrap().doc.selection.as_ref().map_or(Rect::EMPTY, |s| s.content_bounds())
 }
 
@@ -94,7 +94,7 @@ fn object_selection_keeps_the_mode_from_the_mouse_press() {
                 let st = h.state().session.active().unwrap();
                 let doc = st.doc.clone();
                 let target = st.active_layer;
-                let region = photocraft_engine::smartselect_cmds::find_object(&doc, target, false, 220.0, 150.0).expect("the red disc is detectable");
+                let region = patronusphoto_engine::smartselect_cmds::find_object(&doc, target, false, 220.0, 150.0).expect("the red disc is detectable");
                 h.state_mut().session.object_finder.insert(&doc, target, std::sync::Arc::new(region));
                 if at_press.alt {
                     h.state_mut().run("select.all", json!({})).unwrap();
@@ -136,7 +136,7 @@ fn object_selection_keeps_the_mode_from_the_mouse_press() {
 }
 
 /// Press at `from` and move to `to` in six ordinary pointer moves, the button still held.
-fn drag_to(h: &mut Harness<'static, Box<PhotocraftApp>>, from: [f32; 2], to: [f32; 2]) {
+fn drag_to(h: &mut Harness<'static, Box<PatronusPhotoApp>>, from: [f32; 2], to: [f32; 2]) {
     move_to(h, from[0], from[1]);
     button(h, screen(h, from[0], from[1]), true, Modifiers::NONE);
     for i in 1..=6 {
@@ -146,8 +146,8 @@ fn drag_to(h: &mut Harness<'static, Box<PhotocraftApp>>, from: [f32; 2], to: [f3
 }
 
 /// An 80×60 transparent document, red over (10..30)², that square selected, Rectangular Marquee.
-fn painted() -> (Box<PhotocraftApp>, photocraft_doc::LayerId) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn painted() -> (Box<PatronusPhotoApp>, patronusphoto_doc::LayerId) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 80, "height": 60, "background": "transparent"})).unwrap();
     app.sync_views();
     app.ui.extras.snap = false;
@@ -163,7 +163,7 @@ fn painted() -> (Box<PhotocraftApp>, photocraft_doc::LayerId) {
     (app, layer)
 }
 
-fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2], m: Modifiers) {
+fn drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2], m: Modifiers) {
     use crate::canvas::{ToolEvent, tool_event};
     tool_event(app, ToolEvent::Down { x: from[0], y: from[1], pressure: 1.0 }, m);
     tool_event(app, ToolEvent::Move { x: to[0], y: to[1], pressure: 1.0 }, m);
@@ -176,9 +176,9 @@ fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2], m: Modifiers) {
 fn cmd_drag_floats_the_selected_pixels() {
     use crate::canvas::{ToolEvent, tool_event};
     let (mut app, layer) = painted();
-    let alpha = |d: &photocraft_doc::Document, x, y| d.layer(layer).unwrap().surface().unwrap().rgba(x, y)[3];
-    let doc = |app: &PhotocraftApp| app.session.active().unwrap().doc.clone();
-    let offset = |app: &PhotocraftApp| photocraft_engine::float_cmds::floating(app.session.active().unwrap()).map(|f| f.offset);
+    let alpha = |d: &patronusphoto_doc::Document, x, y| d.layer(layer).unwrap().surface().unwrap().rgba(x, y)[3];
+    let doc = |app: &PatronusPhotoApp| app.session.active().unwrap().doc.clone();
+    let offset = |app: &PatronusPhotoApp| patronusphoto_engine::float_cmds::floating(app.session.active().unwrap()).map(|f| f.offset);
     let steps = app.session.active().unwrap().history.past_len();
     tool_event(&mut app, ToolEvent::Down { x: 20.0, y: 20.0, pressure: 1.0 }, Modifiers::COMMAND);
     tool_event(&mut app, ToolEvent::Move { x: 35.0, y: 20.0, pressure: 1.0 }, Modifiers::COMMAND);
@@ -210,9 +210,9 @@ fn cmd_drag_floats_the_selected_pixels() {
 #[test]
 fn a_marquee_drag_after_moving_pixels_moves_only_the_outline() {
     let (mut app, layer) = painted();
-    let alpha = |app: &PhotocraftApp, x, y| app.session.active().unwrap().doc.layer(layer).unwrap().surface().unwrap().rgba(x, y)[3];
-    let sel = |app: &PhotocraftApp| app.session.active().unwrap().doc.selection.as_ref().map(|s| s.content_bounds());
-    let floating = |app: &PhotocraftApp| photocraft_engine::float_cmds::floating(app.session.active().unwrap()).is_some();
+    let alpha = |app: &PatronusPhotoApp, x, y| app.session.active().unwrap().doc.layer(layer).unwrap().surface().unwrap().rgba(x, y)[3];
+    let sel = |app: &PatronusPhotoApp| app.session.active().unwrap().doc.selection.as_ref().map(|s| s.content_bounds());
+    let floating = |app: &PatronusPhotoApp| patronusphoto_engine::float_cmds::floating(app.session.active().unwrap()).is_some();
     let steps = app.session.active().unwrap().history.past_len();
     app.ui.tool = Tool::Move;
     drag(&mut app, [20.0, 20.0], [35.0, 20.0], Modifiers::NONE);
@@ -293,7 +293,7 @@ fn arrow_keys_nudge_the_selection_outline() {
 #[test]
 fn cmd_alt_drag_floats_a_copy() {
     let (mut app, layer) = painted();
-    let alpha = |d: &photocraft_doc::Document, x, y| d.layer(layer).unwrap().surface().unwrap().rgba(x, y)[3];
+    let alpha = |d: &patronusphoto_doc::Document, x, y| d.layer(layer).unwrap().surface().unwrap().rgba(x, y)[3];
     let cmd_alt = Modifiers { alt: true, ..Modifiers::COMMAND };
     drag(&mut app, [20.0, 20.0], [45.0, 20.0], cmd_alt);
     app.run("select.drop", json!({})).unwrap();
@@ -303,7 +303,7 @@ fn cmd_alt_drag_floats_a_copy() {
 }
 
 /// The messages of the error alerts open on the dialog host.
-fn error_dialogs(app: &PhotocraftApp) -> Vec<String> {
+fn error_dialogs(app: &PatronusPhotoApp) -> Vec<String> {
     use craft::ui::dialog::StackDialog;
     let dialogs = &app.framework.dialogs;
     dialogs
@@ -315,7 +315,7 @@ fn error_dialogs(app: &PhotocraftApp) -> Vec<String> {
 }
 
 /// Closes every open dialog.
-fn close_dialogs(app: &mut PhotocraftApp) {
+fn close_dialogs(app: &mut PatronusPhotoApp) {
     let ctx = app.ctx().clone();
     let ids: Vec<_> = app.framework.dialogs.stack().ids().collect();
     for id in ids {
@@ -328,7 +328,7 @@ fn close_dialogs(app: &mut PhotocraftApp) {
 /// selection, a position-locked layer; a plain click says nothing, and the drag never starts.
 #[test]
 fn move_on_the_background_without_a_selection_shows_photoshops_lock_message() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 80, "height": 60})).unwrap();
     app.sync_views();
     app.ui.tool = Tool::Move;
@@ -345,7 +345,7 @@ fn move_on_the_background_without_a_selection_shows_photoshops_lock_message() {
     tool_event(&mut app, ToolEvent::Move { x: 40.0, y: 20.0, pressure: 1.0 }, Modifiers::NONE);
     tool_event(&mut app, ToolEvent::Up { x: 40.0, y: 20.0 }, Modifiers::NONE);
     assert_eq!(error_dialogs(&app), [crate::move_lock::MESSAGE]);
-    assert!(photocraft_engine::float_cmds::floating(app.session.active().unwrap()).is_none(), "nothing floats");
+    assert!(patronusphoto_engine::float_cmds::floating(app.session.active().unwrap()).is_none(), "nothing floats");
     assert_eq!(app.session.active().unwrap().history.past_len(), steps, "no history step");
     close_dialogs(&mut app);
     // ⌘-drag with a marquee (the Move tool for the drag, #896): the same.
@@ -379,7 +379,7 @@ fn move_on_the_background_without_a_selection_shows_photoshops_lock_message() {
 /// selection as with the Move tool.
 #[test]
 fn selected_pixels_move_off_the_background_but_not_off_a_fully_locked_layer() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 80, "height": 60})).unwrap();
     app.sync_views();
     app.ui.extras.snap = false;
@@ -388,7 +388,7 @@ fn selected_pixels_move_off_the_background_but_not_off_a_fully_locked_layer() {
     app.run("select.rect", json!({"x": 10, "y": 10, "width": 20, "height": 20})).unwrap();
     drag(&mut app, [20.0, 20.0], [50.0, 20.0], Modifiers::COMMAND);
     assert!(error_dialogs(&app).is_empty());
-    assert_eq!(photocraft_engine::float_cmds::floating(app.session.active().unwrap()).map(|f| f.offset), Some((30, 0)));
+    assert_eq!(patronusphoto_engine::float_cmds::floating(app.session.active().unwrap()).map(|f| f.offset), Some((30, 0)));
     let (mut app, layer) = painted();
     app.session
         .edit("lock", |doc, _| {
@@ -401,7 +401,7 @@ fn selected_pixels_move_off_the_background_but_not_off_a_fully_locked_layer() {
         app.ui.tool = tool;
         drag(&mut app, [20.0, 20.0], [40.0, 20.0], m);
         assert_eq!(error_dialogs(&app), [crate::move_lock::MESSAGE], "{tool:?}");
-        assert!(photocraft_engine::float_cmds::floating(app.session.active().unwrap()).is_none(), "{tool:?}");
+        assert!(patronusphoto_engine::float_cmds::floating(app.session.active().unwrap()).is_none(), "{tool:?}");
         close_dialogs(&mut app);
     }
 }

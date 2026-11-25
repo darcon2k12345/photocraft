@@ -2,21 +2,21 @@
 //! the view of a dropped crop, and the P and H keys.
 
 use egui::Modifiers;
-use photocraft_doc::{Color, ColorMode, Document, SampleType, Size};
+use patronusphoto_doc::{Color, ColorMode, Document, SampleType, Size};
 use serde_json::json;
 
 use crate::canvas::testing::{ToolEvent, frame, tool_event};
 use crate::state::Tool;
-use crate::{PhotocraftApp, crop_ui};
+use crate::{PatronusPhotoApp, crop_ui};
 
 const NONE: Modifiers = Modifiers::NONE;
 
 /// A 200 × 100 document with the Crop tool picked and its default frame shown.
-fn app() -> Box<PhotocraftApp> {
+fn app() -> Box<PatronusPhotoApp> {
     let doc = Document::with_background("crop", Size::new(200, 100), ColorMode::Rgb, SampleType::U8, Color::WHITE);
-    let mut s = photocraft_engine::Session::new();
+    let mut s = patronusphoto_engine::Session::new();
     s.add_document(doc, None);
-    let mut app = PhotocraftApp::new(s, crate::Services::default());
+    let mut app = PatronusPhotoApp::new(s, crate::Services::default());
     app.sync_views();
     app.ui.tool = Tool::Crop;
     app.ui.extras.snap = false;
@@ -27,7 +27,7 @@ fn app() -> Box<PhotocraftApp> {
 }
 
 /// A drag through document points.
-fn drag(app: &mut PhotocraftApp, points: &[[f64; 2]]) {
+fn drag(app: &mut PatronusPhotoApp, points: &[[f64; 2]]) {
     let at = |p: [f64; 2]| (p[0], p[1]);
     let (x, y) = at(points[0]);
     // The frame's handles take presses from the pass that drew them: a frame set since the last pass is shown first.
@@ -44,20 +44,20 @@ fn drag(app: &mut PhotocraftApp, points: &[[f64; 2]]) {
 }
 
 /// Pulls the default frame's bottom right handle in: a pending frame of 100 × 70 at the top left.
-fn pend_a_frame(app: &mut PhotocraftApp) {
+fn pend_a_frame(app: &mut PatronusPhotoApp) {
     drag(app, &[[200.0, 100.0], [150.0, 80.0], [100.0, 70.0]]);
     assert!(crop_ui::pending(app), "the handle drag leaves a pending frame");
 }
 
 /// Turns the image by dragging outside the frame, from its right side to below it.
-fn turn_the_view(app: &mut PhotocraftApp) {
+fn turn_the_view(app: &mut PatronusPhotoApp) {
     pend_a_frame(app);
     drag(app, &[[150.0, 35.0], [140.0, 70.0], [50.0, 135.0]]);
     assert!(crop_ui::turns_view(app), "dragging outside the frame turns the view in image mode");
 }
 
 /// A second 300 × 150 document, the first active, its view upright and the second turned 15°.
-fn with_a_turned_second_document(app: &mut PhotocraftApp) {
+fn with_a_turned_second_document(app: &mut PatronusPhotoApp) {
     app.run("file.new", json!({"width": 300, "height": 150})).unwrap();
     app.sync_views();
     let ctx = app.ctx().clone();

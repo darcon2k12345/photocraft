@@ -7,7 +7,7 @@ use craft::ui::menu::PanelRow;
 use craft::ui::runtime::commands::{CommandRef, CommandState};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The menu's items: a command id, or `None` for a separator.
 pub const ITEMS: &[Option<&str>] = &[
@@ -34,7 +34,7 @@ fn resolve(cmd: &str, snapshot: Option<u64>) -> (&str, Value) {
     }
 }
 
-fn command_state(app: &PhotocraftApp, cmd: &str) -> bool {
+fn command_state(app: &PatronusPhotoApp, cmd: &str) -> bool {
     // An open Free Transform owns the history (see `panels::history`), and a drawn crop frame
     // holds its jumps back (`crop_ui::holds_history`). A Pen path being drawn steps back anchor
     // by anchor (`vector_ui::pen_history_enabled`).
@@ -46,12 +46,12 @@ fn command_state(app: &PhotocraftApp, cmd: &str) -> bool {
 
 /// The History items of the panel menu, as command rows: their labels and chords come from the menu
 /// catalogue, their state from [`command_states`].
-pub(crate) fn panel_rows(_app: &PhotocraftApp) -> Vec<PanelRow> {
+pub(crate) fn panel_rows(_app: &PatronusPhotoApp) -> Vec<PanelRow> {
     ITEMS.iter().map(|item| item.map_or(PanelRow::Separator, |id| PanelRow::Command(CommandRef::new(id)))).collect()
 }
 
 /// Whether each item can run now.
-pub(crate) fn command_states(app: &PhotocraftApp) -> Vec<(CommandRef, CommandState)> {
+pub(crate) fn command_states(app: &PatronusPhotoApp) -> Vec<(CommandRef, CommandState)> {
     let snapshot = crate::panels::selected_snapshot(app);
     ITEMS.iter().flatten().map(|&id| (CommandRef::new(id), CommandState::new().enabled(command_state(app, resolve(id, snapshot).0)))).collect()
 }
@@ -61,7 +61,7 @@ pub(crate) fn command_states(app: &PhotocraftApp) -> Vec<(CommandRef, CommandSta
 /// Undo/Redo do (`vector_ui::pen_history_step`).
 // PLAN: the sheet's `run_fired(app, cmd)` has no context, but the registry's `PanelEntry::run` and
 // `CommandSource::run` (pn.PC1, cx.P1) take one, so this follows pn.PC12 and ignores it.
-pub(crate) fn run_fired(app: &mut PhotocraftApp, _ctx: &egui::Context, command: &CommandRef) -> bool {
+pub(crate) fn run_fired(app: &mut PatronusPhotoApp, _ctx: &egui::Context, command: &CommandRef) -> bool {
     if !ITEMS.iter().flatten().any(|&id| id == command.id) {
         return false;
     }
@@ -81,8 +81,8 @@ pub(crate) fn run_fired(app: &mut PhotocraftApp, _ctx: &egui::Context, command: 
 mod tests {
     use super::*;
 
-    fn app() -> Box<PhotocraftApp> {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    fn app() -> Box<PatronusPhotoApp> {
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();
         app.run("edit.fill", json!({"color": "#ff0000"})).unwrap();
@@ -90,18 +90,18 @@ mod tests {
         app
     }
 
-    fn on(app: &PhotocraftApp, id: &str) -> bool {
+    fn on(app: &PatronusPhotoApp, id: &str) -> bool {
         let states = command_states(app);
         let (_, state) = states.iter().find(|(command, _)| command.id == id).unwrap_or_else(|| panic!("{id} has a state"));
         *state == CommandState::new().enabled(true)
     }
 
-    fn fire(app: &mut PhotocraftApp, id: &str) {
+    fn fire(app: &mut PatronusPhotoApp, id: &str) {
         let app_ctx = app.ctx().clone();
         assert!(run_fired(app, &app_ctx, &CommandRef::new(id)), "{id} is an item of the menu");
     }
 
-    fn states(app: &PhotocraftApp) -> (usize, usize) {
+    fn states(app: &PatronusPhotoApp) -> (usize, usize) {
         let st = app.session.active().unwrap();
         (st.history.entries().len(), st.history.redo_labels().count())
     }
@@ -163,7 +163,7 @@ mod tests {
     fn delete_removes_the_selected_snapshot() {
         let mut app = app();
         app.run("history.newSnapshot", json!({})).unwrap();
-        let snaps = |app: &PhotocraftApp| app.session.active().unwrap().snapshots().len();
+        let snaps = |app: &PatronusPhotoApp| app.session.active().unwrap().snapshots().len();
         let before = snaps(&app);
         let id = app.session.active().unwrap().snapshots().last().unwrap().id;
         crate::panels::select_snapshot(&mut app, id);
@@ -179,7 +179,7 @@ mod tests {
 
     #[test]
     fn without_a_document_only_history_options_are_enabled() {
-        let app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         for id in ITEMS.iter().flatten() {
             // History Options are preferences, not part of a document.
             assert_eq!(on(&app, id), *id == "history.options", "{id}");

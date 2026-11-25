@@ -9,9 +9,9 @@
 
 use std::sync::Arc;
 
-use photocraft_codecs::{self as codecs, DecodeOptions, Format, Limits, OrientSteps, PngDecodeRows, PngExtras, PngFinish, SharedBytes, begin_png_finish};
-use photocraft_geom::TILE_SIZE;
-use photocraft_raster::{Interrupt, PruneCursor};
+use patronusphoto_codecs::{self as codecs, DecodeOptions, Format, Limits, OrientSteps, PngDecodeRows, PngExtras, PngFinish, SharedBytes, begin_png_finish};
+use patronusphoto_geom::TILE_SIZE;
+use patronusphoto_raster::{Interrupt, PruneCursor};
 
 use crate::flat::{FlatBuilder, PngIndices, PngStream, apply_flat_format};
 use crate::{ImportResult, IoError, Route};
@@ -70,7 +70,7 @@ impl PngImport {
         // are a PNG (for example, an invalid `.pcraft` file). The ordinary importer still uses
         // content detection and can open a PNG copied to a bare name.
         let extension = name.rsplit(['/', '\\']).next().and_then(|file| file.rsplit_once('.')).map(|(_, ext)| ext);
-        if extension.is_some_and(|ext| photocraft_formats::from_extension(ext) == Some(photocraft_formats::Format::Pcraft)) {
+        if extension.is_some_and(|ext| patronusphoto_formats::from_extension(ext) == Some(patronusphoto_formats::Format::Pcraft)) {
             return Ok(None);
         }
         if crate::route(name, bytes) != Route::Flat || codecs::detect(bytes) != Some(Format::Png) {

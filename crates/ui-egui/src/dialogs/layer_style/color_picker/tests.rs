@@ -8,31 +8,31 @@ use crate::dialogs::layer_style::tests::{
     cancel, defaults, draft, edit, kind, ok, param,
 };
 use crate::dialogs::layer_style::{self, preview_document};
-use crate::{PhotocraftApp, color_picker_ui};
+use crate::{PatronusPhotoApp, color_picker_ui};
 
-fn new_app(depth: u32) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn new_app(depth: u32) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("prefs.set", json!({"path":"interface.language","value":"en"})).unwrap();
     app.run("file.new", json!({"width":32,"height":24,"depth":depth,"background":"#406080"})).unwrap();
     app
 }
 
 /// Opens the child picker of `parent` for one field.
-fn open_picker(app: &mut PhotocraftApp, parent: DialogId, effect: &str, field: &str, stop: Option<usize>) -> Result<DialogId, String> {
+fn open_picker(app: &mut PatronusPhotoApp, parent: DialogId, effect: &str, field: &str, stop: Option<usize>) -> Result<DialogId, String> {
     open(app, parent.value(), effect, field, stop)
 }
 
-fn style(app: &PhotocraftApp, id: DialogId) -> LayerStyle {
+fn style(app: &PatronusPhotoApp, id: DialogId) -> LayerStyle {
     draft(app, id).style.clone()
 }
 
 /// The child picker answers `hex`, as the user editing its colour does.
-fn set_color(app: &mut PhotocraftApp, picker: DialogId, hex: &str) {
+fn set_color(app: &mut PatronusPhotoApp, picker: DialogId, hex: &str) {
     color_picker_ui::testing::set_color(app, picker, hex);
 }
 
 /// The effect page the dialog shows.
-fn selected(app: &PhotocraftApp, parent: DialogId) -> EffectId {
+fn selected(app: &PatronusPhotoApp, parent: DialogId) -> EffectId {
     match draft(app, parent).page {
         LayerStylePage::Effect(id) => id,
         ref other => panic!("an effect page is shown, not {other:?}"),
@@ -57,7 +57,7 @@ fn others(style: &LayerStyle, id: EffectId) -> Vec<(String, StyleValue)> {
     style.effect(id).unwrap().params.0.iter().filter(|(_, v)| matches!(v, StyleValue::Other(_))).map(|(k, v)| (k.clone(), v.clone())).collect()
 }
 
-fn top(app: &PhotocraftApp) -> Option<DialogId> {
+fn top(app: &PatronusPhotoApp) -> Option<DialogId> {
     app.framework.dialogs.stack().top()
 }
 
@@ -115,7 +115,7 @@ fn preview_cancel_ok_parent_cancel_and_apply_are_transactional_at_every_depth() 
         let (shown, key) = preview_document(&app).expect("the preview renders");
         assert!(!Arc::ptr_eq(&shown, &doc));
         assert_eq!(key, preview_document(&app).unwrap().1, "an unchanged preview keeps its key");
-        let pixel = photocraft_compose::flatten(&shown).get(3, 3);
+        let pixel = patronusphoto_compose::flatten(&shown).get(3, 3);
         assert!(pixel[1] > pixel[0] && pixel[1] > pixel[2], "live preview is green at {depth} bits");
         let st = app.session.active().unwrap();
         assert_eq!((st.history.past_len(), st.revision, st.is_dirty()), (history, revision, dirty));
@@ -137,7 +137,7 @@ fn preview_cancel_ok_parent_cancel_and_apply_are_transactional_at_every_depth() 
         ok(&mut app, picker);
         ok(&mut app, parent);
         let applied = app.session.active().unwrap().doc.clone();
-        let pixel = photocraft_compose::flatten(&applied).get(3, 3);
+        let pixel = patronusphoto_compose::flatten(&applied).get(3, 3);
         assert!(pixel[1] > pixel[0]);
         app.run("edit.undo", json!({})).unwrap();
         assert_eq!(app.session.active().unwrap().doc.layer(doc.layers[0].id).unwrap().effects.items.len(), 0);

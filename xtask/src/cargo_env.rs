@@ -46,7 +46,7 @@ mod tests {
             "CARGO_CRATE_NAME",
             "CARGO_BIN_NAME",
             "CARGO_PRIMARY_PACKAGE",
-            "CARGO_BIN_EXE_photocraft",
+            "CARGO_BIN_EXE_patronusphoto",
             "OUT_DIR",
         ] {
             assert!(set_by_cargo_run(OsStr::new(name)), "{name}");

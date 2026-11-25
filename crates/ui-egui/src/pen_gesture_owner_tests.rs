@@ -1,14 +1,14 @@
 use egui::Modifiers;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing::in_gesture;
 use crate::canvas::{ToolEvent, tool_event};
 use crate::state::Tool;
 use craft::draw::ui::VectorMode;
 
-fn app(tool: Tool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app(tool: Tool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 200, "height": 200})).unwrap();
     app.sync_views();
     app.ui.tool = tool;
@@ -16,7 +16,7 @@ fn app(tool: Tool) -> Box<PhotocraftApp> {
     app
 }
 
-fn down(app: &mut PhotocraftApp) {
+fn down(app: &mut PatronusPhotoApp) {
     tool_event(app, ToolEvent::Down { x: 20.0, y: 20.0, pressure: 1.0 }, Modifiers::NONE);
     tool_event(app, ToolEvent::Move { x: 50.0, y: 35.0, pressure: 1.0 }, Modifiers::NONE);
     tool_event(app, ToolEvent::Move { x: 90.0, y: 80.0, pressure: 1.0 }, Modifiers::NONE);

@@ -7,7 +7,7 @@
 //! Units: sizes are pixels, angles are degrees, every percentage is a 0..1 fraction (scatter and
 //! texture scale may exceed 1, like Photoshop's 1000 % scatter).
 
-use photocraft_color::BlendMode;
+use patronusphoto_color::BlendMode;
 use serde::{Deserialize, Serialize};
 
 use crate::curve::ResponseCurve;
@@ -810,7 +810,7 @@ pub struct BrushPreset {
     pub name: String,
     #[serde(deserialize_with = "deserialize_preset_brush")]
     pub brush: BrushSettings,
-    /// Shipped with PhotoCraft (built-ins can be deleted from a session but are regenerated on reset).
+    /// Shipped with Patronus Photo (built-ins can be deleted from a session but are regenerated on reset).
     #[serde(default)]
     pub builtin: bool,
     /// Preset group (folder) in the Brushes panel, e.g. "General" or an imported file's name.

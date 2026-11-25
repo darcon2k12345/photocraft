@@ -28,8 +28,8 @@ fn document_shape() -> Map {
 /// Linear, Range 50 %, Jitter 0, Anti-aliased off, Noise `noise`.
 fn glow(noise: f32) -> Glow {
     Glow {
-        common: photocraft_doc::FxCommon::new(BlendMode::Normal, 1.0),
-        paint: FxPaint::Color(photocraft_color::Color::BLACK),
+        common: patronusphoto_doc::FxCommon::new(BlendMode::Normal, 1.0),
+        paint: FxPaint::Color(patronusphoto_color::Color::BLACK),
         technique: GlowTechnique::Softer,
         spread: 0.0,
         size: 10.0,

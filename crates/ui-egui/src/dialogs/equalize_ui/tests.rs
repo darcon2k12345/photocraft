@@ -4,8 +4,8 @@ use serde_json::json;
 use super::*;
 
 /// A 40 × 30 layer: the top half at 0.4 gray, the bottom half at 0.5, with the left half selected.
-fn setup() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn setup() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 40, "height": 30})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     app.run("select.rect", json!({"x": 0, "y": 0, "width": 40, "height": 15})).unwrap();
@@ -16,7 +16,7 @@ fn setup() -> Box<PhotocraftApp> {
     app
 }
 
-fn gray(app: &PhotocraftApp, x: i32, y: i32) -> f32 {
+fn gray(app: &PatronusPhotoApp, x: i32, y: i32) -> f32 {
     let st = app.session.active().unwrap();
     st.doc.layer(st.active_layer.unwrap()).unwrap().surface().unwrap().pixel(x, y)[0]
 }
@@ -32,7 +32,7 @@ fn entire_image_based_on_the_selected_area_maps_the_whole_layer() {
 }
 
 /// Each change refuses OK with the dialog open and nothing equalized; undoing it lets OK run.
-fn disturb(app: &mut PhotocraftApp, case: usize) {
+fn disturb(app: &mut PatronusPhotoApp, case: usize) {
     match case {
         0 => {
             app.run("file.new", json!({"width": 40, "height": 30})).unwrap();
@@ -52,7 +52,7 @@ fn disturb(app: &mut PhotocraftApp, case: usize) {
     }
 }
 
-fn restore(app: &mut PhotocraftApp, case: usize, layer: &serde_json::Value) {
+fn restore(app: &mut PatronusPhotoApp, case: usize, layer: &serde_json::Value) {
     match case {
         0 => assert!(app.session.set_active(0)),
         2 => {

@@ -5,14 +5,14 @@ use egui::{Modifiers, PointerButton, Pos2, vec2};
 use egui_kittest::Harness;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::app::framework::BuildApp as _;
 use crate::state::Tool;
 use craft::keymap::Mods;
 
-fn harness(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
+fn harness(app: Box<PatronusPhotoApp>) -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(vec2(900.0, 600.0)).build_app(
-        |ui, app: &mut PhotocraftApp| {
+        |ui, app: &mut PatronusPhotoApp| {
             egui::CentralPanel::default().show(ui, |ui| crate::canvas::document_area(app, ui));
         },
         app,
@@ -27,27 +27,27 @@ fn harness(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
     h
 }
 
-fn screen(h: &Harness<'static, Box<PhotocraftApp>>, x: f32, y: f32) -> Pos2 {
+fn screen(h: &Harness<'static, Box<PatronusPhotoApp>>, x: f32, y: f32) -> Pos2 {
     crate::canvas::testing::to_screen(h.state(), [f64::from(x), f64::from(y)])
 }
 
 /// Latches Alt in Window › Modifier Keys, or releases every latched key.
-fn latch_alt(h: &mut Harness<'static, Box<PhotocraftApp>>, on: bool) {
+fn latch_alt(h: &mut Harness<'static, Box<PatronusPhotoApp>>, on: bool) {
     h.state_mut().ui.shell.latched = if on { Mods { alt: true, ..Mods::default() } } else { Mods::default() };
 }
 
-fn mods(h: &mut Harness<'static, Box<PhotocraftApp>>, m: Modifiers) {
+fn mods(h: &mut Harness<'static, Box<PatronusPhotoApp>>, m: Modifiers) {
     h.event(egui::Event::ModifiersChanged(m));
     h.run_steps(1);
 }
 
-fn button(h: &mut Harness<'static, Box<PhotocraftApp>>, p: Pos2, down: bool, m: Modifiers) {
+fn button(h: &mut Harness<'static, Box<PatronusPhotoApp>>, p: Pos2, down: bool, m: Modifiers) {
     h.event(egui::Event::PointerButton { pos: p, button: PointerButton::Primary, pressed: down, modifiers: m });
     h.run_steps(1);
 }
 
 /// A click at document point (x, y) with `m` held from before the press until after the release.
-fn click(h: &mut Harness<'static, Box<PhotocraftApp>>, x: f32, y: f32, m: Modifiers) {
+fn click(h: &mut Harness<'static, Box<PatronusPhotoApp>>, x: f32, y: f32, m: Modifiers) {
     let p = screen(h, x, y);
     mods(h, m);
     h.event(egui::Event::PointerMoved(p));
@@ -59,7 +59,7 @@ fn click(h: &mut Harness<'static, Box<PhotocraftApp>>, x: f32, y: f32, m: Modifi
 }
 
 /// A drag between document points with `m` held throughout.
-fn drag(h: &mut Harness<'static, Box<PhotocraftApp>>, from: [f32; 2], to: [f32; 2], m: Modifiers) {
+fn drag(h: &mut Harness<'static, Box<PatronusPhotoApp>>, from: [f32; 2], to: [f32; 2], m: Modifiers) {
     let p = screen(h, from[0], from[1]);
     mods(h, m);
     h.event(egui::Event::PointerMoved(p));
@@ -77,8 +77,8 @@ fn drag(h: &mut Harness<'static, Box<PhotocraftApp>>, from: [f32; 2], to: [f32; 
 }
 
 /// Two halves: red on the left, green on the right, on one background layer.
-fn two_colours() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn two_colours() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 100, "background": "white"})).unwrap();
     app.run("select.rect", json!({"x": 0, "y": 0, "width": 100, "height": 100})).unwrap();
     app.run("edit.fill", json!({"color": "#ff0000"})).unwrap();
@@ -294,7 +294,7 @@ fn clone_stamp_paints_an_empty_layer_from_the_layers_below() {
 /// What X11 and Wayland deliver when the window manager grabs an Alt+left press (Cinnamon's
 /// window move): the pointer leaves and the keyboard focus goes (winit clears the modifiers),
 /// and both come back on release. The click itself never arrives.
-fn grabbed_alt_click(h: &mut Harness<'static, Box<PhotocraftApp>>, x: f32, y: f32, refocus: bool) {
+fn grabbed_alt_click(h: &mut Harness<'static, Box<PatronusPhotoApp>>, x: f32, y: f32, refocus: bool) {
     let p = screen(h, x, y);
     mods(h, Modifiers::ALT);
     h.event(egui::Event::PointerMoved(p));

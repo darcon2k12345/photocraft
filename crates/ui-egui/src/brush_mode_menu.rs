@@ -6,11 +6,11 @@
 
 use craft::keymap::Mods;
 use craft::ui::contract::Entry; // PLAN: assumed path of the framework `Entry`
-use photocraft_doc::BlendMode;
+use patronusphoto_doc::BlendMode;
 use serde_json::{Value, json};
 
 use crate::canvas_tool_menu::MenuKind;
-use crate::{PhotocraftApp, state::Tool};
+use crate::{PatronusPhotoApp, state::Tool};
 
 /// One row of the menu.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -123,7 +123,7 @@ pub(crate) fn labels(tool: Tool) -> Vec<&'static str> {
 }
 
 /// Is a row available? Behind and Clear need transparency: greyed on the Background layer.
-pub(crate) fn enabled(app: &PhotocraftApp, item: Item) -> bool {
+pub(crate) fn enabled(app: &PatronusPhotoApp, item: Item) -> bool {
     match item {
         Item::Separator => false,
         Item::Behind | Item::Clear => !app
@@ -135,7 +135,7 @@ pub(crate) fn enabled(app: &PhotocraftApp, item: Item) -> bool {
 }
 
 /// The checked row: `tool`'s current mode, as its options bar shows it.
-pub(crate) fn current(app: &PhotocraftApp, tool: Tool) -> Option<Item> {
+pub(crate) fn current(app: &PatronusPhotoApp, tool: Tool) -> Option<Item> {
     let o = &app.ui.tool_options;
     let brush = &app.session.tools.brush;
     let painting = |clear: bool| {
@@ -161,7 +161,7 @@ pub(crate) fn current(app: &PhotocraftApp, tool: Tool) -> Option<Item> {
 }
 
 /// Whether a tool-option row (Eraser, Range, Sponge) is the current value; `None` for other rows.
-fn ui_value(app: &PhotocraftApp, item: Item) -> Option<bool> {
+fn ui_value(app: &PatronusPhotoApp, item: Item) -> Option<bool> {
     let o = &app.ui.tool_options;
     Some(match item {
         Item::Eraser(m) => o.eraser_mode == m,
@@ -183,7 +183,7 @@ pub(crate) fn is_gesture(tool: Tool, mods: Mods) -> bool {
 /// A plain right-click opens it only where it would otherwise open the picker or nothing: with the
 /// Erase preference it still erases, and on the pasteboard its colour menu opens. `doc` is `None`
 /// where the press has no document point (the pasteboard check is then the caller's).
-pub(crate) fn opens_on(app: &PhotocraftApp, tool: Tool, mods: Mods, doc: Option<[f64; 2]>) -> bool {
+pub(crate) fn opens_on(app: &PatronusPhotoApp, tool: Tool, mods: Mods, doc: Option<[f64; 2]>) -> bool {
     let plain = mods.is_none();
     let block = tool == Tool::Eraser && app.ui.tool_options.eraser_mode == "block";
     let pasteboard = doc.is_some_and(|d| crate::canvas_tool_menu::pasteboard_at(app, tool, d));
@@ -195,7 +195,7 @@ pub(crate) fn opens_on(app: &PhotocraftApp, tool: Tool, mods: Mods, doc: Option<
 /// The engine command a row runs, if any: a brush-based tool's mode goes through
 /// `tools.setBrush`, as its options-bar dropdown does. The Brush, Pencil and Pattern Stamp also
 /// set or clear Behind (Clear keeps the underlying mode, as the options bar does).
-pub(crate) fn engine_call(app: &PhotocraftApp, tool: Tool, item: Item) -> Option<(&'static str, Value)> {
+pub(crate) fn engine_call(app: &PatronusPhotoApp, tool: Tool, item: Item) -> Option<(&'static str, Value)> {
     let brush = match (tool, item) {
         (Tool::Brush | Tool::Pencil | Tool::PatternStamp, Item::Blend(m)) => json!({"mode": m, "behind": false}),
         (Tool::Brush | Tool::Pencil | Tool::PatternStamp, Item::Behind) => json!({"mode": BlendMode::Normal, "behind": true}),
@@ -207,7 +207,7 @@ pub(crate) fn engine_call(app: &PhotocraftApp, tool: Tool, item: Item) -> Option
 }
 
 /// The row of the open menu whose English label is `label`, if it can be chosen now.
-pub(crate) fn find(app: &PhotocraftApp, label: &str) -> Result<Item, String> {
+pub(crate) fn find(app: &PatronusPhotoApp, label: &str) -> Result<Item, String> {
     if !app.ui.canvas_tool_menu.as_ref().is_some_and(|m| matches!(m.kind, MenuKind::BrushMode { .. }) && m.tool == app.ui.tool) {
         return Err("no Shift+right-click menu is open".into());
     }
@@ -219,7 +219,7 @@ pub(crate) fn find(app: &PhotocraftApp, label: &str) -> Result<Item, String> {
 }
 
 /// Chooses `item` for the active tool and closes the menu.
-pub(crate) fn choose(app: &mut PhotocraftApp, item: Item) {
+pub(crate) fn choose(app: &mut PatronusPhotoApp, item: Item) {
     let tool = app.ui.tool;
     let pos = app.ui.canvas_tool_menu.take().filter(|m| matches!(m.kind, MenuKind::BrushMode { .. })).map(|m| m.pos);
     if !enabled(app, item) {
@@ -259,14 +259,14 @@ pub(crate) fn choose(app: &mut PhotocraftApp, item: Item) {
 /// The row drawn checked. The Paint Bucket's plain right-click menu checks none, as in the
 /// reference application; its Shift+right-click menu checks the current mode. `plain` is whether
 /// the menu was opened by a plain right-click (`MenuKind::BrushMode { plain }`).
-pub(crate) fn checked(app: &PhotocraftApp, tool: Tool, plain: bool) -> Option<Item> {
+pub(crate) fn checked(app: &PatronusPhotoApp, tool: Tool, plain: bool) -> Option<Item> {
     if plain && tool == Tool::PaintBucket { None } else { current(app, tool) }
 }
 
 /// `tool`'s menu rows for the framework menu: the English label is the row id (what
 /// `ui.context.choose` sends), the checked row is [`checked`], and Behind and Clear are greyed
 /// on the Background. The tool's own brush is synced when the menu opens.
-pub(crate) fn entries(app: &PhotocraftApp, tool: Tool, plain: bool) -> Vec<Entry<String>> {
+pub(crate) fn entries(app: &PatronusPhotoApp, tool: Tool, plain: bool) -> Vec<Entry<String>> {
     let current = checked(app, tool, plain);
     items(tool)
         .into_iter()

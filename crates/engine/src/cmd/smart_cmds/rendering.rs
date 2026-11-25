@@ -11,12 +11,12 @@ use std::sync::{Mutex, Weak};
 
 /// Layer › Smart Objects › Stack Mode: the source's layers (or, when it holds a single group, the
 /// group's layers) combined per pixel with `mode`. Cached like [`super::source_image`], keyed by mode.
-pub fn stack_image(file_name: &str, bytes: &[u8], fmt: PixelFormat, mode: photocraft_doc::StackMode) -> Result<SourceImage> {
+pub fn stack_image(file_name: &str, bytes: &[u8], fmt: PixelFormat, mode: patronusphoto_doc::StackMode) -> Result<SourceImage> {
     stack_image_classified(file_name, bytes, fmt, mode, None)
 }
 
-fn stack_image_classified(file_name: &str, bytes: &[u8], fmt: PixelFormat, mode: photocraft_doc::StackMode, svg: Option<bool>) -> Result<SourceImage> {
-    use photocraft_algo::stack::Stat;
+fn stack_image_classified(file_name: &str, bytes: &[u8], fmt: PixelFormat, mode: patronusphoto_doc::StackMode, svg: Option<bool>) -> Result<SourceImage> {
+    use patronusphoto_algo::stack::Stat;
     let mut key = cache_key(bytes, fmt);
     // Keep the filename in the key because fallback import uses it to choose a format.
     // Use a separate domain from entries that predate plain SVG completeness checks.
@@ -24,7 +24,7 @@ fn stack_image_classified(file_name: &str, bytes: &[u8], fmt: PixelFormat, mode:
     if let Some(img) = cache_get(&key) {
         return Ok(img);
     }
-    let svg = svg.unwrap_or_else(|| photocraft_io::svg::is_svg(bytes));
+    let svg = svg.unwrap_or_else(|| patronusphoto_io::svg::is_svg(bytes));
     let doc = super::decode_source_classified(file_name, bytes, svg)?;
     let layers: &[Layer] = match doc.layers.as_slice() {
         [only] if only.is_group() => only.children().unwrap_or_default(),
@@ -47,26 +47,26 @@ fn stack_image_classified(file_name: &str, bytes: &[u8], fmt: PixelFormat, mode:
             let mut one = l.clone();
             one.blend = BlendMode::Normal;
             one.clipped = false;
-            photocraft_compose::render_layer(&one, bounds).into_px()
+            patronusphoto_compose::render_layer(&one, bounds).into_px()
         })
         .collect();
     if frames.is_empty() {
         return Err(EngineError::Other("the smart object's contents have no visible layers".into()));
     }
     let stat = match mode {
-        photocraft_doc::StackMode::Entropy => Stat::Entropy,
-        photocraft_doc::StackMode::Kurtosis => Stat::Kurtosis,
-        photocraft_doc::StackMode::Maximum => Stat::Maximum,
-        photocraft_doc::StackMode::Mean => Stat::Mean,
-        photocraft_doc::StackMode::Median => Stat::Median,
-        photocraft_doc::StackMode::Minimum => Stat::Minimum,
-        photocraft_doc::StackMode::Range => Stat::Range,
-        photocraft_doc::StackMode::Skewness => Stat::Skewness,
-        photocraft_doc::StackMode::StandardDeviation => Stat::StandardDeviation,
-        photocraft_doc::StackMode::Summation => Stat::Summation,
-        photocraft_doc::StackMode::Variance => Stat::Variance,
+        patronusphoto_doc::StackMode::Entropy => Stat::Entropy,
+        patronusphoto_doc::StackMode::Kurtosis => Stat::Kurtosis,
+        patronusphoto_doc::StackMode::Maximum => Stat::Maximum,
+        patronusphoto_doc::StackMode::Mean => Stat::Mean,
+        patronusphoto_doc::StackMode::Median => Stat::Median,
+        patronusphoto_doc::StackMode::Minimum => Stat::Minimum,
+        patronusphoto_doc::StackMode::Range => Stat::Range,
+        patronusphoto_doc::StackMode::Skewness => Stat::Skewness,
+        patronusphoto_doc::StackMode::StandardDeviation => Stat::StandardDeviation,
+        patronusphoto_doc::StackMode::Summation => Stat::Summation,
+        patronusphoto_doc::StackMode::Variance => Stat::Variance,
     };
-    let buf = photocraft_compose::Buffer { rect: bounds, px: photocraft_algo::stack::combine(&frames, stat) };
+    let buf = patronusphoto_compose::Buffer { rect: bounds, px: patronusphoto_algo::stack::combine(&frames, stat) };
     let img = SourceImage { surface: Arc::new(source_surface_from_buffer(&doc, &buf, fmt)?), bounds };
     cache_put(key, img.clone());
     Ok(img)
@@ -95,19 +95,19 @@ pub(super) fn blend_surfaces(base: &Surface, top: &Surface, mode: BlendMode, opa
     let composite_coverage = mode != BlendMode::Normal && fmt.alpha && b.chunks_exact(n).zip(t.chunks_exact(n)).any(|(bp, tp)| bp.last() != tp.last());
     let mut o = vec![0.0f32; b.len()];
     for ((bp, tp), op) in b.chunks_exact(n).zip(t.chunks_exact(n)).zip(o.chunks_exact_mut(n)) {
-        let b = photocraft_raster::to_rgba(&fmt, bp);
-        let t = photocraft_raster::to_rgba(&fmt, tp);
+        let b = patronusphoto_raster::to_rgba(&fmt, bp);
+        let t = patronusphoto_raster::to_rgba(&fmt, tp);
         if composite_coverage {
-            let rgba = photocraft_color::blend::composite(mode, b, t, opacity);
-            photocraft_raster::from_rgba_into(&fmt, rgba, op);
+            let rgba = patronusphoto_color::blend::composite(mode, b, t, opacity);
+            patronusphoto_raster::from_rgba_into(&fmt, rgba, op);
             continue;
         }
         let cb = [b[0], b[1], b[2]];
         let ct = [t[0], t[1], t[2]];
-        let color = if fmt.sample == photocraft_color::SampleType::F32 {
-            photocraft_color::blend::blend_rgb_hdr(mode, cb, ct)
+        let color = if fmt.sample == patronusphoto_color::SampleType::F32 {
+            patronusphoto_color::blend::blend_rgb_hdr(mode, cb, ct)
         } else {
-            photocraft_color::blend::blend_rgb(mode, cb, ct)
+            patronusphoto_color::blend::blend_rgb(mode, cb, ct)
         };
         // A filter edits this surface, rather than adding a second source-over layer. Mix
         // premultiplied results so alpha-preserving filters keep coverage at every opacity,
@@ -119,7 +119,7 @@ pub(super) fn blend_surfaces(base: &Surface, top: &Surface, mode: BlendMode, opa
                 rgba[c] = (cb[c] * b[3] * (1.0 - opacity) + color[c] * t[3] * opacity) / a;
             }
         }
-        photocraft_raster::from_rgba_into(&fmt, rgba, op);
+        patronusphoto_raster::from_rgba_into(&fmt, rgba, op);
     }
     out.write_region(area, &o);
     out.prune();
@@ -140,7 +140,7 @@ pub fn apply_smart_filters(placed: &Surface, sm: &SmartObject, canvas: Rect) -> 
         cur = apply_smart_filter(f, sm, &cur, filter_bounds(f, placed, canvas), extent, &JobCtx::new())?;
     }
     Ok(match sm.filter_mask.as_ref().filter(|m| m.enabled) {
-        Some(m) => photocraft_compose::filter_mask::mix(placed, &cur, m),
+        Some(m) => patronusphoto_compose::filter_mask::mix(placed, &cur, m),
         None => cur,
     })
 }
@@ -184,7 +184,7 @@ fn apply_smart_filter(f: &SmartFilter, sm: &SmartObject, cur: &Surface, canvas: 
 /// The source placed in document pixels, before any smart filter (uncached test oracle).
 #[cfg(test)]
 pub(super) fn place(name: &str, bytes: &[u8], doc: &Document, sm: &SmartObject) -> Result<Surface> {
-    place_with_svg(name, bytes, doc, sm, photocraft_io::svg::is_svg(bytes), &mut |bytes, scale| svg_source_image_in(bytes, doc, scale))
+    place_with_svg(name, bytes, doc, sm, patronusphoto_io::svg::is_svg(bytes), &mut |bytes, scale| svg_source_image_in(bytes, doc, scale))
 }
 
 fn place_with_svg(
@@ -206,13 +206,13 @@ fn place_with_svg(
                 let [h0, h1, h2, h3, h4, h5, h6, h7, h8] = *p;
                 let h = Homography([h0 / k, h1 / k, h2, h3 / k, h4 / k, h5, h6 / k, h7 / k, h8]);
                 crate::transform_cmds::check_budget(img.bounds, &h, "smart object", fmt)?;
-                photocraft_algo::warp::place_source_projective(&img.surface, img.bounds, &h, None)?
+                patronusphoto_algo::warp::place_source_projective(&img.surface, img.bounds, &h, None)?
             }
             None => {
                 let [a, b, c, d, e, f] = sm.transform.m;
                 let t = Affine { m: [a / k, b / k, c / k, d / k, e, f] };
                 crate::transform_cmds::check_budget(img.bounds, &affine_homography(&t), "smart object", fmt)?;
-                photocraft_algo::warp::place_source(&img.surface, img.bounds, &t, None)?
+                patronusphoto_algo::warp::place_source(&img.surface, img.bounds, &t, None)?
             }
         });
     }
@@ -228,8 +228,8 @@ fn place_with_svg(
     crate::transform_cmds::check_budget(img.bounds, &h, "smart object", fmt)?;
     // Through the warp (source space) and the transform in one pass; whole-pixel moves are exact.
     Ok(match &sm.perspective {
-        Some(_) => photocraft_algo::warp::place_source_projective(&img.surface, img.bounds, &h, sm.warp.as_ref())?,
-        None => photocraft_algo::warp::place_source(&img.surface, img.bounds, &sm.transform, sm.warp.as_ref())?,
+        Some(_) => patronusphoto_algo::warp::place_source_projective(&img.surface, img.bounds, &h, sm.warp.as_ref())?,
+        None => patronusphoto_algo::warp::place_source(&img.surface, img.bounds, &sm.transform, sm.warp.as_ref())?,
     })
 }
 
@@ -303,13 +303,13 @@ pub(super) fn display_source(sm: &SmartObject, bytes: &Arc<Vec<u8>>) -> Arc<Vec<
     sm.vector_preview
         .as_ref()
         .filter(|preview| {
-            if bytes.len() > 16 * 1024 * 1024 || !photocraft_io::vector_preview::is_native_source(bytes) {
+            if bytes.len() > 16 * 1024 * 1024 || !patronusphoto_io::vector_preview::is_native_source(bytes) {
                 return false;
             }
             preview.source_hash == native_digest(bytes)
                 && !preview.svg.is_empty()
                 && preview.svg.len() <= 16 * 1024 * 1024
-                && photocraft_io::svg::is_svg(&preview.svg)
+                && patronusphoto_io::svg::is_svg(&preview.svg)
         })
         .map_or_else(|| bytes.clone(), |preview| preview.svg.clone())
 }
@@ -326,7 +326,7 @@ pub(crate) fn source_box(doc: &Document, sm: &SmartObject) -> Option<[f64; 4]> {
     let bytes = display_source(sm, &bytes);
     let fmt = doc.pixel_format();
     let r = match sm.stack_mode {
-        None if photocraft_io::svg::is_svg(&bytes) => photocraft_io::svg::bounded_canvas_bounds(&bytes, 24_000_000).ok()?,
+        None if patronusphoto_io::svg::is_svg(&bytes) => patronusphoto_io::svg::bounded_canvas_bounds(&bytes, 24_000_000).ok()?,
         Some(mode) => stack_image(&name, &bytes, fmt, mode).ok()?.bounds,
         None => super::source::source_image(&name, &bytes, fmt).ok()?.bounds,
     };
@@ -407,16 +407,16 @@ impl<'a> WarningRenderSources<'a> {
         // Only the exact sRGB fast path needs this lazy, immutable document context.
         // Pixel format/profile do not belong in each entry's key: the document is borrowed.
         let srgb = *self.srgb.get_or_insert_with(|| {
-            doc.mode == photocraft_color::ColorMode::Rgb
+            doc.mode == patronusphoto_color::ColorMode::Rgb
                 && crate::color_cmds::document_profile(doc).to_bytes().as_ref() == craft_cms::Builtin::Srgb.profile().to_bytes().as_ref()
         });
         #[cfg(test)]
         WARNING_SOURCE_DECODES.with(|count| count.set(count.get().saturating_add(1)));
-        let (buf, warnings) = photocraft_io::svg::rasterize_bounded_with_warnings(bytes, scale as f32, 24_000_000)
+        let (buf, warnings) = patronusphoto_io::svg::rasterize_bounded_with_warnings(bytes, scale as f32, 24_000_000)
             .map_err(|e| other(format!("can't render the SVG smart object: {e}")))?;
         // Charge owned native tiles, entry and warning storage, not borrowed encoded bytes.
         // This is a soft memo budget: oversize entries retain the existing uncached path.
-        let cost = usize::try_from(photocraft_raster::tile_storage_bytes(buf.rect, &doc.pixel_format()))
+        let cost = usize::try_from(patronusphoto_raster::tile_storage_bytes(buf.rect, &doc.pixel_format()))
             .unwrap_or(usize::MAX)
             .saturating_add(std::mem::size_of::<WarningSource>())
             .saturating_add(warnings.capacity().saturating_mul(std::mem::size_of::<String>()))
@@ -464,7 +464,7 @@ pub(crate) fn render_with_warnings_using(sm: &SmartObject, sources: &mut Warning
         return render(doc, sm).map(|surface| (surface, Vec::new()));
     }
     let Some((name, bytes)) = source_bytes(&doc.metadata, &sm.source) else { return Ok((None, Vec::new())) };
-    if !photocraft_io::svg::is_svg(&bytes) {
+    if !patronusphoto_io::svg::is_svg(&bytes) {
         // Keep the same source snapshot for fallback, including authorized linked reads.
         return render_in_with_source(doc, sm, &JobCtx::new(), Some((name, bytes))).map(|surface| (surface, Vec::new()));
     }
@@ -498,7 +498,7 @@ fn render_in_with_source(doc: &Document, sm: &SmartObject, ctx: &JobCtx, snapsho
     let (fmt, canvas) = (doc.pixel_format(), doc.bounds());
     // Plain SVG uses the original strict vector path. Gzip sources use ordinary
     // file import and native-size pixels, as existing saved objects expect.
-    let is_svg = photocraft_io::svg::is_svg(&bytes);
+    let is_svg = patronusphoto_io::svg::is_svg(&bytes);
     let mut h = blake3::Hasher::new();
     h.update(b"smart-placement-v3:");
     h.update(&stack_cache::placed_key(&bytes, fmt, sm, canvas));
@@ -549,7 +549,7 @@ fn render_in_with_source(doc: &Document, sm: &SmartObject, ctx: &JobCtx, snapsho
     }
     ctx.progress(1.0, "");
     Ok(Some(match sm.filter_mask.as_ref().filter(|m| m.enabled) {
-        Some(m) => photocraft_compose::filter_mask::mix(&placed()?.surface, &cur.surface, m),
+        Some(m) => patronusphoto_compose::filter_mask::mix(&placed()?.surface, &cur.surface, m),
         None => cur.surface,
     }))
 }

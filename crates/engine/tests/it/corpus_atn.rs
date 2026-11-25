@@ -1,13 +1,13 @@
 //! Corpus test (feature `corpus`; run with `cargo xtask test-corpus`): every `.atn` set under
 //! `corpus/atn/` loads through `actions.load`, exports through `actions.save`, and the export
-//! loads back to the same actions (allowing the specified compound-property event expansion). Steps without a PhotoCraft equivalent are counted against a
+//! loads back to the same actions (allowing the specified compound-property event expansion). Steps without a Patronus Photo equivalent are counted against a
 //! ceiling, so a mapping regression (or a new unmapped event in the corpus) shows up here.
 #![cfg(feature = "corpus")]
 
 use std::path::{Path, PathBuf};
 
-use photocraft_engine::Session;
-use photocraft_engine::actions_cmds::{Action, ActionColor, ActionStep};
+use patronusphoto_engine::Session;
+use patronusphoto_engine::actions_cmds::{Action, ActionColor, ActionStep};
 use serde_json::json;
 
 fn collect(dir: &Path, out: &mut Vec<PathBuf>) {
@@ -117,7 +117,7 @@ fn atn_corpus_loads_saves_and_reloads() {
     let (mut steps, mut unsupported) = (0usize, 0usize);
     for p in &files {
         let name = p.strip_prefix(&root).unwrap_or(p).display().to_string();
-        let data = photocraft_engine::paint::tile::b64_encode(&std::fs::read(p).unwrap());
+        let data = patronusphoto_engine::paint::tile::b64_encode(&std::fs::read(p).unwrap());
         let mut s = Session::new();
         let loaded = match s.execute("actions.load", json!({"data": data})) {
             Ok(v) => v,
@@ -141,9 +141,9 @@ fn atn_corpus_loads_saves_and_reloads() {
                 continue;
             }
         };
-        let bytes = photocraft_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap_or("")).unwrap_or_default();
+        let bytes = patronusphoto_engine::paint::tile::b64_decode(saved["data"].as_str().unwrap_or("")).unwrap_or_default();
         let mut t = Session::new();
-        match t.execute("actions.load", json!({"data": photocraft_engine::paint::tile::b64_encode(&bytes)})) {
+        match t.execute("actions.load", json!({"data": patronusphoto_engine::paint::tile::b64_encode(&bytes)})) {
             Ok(_) if t.actions.list.actions() == first.as_slice() => {}
             Ok(_) => {
                 // Name the first step that differs, so a mapping asymmetry is quick to find.
@@ -161,6 +161,6 @@ fn atn_corpus_loads_saves_and_reloads() {
     }
     println!("{} files, {steps} steps, {unsupported} kept Photoshop steps", files.len());
     assert!(files.len() >= FLOOR_FILES, "only {} .atn files; the corpus floor is {FLOOR_FILES}", files.len());
-    assert!(unsupported <= CEILING_UNSUPPORTED, "{unsupported} steps have no PhotoCraft equivalent; the ceiling is {CEILING_UNSUPPORTED}");
+    assert!(unsupported <= CEILING_UNSUPPORTED, "{unsupported} steps have no Patronus Photo equivalent; the ceiling is {CEILING_UNSUPPORTED}");
     assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
 }

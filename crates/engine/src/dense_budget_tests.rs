@@ -4,9 +4,9 @@
 
 use std::sync::Arc;
 
-use photocraft_doc::{LayerId, LayerMask};
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use patronusphoto_doc::{LayerId, LayerMask};
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::Surface;
 use serde_json::json;
 
 use crate::Session;
@@ -80,8 +80,8 @@ fn multichannel_on_a_huge_empty_canvas_is_refused() {
 /// channel's 28 B would have passed.
 #[test]
 fn multichannel_counts_every_duotone_ink() {
-    use photocraft_color::ColorMode;
-    use photocraft_doc::{Duotone, DuotoneInk};
+    use patronusphoto_color::ColorMode;
+    use patronusphoto_doc::{Duotone, DuotoneInk};
     let mut s = Session::new();
     s.execute("file.new", json!({"width": 15_000, "height": 15_000, "background": "transparent"})).unwrap();
     let doc = Arc::make_mut(s.active_mut().unwrap().doc_mut());

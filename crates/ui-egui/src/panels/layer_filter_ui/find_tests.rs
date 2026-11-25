@@ -4,21 +4,21 @@
 use craft::layers::ui::filter::FilterBy;
 use egui::vec2;
 use egui_kittest::Harness;
-use photocraft_doc::LayerId;
+use patronusphoto_doc::LayerId;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// "LinkA", "Other" and "LinkB" over the Background, "Other" selected.
-fn harness() -> Harness<'static, Box<PhotocraftApp>> {
-    let mut s = photocraft_engine::Session::new();
+fn harness() -> Harness<'static, Box<PatronusPhotoApp>> {
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 64, "height": 48})).unwrap();
     for name in ["LinkA", "Other", "LinkB"] {
         s.execute("layer.new.layer", json!({"name": name})).unwrap();
     }
     let mut h = Harness::builder().with_size(vec2(1440.0, 900.0)).with_max_steps(64).build_eframe(move |cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::with_context(cc.egui_ctx.clone(), s, crate::Services::default())
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        PatronusPhotoApp::with_context(cc.egui_ctx.clone(), s, crate::Services::default())
     });
     h.run_steps(8);
     let other = id(&h, "Other");
@@ -27,7 +27,7 @@ fn harness() -> Harness<'static, Box<PhotocraftApp>> {
     h
 }
 
-fn id(h: &Harness<'_, Box<PhotocraftApp>>, name: &str) -> LayerId {
+fn id(h: &Harness<'_, Box<PatronusPhotoApp>>, name: &str) -> LayerId {
     h.state()
         .session
         .active()
@@ -40,16 +40,16 @@ fn id(h: &Harness<'_, Box<PhotocraftApp>>, name: &str) -> LayerId {
         .unwrap_or_else(|| panic!("no layer {name}"))
 }
 
-fn selected(h: &Harness<'_, Box<PhotocraftApp>>) -> Vec<LayerId> {
+fn selected(h: &Harness<'_, Box<PatronusPhotoApp>>) -> Vec<LayerId> {
     h.state().session.active().unwrap().selected_layers().to_vec()
 }
 
 /// The names the panel's filter lists, top to bottom.
-fn listed(h: &Harness<'_, Box<PhotocraftApp>>) -> Vec<String> {
+fn listed(h: &Harness<'_, Box<PatronusPhotoApp>>) -> Vec<String> {
     super::tests::listed_app(h.state())
 }
 
-fn find(h: &mut Harness<'_, Box<PhotocraftApp>>, params: serde_json::Value) -> serde_json::Value {
+fn find(h: &mut Harness<'_, Box<PatronusPhotoApp>>, params: serde_json::Value) -> serde_json::Value {
     let ctx = h.ctx.clone();
     let reply = crate::menus::invoke(h.state_mut(), &ctx, "select.findLayers", params).unwrap();
     h.run_steps(4);
@@ -101,7 +101,7 @@ fn engine_execute_without_a_name_lists_what_the_panel_lists() {
 
 #[test]
 fn engine_execute_sets_the_panel_filter_too() {
-    // `engine.execute` runs engine commands through `PhotocraftApp::run`, not `menus::invoke`.
+    // `engine.execute` runs engine commands through `PatronusPhotoApp::run`, not `menus::invoke`.
     let mut h = harness();
     h.state_mut().ui.layer_filter.by = FilterBy::Kind;
     h.state_mut().run("select.findLayers", json!({"name": "link"})).unwrap();

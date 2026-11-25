@@ -6,16 +6,16 @@ use egui::accesskit::Role;
 use egui::vec2;
 use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
-use photocraft_doc::{LayerContent, LiveShape};
+use patronusphoto_doc::{LayerContent, LiveShape};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::{ToolEvent, tool_event};
 use crate::state::Tool;
 
 /// A document with Rectangle 1 (radius 20) as the active layer, and `tool` current.
-fn bar_with(tool: Tool) -> Harness<'static, Box<PhotocraftApp>> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn bar_with(tool: Tool) -> Harness<'static, Box<PatronusPhotoApp>> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 200})).unwrap();
     app.run("shape.create", json!({"kind": "roundedRect", "rect": [10, 10, 80, 60], "radii": [20, 20, 20, 20], "fill": "#ff0000"})).unwrap();
     app.sync_views();
@@ -26,7 +26,7 @@ fn bar_with(tool: Tool) -> Harness<'static, Box<PhotocraftApp>> {
     h
 }
 
-fn type_radius(h: &mut Harness<'static, Box<PhotocraftApp>>, text: &str) {
+fn type_radius(h: &mut Harness<'static, Box<PatronusPhotoApp>>, text: &str) {
     h.query_all_by_role(Role::SpinButton).find(|n| n.accesskit_node().label().as_deref() == Some("Radius")).expect("the Radius field").click();
     h.run_steps(1);
     h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::A);
@@ -36,12 +36,12 @@ fn type_radius(h: &mut Harness<'static, Box<PhotocraftApp>>, text: &str) {
     h.run_steps(3);
 }
 
-fn history_len(h: &Harness<'static, Box<PhotocraftApp>>) -> usize {
+fn history_len(h: &Harness<'static, Box<PatronusPhotoApp>>) -> usize {
     h.state().session.active().unwrap().history.past_len()
 }
 
 /// The first radius of every rectangle shape layer, bottom to top.
-fn radii(h: &Harness<'static, Box<PhotocraftApp>>) -> Vec<f64> {
+fn radii(h: &Harness<'static, Box<PatronusPhotoApp>>) -> Vec<f64> {
     let st = h.state().session.active().unwrap();
     st.doc
         .walk()
@@ -56,7 +56,7 @@ fn radii(h: &Harness<'static, Box<PhotocraftApp>>) -> Vec<f64> {
         .collect()
 }
 
-fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2]) {
+fn drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2]) {
     let mods = egui::Modifiers::NONE;
     tool_event(app, ToolEvent::Down { x: from[0], y: from[1], pressure: 1.0 }, mods);
     tool_event(app, ToolEvent::Move { x: (from[0] + to[0]) / 2.0, y: (from[1] + to[1]) / 2.0, pressure: 1.0 }, mods);

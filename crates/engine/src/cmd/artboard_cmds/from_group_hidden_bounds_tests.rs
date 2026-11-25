@@ -2,7 +2,7 @@
 //! stay inside it, in place and hidden.
 
 use super::*;
-use photocraft_geom::Rect;
+use patronusphoto_geom::Rect;
 
 const RED: Rect = Rect { x0: 100, y0: 100, x1: 300, y1: 250 };
 const BLUE: Rect = Rect { x0: 400, y0: 300, x1: 600, y1: 450 };
@@ -10,7 +10,7 @@ const BLUE: Rect = Rect { x0: 400, y0: 300, x1: 600, y1: 450 };
 fn square(doc: &Document, name: &str, r: Rect, rgba: [f32; 4]) -> Layer {
     let fmt = doc.pixel_format();
     let mut l = Layer::raster(name, fmt);
-    l.surface_mut().unwrap().fill_rect(r, &photocraft_raster::from_rgba(&fmt, rgba));
+    l.surface_mut().unwrap().fill_rect(r, &patronusphoto_raster::from_rgba(&fmt, rgba));
     l
 }
 
@@ -113,7 +113,7 @@ fn layer_effects_keep_todays_rect() {
     let (mut s, [g, red, _]) = session(false);
     s.edit("Shadow", |doc, _| {
         for id in [red, g] {
-            doc.layer_mut(id).unwrap().effects.items.push(photocraft_doc::Effect::default_drop_shadow());
+            doc.layer_mut(id).unwrap().effects.items.push(patronusphoto_doc::Effect::default_drop_shadow());
         }
         Ok(())
     })

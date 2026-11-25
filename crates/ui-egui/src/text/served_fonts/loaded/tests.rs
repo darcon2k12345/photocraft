@@ -2,7 +2,7 @@ use super::*;
 use craft::ui::fonts::{I18nScripts, SystemFonts};
 
 fn inter() -> &'static [u8] {
-    photocraft_text::fonts::INTER_REGULAR.as_slice()
+    patronusphoto_text::fonts::INTER_REGULAR.as_slice()
 }
 
 #[test]
@@ -45,7 +45,7 @@ fn collection(fonts: &[&[u8]]) -> Vec<u8> {
 
 #[test]
 fn collection_uses_actual_regular_face_index_not_the_first_face() {
-    let medium = photocraft_text::fonts::INTER_MEDIUM.as_slice();
+    let medium = patronusphoto_text::fonts::INTER_MEDIUM.as_slice();
     let ttc = collection(&[medium, inter()]);
     let mut loaded = Loaded::default();
     let families = vec!["Inter".into()];
@@ -63,13 +63,13 @@ fn runtime_delivery_reaches_all_ui_families_and_survives_reinstalls() {
     let ctx = egui::Context::default();
     // A real attributed font posing as the host's script fallback, independent of optional
     // platform Arabic/Japanese font installations.
-    photocraft_text::served::add_fonts(&super::super::parse_manifest("Inter | Regular | fonts/Inter.ttf | Arab").0);
-    let mut app = crate::PhotocraftApp::with_context(ctx.clone(), photocraft_engine::Session::new(), crate::Services::default());
+    patronusphoto_text::served::add_fonts(&super::super::parse_manifest("Inter | Regular | fonts/Inter.ttf | Arab").0);
+    let mut app = crate::PatronusPhotoApp::with_context(ctx.clone(), patronusphoto_engine::Session::new(), crate::Services::default());
     super::super::install(&mut app, &ctx, vec![("Inter".into(), inter().to_vec())]);
     for _ in 0..2 {
         ctx.run_ui(Default::default(), |_| {}).textures_delta.clear();
     }
-    for size in [photocraft_engine::prefs::UiFontSize::Large, photocraft_engine::prefs::UiFontSize::Small] {
+    for size in [patronusphoto_engine::prefs::UiFontSize::Large, patronusphoto_engine::prefs::UiFontSize::Small] {
         crate::theme::set_ui_font_size(&ctx, size);
         crate::theme::install_fonts(&ctx);
         for _ in 0..2 {
@@ -80,10 +80,10 @@ fn runtime_delivery_reaches_all_ui_families_and_survives_reinstalls() {
             [egui::FontFamily::Proportional, egui::FontFamily::Monospace, egui::FontFamily::Name("medium".into()), egui::FontFamily::Name("semibold".into())]
         {
             let chain = &definitions.families[&family];
-            let hosts: Vec<_> = chain.iter().filter(|name| name.starts_with("photocraft-host-font-")).collect();
+            let hosts: Vec<_> = chain.iter().filter(|name| name.starts_with("patronusphoto-host-font-")).collect();
             assert_eq!(hosts.len(), 1);
             assert_ne!(chain.first(), hosts.first().copied(), "bundled primary face remains first");
-            let expected = if size == photocraft_engine::prefs::UiFontSize::Large { 16.0 / 12.0 } else { 1.0 };
+            let expected = if size == patronusphoto_engine::prefs::UiFontSize::Large { 16.0 / 12.0 } else { 1.0 };
             assert_eq!(definitions.font_data[hosts[0]].tweak.scale, expected);
         }
     }
@@ -101,7 +101,7 @@ fn selection_follows_requested_family_order() {
     let mut loaded = Loaded::default();
     let families = vec!["Inter".into(), "JetBrains Mono".into()];
     assert!(loaded.add(inter(), &families));
-    assert!(loaded.add(photocraft_text::fonts::JETBRAINS_MONO_REGULAR.as_slice(), &families));
+    assert!(loaded.add(patronusphoto_text::fonts::JETBRAINS_MONO_REGULAR.as_slice(), &families));
     let forward = loaded.selected(&families);
     let reverse = loaded.selected(&families.into_iter().rev().collect::<Vec<_>>());
     assert_eq!(forward[0].0, reverse[1].0);

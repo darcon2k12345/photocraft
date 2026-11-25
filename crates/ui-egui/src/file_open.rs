@@ -1,15 +1,15 @@
 //! Opening files from disk: File › Open, Open Recent, drag-and-drop onto the window (except onto
 //! a document's canvas, which places the file as a layer), command-line paths at launch
 //! and the OS's "open these documents" requests (macOS Finder double-click, Open With, drops on the
-//! Dock icon) all go through [`PhotocraftApp::open_file`], so each one names the document after the
+//! Dock icon) all go through [`PatronusPhotoApp::open_file`], so each one names the document after the
 //! file, remembers its path (File › Save writes back to it) and adds it to Open Recent. Failures
 //! are shown as errors (status bar + notice); import warnings as a notice.
 
-use crate::{PhotocraftApp, notices};
+use crate::{PatronusPhotoApp, notices};
 use craft::ui::runtime::drag::OsFile;
 use craft::ui::runtime::windows::{WindowAction, WindowHost};
-use photocraft_doc::DocId;
-use photocraft_engine::file_cmds::{is_template, untitled_name};
+use patronusphoto_doc::DocId;
+use patronusphoto_engine::file_cmds::{is_template, untitled_name};
 
 /// A request from the operating system, delivered by the platform shell through
 /// [`Services::os_events`](crate::Services::os_events).
@@ -86,7 +86,7 @@ pub(crate) fn folder_error(path: &std::path::Path) -> Option<String> {
 
 /// Log, once per drag, that files are being dragged over the window (`hovering` of them). Together
 /// with the line `open_dropped` logs for a drop, it shows how far a drag got: nothing logged
-/// means the operating system never offered the files to PhotoCraft (a window running as
+/// means the operating system never offered the files to Patronus Photo (a window running as
 /// administrator is not offered files from a File Explorer that isn't, #10492).
 pub(crate) fn log_drag_over(ctx: &egui::Context, hovering: usize) {
     let id = egui::Id::unique("log-drag-over");
@@ -103,7 +103,7 @@ pub(crate) fn log_drag_over(ctx: &egui::Context, hovering: usize) {
 /// (queued with its [`DocId`] in `drop_places`).
 pub(crate) enum DropPlace {
     /// Destination captured when the file is dropped, before a later pointer move.
-    At { source: Box<DropPlace>, frame: Option<photocraft_doc::LayerId> },
+    At { source: Box<DropPlace>, frame: Option<patronusphoto_doc::LayerId> },
     /// Dropped onto the window (desktop): read from its path, or from the bytes the OS gave.
     File(OsFile),
     /// Read by the shell itself (the browser reads dropped files asynchronously): its name and
@@ -156,7 +156,7 @@ pub fn place_inbox_takes(files: usize, bytes: usize, incoming: usize) -> bool {
 /// `warnings` from an import, plus one for each font family the active document's type uses that
 /// isn't installed (#4559): Photoshop warns about missing fonts as a file opens, and the CLI and
 /// automation already report them; the type would otherwise silently render in a fallback face.
-pub(crate) fn with_missing_fonts(app: &PhotocraftApp, warnings: Vec<String>) -> Vec<String> {
+pub(crate) fn with_missing_fonts(app: &PatronusPhotoApp, warnings: Vec<String>) -> Vec<String> {
     match app.session.active() {
         Some(st) => with_missing_fonts_of(&st.doc, warnings),
         None => warnings,
@@ -165,8 +165,8 @@ pub(crate) fn with_missing_fonts(app: &PhotocraftApp, warnings: Vec<String>) -> 
 
 /// [`with_missing_fonts`] for `doc` itself: a file held back for its profile prompt
 /// (`open_prompt`) isn't the active document yet.
-pub(crate) fn with_missing_fonts_of(doc: &photocraft_doc::Document, mut warnings: Vec<String>) -> Vec<String> {
-    for w in photocraft_engine::type_extra_cmds::missing_font_warnings(doc) {
+pub(crate) fn with_missing_fonts_of(doc: &patronusphoto_doc::Document, mut warnings: Vec<String>) -> Vec<String> {
+    for w in patronusphoto_engine::type_extra_cmds::missing_font_warnings(doc) {
         if !warnings.contains(&w) {
             warnings.push(w);
         }
@@ -199,7 +199,7 @@ pub fn display_name(path: &str) -> String {
     std::path::Path::new(path).file_name().map(|n| n.to_string_lossy().to_string()).filter(|n| !n.is_empty()).unwrap_or_else(|| path.to_string())
 }
 
-impl PhotocraftApp {
+impl PatronusPhotoApp {
     /// Open `bytes` read from the file at `path`: the document is named after the file, keeps
     /// `path` for File › Save unless it is a derivative preview, and `path` goes to the top of Open Recent. Returns the import
     /// warnings (also shown to the user).
@@ -271,13 +271,13 @@ impl PhotocraftApp {
                 self,
                 &display_name(path),
                 Some(path.to_string()),
-                photocraft_engine::jobs::OpenSource::Path(path.to_string()),
+                patronusphoto_engine::jobs::OpenSource::Path(path.to_string()),
                 slot,
                 order,
             )?;
             return Ok(Vec::new());
         }
-        let bytes = photocraft_format::read_file(std::path::Path::new(path)).map_err(|e| format!("{path}: {e}"))?;
+        let bytes = patronusphoto_format::read_file(std::path::Path::new(path)).map_err(|e| format!("{path}: {e}"))?;
         self.open_file_placed(path, &bytes, slot, order)
     }
 
@@ -378,7 +378,7 @@ impl PhotocraftApp {
     /// gradients) always go to their libraries. A native drop carries an absolute path, read in
     /// bounded reads (#375); a drop without a path carries its bytes.
     pub(crate) fn open_dropped(&mut self, ctx: &egui::Context, files: Vec<OsFile>, to: DropTo) {
-        // Files dragged in from another app's window bring PhotoCraft to the front and give it the keyboard, as
+        // Files dragged in from another app's window bring Patronus Photo to the front and give it the keyboard, as
         // Photoshop does, instead of leaving it behind the source (#5687). A drop on a floating panel's window
         // brings the main window.
         ctx.send_viewport_cmd_to(egui::ViewportId::ROOT, egui::ViewportCommand::Focus);
@@ -615,13 +615,13 @@ impl PhotocraftApp {
         self.place_bytes_with(name, bytes, linked, &serde_json::json!({}))
     }
 
-    /// [`PhotocraftApp::place_bytes`] with the command's `params` (a frame to fill): a job where
+    /// [`PatronusPhotoApp::place_bytes`] with the command's `params` (a frame to fill): a job where
     /// places run in the background, else synchronously.
     fn place_bytes_with(&mut self, name: &str, bytes: Vec<u8>, linked: Option<String>, params: &serde_json::Value) -> Result<serde_json::Value, String> {
         let r = if crate::jobs_ui::place_in_background(self) {
             crate::jobs_ui::start_place_bytes(self, name, bytes, linked, params)
         } else {
-            photocraft_engine::file_cmds::place_bytes(&mut self.session, name, bytes, linked, params).map_err(|e| e.to_string())
+            patronusphoto_engine::file_cmds::place_bytes(&mut self.session, name, bytes, linked, params).map_err(|e| e.to_string())
         };
         self.sync_views();
         r

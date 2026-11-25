@@ -5,9 +5,9 @@
 //! measured relationship: the ramp is its own 256 x 1 strip so seeds 127 / 128 and the tolerances
 //! 0 / 1 / 32 / 100 give the issue's exact grey ranges.
 
-use photocraft_color::{PixelFormat, blend::BlendMode};
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use patronusphoto_color::{PixelFormat, blend::BlendMode};
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::Surface;
 
 use crate::paint::{FillMode, bucket_fill_inks};
 use crate::selection::{rgba8_image, wand_region};

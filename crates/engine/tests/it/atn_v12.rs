@@ -1,5 +1,5 @@
 use craft_psd::atn;
-use photocraft_engine::{Session, actions_cmds::ActionStep, paint::tile::b64_encode};
+use patronusphoto_engine::{Session, actions_cmds::ActionStep, paint::tile::b64_encode};
 use serde_json::json;
 
 /// Legacy descriptor syntax must reach the same commands and parameters as version 16.

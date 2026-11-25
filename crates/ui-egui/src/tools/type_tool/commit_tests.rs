@@ -10,23 +10,23 @@ use crate::app::framework::BuildApp;
 
 use craft::ui::runtime::windows::WindowHost;
 use egui_kittest::Harness;
-use photocraft_doc::{LayerContent, LayerId};
+use patronusphoto_doc::{LayerContent, LayerId};
 use serde_json::json;
 
 use super::end_if_left;
 use super::mask_replace_selection_tests::click;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing;
 
-fn new_app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn new_app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 400, "height": 200})).unwrap();
     app.sync_views();
     app.ui.tool = crate::state::Tool::Type;
     app
 }
 
-fn text_of(app: &PhotocraftApp, doc: usize, id: LayerId) -> Option<String> {
+fn text_of(app: &PatronusPhotoApp, doc: usize, id: LayerId) -> Option<String> {
     match &app.session.documents().get(doc)?.doc.layer(id)?.content {
         LayerContent::Text(t) => Some(t.text.clone()),
         _ => None,
@@ -34,7 +34,7 @@ fn text_of(app: &PhotocraftApp, doc: usize, id: LayerId) -> Option<String> {
 }
 
 /// Starts a session on the active layer, as the Type tool's click on its text does.
-pub(super) fn edit_active(app: &mut PhotocraftApp) {
+pub(super) fn edit_active(app: &mut PatronusPhotoApp) {
     let ctx = testing::ctx(app);
     super::edit_active(app, &ctx).unwrap();
     // The editor shows and takes the keyboard in the next pass.
@@ -48,10 +48,10 @@ pub(super) fn key(key: egui::Key, modifiers: egui::Modifiers) -> egui::Event {
 
 /// Runs the whole app (logic and UI) on the app's own context: a warm-up so the fonts and the
 /// editor's focus are in place, then two frames after each of `events`.
-pub(super) fn frames(app: Box<PhotocraftApp>, events: Vec<egui::Event>) -> Box<PhotocraftApp> {
+pub(super) fn frames(app: Box<PatronusPhotoApp>, events: Vec<egui::Event>) -> Box<PatronusPhotoApp> {
     let ctx = app.ctx().clone();
     let mut h = Harness::builder().with_size(egui::vec2(1440.0, 900.0)).with_context(ctx).build_app(
-        |ui, app: &mut PhotocraftApp| {
+        |ui, app: &mut PatronusPhotoApp| {
             let mut frame = eframe::Frame::_new_kittest();
             app.logic_frame(ui.ctx(), &mut frame);
             app.ui_frame(ui, &mut frame);
@@ -60,7 +60,7 @@ pub(super) fn frames(app: Box<PhotocraftApp>, events: Vec<egui::Event>) -> Box<P
     );
     // Between passes, as eframe's input hook does: the runtime's output of the pass is taken (the
     // commands it fired run in the next frame's logic) and its input for the next is set.
-    let step = |h: &mut Harness<'_, Box<PhotocraftApp>>, n: usize| {
+    let step = |h: &mut Harness<'_, Box<PatronusPhotoApp>>, n: usize| {
         for _ in 0..n {
             h.step();
             let ctx = h.ctx.clone();
@@ -77,7 +77,7 @@ pub(super) fn frames(app: Box<PhotocraftApp>, events: Vec<egui::Event>) -> Box<P
 
 /// Queues input with `inject` and runs frames until the window host has delivered it, so it reaches the focused
 /// editor as the platform's would.
-pub(super) fn deliver(app: &mut PhotocraftApp, inject: impl FnOnce(&WindowHost)) {
+pub(super) fn deliver(app: &mut PatronusPhotoApp, inject: impl FnOnce(&WindowHost)) {
     let host = WindowHost::of(&testing::ctx(app));
     inject(&host);
     for _ in 0..64 {
@@ -90,17 +90,17 @@ pub(super) fn deliver(app: &mut PhotocraftApp, inject: impl FnOnce(&WindowHost))
 }
 
 /// Types `s` through the focused editor.
-pub(super) fn type_keys(app: &mut PhotocraftApp, s: &str) {
+pub(super) fn type_keys(app: &mut PatronusPhotoApp, s: &str) {
     deliver(app, |host| host.inject_text(egui::ViewportId::ROOT, s));
 }
 
 /// An input-method event, delivered to the focused editor.
-pub(super) fn ime(app: &mut PhotocraftApp, event: egui::ImeEvent) {
+pub(super) fn ime(app: &mut PatronusPhotoApp, event: egui::ImeEvent) {
     deliver(app, |host| host.inject_ime(egui::ViewportId::ROOT, event));
 }
 
 /// Start a new type layer with a click and type `s` into it, as the canvas does.
-pub(super) fn type_new(app: &mut PhotocraftApp, s: &str) -> LayerId {
+pub(super) fn type_new(app: &mut PatronusPhotoApp, s: &str) -> LayerId {
     click(app, 50.0, 100.0, egui::Modifiers::NONE);
     // The editor shows and takes the keyboard in the next pass.
     testing::frame(app);
@@ -193,11 +193,11 @@ fn closing_the_edited_document_drops_the_edit_without_touching_another() {
 /// instead of typing into the type layer.
 #[test]
 fn tool_shortcuts_work_after_another_layer_is_selected() {
-    let mut s = photocraft_engine::Session::new();
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 400, "height": 300})).unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1440.0, 900.0)).with_max_steps(64).build_eframe(move |cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::with_context(cc.egui_ctx.clone(), s, crate::Services::default())
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        PatronusPhotoApp::with_context(cc.egui_ctx.clone(), s, crate::Services::default())
     });
     h.run_steps(8);
     let app = h.state_mut();

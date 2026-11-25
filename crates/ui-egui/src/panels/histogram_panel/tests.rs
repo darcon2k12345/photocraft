@@ -1,18 +1,18 @@
 use super::*;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use craft::imaging::ui::scopes::ScopePanelState;
 use egui::{Rect, vec2};
 use serde_json::json;
 
-fn app_with(params: Value) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app_with(params: Value) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", params).unwrap();
     app
 }
 
 /// One panel frame through a minimal egui pass.
 // PLAN: `show` now builds the framework's `ScopePanel`, which reads `Env::of(ui)`; this bare context has no host installed. If it panics, the frame needs `Fixture::host`.
-fn frame(app: &mut PhotocraftApp) {
+fn frame(app: &mut PatronusPhotoApp) {
     let ctx = app.ctx().clone();
     ctx.begin_pass(Default::default());
     let mut ui =
@@ -24,7 +24,7 @@ fn frame(app: &mut PhotocraftApp) {
 /// Frames until the panel shows the histogram it wants (the throttle skipped), or panics after
 /// 60 s: an uncached count of the 18 MP document below takes seconds in a debug build on a loaded
 /// CI runner, and the loop returns as soon as the histogram lands.
-fn settle(app: &mut PhotocraftApp) {
+fn settle(app: &mut PatronusPhotoApp) {
     let t0 = std::time::Instant::now();
     loop {
         for e in [app.doc_hist.as_mut(), app.doc_hist_preview.as_mut()].into_iter().flatten() {
@@ -40,7 +40,7 @@ fn settle(app: &mut PhotocraftApp) {
     }
 }
 
-fn ui_set(app: &mut PhotocraftApp, ctx: &egui::Context, params: Value) -> Value {
+fn ui_set(app: &mut PatronusPhotoApp, ctx: &egui::Context, params: Value) -> Value {
     let (req, _rx) = crate::control::ControlRequest::new("ui.set", params);
     match crate::control::handle(app, ctx, &req) {
         crate::control::Reply::Done(v) => v,
@@ -48,7 +48,7 @@ fn ui_set(app: &mut PhotocraftApp, ctx: &egui::Context, params: Value) -> Value 
     }
 }
 
-fn inspect_stats(app: &PhotocraftApp) -> Value {
+fn inspect_stats(app: &PatronusPhotoApp) -> Value {
     inspect(app)["stats"].clone()
 }
 
@@ -206,7 +206,7 @@ fn views_keep_the_channel_and_the_menu_toggles_options() {
     let mut app = app_with(json!({"width": 16, "height": 16}));
     app.ui.histogram.settings.channel = HistChannel::Green.key().into();
     let ctx = app.ctx().clone();
-    let fire = |app: &mut PhotocraftApp, command: ScopeCommand| assert!(run_fired(app, &ctx, &CommandRef::from(command)));
+    let fire = |app: &mut PatronusPhotoApp, command: ScopeCommand| assert!(run_fired(app, &ctx, &CommandRef::from(command)));
     fire(&mut app, ScopeCommand::AllChannelsView);
     assert_eq!(app.ui.histogram.settings.view, ScopeView::AllChannels);
     assert_eq!(app.ui.histogram.settings.channel, "green", "the channel is kept");
@@ -215,11 +215,11 @@ fn views_keep_the_channel_and_the_menu_toggles_options() {
     fire(&mut app, ScopeCommand::ShowStatistics);
     assert!(!app.ui.histogram.settings.show_statistics);
     // The states mirror the settings: the radio mark follows the view.
-    let state = |app: &PhotocraftApp, command: ScopeCommand| command_states(app).into_iter().find(|(c, _)| *c == CommandRef::from(command)).map(|(_, s)| s);
+    let state = |app: &PatronusPhotoApp, command: ScopeCommand| command_states(app).into_iter().find(|(c, _)| *c == CommandRef::from(command)).map(|(_, s)| s);
     assert_eq!(state(&app, ScopeCommand::AllChannelsView), Some(CommandState::new().checked(true)));
     assert_eq!(state(&app, ScopeCommand::CompactView), Some(CommandState::new().checked(false)));
     // Kept with the preferences.
-    let mut again = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut again = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let saved = app.session.prefs().dialogs.get(OPTIONS_PREF).cloned().unwrap();
     again.session.prefs.edit(|p| {
         p.dialogs.insert(OPTIONS_PREF.into(), saved);
@@ -260,7 +260,7 @@ fn ui_set_drives_the_panel() {
 
 /// A white Background under a black layer, with the Background selected: the entire image is
 /// black, the selected layer white.
-fn black_over_white_background_selected() -> Box<PhotocraftApp> {
+fn black_over_white_background_selected() -> Box<PatronusPhotoApp> {
     let mut app = app_with(json!({"width": 32, "height": 32}));
     app.run("layer.new.layer", json!({})).unwrap();
     app.run("edit.fill", json!({"color": "#000000"})).unwrap();

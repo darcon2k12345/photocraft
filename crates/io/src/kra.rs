@@ -1,5 +1,5 @@
 //! Krita import. `craft-kra` owns the archive, XML and tile formats; this module maps its
-//! neutral document representation into PhotoCraft's layer model.
+//! neutral document representation into Patronus Photo's layer model.
 
 #[cfg(test)]
 mod tests;
@@ -7,10 +7,10 @@ mod tests;
 use std::collections::HashSet;
 
 use craft_kra::tiles::{Space, TileFile};
-use photocraft_color::{BlendMode, ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{Document, Layer, LayerContent, LayerMask};
-use photocraft_geom::{Size, TILE_SIZE};
-use photocraft_raster::{Interrupt, Surface};
+use patronusphoto_color::{BlendMode, ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::{Document, Layer, LayerContent, LayerMask};
+use patronusphoto_geom::{Size, TILE_SIZE};
+use patronusphoto_raster::{Interrupt, Surface};
 
 use crate::ora::{MAX_NODES, MAX_PIXEL_BYTES, Warnings, krita_blend};
 use crate::{ImportResult, IoError};
@@ -91,7 +91,7 @@ impl Reader<'_, '_> {
             .ok_or_else(|| invalid("decoded layers exceed the 1 GiB limit"))?;
 
         let mut surface = match self.archive.default_pixel(name, space).map_err(map_error)? {
-            Some(rgba) if rgba.iter().any(|v| *v != 0.0) => Surface::with_default(fmt, &photocraft_raster::from_rgba(&fmt, rgba)),
+            Some(rgba) if rgba.iter().any(|v| *v != 0.0) => Surface::with_default(fmt, &patronusphoto_raster::from_rgba(&fmt, rgba)),
             _ => Surface::new(fmt),
         };
         let n = file.width.checked_mul(file.height).ok_or_else(|| invalid("tile size overflow"))?;
@@ -112,8 +112,8 @@ impl Reader<'_, '_> {
                 let mut encoded = vec![0; fmt.bytes_per_pixel()];
                 for px in source.chunks_exact(space.pixel_size()) {
                     let rgba = space.rgba(px);
-                    let samples = photocraft_raster::from_rgba(&fmt, rgba);
-                    photocraft_raster::encode_pixel(&fmt, &samples, &mut encoded);
+                    let samples = patronusphoto_raster::from_rgba(&fmt, rgba);
+                    patronusphoto_raster::encode_pixel(&fmt, &samples, &mut encoded);
                     converted.extend_from_slice(&encoded);
                 }
             }
@@ -121,7 +121,7 @@ impl Reader<'_, '_> {
                 tile.x.checked_add(dx).ok_or_else(|| invalid("tile offset overflow"))?,
                 tile.y.checked_add(dy).ok_or_else(|| invalid("tile offset overflow"))?,
             );
-            let rect = photocraft_geom::Rect::from_xywh(x, y, file.width as u32, file.height as u32);
+            let rect = patronusphoto_geom::Rect::from_xywh(x, y, file.width as u32, file.height as u32);
             if converted.len() != n * fmt.bytes_per_pixel() || rect.width() as usize != file.width || rect.height() as usize != file.height {
                 return Err(invalid("tile does not fit its position"));
             }
@@ -194,8 +194,8 @@ impl Reader<'_, '_> {
     }
 
     fn layers(&mut self, nodes: &[craft_kra::Node], depth: usize, dx: i32, dy: i32) -> Result<Vec<Layer>> {
-        if depth > photocraft_doc::MAX_GROUP_DEPTH {
-            return Err(IoError::Unsupported(format!("layer groups nested deeper than {}", photocraft_doc::MAX_GROUP_DEPTH)));
+        if depth > patronusphoto_doc::MAX_GROUP_DEPTH {
+            return Err(IoError::Unsupported(format!("layer groups nested deeper than {}", patronusphoto_doc::MAX_GROUP_DEPTH)));
         }
         let mut out = Vec::new();
         for child in nodes {

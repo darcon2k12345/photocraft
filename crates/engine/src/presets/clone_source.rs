@@ -11,9 +11,9 @@
 //! A slot remembers the document its source was set in, so ⌥-clicking in one open document and
 //! painting in another clones across them, as in Photoshop.
 
-use photocraft_doc::{DocId, LayerId};
-use photocraft_geom::Rect;
-use photocraft_paint::retouch::Region;
+use patronusphoto_doc::{DocId, LayerId};
+use patronusphoto_geom::Rect;
+use patronusphoto_paint::retouch::Region;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 

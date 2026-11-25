@@ -6,18 +6,18 @@ use serde_json::{Value, json};
 use super::*;
 use crate::color_picker_ui::{PickWindow, answer_for, hex, open_for_request, open_for_target, open_for_window, target, testing};
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 16, "height": 12})).unwrap();
     app
 }
 
-fn past(app: &PhotocraftApp) -> usize {
+fn past(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.past_len()
 }
 
 /// One pass of the dialog host alone, with no taker: a request the dialogs filed stays for the test to take.
-fn host_pass(app: &mut PhotocraftApp) {
+fn host_pass(app: &mut PatronusPhotoApp) {
     let ctx = app.ctx().clone();
     let mut output = ctx.run_ui(egui::RawInput::default(), |ui| app.framework.dialogs.run(ui));
     // No renderer takes the pass's texture uploads.
@@ -25,17 +25,17 @@ fn host_pass(app: &mut PhotocraftApp) {
 }
 
 /// The values hosted dialog `id` holds, in their JSON form.
-fn values(app: &PhotocraftApp, id: DialogId) -> Value {
+fn values(app: &PatronusPhotoApp, id: DialogId) -> Value {
     serde_json::to_value(app.framework.dialogs.get_by_id::<HostedParamDialog>(id).expect("the dialog is open").fields()).unwrap()
 }
 
 /// The colour hosted dialog `id` holds under `key`, as `"#rrggbb"`.
-fn held_color(app: &PhotocraftApp, id: DialogId, key: &str) -> Option<String> {
+fn held_color(app: &PatronusPhotoApp, id: DialogId, key: &str) -> Option<String> {
     app.framework.dialogs.get_by_id::<HostedParamDialog>(id)?.fields().color(key).map(hex)
 }
 
 /// The Picker's colour changes, as a drag in it or `ui.dialog.set` changes it, and a frame passes.
-fn pick(app: &mut PhotocraftApp, picker: DialogId, color: &str) {
+fn pick(app: &mut PatronusPhotoApp, picker: DialogId, color: &str) {
     testing::set_color(app, picker, color);
     sync(app);
 }
@@ -49,7 +49,7 @@ struct FillPicker {
 }
 
 /// Opens Edit › Fill, chooses Contents › Color, takes the colour row's request and opens its picker child.
-fn fill_with_picker(app: &mut PhotocraftApp) -> FillPicker {
+fn fill_with_picker(app: &mut PatronusPhotoApp) -> FillPicker {
     let ctx = app.ctx().clone();
     let fill = crate::fill_ui::open(app);
     // The Color row shows once Contents is Color.
@@ -64,12 +64,12 @@ fn fill_with_picker(app: &mut PhotocraftApp) -> FillPicker {
     FillPicker { fill, picker, key }
 }
 
-fn top_of(app: &PhotocraftApp) -> Option<DialogId> {
+fn top_of(app: &PatronusPhotoApp) -> Option<DialogId> {
     crate::color_picker_ui::top(app)
 }
 
 /// An agent's control call, as `ui.dialog.*` and `ui.set` arrive.
-fn call(app: &mut PhotocraftApp, method: &str, params: Value) -> Value {
+fn call(app: &mut PatronusPhotoApp, method: &str, params: Value) -> Value {
     let ctx = app.ctx().clone();
     let (req, _rx) = crate::control::ControlRequest::new(method, params);
     let crate::control::Reply::Done(r) = crate::control::handle(app, &ctx, &req) else { panic!("{method}: an immediate reply") };
@@ -77,7 +77,7 @@ fn call(app: &mut PhotocraftApp, method: &str, params: Value) -> Value {
 }
 
 /// The colour the dialog `id` previews on its row `key`, as `"#rrggbb"`.
-fn previewed(app: &PhotocraftApp, id: DialogId, key: &str) -> Option<String> {
+fn previewed(app: &PatronusPhotoApp, id: DialogId, key: &str) -> Option<String> {
     let dialog = app.framework.dialogs.get_by_id::<HostedParamDialog>(id)?;
     dialog.previewed_colors().iter().find(|(row, _)| row == key).map(|(_, color)| hex([color.r, color.g, color.b]))
 }
@@ -207,13 +207,13 @@ fn the_dialog_under_a_picker_refuses_control_edits() {
 }
 
 /// The crop shield's colour choice and custom colour.
-fn shield(app: &PhotocraftApp) -> (ShieldColor, [u8; 3]) {
+fn shield(app: &PatronusPhotoApp) -> (ShieldColor, [u8; 3]) {
     let s = &app.ui.tool_options.crop.shield;
     (s.color, s.custom_color)
 }
 
 /// Opens the picker for the Crop shield's custom colour on the colour it holds.
-fn shield_picker(app: &mut PhotocraftApp) -> DialogId {
+fn shield_picker(app: &mut PatronusPhotoApp) -> DialogId {
     let custom = app.ui.tool_options.crop.shield.custom_color.map(|v| f32::from(v) / 255.0);
     open_for_target(app, "cropShield", "Color Picker (Shield Color)", custom).expect("the shield picker opens")
 }

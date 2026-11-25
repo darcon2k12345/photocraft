@@ -5,11 +5,11 @@
 use craft::text::ui::spelling::CheckSpellingDialog;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// An app with `doc` open (or none): a white 800 x 500 document with an empty layer on top.
-pub(super) fn app(doc: bool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+pub(super) fn app(doc: bool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     if doc {
         app.run("file.new", json!({"width": 800, "height": 500, "background": "white"})).unwrap();
         app.run("layer.new.layer", json!({"name": "Empty"})).unwrap();
@@ -19,17 +19,17 @@ pub(super) fn app(doc: bool) -> Box<PhotocraftApp> {
 }
 
 /// Whether Edit > Check Spelling... is enabled in the menu.
-pub(super) fn enabled(app: &PhotocraftApp) -> bool {
+pub(super) fn enabled(app: &PatronusPhotoApp) -> bool {
     crate::menus::is_enabled(app, "edit.checkSpelling")
 }
 
 /// Chooses Edit > Check Spelling... as the menu does.
-pub(super) fn choose(app: &mut PhotocraftApp) -> Result<serde_json::Value, String> {
+pub(super) fn choose(app: &mut PatronusPhotoApp) -> Result<serde_json::Value, String> {
     let ctx = app.ctx().clone();
     crate::menus::invoke(app, &ctx, "edit.checkSpelling", json!({}))
 }
 
-fn history(app: &PhotocraftApp) -> Vec<String> {
+fn history(app: &PatronusPhotoApp) -> Vec<String> {
     app.session.active().unwrap().history.entries()
 }
 

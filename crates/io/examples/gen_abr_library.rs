@@ -3,10 +3,10 @@
 //! Real painting packs are commercial or "personal use only", so we can't test against them. This
 //! writes a deterministic stand-in with the same shape: hundreds of presets with big 16-bit sampled
 //! tips (RLE-compressed, like Photoshop CC), full dynamics descriptors, split over several files.
-//! Every tip comes from `photocraft_paint::procedural` (original, seeded generators), so the output
+//! Every tip comes from `patronusphoto_paint::procedural` (original, seeded generators), so the output
 //! carries no third-party rights. Nothing it writes is committed; regenerate it when needed.
 //!
-//! `cargo run --release -p photocraft-io --example gen_abr_library -- --out <dir>`
+//! `cargo run --release -p patronusphoto-io --example gen_abr_library -- --out <dir>`
 //!
 //! Options (defaults in brackets): `--brushes N` [600], `--edge PX` largest tip edge [2000],
 //! `--min-edge PX` smallest tip edge [800], `--depth 8|16` [16], `--per-file N` presets per file [100],
@@ -15,8 +15,8 @@
 
 use craft_psd::abr::{AbrSample, MAX_TOTAL_BYTES, write_v6};
 use craft_psd::descriptor::{Descriptor, UnicodeString, Value};
-use photocraft_paint::procedural::{bristle_tip, chalk_tip, charcoal_tip, grass_tip, leaf_tip, rake_tip, spatter_tip, sponge_tip, star_tip};
-use photocraft_paint::tile::GrayTile;
+use patronusphoto_paint::procedural::{bristle_tip, chalk_tip, charcoal_tip, grass_tip, leaf_tip, rake_tip, spatter_tip, sponge_tip, star_tip};
+use patronusphoto_paint::tile::GrayTile;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -144,10 +144,10 @@ fn main() {
             .collect();
         let bytes = write_v6(2, &samples, &[], &presets, rle).unwrap();
         // Sanity: our own importer must accept every preset.
-        let imported = photocraft_io::abr_map::read_abr(&bytes, "Generated").unwrap();
+        let imported = patronusphoto_io::abr_map::read_abr(&bytes, "Generated").unwrap();
         assert_eq!(imported.presets.len(), ids.len(), "every generated preset imports");
         file_no += 1;
-        let path = out.join(format!("photocraft-test-brushes-{file_no:02}.abr"));
+        let path = out.join(format!("patronusphoto-test-brushes-{file_no:02}.abr"));
         std::fs::write(&path, &bytes).unwrap();
         println!("{}: {} brushes, {:.1} MB on disk, {:.1} MB decoded", path.display(), ids.len(), bytes.len() as f64 / 1e6, decoded as f64 / 1e6);
         total_bytes += bytes.len() as u64;

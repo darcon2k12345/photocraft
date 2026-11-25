@@ -13,7 +13,7 @@ pub fn specs() -> Vec<CommandSpec> {
                 // A board the canvas no longer reaches (cropped away) selects the canvas, never an
                 // empty selection that would block painting.
                 let area = board.map(|r| r.intersect(&doc.bounds())).filter(|r| !r.is_empty()).unwrap_or_else(|| doc.bounds());
-                let mut m = Surface::new(photocraft_color::PixelFormat::GRAY8);
+                let mut m = Surface::new(patronusphoto_color::PixelFormat::GRAY8);
                 m.fill_rect(area, &[1.0]);
                 doc.selection = Some(m);
                 Ok(())
@@ -33,8 +33,8 @@ pub fn specs() -> Vec<CommandSpec> {
         }),
         cmd!("select.inverse", "Inverse", ["Select"], Some("Cmd+Shift+I"), "{}", has_selection, |s, _| {
             s.edit("Inverse", |doc, _| {
-                let old = doc.selection.take().unwrap_or_else(|| Surface::new(photocraft_color::PixelFormat::GRAY8));
-                doc.selection = Some(photocraft_algo::selection::inverse_surface(&old, doc.bounds()));
+                let old = doc.selection.take().unwrap_or_else(|| Surface::new(patronusphoto_color::PixelFormat::GRAY8));
+                doc.selection = Some(patronusphoto_algo::selection::inverse_surface(&old, doc.bounds()));
                 Ok(())
             })?;
             Ok(Value::Null)
@@ -67,11 +67,11 @@ pub fn specs() -> Vec<CommandSpec> {
                     let area = doc.bounds();
                     // A marquee dragged past the canvas stops at its edge (Photoshop); the ellipse
                     // keeps the dragged shape and is only cut there.
-                    use photocraft_algo::selection as sel;
+                    use patronusphoto_algo::selection as sel;
                     let shape = if ellipse {
                         sel::ellipse_surface(r, area, aa)
                     } else {
-                        let mut s = Surface::new(photocraft_color::PixelFormat::GRAY8);
+                        let mut s = Surface::new(patronusphoto_color::PixelFormat::GRAY8);
                         s.fill_rect(r.intersect(&area), &[1.0]);
                         s
                     };
@@ -87,7 +87,7 @@ pub fn specs() -> Vec<CommandSpec> {
                         ("subtract", Some(o)) => sel::combine_sparse(&o, &shape, area, |a, b| a * (1.0 - b)),
                         ("intersect", Some(o)) => sel::combine_surfaces(&o, &shape, area, |a, b| a.min(b)),
                         // With no existing selection, neither operation can select new pixels.
-                        ("subtract" | "intersect", None) => Surface::new(photocraft_color::PixelFormat::GRAY8),
+                        ("subtract" | "intersect", None) => Surface::new(patronusphoto_color::PixelFormat::GRAY8),
                         _ => shape,
                     };
                     // Sparse Add/Subtract keeps untouched pixels outside the canvas. Only pixels

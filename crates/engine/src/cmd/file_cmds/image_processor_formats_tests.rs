@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use photocraft_doc::{ColorMode, Document};
+use patronusphoto_doc::{ColorMode, Document};
 use serde_json::{Value, json};
 
 use crate::Session;
@@ -19,7 +19,7 @@ fn paths(result: &Value) -> Result<Vec<PathBuf>, serde_json::Error> {
 }
 
 fn reopen(path: &Path) -> Result<Document, Box<dyn std::error::Error>> {
-    Ok(photocraft_io::import(&path.to_string_lossy(), &std::fs::read(path)?)?.document)
+    Ok(patronusphoto_io::import(&path.to_string_lossy(), &std::fs::read(path)?)?.document)
 }
 
 #[test]
@@ -49,12 +49,12 @@ fn one_run_reopens_three_independently_sized_formats() {
     let jpeg = reopen(&files[0]).unwrap();
     let psd = reopen(&files[1]).unwrap();
     let tiff = reopen(&files[2]).unwrap();
-    let tiff_info = photocraft_codecs::tiff_info(&std::fs::read(&files[2]).unwrap()).unwrap();
+    let tiff_info = patronusphoto_codecs::tiff_info(&std::fs::read(&files[2]).unwrap()).unwrap();
     assert_eq!(tiff_info.pages[0].compression, 5, "TIFF uses LZW compression");
     assert_eq!((jpeg.size.width, jpeg.size.height), (20, 10));
     assert_eq!((psd.size.width, psd.size.height), (10, 5));
     assert_eq!(tiff.size, doc.size);
-    assert_eq!(jpeg.depth, photocraft_color::SampleType::U8);
+    assert_eq!(jpeg.depth, patronusphoto_color::SampleType::U8);
     assert_eq!(jpeg.layers.len(), 1);
     assert_eq!(jpeg.mode, ColorMode::Rgb);
     assert!(jpeg.icc_profile.is_some());

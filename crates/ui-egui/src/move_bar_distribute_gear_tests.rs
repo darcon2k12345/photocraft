@@ -5,14 +5,14 @@ use craft::layers::ui::panel::Groups;
 use egui::vec2;
 use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
-use photocraft_doc::LayerId;
-use photocraft_geom::Rect;
+use patronusphoto_doc::LayerId;
+use patronusphoto_geom::Rect;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
-fn paint(app: &mut PhotocraftApp, r: Rect) -> LayerId {
+fn paint(app: &mut PatronusPhotoApp, r: Rect) -> LayerId {
     app.session.execute("layer.new.layer", json!({})).unwrap();
     app.session
         .edit("paint", |doc, a| {
@@ -23,12 +23,12 @@ fn paint(app: &mut PhotocraftApp, r: Rect) -> LayerId {
     app.session.active().unwrap().active_layer.unwrap()
 }
 
-fn bounds(app: &PhotocraftApp, id: LayerId) -> Rect {
+fn bounds(app: &PatronusPhotoApp, id: LayerId) -> Rect {
     let doc = &app.session.active().unwrap().doc;
-    photocraft_compose::bounds::content_bounds(doc.layer(id).unwrap().surface().unwrap())
+    patronusphoto_compose::bounds::content_bounds(doc.layer(id).unwrap().surface().unwrap())
 }
 
-fn select_all(app: &mut PhotocraftApp, ids: &[LayerId]) {
+fn select_all(app: &mut PatronusPhotoApp, ids: &[LayerId]) {
     app.session.execute("layer.select", json!({"layer": ids[0].0})).unwrap();
     for id in &ids[1..] {
         app.session.execute("layer.select", json!({"layer": id.0, "mode": "toggle"})).unwrap();
@@ -37,8 +37,8 @@ fn select_all(app: &mut PhotocraftApp, ids: &[LayerId]) {
 
 /// A 120x120 document with three layers side by side and on top of each other unevenly, the
 /// Move tool current. Returns the app and the layers, bottom to top.
-fn app() -> (Box<PhotocraftApp>, [LayerId; 3]) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> (Box<PatronusPhotoApp>, [LayerId; 3]) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 120, "height": 120})).unwrap();
     let a = paint(&mut app, Rect::new(0, 0, 10, 10));
     let b = paint(&mut app, Rect::new(12, 50, 32, 54));
@@ -50,22 +50,22 @@ fn app() -> (Box<PhotocraftApp>, [LayerId; 3]) {
 
 /// The Move tool's align controls and gear, on the app's own context so command states reach them
 /// as in the running app.
-fn harness(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
+fn harness(app: Box<PatronusPhotoApp>) -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(vec2(700.0, 200.0)).build_ui_state(
-        |ui, app: &mut Box<PhotocraftApp>| {
+        |ui, app: &mut Box<PatronusPhotoApp>| {
             egui::CentralPanel::default().show(ui, |ui| {
                 ui.horizontal(|ui| crate::align_bar::show(app, ui));
             });
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     steps(&mut h, 4);
     h
 }
 
 /// `n` frames, each with the command states published before its input, as the app's frame does.
-fn steps(h: &mut Harness<'static, Box<PhotocraftApp>>, n: usize) {
+fn steps(h: &mut Harness<'static, Box<PatronusPhotoApp>>, n: usize) {
     for _ in 0..n {
         let ctx = h.ctx.clone();
         h.state_mut().framework_before_input(&ctx);
@@ -117,12 +117,12 @@ fn show_hover_bounds_from_layers_switches_the_layers_panel_outline() {
 }
 
 /// The reveal the Layers panel's next draw takes.
-fn track(app: &mut PhotocraftApp) -> Option<(LayerId, Groups)> {
+fn track(app: &mut PatronusPhotoApp) -> Option<(LayerId, Groups)> {
     crate::layer_reveal::take(app)
 }
 
 /// Selects `layer` the way a command does: the reveal is filed around it.
-fn select(app: &mut PhotocraftApp, layer: LayerId) {
+fn select(app: &mut PatronusPhotoApp, layer: LayerId) {
     let before = crate::layer_reveal::mark(app);
     app.run("layer.select", json!({"layer": layer.0})).unwrap();
     crate::layer_reveal::file(app, before);
@@ -131,7 +131,7 @@ fn select(app: &mut PhotocraftApp, layer: LayerId) {
 #[test]
 fn expand_layer_group_on_click_switches_the_opening_of_closed_parent_groups() {
     for on in [true, false] {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.session.execute("file.new", json!({"width": 64, "height": 64})).unwrap();
         let inner = paint(&mut app, Rect::new(8, 8, 24, 24));
         app.session.execute("layer.groupLayers", json!({})).unwrap();
@@ -154,8 +154,8 @@ fn expand_layer_group_on_click_switches_the_opening_of_closed_parent_groups() {
 
 /// A 64x64 document: `inner` painted at (8..24)^2 inside a closed group, the Background-less
 /// group selected, `tool` current and the gear option set to `on`. The reveal has seen the frame.
-fn closed_group_doc(tool: Tool, on: bool) -> (Box<PhotocraftApp>, LayerId, LayerId) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn closed_group_doc(tool: Tool, on: bool) -> (Box<PatronusPhotoApp>, LayerId, LayerId) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 64, "height": 64})).unwrap();
     let inner = paint(&mut app, Rect::new(8, 8, 24, 24));
     app.session.execute("layer.groupLayers", json!({})).unwrap();
@@ -171,7 +171,7 @@ fn closed_group_doc(tool: Tool, on: bool) -> (Box<PhotocraftApp>, LayerId, Layer
 }
 
 /// A press and release at (12, 12) with Ctrl/Cmd held (a temporary Move from another tool).
-fn ctrl_click(app: &mut PhotocraftApp) {
+fn ctrl_click(app: &mut PatronusPhotoApp) {
     use crate::canvas::{ToolEvent, tool_event};
     let mods = egui::Modifiers { command: true, ctrl: true, ..Default::default() };
     tool_event(app, ToolEvent::Down { x: 12.0, y: 12.0, pressure: 1.0 }, mods);

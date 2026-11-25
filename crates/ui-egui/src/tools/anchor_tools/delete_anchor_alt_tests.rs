@@ -6,14 +6,14 @@ use serde_json::json;
 
 use super::add_anchor_lock_tests::click_with_modifiers;
 use super::delete_anchor_targeted_path_tests::{setup, steps};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing;
 use crate::direct_select::PathRef;
 use crate::state::Tool;
 
 /// Delete Anchor Point with the saved path "Path 1", a closed corner square
 /// (100,300)(300,300)(300,500)(100,500), targeted in the Paths panel.
-fn square() -> Box<PhotocraftApp> {
+fn square() -> Box<PatronusPhotoApp> {
     let (mut app, _) = setup(Tool::DeleteAnchorPoint);
     let path = json!({"subpaths": [{"closed": true, "knots": [[100, 300], [300, 300], [300, 500], [100, 500]]}]});
     app.run("path.set", json!({"name": "Path 1", "path": path})).unwrap();
@@ -21,7 +21,7 @@ fn square() -> Box<PhotocraftApp> {
     app
 }
 
-fn knots(app: &PhotocraftApp) -> usize {
+fn knots(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().doc.paths[0].path.subpaths[0].knots.len()
 }
 

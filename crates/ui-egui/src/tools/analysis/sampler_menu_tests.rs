@@ -3,11 +3,11 @@
 use serde_json::json;
 
 use crate::canvas_tool_menu::SAMPLER_DELETE;
-use crate::{PhotocraftApp, Tool};
+use crate::{PatronusPhotoApp, Tool};
 
 /// A 200 x 100 document with the Color Sampler and samplers at (20, 20) and (120, 60).
-fn app() -> (Box<PhotocraftApp>, egui::Context) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> (Box<PatronusPhotoApp>, egui::Context) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
     app.run("view.colorSamplers.add", json!({"x": 20, "y": 20})).unwrap();
     app.run("view.colorSamplers.add", json!({"x": 120, "y": 60})).unwrap();
@@ -17,11 +17,11 @@ fn app() -> (Box<PhotocraftApp>, egui::Context) {
 }
 
 /// A right-click at document point (x, y) through the window host, as a mouse sends it.
-fn right_click(app: &mut PhotocraftApp, x: f64, y: f64) {
+fn right_click(app: &mut PatronusPhotoApp, x: f64, y: f64) {
     crate::canvas::testing::secondary_click(app, [x, y], egui::Modifiers::NONE);
 }
 
-fn samplers(app: &PhotocraftApp) -> Vec<[f64; 2]> {
+fn samplers(app: &PatronusPhotoApp) -> Vec<[f64; 2]> {
     app.session.active().unwrap().color_samplers.clone()
 }
 
@@ -69,7 +69,7 @@ fn a_stale_sampler_or_odd_point_fails_gracefully() {
     crate::canvas_tool_menu::choose(&mut app, &ctx, SAMPLER_DELETE);
     assert_eq!(samplers(&app), [[5.5, 5.5]], "Delete with no open menu removes nothing");
 
-    let mut empty = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut empty = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     empty.ui.tool = Tool::ColorSampler;
     assert_eq!(super::sampler_at(&empty, [1.0, 1.0]), None);
     if crate::canvas_tool_menu::open_at(&mut empty, Tool::ColorSampler, Default::default(), egui::pos2(10.0, 10.0), [1.0, 1.0], None) {

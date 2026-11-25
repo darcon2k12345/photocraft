@@ -5,19 +5,19 @@ use egui::{ViewportCommand, ViewportId, vec2};
 use egui_kittest::{Harness, kittest::Queryable};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The whole app in a 1100 × 600 window whose frame the app draws (the Windows decision), with `setup` run on the
 /// app before the first frame.
-fn integrated_app(setup: impl FnOnce(&mut PhotocraftApp) + 'static) -> Harness<'static, Box<PhotocraftApp>> {
+fn integrated_app(setup: impl FnOnce(&mut PatronusPhotoApp) + 'static) -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut setup = Some(setup);
     let mut h = Harness::builder().with_size(vec2(1100.0, 600.0)).with_max_steps(64).build_eframe(move |cc| {
         let desktop = Desktop::detect(Backend::X11);
         let decision = decide(Os::Windows, Runtime::Native, Backend::X11, &desktop, WindowKind::Main, TitleBarPref::Integrated, None);
-        PhotocraftApp::setup_window(&cc.egui_ctx, Default::default(), decision);
-        let mut session = photocraft_engine::Session::new();
+        PatronusPhotoApp::setup_window(&cc.egui_ctx, Default::default(), decision);
+        let mut session = patronusphoto_engine::Session::new();
         session.edit_prefs(|p| p.general.auto_show_home_screen = false);
-        let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), session, crate::Services::default());
+        let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), session, crate::Services::default());
         if let Some(setup) = setup.take() {
             setup(&mut app);
         }
@@ -28,7 +28,7 @@ fn integrated_app(setup: impl FnOnce(&mut PhotocraftApp) + 'static) -> Harness<'
 }
 
 /// The viewport commands the root window got over `steps` frames.
-fn commands(h: &mut Harness<'static, Box<PhotocraftApp>>, steps: usize) -> Vec<ViewportCommand> {
+fn commands(h: &mut Harness<'static, Box<PatronusPhotoApp>>, steps: usize) -> Vec<ViewportCommand> {
     let mut all = Vec::new();
     for _ in 0..steps {
         h.step();
@@ -39,7 +39,7 @@ fn commands(h: &mut Harness<'static, Box<PhotocraftApp>>, steps: usize) -> Vec<V
     all
 }
 
-fn with_unsaved_work(app: &mut PhotocraftApp) {
+fn with_unsaved_work(app: &mut PatronusPhotoApp) {
     app.run("file.new", json!({"width": 8, "height": 8})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
 }
@@ -65,7 +65,7 @@ fn the_close_caption_asks_about_unsaved_work_unless_the_device_is_lost() {
 }
 
 /// The whole app with the menu bar set as given.
-fn whole_app(menu_bar: bool) -> Harness<'static, Box<PhotocraftApp>> {
+fn whole_app(menu_bar: bool) -> Harness<'static, Box<PatronusPhotoApp>> {
     integrated_app(move |app| app.ui.panels.menu_bar = menu_bar)
 }
 

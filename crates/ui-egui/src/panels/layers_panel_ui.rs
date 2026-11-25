@@ -11,10 +11,10 @@ use craft::ui::menu::PanelRow;
 use craft::ui::patterns::form_dialogs::{DialogFields, HostedParamDialog, Param, ParamDialog, ParamKind, ParamResult};
 use craft::ui::runtime::commands::{CommandSet, CommandState};
 use craft::ui::runtime::env::Env;
-use photocraft_doc::Document;
+use patronusphoto_doc::Document;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 const OPTIONS_PREF: &str = "ui.layersPanelOptions";
 const CLIP_PREF: &str = "interface.clipThumbnailsToLayerBounds";
@@ -83,7 +83,7 @@ fn settings_of(saved: &Value) -> LayersSettings {
 
 /// Save independently of Workspace > Remember Workspace Changes, as Photoshop does. A pick of the
 /// current value writes nothing unless the saved entry is missing or stale.
-pub fn persist_options(app: &mut PhotocraftApp) {
+pub fn persist_options(app: &mut PatronusPhotoApp) {
     let value = options_value(&app.ui.layers_settings);
     if app.session.prefs().dialogs.get(OPTIONS_PREF) == Some(&value) {
         return;
@@ -94,7 +94,7 @@ pub fn persist_options(app: &mut PhotocraftApp) {
 }
 
 /// Restore independently from a saved workspace. Older preferences retain the defaults.
-pub fn restore_options(app: &mut PhotocraftApp) {
+pub fn restore_options(app: &mut PatronusPhotoApp) {
     let saved = app.session.prefs().dialogs.get(OPTIONS_PREF).map(settings_of);
     if let Some(settings) = saved {
         app.ui.layers_settings = settings;
@@ -103,19 +103,19 @@ pub fn restore_options(app: &mut PhotocraftApp) {
 
 /// Thumbnail Contents as the shared preference has it: Layer Bounds is Clip Thumbnails to Layer
 /// Bounds (#4281), which frames each layer's pixels instead of the canvas.
-pub fn thumbnail_contents(app: &PhotocraftApp) -> ThumbContents {
+pub fn thumbnail_contents(app: &PatronusPhotoApp) -> ThumbContents {
     if app.session.prefs().interface.clip_thumbnails_to_layer_bounds { ThumbContents::LayerBounds } else { ThumbContents::EntireDocument }
 }
 
 /// Writes Thumbnail Contents into the clip preference when it differs.
-fn set_contents(app: &mut PhotocraftApp, contents: ThumbContents) -> Result<(), String> {
+fn set_contents(app: &mut PatronusPhotoApp, contents: ThumbContents) -> Result<(), String> {
     if contents == thumbnail_contents(app) {
         return Ok(());
     }
     app.run("prefs.set", json!({"path": CLIP_PREF, "value": contents == ThumbContents::LayerBounds})).map(|_| ())
 }
 
-fn report(app: &mut PhotocraftApp, result: Result<(), String>) {
+fn report(app: &mut PatronusPhotoApp, result: Result<(), String>) {
     if let Err(e) = result {
         app.ui.status = e;
         app.ui.status_error = true;
@@ -123,8 +123,8 @@ fn report(app: &mut PhotocraftApp, result: Result<(), String>) {
 }
 
 /// The rows of the Layers panel menu, above the framework's own rows (Filter Options, Panel Options…, Collapse All Groups,
-/// Clip Thumbnails to Layer Bounds). Animation Options is not offered: PhotoCraft has no frame-unification buttons.
-pub(crate) fn panel_rows(app: &PhotocraftApp) -> Vec<PanelRow> {
+/// Clip Thumbnails to Layer Bounds). Animation Options is not offered: Patronus Photo has no frame-unification buttons.
+pub(crate) fn panel_rows(app: &PatronusPhotoApp) -> Vec<PanelRow> {
     let command = |id: &str| PanelRow::Command(CommandRef::new(id));
     let any_hidden = app.session.active().is_some_and(|st| st.selected_layers().iter().any(|id| st.doc.layer(*id).is_some_and(|l| !l.visible)));
     let mut rows = vec![
@@ -150,7 +150,7 @@ pub(crate) fn panel_rows(app: &PhotocraftApp) -> Vec<PanelRow> {
 
 /// The states of the framework's settings rows: Show Filters and Clip Thumbnails are checked when on. Duplicate Layer…
 /// reads Duplicate Layers… with several layers selected (#14615).
-pub(crate) fn command_states(app: &PhotocraftApp) -> Vec<(CommandRef, CommandState)> {
+pub(crate) fn command_states(app: &PatronusPhotoApp) -> Vec<(CommandRef, CommandState)> {
     let row = |command: LayersPanelCommands, state: CommandState| (CommandRef::from(command), state);
     let mut states = vec![
         row(LayersPanelCommands::ShowFilters, CommandState::new().checked(app.ui.layers_settings.show_filters)),
@@ -165,9 +165,9 @@ pub(crate) fn command_states(app: &PhotocraftApp) -> Vec<(CommandRef, CommandSta
     states
 }
 
-/// Runs a fired settings command of the panel menu. `false` for every other command: PhotoCraft's `layer.arrange.*`
+/// Runs a fired settings command of the panel menu. `false` for every other command: Patronus Photo's `layer.arrange.*`
 /// bindings stay the one path of the stacking keys, and the catalogue commands run through the menus.
-pub(crate) fn run_fired(app: &mut PhotocraftApp, _ctx: &egui::Context, command: &CommandRef) -> bool {
+pub(crate) fn run_fired(app: &mut PatronusPhotoApp, _ctx: &egui::Context, command: &CommandRef) -> bool {
     if LayersMenuCommand::from_ref(command).is_some() {
         open_lock_layers(app);
         return true;
@@ -198,7 +198,7 @@ pub(crate) fn run_fired(app: &mut PhotocraftApp, _ctx: &egui::Context, command: 
 }
 
 /// Opens the Panel Options dialog over the current options.
-pub(crate) fn open_options(app: &mut PhotocraftApp) -> DialogId {
+pub(crate) fn open_options(app: &mut PatronusPhotoApp) -> DialogId {
     let mut options = app.ui.layers_settings.options.clone();
     options.thumbnail_contents = thumbnail_contents(app);
     app.framework.dialogs.open(LayersOptionsDialog::new(options))
@@ -206,7 +206,7 @@ pub(crate) fn open_options(app: &mut PhotocraftApp) -> DialogId {
 
 /// Takes the Panel Options dialog's answer: OK saves the options and sets Thumbnail Contents in the shared preference;
 /// Cancel changes nothing.
-pub(crate) fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
+pub(crate) fn take(app: &mut PatronusPhotoApp, _ctx: &egui::Context) {
     let Some(DialogResult::Ok(options)) = app.framework.dialogs.take::<LayersOptionsDialog>() else { return };
     let contents = options.thumbnail_contents;
     app.ui.layers_settings.options = options;
@@ -227,7 +227,7 @@ fn lock_params() -> Vec<Param> {
 }
 
 /// Opens the Lock Layers dialog with All ticked ([`LayersMenuCommand::LockLayersDialog`]).
-pub(crate) fn open_lock_layers(app: &mut PhotocraftApp) -> DialogId {
+pub(crate) fn open_lock_layers(app: &mut PatronusPhotoApp) -> DialogId {
     let dialog = HostedParamDialog::new(app.ctx(), LOCK_LAYERS, DialogFields::new(), |fields| {
         ParamDialog::new(LOCK_LAYERS, tl!("Lock Layers"), lock_params()).values(Bind::bound(fields))
     });
@@ -240,7 +240,7 @@ pub(crate) fn owns(key: &str) -> bool {
 }
 
 /// Runs the Lock Layers dialog's OK.
-pub(crate) fn run(app: &mut PhotocraftApp, _ctx: &egui::Context, result: ParamResult) {
+pub(crate) fn run(app: &mut PatronusPhotoApp, _ctx: &egui::Context, result: ParamResult) {
     let on = |key: &str| result.fields.bool(key).unwrap_or(false);
     let params = json!({"transparency": on("transparency"), "pixels": on("pixels"), "position": on("position"), "artboard": on("artboard"), "all": on("all")});
     let outcome = app.run(LOCK_LAYERS, params).map(|_| ());
@@ -250,7 +250,7 @@ pub(crate) fn run(app: &mut PhotocraftApp, _ctx: &egui::Context, result: ParamRe
 /// Preview cache recomputes only when hovering a new target, not each pointer frame.
 /// Compositor sees it as a temporary document and never commits it to history.
 pub(crate) struct ReorderPreview {
-    pub source: photocraft_doc::DocId,
+    pub source: patronusphoto_doc::DocId,
     pub revision: u64,
     pub signature: u64,
     pub key: u64,
@@ -259,7 +259,7 @@ pub(crate) struct ReorderPreview {
 
 /// Cache the on-canvas preview of the layer drop in `payload` (a `layer.moveTo` request), unless Preview on Canvas is off.
 /// Marks the destination as hovered every frame; the preview itself is rebuilt only when the target changes.
-pub(crate) fn preview_reorder(app: &mut PhotocraftApp, payload: &serde_json::Value) {
+pub(crate) fn preview_reorder(app: &mut PatronusPhotoApp, payload: &serde_json::Value) {
     if !app.ui.layers_settings.options.preview_on_canvas_when_reordering {
         app.reorder_preview = None;
         return;
@@ -278,7 +278,7 @@ pub(crate) fn preview_reorder(app: &mut PhotocraftApp, payload: &serde_json::Val
     }
     let (source, revision) = (st.doc.id, st.revision);
     let add_copy = app.ui.layers_settings.options.add_copy_to_copied_layers_and_groups;
-    let preview = photocraft_engine::layer_multi_cmds::preview_move(&st.doc, payload, add_copy);
+    let preview = patronusphoto_engine::layer_multi_cmds::preview_move(&st.doc, payload, add_copy);
     app.reorder_preview = preview.map(|document| ReorderPreview {
         source,
         revision,
@@ -289,7 +289,7 @@ pub(crate) fn preview_reorder(app: &mut PhotocraftApp, payload: &serde_json::Val
 }
 
 /// The cached reorder preview and its compositor cache key for document `index`, if it was built for that document's current revision.
-pub(crate) fn display_reorder(app: &PhotocraftApp, index: usize) -> Option<(std::sync::Arc<Document>, u64)> {
+pub(crate) fn display_reorder(app: &PatronusPhotoApp, index: usize) -> Option<(std::sync::Arc<Document>, u64)> {
     if !app.ui.layers_settings.options.preview_on_canvas_when_reordering {
         return None;
     }
@@ -305,12 +305,12 @@ mod layers_menu_duplicate_tests;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use photocraft_engine::Session;
+    use patronusphoto_engine::Session;
 
-    fn app_with_document() -> Box<PhotocraftApp> {
+    fn app_with_document() -> Box<PatronusPhotoApp> {
         let mut session = Session::new();
         session.execute("file.new", json!({"width": 8, "height": 8})).unwrap();
-        PhotocraftApp::new(session, crate::Services::default())
+        PatronusPhotoApp::new(session, crate::Services::default())
     }
 
     fn fired(command: LayersPanelCommands) -> CommandRef {
@@ -343,7 +343,7 @@ mod tests {
     fn disabling_default_fill_masks_never_targets_an_absent_mask() {
         let mut session = Session::new();
         session.execute("file.new", json!({"width": 32, "height": 24})).unwrap();
-        let mut app = PhotocraftApp::new(session, crate::Services::default());
+        let mut app = PatronusPhotoApp::new(session, crate::Services::default());
         app.ui.layers_settings.options.use_default_masks_on_fill_layers = false;
         persist_options(&mut app);
         app.run("layer.newFillLayer.solidColor", json!({"color": "#778899"})).unwrap();
@@ -411,7 +411,7 @@ mod tests {
             .doc
             .walk()
             .into_iter()
-            .filter_map(|(_, _, l)| if let photocraft_doc::LayerContent::Group(g) = &l.content { Some(g.expanded) } else { None })
+            .filter_map(|(_, _, l)| if let patronusphoto_doc::LayerContent::Group(g) = &l.content { Some(g.expanded) } else { None })
             .collect()
     }
 
@@ -430,7 +430,7 @@ mod tests {
     /// #143: Collapse All Groups closes every group, and the closed state survives a PSD and a .pcraft round trip.
     #[test]
     fn collapse_all_groups_closes_every_group_and_it_is_saved() {
-        let mut app = PhotocraftApp::new(nested(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(nested(), crate::Services::default());
         let ctx = app.ctx().clone();
         assert!(groups_open(&app.session).iter().all(|o| *o));
         assert!(run_fired(&mut app, &ctx, &fired(LayersPanelCommands::CollapseAll)));
@@ -439,8 +439,8 @@ mod tests {
         assert!(open.iter().all(|o| !o), "every group closed: {open:?}");
         let doc = (*app.session.active().unwrap().doc).clone();
         for name in ["c.psd", "c.pcraft"] {
-            let bytes = photocraft_io::export(&doc, name, &Default::default()).unwrap().bytes;
-            let back = photocraft_io::import(name, &bytes).unwrap().document;
+            let bytes = patronusphoto_io::export(&doc, name, &Default::default()).unwrap().bytes;
+            let back = patronusphoto_io::import(name, &bytes).unwrap().document;
             let mut s = Session::new();
             s.add_document(back, None);
             assert!(groups_open(&s).iter().all(|o| !o), "{name}: groups stay closed");
@@ -451,13 +451,13 @@ mod tests {
     /// one New Group dialog.
     #[test]
     fn the_new_group_rows_open_the_one_new_group_dialog() {
-        let app = PhotocraftApp::new(nested(), crate::Services::default());
+        let app = PatronusPhotoApp::new(nested(), crate::Services::default());
         let rows = panel_rows(&app);
         let at = |id: &str| rows.iter().position(|r| matches!(r, PanelRow::Command(c) if c.id == id)).unwrap_or_else(|| panic!("no row {id}"));
         let collapse = at(fired(LayersPanelCommands::CollapseAll).id.as_str());
         for command in [crate::new_group_ui::NEW_GROUP, crate::new_group_ui::FROM_LAYERS] {
             assert!(at(command) < collapse, "{command} comes before Collapse All Groups");
-            let mut app = PhotocraftApp::new(nested(), crate::Services::default());
+            let mut app = PatronusPhotoApp::new(nested(), crate::Services::default());
             let app_ctx = app.ctx().clone();
             crate::menus::invoke(&mut app, &app_ctx, command, json!({})).unwrap();
             assert!(app.dialog_open(), "{command} opens the New Group dialog");

@@ -1,4 +1,4 @@
-//! Conversions between the engine's adjustment params (JSON, `photocraft_engine::adjust_params`) and the framework
+//! Conversions between the engine's adjustment params (JSON, `patronusphoto_engine::adjust_params`) and the framework
 //! editors' typed [`AdjustValue`]s.
 //!
 //! The engine's params stay the one stored form; this module is the only place that knows both key sets. The values
@@ -14,10 +14,10 @@ use craft::imaging::ui::adjust::{
 use craft::imaging::ui::curve::Curve;
 use craft::imaging::ui::histogram::ChannelColor;
 use craft::theme::Srgba;
-use photocraft_doc::ColorMode;
-use photocraft_doc::adjust::{CURVE_MAP_LEN, CurvePoint, ToneSpace, curve_map, curve_map_outputs};
-use photocraft_engine::adjust_params::{self, HUE_RANGES};
-use photocraft_engine::channel_cmds::IsolatedCurveChannel;
+use patronusphoto_doc::ColorMode;
+use patronusphoto_doc::adjust::{CURVE_MAP_LEN, CurvePoint, ToneSpace, curve_map, curve_map_outputs};
+use patronusphoto_engine::adjust_params::{self, HUE_RANGES};
+use patronusphoto_engine::channel_cmds::IsolatedCurveChannel;
 use serde_json::{Map, Value, json};
 
 use super::{AdjustValue, is_gray};
@@ -171,7 +171,7 @@ pub fn panel_histograms(histograms: &Histograms, space: ToneSpace, gray: bool, i
 /// The host's interpolation of a point curve: the output level (0..=255) of every input level, as the engine draws it.
 pub fn curve_sampler(points: &[[f32; 2]]) -> Vec<f32> {
     let curve: Vec<CurvePoint> = points.iter().map(|q| CurvePoint { input: q[0] / 255.0, output: q[1] / 255.0 }).collect();
-    photocraft_compose::adjust::curve_samples::<256>(&curve).into_iter().map(|y| y * 255.0).collect()
+    patronusphoto_compose::adjust::curve_samples::<256>(&curve).into_iter().map(|y| y * 255.0).collect()
 }
 
 /// Converts every curve of `curves` to `mode` with the engine: point curves are drawn into maps, maps are fitted with
@@ -305,7 +305,7 @@ pub fn from_params(kind: &str, params: &Value, cx: &ValueCx) -> Result<AdjustVal
         "threshold" => AdjustValue::Threshold { level: number(&v, "level", 128.0) },
         "gradientMap" => AdjustValue::GradientMap { value: read_gradient_map(&v) },
         "selectiveColor" => {
-            let ranges = std::array::from_fn(|i| numbers(&v, photocraft_engine::adjust_cmds::RANGES[i], [0.0; 4]));
+            let ranges = std::array::from_fn(|i| numbers(&v, patronusphoto_engine::adjust_cmds::RANGES[i], [0.0; 4]));
             let method = if v.get("method").and_then(Value::as_str) == Some("absolute") { SelectiveMethod::Absolute } else { SelectiveMethod::Relative };
             AdjustValue::SelectiveColor { value: SelectiveColor::new(ranges, method) }
         }
@@ -515,7 +515,7 @@ fn write_params(value: &AdjustValue, cx: &ValueCx) -> Value {
         AdjustValue::GradientMap { value } => write_gradient_map(&mut out, value),
         AdjustValue::SelectiveColor { value } => {
             out.insert("method".into(), json!(if value.method == SelectiveMethod::Absolute { "absolute" } else { "relative" }));
-            for (key, row) in photocraft_engine::adjust_cmds::RANGES.iter().zip(value.ranges) {
+            for (key, row) in patronusphoto_engine::adjust_cmds::RANGES.iter().zip(value.ranges) {
                 out.insert((*key).into(), json!(row));
             }
         }
@@ -618,7 +618,7 @@ fn write_gradient_map(out: &mut Map<String, Value>, map: &GradientMap) {
 mod tests {
     use super::*;
     use crate::tone::{self, HistSource};
-    use photocraft_engine::{Session, channel_cmds};
+    use patronusphoto_engine::{Session, channel_cmds};
 
     fn session(mode: &str, depth: u32) -> Session {
         let mut s = Session::new();
@@ -645,7 +645,7 @@ mod tests {
 
     #[test]
     fn subset_histograms_match_both_editors_in_all_native_spaces_and_depths() {
-        use photocraft_geom::Rect as PixelRect;
+        use patronusphoto_geom::Rect as PixelRect;
         for mode in ["rgb", "cmyk", "lab"] {
             for depth in [8, 16, 32] {
                 let mut s = session(mode, depth);

@@ -6,14 +6,14 @@ use craft::ui::patterns::form_dialogs::HostedParamDialog;
 use egui::accesskit::{Role, Toggled};
 use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
-use photocraft_color::ColorMode;
+use patronusphoto_color::ColorMode;
 use serde_json::{Value, json};
 
 use super::COMMAND;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::warp_text_dialog_tests::harness;
 
-type H = Harness<'static, Box<PhotocraftApp>>;
+type H = Harness<'static, Box<PatronusPhotoApp>>;
 
 /// The checkboxes as Photoshop's two columns show them, row by row.
 const LEFT: [&str; 4] = ["Bitmap", "Grayscale", "Duotone", "Indexed Color"];
@@ -22,7 +22,7 @@ const ALL_IDS: [&str; 8] = ["bitmap", "grayscale", "duotone", "indexed", "rgb", 
 
 /// An RGB document with the dialog opened from the File menu.
 fn opened() -> (H, DialogId) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 40, "height": 20})).unwrap();
     let ctx = app.ctx().clone();
     let reply = crate::menus::invoke(&mut app, &ctx, COMMAND, json!({})).unwrap();

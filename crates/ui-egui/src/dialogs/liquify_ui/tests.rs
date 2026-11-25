@@ -6,36 +6,36 @@ use craft::ui::runtime::memory::{saved_value, set_saved_value};
 const KEY: &str = "filter.liquify";
 
 /// The hosted Liquify workspace's value.
-fn ws(app: &mut PhotocraftApp) -> &mut LiquifyWorkspace {
+fn ws(app: &mut PatronusPhotoApp) -> &mut LiquifyWorkspace {
     app.framework.dialogs.get_mut::<Hosted>().expect("the Liquify workspace is open").workspace_mut()
 }
 
 /// The app's side of the open Liquify workspace.
-fn la(app: &PhotocraftApp) -> &LiquifyApp {
+fn la(app: &PatronusPhotoApp) -> &LiquifyApp {
     app.liquify.as_ref().expect("the Liquify app state exists")
 }
 
 /// The app's field, proxy and pictures (`take` writes them under the same lock).
-fn eng(app: &PhotocraftApp) -> MutexGuard<'_, Engine> {
+fn eng(app: &PatronusPhotoApp) -> MutexGuard<'_, Engine> {
     lock(&la(app).engine)
 }
 
-fn is_open(app: &PhotocraftApp) -> bool {
+fn is_open(app: &PatronusPhotoApp) -> bool {
     app.framework.dialogs.is_open::<Hosted>()
 }
 
 /// Runs one frame: the workspace's pass reports the events it queued, and the app applies them to its field.
-fn settle(app: &mut PhotocraftApp, _ctx: &egui::Context) {
+fn settle(app: &mut PatronusPhotoApp, _ctx: &egui::Context) {
     crate::canvas::testing::frame(app);
 }
 
 /// The open workspace's facts (`describe`).
-fn facts(app: &PhotocraftApp) -> Value {
+fn facts(app: &PatronusPhotoApp) -> Value {
     describe(app).expect("the Liquify workspace is open")
 }
 
 /// A control request to the Liquify workspace, then the events it produced.
-fn ctl(app: &mut PhotocraftApp, v: Value) -> Result<Value, String> {
+fn ctl(app: &mut PatronusPhotoApp, v: Value) -> Result<Value, String> {
     let ctx = app.ctx().clone();
     let r = workspace_ui(app, &ctx, KEY, &v);
     settle(app, &ctx);
@@ -43,7 +43,7 @@ fn ctl(app: &mut PhotocraftApp, v: Value) -> Result<Value, String> {
 }
 
 /// Opens the workspace and runs its first frame: the pass reads the remembered settings and asks for the backdrop.
-fn open_ws(app: &mut PhotocraftApp) -> Result<(), String> {
+fn open_ws(app: &mut PatronusPhotoApp) -> Result<(), String> {
     let ctx = app.ctx().clone();
     open(app, &ctx)?;
     crate::canvas::testing::frame(app);
@@ -63,39 +63,39 @@ fn engine_of(stroke: &StepStroke) -> LiquifyStroke {
 }
 
 /// Records `stroke` in the workspace and lets the app apply it.
-fn perform(app: &mut PhotocraftApp, stroke: StepStroke) {
+fn perform(app: &mut PatronusPhotoApp, stroke: StepStroke) {
     let ctx = app.ctx().clone();
     ws(app).perform(LiquifyStep::Stroke(stroke));
     settle(app, &ctx);
 }
 
-fn undo(app: &mut PhotocraftApp) {
+fn undo(app: &mut PatronusPhotoApp) {
     let ctx = app.ctx().clone();
     ws(app).undo();
     settle(app, &ctx);
 }
 
-fn redo(app: &mut PhotocraftApp) {
+fn redo(app: &mut PatronusPhotoApp) {
     let ctx = app.ctx().clone();
     ws(app).redo();
     settle(app, &ctx);
 }
 
-fn strokes(app: &PhotocraftApp) -> u64 {
+fn strokes(app: &PatronusPhotoApp) -> u64 {
     facts(app)["strokes"].as_u64().unwrap()
 }
 
-fn redo_len(app: &PhotocraftApp) -> u64 {
+fn redo_len(app: &PatronusPhotoApp) -> u64 {
     facts(app)["redo"].as_u64().unwrap()
 }
 
 /// A three-point stroke through the middle of the test layer, for the tests that need a visible warp.
-fn sweep(app: &mut PhotocraftApp, y: f64) {
+fn sweep(app: &mut PatronusPhotoApp, y: f64) {
     perform(app, stroke_with(StepTool::ForwardWarp, 50.0, &[[40.0, y], [60.0, y + 2.0], [80.0, y]]));
 }
 
-fn app_with_layer() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app_with_layer() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.session.execute("file.new", json!({"width": 120, "height": 80, "depth": 8})).unwrap();
     app.session.execute("layer.new.layer", json!({})).unwrap();
     app.session
@@ -139,7 +139,7 @@ fn native_component_liquify_preserves_proxy_detail_and_captured_commit_targets()
                             for k in [0, 2] {
                                 native[k] = before.sample_channel((x + 2).min(63), y, k);
                             }
-                            let rgba = photocraft_raster::to_rgba(&before.format(), &native);
+                            let rgba = patronusphoto_raster::to_rgba(&before.format(), &native);
                             let expected = [rgba[0] * rgba[3], rgba[1] * rgba[3], rgba[2] * rgba[3], rgba[3]].map(|v| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8);
                             assert!(out[(y * 64 + x) as usize].iter().zip(expected).all(|(a, b)| a.abs_diff(b) <= 1), "{mode}@{depth}");
                         }
@@ -166,7 +166,7 @@ fn native_component_liquify_preserves_proxy_detail_and_captured_commit_targets()
 fn a_zoomed_read_covers_only_the_asked_region_and_a_stroke_reports_its_damage() {
     let mut app = app_with_layer();
     open_ws(&mut app).unwrap();
-    let read = |app: &PhotocraftApp| {
+    let read = |app: &PatronusPhotoApp| {
         let mut image = ColorImage::filled([30, 20], Color32::TRANSPARENT);
         eng(app).read(pixel_rect(Rect::new(45, 30, 75, 50)), 1, &mut image);
         image.pixels
@@ -188,7 +188,7 @@ fn backdrop_use_and_mode() {
     let app = app_with_layer();
     let st = app.session.active().unwrap();
     let (layer, background) = (st.active_layer.unwrap(), st.doc.layers[0].id);
-    let at = |doc: &Document| photocraft_compose::render(doc, Rect::new(10, 10, 11, 11)).px[0];
+    let at = |doc: &Document| patronusphoto_compose::render(doc, Rect::new(10, 10, 11, 11)).px[0];
     let own = at(&st.doc);
     assert_eq!(at(&backdrop_doc(&st.doc, None)), own, "All Layers");
     assert_eq!(at(&backdrop_doc(&st.doc, Some(layer.0))), own, "the liquified layer alone");
@@ -333,7 +333,7 @@ fn freeze_lasso_records_a_stroke_and_clears_redo() {
 
 /// A smart object with a Liquify smart filter (one stroke, mesh size 3) and a Gaussian Blur
 /// above it.
-fn smart_liquify_app() -> (Box<PhotocraftApp>, LayerId) {
+fn smart_liquify_app() -> (Box<PatronusPhotoApp>, LayerId) {
     let mut app = app_with_layer();
     app.run("layer.smartObjects.convertToSmartObject", json!({})).unwrap();
     let stroke = json!({"tool": "forwardWarp", "size": 40, "points": [[40.0, 40.0, 1.0], [48.0, 41.0, 1.0], [56.0, 40.0, 1.0]]});
@@ -343,14 +343,14 @@ fn smart_liquify_app() -> (Box<PhotocraftApp>, LayerId) {
     (app, layer)
 }
 
-fn smart(app: &PhotocraftApp, layer: LayerId) -> photocraft_doc::SmartObject {
+fn smart(app: &PatronusPhotoApp, layer: LayerId) -> patronusphoto_doc::SmartObject {
     match &app.session.active().unwrap().doc.layer(layer).unwrap().content {
-        photocraft_doc::LayerContent::Smart(sm) => sm.clone(),
+        patronusphoto_doc::LayerContent::Smart(sm) => sm.clone(),
         _ => panic!("not a smart object"),
     }
 }
 
-fn drag(app: &mut PhotocraftApp, from: f64, to: f64) {
+fn drag(app: &mut PatronusPhotoApp, from: f64, to: f64) {
     perform(app, stroke_with(StepTool::ForwardWarp, 40.0, &[[from, 40.0], [to, 40.0]]));
 }
 
@@ -371,7 +371,7 @@ fn smart_filter_double_click_edits_the_recorded_liquify() {
     assert_eq!(strokes(&app), 1, "the recorded stroke is loaded");
     assert!(eng(&app).field.max_displacement() > 0.0, "and replayed into the field");
     // The preview starts from the pixels below the filter (no liquify, no blur).
-    let below = photocraft_engine::smart_cmds::render_below_filter(&app.session.active().unwrap().doc, &sm, 0).unwrap().unwrap();
+    let below = patronusphoto_engine::smart_cmds::render_below_filter(&app.session.active().unwrap().doc, &sm, 0).unwrap().unwrap();
     let e = eng(&app);
     assert_eq!(e.source.read_region(e.canvas), below.read_region(e.canvas));
     drop(e);
@@ -381,7 +381,7 @@ fn smart_filter_double_click_edits_the_recorded_liquify() {
     assert!(!is_open(&app));
     let sm = smart(&app, layer);
     assert_eq!(sm.smart_filters.len(), 2, "edited in place, not added");
-    assert_eq!(sm.smart_filters[0].command, photocraft_engine::distort_cmds::LIQUIFY);
+    assert_eq!(sm.smart_filters[0].command, patronusphoto_engine::distort_cmds::LIQUIFY);
     assert_eq!(sm.smart_filters[0].params["strokes"].as_array().map(Vec::len), Some(2));
     assert_eq!(sm.smart_filters[0].params["meshSize"], json!(3.0));
     assert_eq!(sm.smart_filters[1].command, "filter.blur.gaussianBlur");
@@ -460,7 +460,7 @@ fn liquify_that_cannot_be_applied_reports_the_error() {
 }
 
 /// Opens the workspace `key` with `open`, checks it is the one on the host, and cancels it.
-fn opens_and_cancels(app: &mut PhotocraftApp, key: &str, what: &str, open: impl FnOnce(&mut PhotocraftApp) -> Result<(), String>) {
+fn opens_and_cancels(app: &mut PatronusPhotoApp, key: &str, what: &str, open: impl FnOnce(&mut PatronusPhotoApp) -> Result<(), String>) {
     open(app).unwrap_or_else(|e| panic!("{what}: {e}"));
     assert_eq!(crate::distort_ui::modal_workspace(app), Some(key), "{what}");
     let ctx = app.ctx().clone();
@@ -474,7 +474,7 @@ fn opens_and_cancels(app: &mut PhotocraftApp, key: &str, what: &str, open: impl 
 #[test]
 fn workspaces_open_on_the_layer_with_a_mask_channel_or_quick_mask_targeted() {
     let setup = |case: &str| {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
         app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();
         app.run("edit.fill", json!({"contents": "color", "color": "#ff0000"})).unwrap();
@@ -492,7 +492,7 @@ fn workspaces_open_on_the_layer_with_a_mask_channel_or_quick_mask_targeted() {
         app.sync_views();
         app
     };
-    let surfaces = |app: &PhotocraftApp| {
+    let surfaces = |app: &PatronusPhotoApp| {
         let st = app.session.active().unwrap();
         let l = st.doc.layer(st.active_layer.unwrap()).unwrap();
         (
@@ -526,7 +526,7 @@ fn workspaces_open_on_the_layer_with_a_mask_channel_or_quick_mask_targeted() {
 /// OK adds a smart filter, as the filter mask doesn't take it.
 #[test]
 fn workspaces_open_on_a_smart_object_with_its_filter_mask_targeted() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     app.run("edit.fill", json!({"contents": "color", "color": "#ff0000"})).unwrap();
@@ -543,8 +543,11 @@ fn workspaces_open_on_a_smart_object_with_its_filter_mask_targeted() {
     perform(&mut app, stroke_with(StepTool::ForwardWarp, 30.0, &[[20.0, 24.0], [36.0, 24.0]]));
     ctl(&mut app, json!({"commit": true})).unwrap();
     let st = app.session.active().unwrap();
-    let Some(photocraft_doc::LayerContent::Smart(sm)) = st.doc.layer(layer).map(|l| &l.content) else { panic!("not a smart object") };
-    assert_eq!(sm.smart_filters.iter().map(|f| f.command.as_str()).collect::<Vec<_>>(), ["filter.blur.gaussianBlur", photocraft_engine::distort_cmds::LIQUIFY]);
+    let Some(patronusphoto_doc::LayerContent::Smart(sm)) = st.doc.layer(layer).map(|l| &l.content) else { panic!("not a smart object") };
+    assert_eq!(
+        sm.smart_filters.iter().map(|f| f.command.as_str()).collect::<Vec<_>>(),
+        ["filter.blur.gaussianBlur", patronusphoto_engine::distort_cmds::LIQUIFY]
+    );
 }
 
 /// Preview off shows the image unwarped while strokes still change the field (#7905). Each opening
@@ -580,12 +583,12 @@ fn preview_off_shows_the_original_and_p_toggles_it() {
 }
 
 /// A forward-warp stroke across the test layer, at row `y`.
-fn warp_stroke(app: &mut PhotocraftApp, y: f64) {
+fn warp_stroke(app: &mut PatronusPhotoApp, y: f64) {
     perform(app, stroke_with(StepTool::ForwardWarp, 40.0, &[[35.0, y], [60.0, y]]));
 }
 
 /// The active layer's pixels over the whole document.
-fn layer_pixels(app: &PhotocraftApp) -> Vec<f32> {
+fn layer_pixels(app: &PatronusPhotoApp) -> Vec<f32> {
     let st = app.session.active().unwrap();
     st.doc.layer(st.active_layer.unwrap()).unwrap().surface().unwrap().read_region(Rect::new(0, 0, 120, 80))
 }
@@ -647,7 +650,7 @@ fn assert_masked_to_left_half(d: &Engine, original: &[[u8; 4]]) {
 }
 
 /// The picture's region x 30..90, y 20..60 as the display reads it, one texel per document pixel.
-fn read_view(app: &PhotocraftApp) -> Vec<Color32> {
+fn read_view(app: &PatronusPhotoApp) -> Vec<Color32> {
     let mut image = ColorImage::filled([60, 40], Color32::TRANSPARENT);
     eng(app).read(pixel_rect(Rect::new(30, 20, 90, 60)), 1, &mut image);
     image.pixels
@@ -729,8 +732,8 @@ fn the_preview_on_a_smart_object_follows_its_filter_mask() {
     open_smart_filter(&mut app, &ctx, layer, 1).unwrap();
     sweep(&mut app, 30.0);
     let st = app.session.active().unwrap();
-    let Some(photocraft_doc::LayerContent::Smart(sm)) = st.doc.layer(st.active_layer.unwrap()).map(|l| &l.content) else { panic!("not a smart object") };
-    let placed = photocraft_engine::smart_cmds::render_below_filter(&st.doc, sm, 0).unwrap().unwrap();
+    let Some(patronusphoto_doc::LayerContent::Smart(sm)) = st.doc.layer(st.active_layer.unwrap()).map(|l| &l.content) else { panic!("not a smart object") };
+    let placed = patronusphoto_engine::smart_cmds::render_below_filter(&st.doc, sm, 0).unwrap().unwrap();
     let d = eng(&app);
     let placed = ProxyImage::new(&placed, d.canvas, PROXY_SIDE);
     let mut original = vec![[0u8; 4]; d.proxy.w * d.proxy.h];

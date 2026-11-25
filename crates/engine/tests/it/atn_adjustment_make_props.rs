@@ -2,8 +2,8 @@
 //! (`Md  `) and clipping (`Grup`) on load, playback and save.
 use craft_psd::atn::{self, AtnAction, AtnEvent, AtnFile, AtnItem};
 use craft_psd::descriptor::{Class, Descriptor, Id, ReferenceItem, UnicodeString, Value as D};
-use photocraft_doc::{BlendMode, LayerContent};
-use photocraft_engine::{
+use patronusphoto_doc::{BlendMode, LayerContent};
+use patronusphoto_engine::{
     Session,
     actions_cmds::{Action, ActionStep},
     atn_cmds,
@@ -68,7 +68,7 @@ fn make_keeps_name_mode_and_clipping_through_play_and_save_at_both_depths() {
             let descriptor = make(extra);
             let mut s = doc(depth);
             let base = s.active().unwrap().active_layer.unwrap();
-            let loaded = s.execute("actions.load", json!({"data": photocraft_paint::tile::b64_encode(&bytes(descriptor.clone()))})).unwrap();
+            let loaded = s.execute("actions.load", json!({"data": patronusphoto_paint::tile::b64_encode(&bytes(descriptor.clone()))})).unwrap();
             assert_eq!(loaded["unsupported"], json!([]), "{params}");
             let steps = &s.actions.list.actions()[0].steps;
             assert_eq!(steps.len(), 1, "{params}");
@@ -95,7 +95,7 @@ fn make_keeps_name_mode_and_clipping_through_play_and_save_at_both_depths() {
 
             // Save Actions writes the descriptor the step was loaded from.
             let saved = s.execute("actions.save", json!({"set": "Props"})).unwrap();
-            let data = photocraft_paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap();
+            let data = patronusphoto_paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap();
             let file = atn::parse(&data).unwrap();
             assert_eq!(file.actions[0].items[0].descriptor.as_ref(), Some(&descriptor), "{params}");
         }

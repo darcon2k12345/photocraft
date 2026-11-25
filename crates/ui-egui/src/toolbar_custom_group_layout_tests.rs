@@ -5,16 +5,16 @@
 
 use egui::{Key, Modifiers, vec2};
 use egui_kittest::kittest::Queryable;
-use photocraft_engine::prefs::{DEFAULT_TOOLBAR, Preferences, ToolbarCustomization};
+use patronusphoto_engine::prefs::{DEFAULT_TOOLBAR, Preferences, ToolbarCustomization};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::panels::toolbar::{TOOL_SECTIONS, layout_sections, toolbar};
 use crate::state::Tool;
 use crate::theme;
 
-fn app() -> Box<PhotocraftApp> {
-    PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default())
+fn app() -> Box<PatronusPhotoApp> {
+    PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default())
 }
 
 fn names(groups: &Value) -> Vec<Vec<String>> {
@@ -23,15 +23,15 @@ fn names(groups: &Value) -> Vec<Vec<String>> {
 
 /// Shift and `key` through the app's frames, as the window delivers them: the runtime fires the tool command, and the
 /// app's key route runs it in the frame that follows.
-fn shift_press(app: &mut PhotocraftApp, key: Key) {
+fn shift_press(app: &mut PatronusPhotoApp, key: Key) {
     crate::canvas::testing::key(app, key, Modifiers::SHIFT);
 }
 
 /// The toolbar drawn in a window tall enough for every slot. The first pass installs the theme and fonts.
-fn toolbar_harness(app: Box<PhotocraftApp>) -> egui_kittest::Harness<'static, Box<PhotocraftApp>> {
+fn toolbar_harness(app: Box<PatronusPhotoApp>) -> egui_kittest::Harness<'static, Box<PatronusPhotoApp>> {
     let mut ready = false;
     let mut harness = egui_kittest::Harness::builder().with_context(app.ctx().clone()).with_size(vec2(400.0, 1800.0)).build_ui_state(
-        move |ui, app: &mut Box<PhotocraftApp>| {
+        move |ui, app: &mut Box<PatronusPhotoApp>| {
             if !ready {
                 egui_extras::install_image_loaders(ui.ctx());
                 theme::install_fonts(ui.ctx());
@@ -48,12 +48,12 @@ fn toolbar_harness(app: Box<PhotocraftApp>) -> egui_kittest::Harness<'static, Bo
 }
 
 /// Whether the drawn toolbar has a slot button showing the tool named `name`.
-fn shows(harness: &egui_kittest::Harness<'static, Box<PhotocraftApp>>, name: &str) -> bool {
+fn shows(harness: &egui_kittest::Harness<'static, Box<PatronusPhotoApp>>, name: &str) -> bool {
     harness.query_all_by_label_contains(name).next().is_some()
 }
 
 /// The slots `layout_sections` gives for the app's stored layout, as tool groups.
-fn slots(app: &PhotocraftApp) -> Vec<Vec<Tool>> {
+fn slots(app: &PatronusPhotoApp) -> Vec<Vec<Tool>> {
     layout_sections(&app.session.prefs().toolbar).into_iter().flatten().map(|(_, tools)| tools).collect()
 }
 

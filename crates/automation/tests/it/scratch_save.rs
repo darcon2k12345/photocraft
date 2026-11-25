@@ -2,11 +2,11 @@
 //! scratch tiles that could not be read. The scratch store is per process, so the test needs its own (nextest runs every test in one).
 #![cfg(not(target_arch = "wasm32"))]
 
-use photocraft_automation::{AutomationError, files};
-use photocraft_doc::{ColorMode, Document, Layer, PixelFormat, Rect, SampleType, Size};
-use photocraft_geom::TileCoord;
-use photocraft_io::{BandRenderer, IoError, RenderBand, RenderError};
-use photocraft_raster::{Interrupt, spill};
+use patronusphoto_automation::{AutomationError, files};
+use patronusphoto_doc::{ColorMode, Document, Layer, PixelFormat, Rect, SampleType, Size};
+use patronusphoto_geom::TileCoord;
+use patronusphoto_io::{BandRenderer, IoError, RenderBand, RenderError};
+use patronusphoto_raster::{Interrupt, spill};
 use std::io::{Read, Seek, SeekFrom, Write};
 
 struct QueuedDiagnosticsRenderer(Vec<String>);
@@ -34,8 +34,8 @@ impl BandRenderer for QueuedDiagnosticsRenderer {
 
 #[test]
 fn native_save_refuses_previews_rendered_from_unreadable_scratch() {
-    photocraft_raster::spill::use_test_volume_space();
-    let dir = std::env::temp_dir().join(format!("photocraft-automation-scratch-save-{}", std::process::id()));
+    patronusphoto_raster::spill::use_test_volume_space();
+    let dir = std::env::temp_dir().join(format!("patronusphoto-automation-scratch-save-{}", std::process::id()));
     spill::configure(Some(&dir), 1).unwrap();
     let mut doc = Document::new("Scratch", Size::new(512, 256), ColorMode::Rgb, SampleType::U8);
     let mut layer = Layer::raster("Pixels", PixelFormat::RGBA8);
@@ -56,11 +56,11 @@ fn native_save_refuses_previews_rendered_from_unreadable_scratch() {
     file.write_all(&vec![0; good.len()]).unwrap();
     file.sync_all().unwrap();
 
-    let on = photocraft_io::ExportOptions { pcraft_full_composite: true, ..Default::default() };
+    let on = patronusphoto_io::ExportOptions { pcraft_full_composite: true, ..Default::default() };
     // A flat export refused after its provisional result (the unreadable tile is only noticed
     // while reading) keeps that result's renderer notes queued for the caller.
     let mut renderer = QueuedDiagnosticsRenderer(Vec::new());
-    let err = photocraft_io::export_with_renderer(&doc, "png", &on, &Interrupt::NONE, Some(&mut renderer)).unwrap_err();
+    let err = patronusphoto_io::export_with_renderer(&doc, "png", &on, &Interrupt::NONE, Some(&mut renderer)).unwrap_err();
     assert!(matches!(err, IoError::Unsupported(_)), "{err:?}");
     assert!(renderer.0.iter().any(|d| d.contains("single-layer export copies")), "refused export must re-queue its notes: {:?}", renderer.0);
     // Refused while rendering the previews, before the bundle is assembled.
@@ -84,7 +84,7 @@ fn native_save_refuses_previews_rendered_from_unreadable_scratch() {
     }
     assert!(spill::check_integrity().is_ok());
     let (bytes, _) = files::save_bytes(&doc, "Scratch.pcraft", None, &on).unwrap();
-    assert_eq!(photocraft_format::load_from_bytes(&bytes).unwrap().layers, doc.layers);
+    assert_eq!(patronusphoto_format::load_from_bytes(&bytes).unwrap().layers, doc.layers);
     drop((doc, file));
     spill::configure(None, 0).unwrap();
     let _ = std::fs::remove_dir_all(dir);

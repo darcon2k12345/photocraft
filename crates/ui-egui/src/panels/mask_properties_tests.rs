@@ -4,7 +4,7 @@ use egui_kittest::{
     Harness,
     kittest::{NodeT, Queryable},
 };
-use photocraft_doc::LayerContent;
+use patronusphoto_doc::LayerContent;
 use serde_json::json;
 
 /// What the Properties panel is showing the controls of.
@@ -16,8 +16,8 @@ enum Target {
     Shape,
 }
 
-fn session_for(target: Target) -> photocraft_engine::Session {
-    let mut session = photocraft_engine::Session::new();
+fn session_for(target: Target) -> patronusphoto_engine::Session {
+    let mut session = patronusphoto_engine::Session::new();
     session.execute("file.new", json!({"width": 64, "height": 64})).unwrap();
     match target {
         Target::Pixel | Target::Adjustment => {
@@ -39,23 +39,23 @@ fn session_for(target: Target) -> photocraft_engine::Session {
 }
 
 /// The Properties panel over a session, drawn in the Pro theme.
-fn harness_of(session: photocraft_engine::Session, mask_target: bool, vector_target: bool) -> Harness<'static, Box<PhotocraftApp>> {
-    let mut app = PhotocraftApp::new(session, crate::Services::default());
+fn harness_of(session: patronusphoto_engine::Session, mask_target: bool, vector_target: bool) -> Harness<'static, Box<PatronusPhotoApp>> {
+    let mut app = PatronusPhotoApp::new(session, crate::Services::default());
     app.ui.mask_target = mask_target;
     app.ui.vector_mask_target = vector_target;
     let mut h = Harness::builder()
         .with_context(app.ctx().clone())
         .with_size(vec2(800.0, 1600.0))
         .with_step_dt(1.0 / 60.0)
-        .build_ui_state(|ui, app: &mut Box<PhotocraftApp>| super::properties::panel(app, ui), app);
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+        .build_ui_state(|ui, app: &mut Box<PatronusPhotoApp>| super::properties::panel(app, ui), app);
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     frames(&mut h, 4);
     h
 }
 
 /// `n` frames as the app's frame runs them: the command states and catalog are published before the input (a command
 /// button's label and enablement), and the commands the frame fired run after it.
-fn frames(h: &mut Harness<'_, Box<PhotocraftApp>>, n: usize) {
+fn frames(h: &mut Harness<'_, Box<PatronusPhotoApp>>, n: usize) {
     for _ in 0..n {
         let ctx = h.ctx.clone();
         h.state_mut().framework_before_input(&ctx);
@@ -65,17 +65,17 @@ fn frames(h: &mut Harness<'_, Box<PhotocraftApp>>, n: usize) {
     }
 }
 
-fn harness(target: Target) -> Harness<'static, Box<PhotocraftApp>> {
+fn harness(target: Target) -> Harness<'static, Box<PatronusPhotoApp>> {
     harness_of(session_for(target), matches!(target, Target::Pixel | Target::Adjustment), matches!(target, Target::Vector))
 }
 
-fn mask(h: &Harness<'_, Box<PhotocraftApp>>) -> photocraft_doc::LayerMask {
+fn mask(h: &Harness<'_, Box<PatronusPhotoApp>>) -> patronusphoto_doc::LayerMask {
     let s = h.state().session.active().unwrap();
     s.doc.layer(s.active_layer.unwrap()).unwrap().mask.clone().unwrap()
 }
 
 /// The Density of the active layer's mask, vector mask or shape.
-fn density(h: &Harness<'_, Box<PhotocraftApp>>, target: Target) -> f32 {
+fn density(h: &Harness<'_, Box<PatronusPhotoApp>>, target: Target) -> f32 {
     let s = h.state().session.active().unwrap();
     let layer = s.doc.layer(s.active_layer.unwrap()).unwrap();
     match target {
@@ -88,7 +88,7 @@ fn density(h: &Harness<'_, Box<PhotocraftApp>>, target: Target) -> f32 {
     }
 }
 
-fn history(h: &Harness<'_, Box<PhotocraftApp>>) -> usize {
+fn history(h: &Harness<'_, Box<PatronusPhotoApp>>) -> usize {
     h.state().session.active().unwrap().history.past_len()
 }
 
@@ -115,12 +115,12 @@ fn pixel_mask_properties_follow_target_for_raster_and_adjustment() {
 }
 
 /// Drags the slider named `label` through `fractions` of its track, pressing at the first and releasing at the last.
-fn drag(h: &mut Harness<'_, Box<PhotocraftApp>>, label: &str, fractions: &[f32]) {
+fn drag(h: &mut Harness<'_, Box<PatronusPhotoApp>>, label: &str, fractions: &[f32]) {
     drag_with(h, label, fractions, false);
 }
 
 /// The drag of [`drag`]; with `escape` the Escape key is pressed before the release.
-fn drag_with(h: &mut Harness<'_, Box<PhotocraftApp>>, label: &str, fractions: &[f32], escape: bool) {
+fn drag_with(h: &mut Harness<'_, Box<PatronusPhotoApp>>, label: &str, fractions: &[f32], escape: bool) {
     let r = h
         .query_all_by_role(egui::accesskit::Role::Slider)
         .find(|n| n.accesskit_node().label().as_deref() == Some(label))
@@ -190,7 +190,7 @@ fn mask_sections_run_their_edit_commands() {
 }
 
 /// Document-wide row of mask coverage (or of the layer's own red channel) across the middle.
-fn row(h: &Harness<'_, Box<PhotocraftApp>>, of_mask: bool) -> Vec<f32> {
+fn row(h: &Harness<'_, Box<PatronusPhotoApp>>, of_mask: bool) -> Vec<f32> {
     let s = h.state().session.active().unwrap();
     let layer = s.doc.layer(s.active_layer.unwrap()).unwrap();
     let surface = if of_mask { &layer.mask.as_ref().unwrap().surface } else { layer.surface().unwrap() };
@@ -221,7 +221,7 @@ fn refine_invert_inverts_the_mask_and_leaves_the_layer_alone() {
 
 #[test]
 fn the_background_shows_the_document_properties() {
-    let mut session = photocraft_engine::Session::new();
+    let mut session = patronusphoto_engine::Session::new();
     session.execute("file.new", json!({"width": 64, "height": 64, "background": "white"})).unwrap();
     let h = harness_of(session, false, false);
     for label in ["Canvas", "Rulers & Grids", "Guides"] {

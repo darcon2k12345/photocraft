@@ -45,7 +45,7 @@ pub fn fade_surface(before: &Surface, after: &mut Surface, area: Rect, mode: Ble
         // so the pick is the same across tiles and between the preview and OK (#13809).
         let at = (area.y0..area.y1).flat_map(|y| (area.x0..area.x1).map(move |x| (x, y)));
         for ((pa, pb), (x, y)) in a.chunks_exact_mut(n).zip(b.chunks_exact(n)).zip(at) {
-            if photocraft_color::dither_noise(x, y) >= k {
+            if patronusphoto_color::dither_noise(x, y) >= k {
                 pa.copy_from_slice(pb);
             }
         }
@@ -76,7 +76,7 @@ pub fn fade_surface(before: &Surface, after: &mut Surface, area: Rect, mode: Ble
         } else {
             let rb = to_rgba(&fmt, pb);
             let ra = to_rgba(&fmt, pa);
-            let blended = photocraft_color::blend::composite(mode, rb, ra, 1.0);
+            let blended = patronusphoto_color::blend::composite(mode, rb, ra, 1.0);
             let mut o = [0.0f32; 4];
             lerp_premul(&rb, &blended, &mut o, true);
             let mut enc = [0.0f32; 8];

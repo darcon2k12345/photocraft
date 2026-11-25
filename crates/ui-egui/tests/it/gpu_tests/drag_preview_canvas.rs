@@ -15,13 +15,13 @@
 use craft::behavior::CanvasView;
 use craft::behavior::kurbo::Point;
 use egui::{Modifiers, PointerButton, Pos2};
-use photocraft_ui_egui::PhotocraftApp;
-use photocraft_ui_egui::control::{ControlRequest, handle};
+use patronusphoto_ui_egui::PatronusPhotoApp;
+use patronusphoto_ui_egui::control::{ControlRequest, handle};
 use serde_json::{Value, json};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-type Harness = egui_kittest::Harness<'static, Box<PhotocraftApp>>;
+type Harness = egui_kittest::Harness<'static, Box<PatronusPhotoApp>>;
 
 /// A rendered frame: RGBA8, physical pixels.
 struct Image {
@@ -45,8 +45,8 @@ impl Image {
 fn harness(ppp: f32) -> Option<Harness> {
     let built = std::panic::catch_unwind(|| {
         egui_kittest::Harness::builder().with_size(egui::vec2(900.0, 640.0)).with_pixels_per_point(ppp).with_max_steps(64).wgpu().build_eframe(|cc| {
-            PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-            let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), Default::default());
+            PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+            let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), Default::default());
             if let Some(rs) = cc.wgpu_render_state.as_ref() {
                 app.set_wgpu(rs.clone());
             }
@@ -86,7 +86,7 @@ fn setup(h: &mut Harness, background: &str, tool: &str) {
 
 fn xf(h: &Harness) -> Option<CanvasView> {
     // The same mapping the canvas draws with, in the viewport's egui points.
-    photocraft_ui_egui::canvas::active_view(h.state())
+    patronusphoto_ui_egui::canvas::active_view(h.state())
 }
 
 /// Screen point (egui points) of document point `(x, y)`.
@@ -191,7 +191,7 @@ fn edges(h: &Harness, a: [f32; 2], b: [f32; 2]) -> [(Pos2, Pos2); 4] {
 
 #[test]
 fn marquee_previews_show_while_dragging_on_white_and_black_at_1x_and_2x() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     // One mid-grey document instead of a white and a black one: the ants are a band of the marquee colour with dashes
     // of the halo colour, fixed colours that never depend on the pixels under them (the framework's `marching_ants`,
     // which the marquee tool paints through `ToolContext::marching_ants`). White on white (#253) hid the light ants
@@ -262,7 +262,7 @@ fn marquee_previews_show_while_dragging_on_white_and_black_at_1x_and_2x() {
 
 #[test]
 fn a_held_marquee_drag_keeps_requesting_frames() {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut h) = harness(1.0) else { return };
     h.run_steps(4);
     setup(&mut h, "white", "rectMarquee");

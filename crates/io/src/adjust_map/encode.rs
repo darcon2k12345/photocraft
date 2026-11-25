@@ -1,5 +1,5 @@
 use craft_psd::descriptor::{Descriptor, Id, UnicodeString, Value, VersionedDescriptor};
-use photocraft_doc::adjust::{CurvePoint, HueRange, LevelsChannel, LutFormat, LutSource, ToneSpace, curve_map_outputs};
+use patronusphoto_doc::adjust::{CurvePoint, HueRange, LevelsChannel, LutFormat, LutSource, ToneSpace, curve_map_outputs};
 
 use super::{BW_KEYS, BW_TINT, clamp_i16, cube_file_name, levels_write, lut_source_for, psd_lut_format, put16, q255, rgb_desc};
 
@@ -126,9 +126,9 @@ pub(super) fn color_lookup(name: &str, lut: Option<&[f32]>, size: u32, dither: b
     // A lookup without a usable table (none chosen yet, or a bad size) renders as the
     // identity, so it is written as a 2³ identity cube rather than dropped.
     let n = size as usize;
-    let cube = lut.zip(photocraft_doc::adjust::lut3d_len(size)).and_then(|(table, len)| table.get(..len)).filter(|_| n <= 256);
+    let cube = lut.zip(patronusphoto_doc::adjust::lut3d_len(size)).and_then(|(table, len)| table.get(..len)).filter(|_| n <= 256);
     // Like Photoshop, embed the LUT file as loaded, in its own format; a table made or
-    // changed in PhotoCraft is written as `.cube`, named to match.
+    // changed in Patronus Photo is written as `.cube`, named to match.
     let (format, data, name, dither) = match cube {
         Some(cube) => match lut_source_for(source, cube, n) {
             Some(src) => (src.format, src.bytes.to_vec(), name.to_string(), dither),

@@ -4,7 +4,7 @@
 
 use craft::color_ui::gradient::{ColorStop, GradientStops, OpacityStop};
 use craft::theme::Srgba;
-use photocraft_color::Color;
+use patronusphoto_color::Color;
 use serde_json::{Value, json};
 
 use crate::color_picker_ui;

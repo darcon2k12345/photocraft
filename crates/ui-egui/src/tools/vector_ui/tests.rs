@@ -15,15 +15,15 @@ use crate::canvas::testing;
 use crate::canvas::{ToolEvent, tool_event};
 use crate::direct_select::PathRef;
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 200, "height": 200})).unwrap();
     app.sync_views();
     app
 }
 
 /// A drag of a shape tool from `from` to `to`, through the tool's own event path, without modifiers.
-fn shape_drag(app: &mut PhotocraftApp, tool: Tool, from: [f64; 2], to: [f64; 2]) {
+fn shape_drag(app: &mut PatronusPhotoApp, tool: Tool, from: [f64; 2], to: [f64; 2]) {
     app.ui.tool = tool;
     let none = Modifiers::NONE;
     tool_event(app, ToolEvent::Down { x: from[0], y: from[1], pressure: 1.0 }, none);
@@ -32,32 +32,32 @@ fn shape_drag(app: &mut PhotocraftApp, tool: Tool, from: [f64; 2], to: [f64; 2])
 }
 
 /// A plain click at each point, with the current tool.
-fn clicks(app: &mut PhotocraftApp, points: &[[f64; 2]]) {
+fn clicks(app: &mut PatronusPhotoApp, points: &[[f64; 2]]) {
     for at in points {
         testing::click(app, *at, Modifiers::NONE);
     }
 }
 
 /// The paths the canvas draws for the active document.
-fn overlay(app: &PhotocraftApp) -> Vec<(PathRef, EditPath, AnchorsShown)> {
+fn overlay(app: &PatronusPhotoApp) -> Vec<(PathRef, EditPath, AnchorsShown)> {
     overlay_paths(app, app.session.active().unwrap().doc.id)
 }
 
 /// How the first overlay entry `which` accepts is drawn; `None` when the overlay holds none.
-fn anchors_of(app: &PhotocraftApp, which: impl Fn(PathRef) -> bool) -> Option<AnchorsShown> {
+fn anchors_of(app: &PatronusPhotoApp, which: impl Fn(PathRef) -> bool) -> Option<AnchorsShown> {
     overlay(app).into_iter().find(|(r, ..)| which(*r)).map(|(.., a)| a)
 }
 
-fn work_anchors(app: &PhotocraftApp) -> Option<AnchorsShown> {
+fn work_anchors(app: &PatronusPhotoApp) -> Option<AnchorsShown> {
     anchors_of(app, |r| r == PathRef::Work)
 }
 
-fn saved_anchors(app: &PhotocraftApp) -> Option<AnchorsShown> {
+fn saved_anchors(app: &PatronusPhotoApp) -> Option<AnchorsShown> {
     anchors_of(app, |r| matches!(r, PathRef::Saved(_)))
 }
 
 /// Whether the draft changes what the overlay holds for document `index`.
-fn draft_drawn(app: &mut PhotocraftApp, index: usize) -> bool {
+fn draft_drawn(app: &mut PatronusPhotoApp, index: usize) -> bool {
     let doc = app.session.documents()[index].doc.id;
     let with = overlay_paths(app, doc);
     let pen = app.ui.pen.take();
@@ -72,8 +72,8 @@ fn all_shape_tools_and_open_pen_use_the_complete_stroke_defaults() {
         let mut a = app();
         a.ui.tool_options.stroke_width = 5.0;
         a.ui.tool_options.shape_stroke = crate::shape_stroke_ui::StrokeOptions {
-            cap: photocraft_doc::LineCap::Square,
-            join: photocraft_doc::LineJoin::Bevel,
+            cap: patronusphoto_doc::LineCap::Square,
+            join: patronusphoto_doc::LineJoin::Bevel,
             dashes: vec![4.0, 2.0, 1.0, 3.0],
             dash_offset: -0.5,
             opacity: 0.4,
@@ -206,7 +206,7 @@ fn double_clicking_a_path_name_renames_it_in_place() {
     ]}]});
     app.run("path.set", json!({"name": "First", "path": path})).unwrap();
     app.run("path.set", json!({"name": "work", "path": path})).unwrap();
-    let names = |app: &PhotocraftApp| app.session.active().unwrap().doc.paths.iter().map(|p| p.name.clone()).collect::<Vec<_>>();
+    let names = |app: &PatronusPhotoApp| app.session.active().unwrap().doc.paths.iter().map(|p| p.name.clone()).collect::<Vec<_>>();
     apply(&mut app, PathsEvent::rename(PathRef::Saved(0), "Outline"));
     assert_eq!(names(&app), ["Outline"]);
     assert!(app.session.active().unwrap().doc.work_path.is_some(), "renaming a saved path leaves the work path alone");
@@ -298,7 +298,7 @@ fn show_target_path_and_extras_hide_the_path_outlines() {
     app.run("path.set", json!({"path": path})).unwrap();
     assert!(app.session.active().unwrap().doc.work_path.is_some());
     shape_drag(&mut app, Tool::Rectangle, [100.0, 100.0], [160.0, 150.0]);
-    let toggle = |app: &mut PhotocraftApp, id: &str| crate::menus::invoke(app, &ctx, id, Value::Null).unwrap();
+    let toggle = |app: &mut PatronusPhotoApp, id: &str| crate::menus::invoke(app, &ctx, id, Value::Null).unwrap();
     for tool in [Tool::Pen, Tool::PathSelection, Tool::DirectSelection, Tool::Rectangle] {
         app.ui.tool = tool;
         assert!(app.ui.view.show.target_path && app.ui.view.extras);
@@ -449,7 +449,7 @@ fn path_mode_shape_drags_add_to_the_work_path() {
 /// subpath, nor stays a subtracted one that would cut the work path under it).
 #[test]
 fn path_mode_custom_shape_joins_its_hole_to_it() {
-    use photocraft_doc::PathOp;
+    use patronusphoto_doc::PathOp;
     let mut app = app();
     app.ui.tool_options.shape_mode = VectorMode::Path;
     shape_drag(&mut app, Tool::Rectangle, [100.0, 100.0], [140.0, 130.0]);
@@ -484,15 +484,15 @@ fn path_mode_custom_shape_hole_leaves_the_work_path_under_it() {
 fn path_mode_custom_shapes_keep_their_area() {
     let mut app = app();
     app.ui.tool_options.shape_mode = VectorMode::Path;
-    let rect = photocraft_geom::Rect::from_xywh(0, 0, 200, 200);
-    for g in photocraft_engine::presets::shapes::builtin() {
+    let rect = patronusphoto_geom::Rect::from_xywh(0, 0, 200, 200);
+    for g in patronusphoto_engine::presets::shapes::builtin() {
         for shape in g.items {
             app.run("path.delete", json!({"name": "work"})).ok();
             app.ui.presets_ui.custom_shape = shape.name.clone();
             shape_drag(&mut app, Tool::CustomShape, [10.0, 10.0], [190.0, 190.0]);
             let work = app.session.active().unwrap().doc.work_path.clone().expect("a work path");
-            let want = photocraft_engine::presets::shapes::fit(&shape.path, [10.0, 10.0, 180.0, 180.0], false);
-            let (a, b) = (photocraft_vector::path_coverage(&work, rect), photocraft_vector::path_coverage(&want, rect));
+            let want = patronusphoto_engine::presets::shapes::fit(&shape.path, [10.0, 10.0, 180.0, 180.0], false);
+            let (a, b) = (patronusphoto_vector::path_coverage(&work, rect), patronusphoto_vector::path_coverage(&want, rect));
             let off = a.iter().zip(&b).filter(|(a, b)| (*a - *b).abs() > 0.5).count();
             assert_eq!(off, 0, "{}: {off} pixels differ", shape.name);
         }
@@ -500,9 +500,9 @@ fn path_mode_custom_shapes_keep_their_area() {
 }
 
 /// Coverage of the work path at pixel `(x, y)`.
-fn work_covered(app: &PhotocraftApp, x: i32, y: i32) -> f32 {
+fn work_covered(app: &PatronusPhotoApp, x: i32, y: i32) -> f32 {
     let path = app.session.active().unwrap().doc.work_path.clone().expect("a work path");
-    photocraft_vector::fill_rasterizer(&path, photocraft_vector::DEFAULT_TOLERANCE).render(photocraft_geom::Rect::from_xywh(x, y, 1, 1))[0]
+    patronusphoto_vector::fill_rasterizer(&path, patronusphoto_vector::DEFAULT_TOLERANCE).render(patronusphoto_geom::Rect::from_xywh(x, y, 1, 1))[0]
 }
 
 /// CodeRabbit on #9456: a custom shape that starts the work path brings its fill rule, so an
@@ -523,7 +523,7 @@ fn path_mode_custom_shape_starts_the_work_path_with_its_fill_rule() {
     app.ui.presets_ui.custom_shape = "Even-Odd Star".into();
     shape_drag(&mut app, Tool::CustomShape, [20.0, 20.0], [120.0, 120.0]);
     let work = app.session.active().unwrap().doc.work_path.clone().expect("a work path");
-    assert_eq!(work.fill_rule, photocraft_doc::vector::FillRule::EvenOdd);
+    assert_eq!(work.fill_rule, patronusphoto_doc::vector::FillRule::EvenOdd);
     let b = work.control_bounds().unwrap();
     let (cx, cy) = (((b.0 + b.2) / 2.0) as i32, ((b.1 + b.3) / 2.0) as i32);
     assert_eq!(work_covered(&app, cx, cy), 0.0, "the star's centre stays empty");
@@ -535,7 +535,7 @@ fn path_mode_custom_shape_starts_the_work_path_with_its_fill_rule() {
 #[test]
 fn one_pixel_line_fills_one_pixel_row() {
     for ((x0, y0), (x1, y1), want) in
-        [((10.4, 23.2), (70.3, 23.2), photocraft_geom::Rect::new(10, 22, 70, 23)), ((33.4, 8.6), (33.4, 50.2), photocraft_geom::Rect::new(32, 9, 33, 50))]
+        [((10.4, 23.2), (70.3, 23.2), patronusphoto_geom::Rect::new(10, 22, 70, 23)), ((33.4, 8.6), (33.4, 50.2), patronusphoto_geom::Rect::new(32, 9, 33, 50))]
     {
         let mut app = app();
         app.ui.tool = Tool::Line;
@@ -549,7 +549,7 @@ fn one_pixel_line_fills_one_pixel_row() {
         assert!(matches!(l.content, LayerContent::Shape(_)), "a shape layer");
         let s = l.surface().unwrap();
         assert_eq!(s.content_bounds(), want, "one pixel across");
-        let mid = s.read_region(photocraft_geom::Rect::new(
+        let mid = s.read_region(patronusphoto_geom::Rect::new(
             (want.x0 + want.x1) / 2,
             (want.y0 + want.y1) / 2,
             (want.x0 + want.x1) / 2 + 1,
@@ -578,7 +578,7 @@ fn align_edges_snaps_a_fractional_weight_to_the_nearest_pixel() {
 /// pixels, even a short one (rounding each end on its own turned 10.1,10.49 → 11.3,11.69 into a 1 × 2 step).
 #[test]
 fn a_short_shift_drag_line_keeps_its_45_degrees() {
-    let line = |app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2], shift: bool| {
+    let line = |app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2], shift: bool| {
         app.ui.tool = Tool::Line;
         let geometry = ShapeGeometry::Line { from: (from[0], from[1]).into(), to: (to[0], to[1]).into(), weight: 1.0 };
         finish_drag(app, ShapeKind::Line, &geometry, Mods { shift, ..Mods::default() });
@@ -611,7 +611,7 @@ fn shape_preview_is_the_committed_path() {
     app.ui.tool_options.corner_radius = 8.0;
     let none = Modifiers::NONE;
     // The geometry the tool reports while the drag runs, as the canvas previews it.
-    let running = |app: &PhotocraftApp| host::shape_preview(app).map(|(kind, geometry)| (kind, geometry.clone()));
+    let running = |app: &PatronusPhotoApp| host::shape_preview(app).map(|(kind, geometry)| (kind, geometry.clone()));
     for (row, tool) in [Tool::Rectangle, Tool::EllipseShape, Tool::Triangle, Tool::Polygon, Tool::Line].into_iter().enumerate() {
         app.ui.tool = tool;
         // Each shape is drawn on its own row: the scale box of the shape before it, still selected, takes a press on its handles.
@@ -658,8 +658,8 @@ fn pen_builds_and_closes_a_work_path() {
 #[test]
 fn an_unclosed_path_stays_with_its_document() {
     // Both pens claim the document at their first anchor.
-    let open_path = |app: &mut PhotocraftApp| clicks(app, &[[20.0, 20.0], [120.0, 60.0]]);
-    let work = |app: &PhotocraftApp, i: usize| app.session.documents()[i].doc.work_path.clone();
+    let open_path = |app: &mut PatronusPhotoApp| clicks(app, &[[20.0, 20.0], [120.0, 60.0]]);
+    let work = |app: &PatronusPhotoApp, i: usize| app.session.documents()[i].doc.work_path.clone();
     // File › New commits the path to its original document.
     for tool in [Tool::Pen, Tool::CurvaturePen] {
         let mut app = app();
@@ -755,7 +755,7 @@ fn failed_stale_pen_commit_preserves_the_draft_until_retry() {
         draft.as_mut().unwrap().commit_failed = true;
         let owner = app.ui.pen_doc;
         app.session.execute("file.new", json!({"width": 200, "height": 200})).unwrap();
-        app.session.authorize = Some(|_, _| Err(photocraft_engine::EngineError::Other("test rejection".into())));
+        app.session.authorize = Some(|_, _| Err(patronusphoto_engine::EngineError::Other("test rejection".into())));
         // The new document is the one the Paths panel selection belongs to once a pass has seen it. The pass finds the
         // old draft stale and its commit refused, which is the state the actions below meet.
         app.sync_views();
@@ -818,7 +818,7 @@ fn new_document_drops_a_one_anchor_draft() {
 
 #[test]
 fn stale_pen_commits_to_its_owner_across_document_changes() {
-    use photocraft_doc::{ColorMode, SampleType, Size};
+    use patronusphoto_doc::{ColorMode, SampleType, Size};
     for tool in [Tool::Pen, Tool::CurvaturePen] {
         for action in ["switch", "open", "closeOther", "pen", "curvature", "undo", "commit"] {
             let mut app = app();
@@ -877,11 +877,11 @@ fn stale_pen_commits_to_its_owner_across_document_changes() {
 fn a_new_pen_path_joins_the_selected_path() {
     let mut app = app();
     app.ui.tool = Tool::Pen;
-    let draw = |app: &mut PhotocraftApp, x: f64| {
+    let draw = |app: &mut PatronusPhotoApp, x: f64| {
         clicks(app, &[[x, 20.0], [x + 40.0, 20.0], [x + 40.0, 60.0]]);
         clicks(app, &[[x + 0.5, 20.5]]); // close
     };
-    let work = |app: &PhotocraftApp| app.session.active().unwrap().doc.work_path.clone().unwrap();
+    let work = |app: &PatronusPhotoApp| app.session.active().unwrap().doc.work_path.clone().unwrap();
     draw(&mut app, 20.0);
     assert_eq!(app.ui.selected_path.as_deref(), Some("work"));
     draw(&mut app, 120.0);
@@ -945,8 +945,8 @@ fn pen_point_undo_preserves_earlier_knots_and_document_history() {
 #[test]
 fn new_fill_layer_takes_the_selected_path_as_its_vector_mask() {
     let mut app = app();
-    let layer = |app: &PhotocraftApp, r: Result<Value, String>| {
-        let id = photocraft_doc::LayerId(r.unwrap()["layer"].as_u64().unwrap());
+    let layer = |app: &PatronusPhotoApp, r: Result<Value, String>| {
+        let id = patronusphoto_doc::LayerId(r.unwrap()["layer"].as_u64().unwrap());
         app.session.active().unwrap().doc.layer(id).unwrap().clone()
     };
     // Drawing a work path with the Pen selects it.
@@ -998,12 +998,12 @@ fn live_rectangle_corner_radius_edit_preserves_other_corners_and_history() {
     let mut app = app();
     let created = app.run("shape.create", json!({"kind": "roundedRect", "rect": [10, 10, 150, 100], "radii": [5, 10, 15, 20]})).unwrap();
     let id = created["layer"].as_u64().unwrap();
-    let get_radii = |app: &PhotocraftApp| {
+    let get_radii = |app: &PatronusPhotoApp| {
         let st = app.session.active().unwrap();
-        let shape = st.doc.layer(photocraft_doc::LayerId(id)).unwrap();
+        let shape = st.doc.layer(patronusphoto_doc::LayerId(id)).unwrap();
         match &shape.content {
             LayerContent::Shape(sh) => match &sh.live {
-                Some(photocraft_doc::vector::LiveShape::Rect { radii, .. }) => *radii,
+                Some(patronusphoto_doc::vector::LiveShape::Rect { radii, .. }) => *radii,
                 _ => panic!("rectangle must remain a live shape"),
             },
             _ => panic!("expected shape layer"),
@@ -1037,25 +1037,25 @@ fn live_rectangle_corner_radius_edit_preserves_other_corners_and_history() {
 }
 
 /// The options bar of `tool` edits the selected shape's fill and stroke, one history step per edit.
-fn shape_bar_harness(tool: Tool) -> egui_kittest::Harness<'static, Box<PhotocraftApp>> {
+fn shape_bar_harness(tool: Tool) -> egui_kittest::Harness<'static, Box<PatronusPhotoApp>> {
     let mut app = app();
     app.run("tools.setColors", json!({"foreground": "#ff0000", "background": "#0000ff"})).unwrap();
     shape_drag(&mut app, Tool::Rectangle, [20.0, 20.0], [120.0, 100.0]);
     let mut h = egui_kittest::Harness::builder().with_context(app.ctx().clone()).with_size(vec2(1100.0, 48.0)).build_ui_state(
-        move |ui, app: &mut Box<PhotocraftApp>| {
+        move |ui, app: &mut Box<PatronusPhotoApp>| {
             if ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 ui.horizontal_centered(|ui| options_bar(app, ui, tool));
             }
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::studio());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::studio());
     h.run_steps(4);
     h
 }
 
 /// The fill and stroke of the active shape layer.
-fn active_shape_paint(app: &PhotocraftApp) -> (Option<photocraft_doc::Fill>, Option<photocraft_doc::vector::ShapeStroke>) {
+fn active_shape_paint(app: &PatronusPhotoApp) -> (Option<patronusphoto_doc::Fill>, Option<patronusphoto_doc::vector::ShapeStroke>) {
     let st = app.session.active().unwrap();
     match &st.doc.layer(st.active_layer.unwrap()).unwrap().content {
         LayerContent::Shape(sh) => (sh.fill.clone(), sh.stroke.clone()),
@@ -1064,7 +1064,7 @@ fn active_shape_paint(app: &PhotocraftApp) -> (Option<photocraft_doc::Fill>, Opt
 }
 
 /// Clicks the options bar's Fill check box.
-fn click_bar_fill(h: &mut egui_kittest::Harness<'_, Box<PhotocraftApp>>) {
+fn click_bar_fill(h: &mut egui_kittest::Harness<'_, Box<PatronusPhotoApp>>) {
     use egui::accesskit::Role;
     use egui_kittest::kittest::Queryable;
     h.get_by_role_and_label(Role::CheckBox, "Fill").click();
@@ -1072,13 +1072,13 @@ fn click_bar_fill(h: &mut egui_kittest::Harness<'_, Box<PhotocraftApp>>) {
 }
 
 /// Whether the options bar shows its Fill check box.
-fn bar_shows_fill(h: &egui_kittest::Harness<'_, Box<PhotocraftApp>>) -> bool {
+fn bar_shows_fill(h: &egui_kittest::Harness<'_, Box<PatronusPhotoApp>>) -> bool {
     use egui::accesskit::Role;
     use egui_kittest::kittest::Queryable;
     h.query_by_role_and_label(Role::CheckBox, "Fill").is_some()
 }
 
-fn type_stroke_width(h: &mut egui_kittest::Harness<'_, Box<PhotocraftApp>>) {
+fn type_stroke_width(h: &mut egui_kittest::Harness<'_, Box<PatronusPhotoApp>>) {
     use egui::accesskit::Role;
     use egui_kittest::kittest::Queryable;
     h.get_all_by_role(Role::SpinButton).next().expect("the stroke width").click();
@@ -1098,7 +1098,7 @@ fn shape_options_bar_edits_the_selected_shape() {
     type_stroke_width(&mut h);
     let stroke = active_shape_paint(h.state()).1.expect("the width field stroked the shape");
     assert_eq!(stroke.width, 6.0);
-    assert_eq!(stroke.paint, photocraft_doc::Fill::Solid(photocraft_doc::Color::rgba(0.0, 0.0, 1.0, 1.0)));
+    assert_eq!(stroke.paint, patronusphoto_doc::Fill::Solid(patronusphoto_doc::Color::rgba(0.0, 0.0, 1.0, 1.0)));
     // Fill off: one step.
     let before = h.state().session.active().unwrap().history.past_len();
     click_bar_fill(&mut h);
@@ -1125,7 +1125,7 @@ fn path_selection_options_bar_edits_the_selected_shape() {
     type_stroke_width(&mut h);
     let stroke = active_shape_paint(h.state()).1.expect("the width field stroked the shape");
     assert_eq!(stroke.width, 6.0);
-    assert_eq!(stroke.paint, photocraft_doc::Fill::Solid(photocraft_doc::Color::rgba(0.0, 0.0, 1.0, 1.0)));
+    assert_eq!(stroke.paint, patronusphoto_doc::Fill::Solid(patronusphoto_doc::Color::rgba(0.0, 0.0, 1.0, 1.0)));
     // Fill toggle: one step.
     let before = h.state().session.active().unwrap().history.past_len();
     click_bar_fill(&mut h);

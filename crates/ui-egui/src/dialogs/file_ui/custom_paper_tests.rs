@@ -8,28 +8,28 @@ use egui_kittest::{Harness, kittest::Queryable};
 use serde_json::{Map, Value, json};
 
 use super::open_print;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The Print dialog's values, to read and write as the user's edits do.
-fn print_fields(app: &mut PhotocraftApp, id: DialogId) -> &mut DialogFields {
+fn print_fields(app: &mut PatronusPhotoApp, id: DialogId) -> &mut DialogFields {
     app.framework.dialogs.get_mut_by_id::<HostedPrint>(id).expect("the Print dialog is open").fields_mut()
 }
 
 /// Sets each member of the object `values` as the dialog's field of that name.
-fn set_fields(app: &mut PhotocraftApp, id: DialogId, values: Value) {
+fn set_fields(app: &mut PatronusPhotoApp, id: DialogId, values: Value) {
     let fields = print_fields(app, id);
     for (key, value) in values.as_object().expect("an object") {
         fields.set(key.clone(), serde_json::from_value::<FieldValue>(value.clone()).expect("a field value"));
     }
 }
 
-fn app() -> (Box<PhotocraftApp>, DialogId) {
+fn app() -> (Box<PatronusPhotoApp>, DialogId) {
     app_remembering(None)
 }
 
 /// The Print dialog opened after a print that kept `paper` as its paper (what `file.print` remembers).
-fn app_remembering(paper: Option<Value>) -> (Box<PhotocraftApp>, DialogId) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app_remembering(paper: Option<Value>) -> (Box<PatronusPhotoApp>, DialogId) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     // Print lists this printer and does not ask the spooler.
     app.session.printer_source = Some(std::sync::Arc::new(|| {
         vec![craft::print::Printer { name: "Test native printer".into(), default: true, two_sided: None, description: String::new() }]
@@ -38,7 +38,7 @@ fn app_remembering(paper: Option<Value>) -> (Box<PhotocraftApp>, DialogId) {
     if let Some(paper) = paper {
         app.session.file_menu.last_print = Some(json!({ "paper": paper }));
     }
-    let id = photocraft_engine::print_cmds::with_spooler(|| open_print(&mut app));
+    let id = patronusphoto_engine::print_cmds::with_spooler(|| open_print(&mut app));
     assert_no_system_listing();
     // Every UI path in these fixtures is safe even if an unexpected Enter confirms the dialog.
     set_fields(&mut app, id, json!({"dryRun": true}));
@@ -47,23 +47,23 @@ fn app_remembering(paper: Option<Value>) -> (Box<PhotocraftApp>, DialogId) {
 
 /// No test in this binary asks the system spooler for its printers.
 fn assert_no_system_listing() {
-    assert_eq!(photocraft_engine::print_cmds::system_printer_listings(), 0, "a test asked the system spooler for its printers");
+    assert_eq!(patronusphoto_engine::print_cmds::system_printer_listings(), 0, "a test asked the system spooler for its printers");
 }
 
 /// One pass of the dialogs, then the app's result takers, as the app's frame runs them.
-fn show(ui: &mut egui::Ui, app: &mut Box<PhotocraftApp>) {
+fn show(ui: &mut egui::Ui, app: &mut Box<PatronusPhotoApp>) {
     crate::dialogs::run(app, ui);
     let ctx = ui.ctx().clone();
     super::take(app, &ctx);
 }
 
-fn harness(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
+fn harness(app: Box<PatronusPhotoApp>) -> Harness<'static, Box<PatronusPhotoApp>> {
     harness_at_scale(app, 1.0)
 }
 
 /// Builds the real dialog at an explicit physical-pixels-per-egui-point ratio so pointer
 /// events remain in egui points while exercising both standard and Retina display scales.
-fn harness_at_scale(app: Box<PhotocraftApp>, pixels_per_point: f32) -> Harness<'static, Box<PhotocraftApp>> {
+fn harness_at_scale(app: Box<PatronusPhotoApp>, pixels_per_point: f32) -> Harness<'static, Box<PatronusPhotoApp>> {
     let mut h = Harness::builder()
         // The paper menu lists the Japanese paper names; no installed face is guaranteed to draw them.
         .allow_missing_glyphs()
@@ -76,7 +76,7 @@ fn harness_at_scale(app: Box<PhotocraftApp>, pixels_per_point: f32) -> Harness<'
     h
 }
 
-fn click(h: &mut Harness<'_, Box<PhotocraftApp>>, label: &str) {
+fn click(h: &mut Harness<'_, Box<PatronusPhotoApp>>, label: &str) {
     if let Some(node) = h.query_by_label(label) {
         node.click();
     } else {
@@ -87,7 +87,7 @@ fn click(h: &mut Harness<'_, Box<PhotocraftApp>>, label: &str) {
 
 /// Scrolls the open paper list until the row `label` is shown: the list draws only the rows in view, so a row near
 /// the end is not in the access tree until the wheel has brought it into view.
-fn reveal(h: &mut Harness<'_, Box<PhotocraftApp>>, label: &str) {
+fn reveal(h: &mut Harness<'_, Box<PatronusPhotoApp>>, label: &str) {
     for _ in 0..40 {
         if h.query_by_label(label).is_some() {
             return;
@@ -109,18 +109,18 @@ fn reveal(h: &mut Harness<'_, Box<PhotocraftApp>>, label: &str) {
 /// Chooses an option from the open paper menu. The Japanese presets made the list longer than
 /// the dropdown shows, so it scrolls (and reopens where it was left): bring the row into view
 /// before clicking it.
-fn choose_paper(h: &mut Harness<'_, Box<PhotocraftApp>>, label: &str) {
+fn choose_paper(h: &mut Harness<'_, Box<PatronusPhotoApp>>, label: &str) {
     reveal(h, label);
     h.get_by_label(label).click();
     h.run_steps(3);
 }
 
-fn shown(h: &Harness<'_, Box<PhotocraftApp>>, text: &str) -> bool {
+fn shown(h: &Harness<'_, Box<PatronusPhotoApp>>, text: &str) -> bool {
     // A form caption and its control both expose the same accessible name.
     h.query_all_by_label(text).next().is_some() || h.query_all_by_value(text).next().is_some()
 }
 
-fn enter_length(h: &mut Harness<'_, Box<PhotocraftApp>>, label: &str, value: &str) {
+fn enter_length(h: &mut Harness<'_, Box<PatronusPhotoApp>>, label: &str, value: &str) {
     // The caption is a separate Label node with the same text; use the accessible SpinButton.
     let pos = h.get_by_role_and_label(egui::accesskit::Role::SpinButton, label).rect().center();
     h.event(Event::PointerMoved(pos));
@@ -135,7 +135,7 @@ fn enter_length(h: &mut Harness<'_, Box<PhotocraftApp>>, label: &str, value: &st
     h.run_steps(3);
 }
 
-fn fields(h: &Harness<'_, Box<PhotocraftApp>>, id: DialogId) -> Map<String, Value> {
+fn fields(h: &Harness<'_, Box<PatronusPhotoApp>>, id: DialogId) -> Map<String, Value> {
     let open = h.state().framework.dialogs.open_dialogs();
     open.into_iter().find(|d| d.id == id).and_then(|d| d.fields).and_then(|v| v.as_object().cloned()).expect("the Print dialog's values")
 }
@@ -172,13 +172,13 @@ fn custom_paper_ui_edits_reach_preview_and_pdf_and_restore_when_reopened() {
     click(&mut h, "Millimeters");
     click(&mut h, "Inches");
     assert_eq!(fields(&h, id)["paper"], edited["paper"]);
-    let preview = photocraft_engine::print_cmds::layout(&h.state().session.active().unwrap().doc, &Value::Object(edited.clone()), "file.print").unwrap();
+    let preview = patronusphoto_engine::print_cmds::layout(&h.state().session.active().unwrap().doc, &Value::Object(edited.clone()), "file.print").unwrap();
     assert_eq!(preview.paper, (522.0, 666.0));
     click(&mut h, "Portrait");
     click(&mut h, "Landscape");
     let edited = fields(&h, id);
     assert_eq!(edited["paper"], json!([522.0, 666.0]), "orientation must not rewrite the unrotated custom dimensions");
-    let preview = photocraft_engine::print_cmds::layout(&h.state().session.active().unwrap().doc, &Value::Object(edited), "file.print").unwrap();
+    let preview = patronusphoto_engine::print_cmds::layout(&h.state().session.active().unwrap().doc, &Value::Object(edited), "file.print").unwrap();
     assert_eq!(preview.paper, (666.0, 522.0));
     click(&mut h, "Print");
     let pdf = std::fs::read(&output).unwrap();
@@ -206,7 +206,7 @@ fn japanese_postcard_preset_is_chosen_from_the_paper_menu() {
     assert_eq!(fields(&h, id)["paper"], "postcard", "the preset is stored by its engine name");
     assert!(shown(&h, "はがき (100 × 148 mm)"), "the paper control must show the chosen preset");
     assert!(!shown(&h, "Paper Width"), "a preset is not editable custom paper");
-    let layout = photocraft_engine::print_cmds::layout(&h.state().session.active().unwrap().doc, &Value::Object(fields(&h, id)), "file.print").unwrap();
+    let layout = patronusphoto_engine::print_cmds::layout(&h.state().session.active().unwrap().doc, &Value::Object(fields(&h, id)), "file.print").unwrap();
     assert_eq!(layout.paper, (283.46, 419.53), "100 × 148 mm in points");
 }
 
@@ -227,7 +227,7 @@ fn remembered_paper_alias_selects_the_canonical_preset() {
     let (app, id) = app_remembering(Some(json!("はがき")));
     let h = harness(app);
     assert!(shown(&h, "はがき (100 × 148 mm)"), "a remembered alias must show the paper it names");
-    let layout = photocraft_engine::print_cmds::layout(&h.state().session.active().unwrap().doc, &Value::Object(fields(&h, id)), "file.print").unwrap();
+    let layout = patronusphoto_engine::print_cmds::layout(&h.state().session.active().unwrap().doc, &Value::Object(fields(&h, id)), "file.print").unwrap();
     assert_eq!(layout.paper, (283.46, 419.53), "the remembered alias must still print as はがき");
 }
 
@@ -242,7 +242,7 @@ fn invalid_custom_paper_is_rejected_without_printing_or_changing_the_document() 
     choose_paper(&mut h, "Custom");
     enter_length(&mut h, "Paper Width", "0");
     let edited = fields(&h, id);
-    assert!(photocraft_engine::print_cmds::layout(&h.state().session.active().unwrap().doc, &Value::Object(edited), "file.print").is_err());
+    assert!(patronusphoto_engine::print_cmds::layout(&h.state().session.active().unwrap().doc, &Value::Object(edited), "file.print").is_err());
     click(&mut h, "Print");
     let error = &h.state().ui.status;
     assert!(error.contains("paper is too small"), "{error}");

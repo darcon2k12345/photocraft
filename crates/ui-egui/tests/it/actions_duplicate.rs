@@ -1,20 +1,20 @@
 //! The panel duplicates the selected action/step and keeps its new row selected.
 use craft::automation::ui::actions::ActionSelection;
 use egui_kittest::Harness;
-use photocraft_engine::{
+use patronusphoto_engine::{
     Session,
     actions_cmds::{Action, ActionStep},
     atn_cmds,
 };
-use photocraft_ui_egui::{
-    PhotocraftApp,
+use patronusphoto_ui_egui::{
+    PatronusPhotoApp,
     control::{ControlRequest, Reply, handle},
     dialogs,
 };
 use serde_json::{Value, json};
 
 /// One control request through the public channel; the reply is the request's answer.
-fn control(app: &mut PhotocraftApp, ctx: &egui::Context, method: &str, params: Value) -> Value {
+fn control(app: &mut PatronusPhotoApp, ctx: &egui::Context, method: &str, params: Value) -> Value {
     let (request, _reply) = ControlRequest::new(method, params);
     match handle(app, ctx, &request) {
         Reply::Done(reply) => reply,
@@ -24,7 +24,7 @@ fn control(app: &mut PhotocraftApp, ctx: &egui::Context, method: &str, params: V
 
 #[test]
 fn duplicate_menu_selects_the_new_action_and_then_the_new_step() {
-    let mut app = PhotocraftApp::new(Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(Session::new(), Default::default());
     let mut a = Action::new("Source", vec![ActionStep::new("select.all", json!({}))]);
     a.disabled.insert(0);
     a.dialogs.insert(0);
@@ -32,10 +32,10 @@ fn duplicate_menu_selects_the_new_action_and_then_the_new_step() {
     app.ui.actions.panel.selected = Some(ActionSelection::Action(0));
     app.ui.actions.panel.expanded.insert("Source".into());
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(egui::vec2(360.0, 460.0)).build_ui_state(|ui, app| dialogs::run(app, ui), app);
-    PhotocraftApp::setup_context(&h.ctx, Default::default());
+    PatronusPhotoApp::setup_context(&h.ctx, Default::default());
     h.run_steps(3);
     let ctx = h.ctx.clone();
-    let fire = |h: &mut Harness<'static, Box<PhotocraftApp>>| {
+    let fire = |h: &mut Harness<'static, Box<PatronusPhotoApp>>| {
         let reply = control(h.state_mut(), &ctx, "ui.menu.invoke", json!({"id": "actionsPanel.duplicate"}));
         assert_eq!(reply["ok"], true, "{reply}");
         h.run_steps(3);
@@ -57,7 +57,7 @@ fn duplicate_menu_selects_the_new_action_and_then_the_new_step() {
 
 #[test]
 fn duplicate_cannot_shift_the_owner_of_a_suspended_recording() {
-    let mut app = PhotocraftApp::new(Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(Session::new(), Default::default());
     app.run("file.new", json!({"width": 8, "height": 6})).unwrap();
     app.session.actions.list.push(Action::new("Menu", vec![ActionStep::new(atn_cmds::MENU_ITEM, json!({"id": "image.imageSize"}))])).unwrap();
     app.run("actions.record", json!({"name": "Owner"})).unwrap();

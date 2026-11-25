@@ -35,7 +35,7 @@ fn three_tiles() -> Session {
         let n = fmt.channels();
         let mut data = vec![0.0f32; t * t * n];
         for (i, o) in data.chunks_exact_mut(n).enumerate() {
-            photocraft_raster::from_rgba_into(&fmt, sc[(i / t) * sw + x0 + i % t], o);
+            patronusphoto_raster::from_rgba_into(&fmt, sc[(i / t) * sw + x0 + i % t], o);
         }
         let mut surf = Surface::new(fmt);
         surf.write_region(Rect::new(0, 0, t as i32, t as i32), &data);
@@ -77,5 +77,5 @@ fn blended_composite_does_not_depend_on_the_stacking() {
     let mut flipped = d.clone();
     flipped.layers.reverse();
     // The seam masks split the canvas, so each pixel shows one layer whatever the order.
-    assert_eq!(photocraft_compose::flatten(&d).px, photocraft_compose::flatten(&flipped).px);
+    assert_eq!(patronusphoto_compose::flatten(&d).px, patronusphoto_compose::flatten(&flipped).px);
 }

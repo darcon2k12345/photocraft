@@ -2,7 +2,7 @@
 //! Photoshop; other steps in between still disable it.
 
 use super::*;
-use photocraft_doc::LayerId;
+use patronusphoto_doc::LayerId;
 
 /// A command and its params, given the Background and the faded layer.
 type Step = (&'static str, fn(LayerId, LayerId) -> Value);

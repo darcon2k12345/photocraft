@@ -16,7 +16,7 @@ use craft::ui::primitives::{Revision, ThumbRender, ThumbRequest, ThumbSource, Th
 use craft::ui::shell::{RecentFile, StartAction, ThumbKey};
 use egui::ColorImage;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// Minimum time between two live-document thumbnail compositions for the same path: composing runs on the UI
 /// thread, so an edited document's preview moves at most once per interval.
@@ -102,7 +102,7 @@ impl Stamp {
     }
 }
 
-/// The versions of the recent files' pictures. Shared with the app (`PhotocraftApp::thumbnail_cache`), which
+/// The versions of the recent files' pictures. Shared with the app (`PatronusPhotoApp::thumbnail_cache`), which
 /// invalidates a path when its file is saved, removed from the list or pushed out of it.
 #[derive(Default)]
 pub(crate) struct ThumbnailCache {
@@ -132,7 +132,7 @@ fn lock(cache: &Mutex<ThumbnailCache>) -> MutexGuard<'_, ThumbnailCache> {
 /// The recent files' thumbnail source for one pass: the open documents (their live pictures), the shared version
 /// cache and whether the window gained focus this pass.
 pub(crate) struct RecentThumbs<'a> {
-    docs: &'a [photocraft_engine::DocState],
+    docs: &'a [patronusphoto_engine::DocState],
     cache: &'a Mutex<ThumbnailCache>,
     ctx: egui::Context,
     focus_gained: bool,
@@ -141,7 +141,7 @@ pub(crate) struct RecentThumbs<'a> {
 /// The thumbnail source of this pass. The focus gain is the frame's own `WindowFocused(true)` event, which egui
 /// gives only to the frame's first pass: a second pass sees no gain and applies the stats the first pass wrote (a
 /// path is statted at most once per `RECHECK_INTERVAL`, or once on a focus gain).
-pub(crate) fn source<'a>(app: &'a PhotocraftApp, ctx: &egui::Context) -> RecentThumbs<'a> {
+pub(crate) fn source<'a>(app: &'a PatronusPhotoApp, ctx: &egui::Context) -> RecentThumbs<'a> {
     let focus_gained = ctx.input(|i| i.events.iter().any(|e| matches!(e, egui::Event::WindowFocused(true))));
     RecentThumbs { docs: app.session.documents(), cache: &app.thumbnail_cache, ctx: ctx.clone(), focus_gained }
 }
@@ -153,14 +153,14 @@ pub(crate) fn thumbnails(ctx: &egui::Context) -> Thumbnails<ThumbKey> {
 
 impl RecentThumbs<'_> {
     /// The open document whose path is `path`.
-    fn open_doc(&self, path: &str) -> Option<&photocraft_engine::DocState> {
+    fn open_doc(&self, path: &str) -> Option<&patronusphoto_engine::DocState> {
         self.docs.iter().find(|d| d.path.as_deref().is_some_and(|p| paths_match(p, path)))
     }
 }
 
 impl ThumbSource<ThumbKey> for RecentThumbs<'_> {
     fn revision(&self, key: &ThumbKey, _request: &ThumbRequest) -> Revision {
-        // The template previews are not PhotoCraft's: it lists none.
+        // The template previews are not Patronus Photo's: it lists none.
         let ThumbKey::Recent(path) = key else { return Revision::new(0) };
         let path = path.to_string_lossy();
         let mut cache = lock(self.cache);
@@ -177,7 +177,7 @@ impl ThumbSource<ThumbKey> for RecentThumbs<'_> {
         let ThumbKey::Recent(path) = key else { return ThumbRender::Blank };
         let path = path.to_string_lossy();
         if let Some(st) = self.open_doc(&path) {
-            let rgba = photocraft_compose::thumbnail(&st.doc, request.side);
+            let rgba = patronusphoto_compose::thumbnail(&st.doc, request.side);
             return ThumbRender::Ready(ColorImage::from_rgba_unmultiplied([rgba.width as usize, rgba.height as usize], &rgba.pixels));
         }
         // The size comes from the stat the revision was made from: the job decodes the file that stat saw. A missing
@@ -197,15 +197,15 @@ impl ThumbSource<ThumbKey> for RecentThumbs<'_> {
     }
 }
 
-/// The first `cap` recent files, newest first as the app keeps them. PhotoCraft stores no opened or created
+/// The first `cap` recent files, newest first as the app keeps them. Patronus Photo stores no opened or created
 /// times, so the start screen's dates stay empty.
-pub(crate) fn recent_files(app: &PhotocraftApp, cap: usize) -> Vec<RecentFile> {
+pub(crate) fn recent_files(app: &PatronusPhotoApp, cap: usize) -> Vec<RecentFile> {
     app.ui.recent_files.iter().take(cap).map(|p| RecentFile::new(PathBuf::from(p), crate::file_open::display_name(p))).collect()
 }
 
 /// Run the start screen's `action` when it is a recent-file or Open action, and report whether it was one. New,
 /// templates and pinned folders are the start screen's owner's.
-pub(crate) fn act(app: &mut PhotocraftApp, action: &StartAction) -> bool {
+pub(crate) fn act(app: &mut PatronusPhotoApp, action: &StartAction) -> bool {
     match action {
         StartAction::OpenRecent(path) => {
             let path = path.to_string_lossy();
@@ -327,16 +327,16 @@ fn read_psd_thumbnail_bounded(path: &Path, file_len: u64) -> Option<ColorImage> 
         if file.read_exact(&mut res_bytes).is_ok()
             && let Ok((resources, _)) = craft_psd::tiff::resources_from_bytes(&res_bytes)
         {
-            let decode_opts = photocraft_codecs::DecodeOptions {
-                limits: photocraft_codecs::Limits { max_width: 4096, max_height: 4096, max_pixels: 4096 * 4096, max_alloc: 4096 * 4096 * 4 },
+            let decode_opts = patronusphoto_codecs::DecodeOptions {
+                limits: patronusphoto_codecs::Limits { max_width: 4096, max_height: 4096, max_pixels: 4096 * 4096, max_alloc: 4096 * 4096 * 4 },
                 ..Default::default()
             };
             for r in &resources {
                 if (r.id == craft_psd::resources::ids::THUMBNAIL || r.id == craft_psd::resources::ids::THUMBNAIL_PS4)
                     && let Some(jfif) = r.data.get(28..)
-                    && let Ok(img) = photocraft_codecs::decode_with(jfif, &decode_opts)
+                    && let Ok(img) = patronusphoto_codecs::decode_with(jfif, &decode_opts)
                 {
-                    let rgba = img.convert(photocraft_codecs::ChannelLayout::Rgba, photocraft_codecs::SampleType::U8);
+                    let rgba = img.convert(patronusphoto_codecs::ChannelLayout::Rgba, patronusphoto_codecs::SampleType::U8);
                     if rgba.data().len() == rgba.width() as usize * rgba.height() as usize * 4 {
                         return downsample_rgba(rgba.width(), rgba.height(), rgba.data(), 256);
                     }
@@ -373,7 +373,7 @@ fn read_psd_thumbnail_bounded(path: &Path, file_len: u64) -> Option<ColorImage> 
     // Fourth, within budget and safe dimensions: read file and decode merged composite
     let bytes = std::fs::read(path).ok()?;
     if let Ok(file) = craft_psd::PsdFile::from_bytes(&bytes)
-        && let Ok(comp) = photocraft_io::merged_composite(&file)
+        && let Ok(comp) = patronusphoto_io::merged_composite(&file)
     {
         let w = file.header.width;
         let h = file.header.height;
@@ -410,8 +410,8 @@ fn load_thumbnail_image_bounded(path: &str, file_len: u64) -> Option<ColorImage>
     }
 
     // Guard against decompression bombs: bound decoder allocation and dimensions up front
-    let decode_opts = photocraft_codecs::DecodeOptions {
-        limits: photocraft_codecs::Limits { max_width: 4096, max_height: 4096, max_pixels: 4096 * 4096, max_alloc: 4096 * 4096 * 4 },
+    let decode_opts = patronusphoto_codecs::DecodeOptions {
+        limits: patronusphoto_codecs::Limits { max_width: 4096, max_height: 4096, max_pixels: 4096 * 4096, max_alloc: 4096 * 4096 * 4 },
         ..Default::default()
     };
 
@@ -422,18 +422,18 @@ fn load_thumbnail_image_bounded(path: &str, file_len: u64) -> Option<ColorImage>
             if let Ok(thumb_meta) = std::fs::metadata(&thumb_path)
                 && thumb_meta.len() <= MAX_THUMBNAIL_FILE_SIZE
                 && let Ok(bytes) = std::fs::read(&thumb_path)
-                && let Ok(img) = photocraft_codecs::decode_with(&bytes, &decode_opts)
+                && let Ok(img) = patronusphoto_codecs::decode_with(&bytes, &decode_opts)
             {
-                let rgba = img.convert(photocraft_codecs::ChannelLayout::Rgba, photocraft_codecs::SampleType::U8);
+                let rgba = img.convert(patronusphoto_codecs::ChannelLayout::Rgba, patronusphoto_codecs::SampleType::U8);
                 if rgba.data().len() == rgba.width() as usize * rgba.height() as usize * 4 {
                     return downsample_rgba(rgba.width(), rgba.height(), rgba.data(), 256);
                 }
             }
         } else if let Ok(bytes) = std::fs::read(std_path)
-            && let Ok(Some(png_bytes)) = photocraft_format::read_thumbnail(&bytes)
-            && let Ok(img) = photocraft_codecs::decode_with(&png_bytes, &decode_opts)
+            && let Ok(Some(png_bytes)) = patronusphoto_format::read_thumbnail(&bytes)
+            && let Ok(img) = patronusphoto_codecs::decode_with(&png_bytes, &decode_opts)
         {
-            let rgba = img.convert(photocraft_codecs::ChannelLayout::Rgba, photocraft_codecs::SampleType::U8);
+            let rgba = img.convert(patronusphoto_codecs::ChannelLayout::Rgba, patronusphoto_codecs::SampleType::U8);
             if rgba.data().len() == rgba.width() as usize * rgba.height() as usize * 4 {
                 return downsample_rgba(rgba.width(), rgba.height(), rgba.data(), 256);
             }
@@ -443,12 +443,12 @@ fn load_thumbnail_image_bounded(path: &str, file_len: u64) -> Option<ColorImage>
 
     // 3. Flat raster formats (PNG, JPG, WebP, TIFF, GIF, BMP, etc.)
     if let Ok(bytes) = std::fs::read(std_path)
-        && let Ok(img) = photocraft_codecs::decode_with(&bytes, &decode_opts)
+        && let Ok(img) = patronusphoto_codecs::decode_with(&bytes, &decode_opts)
     {
         let (w, h) = img.dimensions();
         // Guard against decompression bombs: don't expand > 4096 images to gigabytes of RGBA
         if w > 0 && h > 0 && w <= 4096 && h <= 4096 {
-            let rgba = img.convert(photocraft_codecs::ChannelLayout::Rgba, photocraft_codecs::SampleType::U8);
+            let rgba = img.convert(patronusphoto_codecs::ChannelLayout::Rgba, patronusphoto_codecs::SampleType::U8);
             return downsample_rgba(w, h, rgba.data(), 256);
         }
     }
@@ -459,7 +459,7 @@ fn load_thumbnail_image_bounded(path: &str, file_len: u64) -> Option<ColorImage>
 /// Judge a click that opens the recent file `path` as File › Open Recent's item for it, as the
 /// menu does: synthetic input from a client confined to its automation roots can't plant a recent
 /// file outside them and click its Home card open. A user's own click is always allowed.
-fn open_recent_gate(app: &PhotocraftApp, path: &str) -> Result<(), String> {
+fn open_recent_gate(app: &PatronusPhotoApp, path: &str) -> Result<(), String> {
     let Some(authorize) = app.services.automation_command.as_ref() else { return Ok(()) };
     if !app.automation_input {
         return Ok(());
@@ -482,7 +482,7 @@ mod tests {
 
     /// Drive the real Home source and store with one explicitly completed background lane.
     #[cfg(not(target_arch = "wasm32"))]
-    fn recent_thumbnail_pass(app: &PhotocraftApp, frames: &mut craft::ui::testing::Frames, key: &ThumbKey) -> craft::ui::primitives::TextureState {
+    fn recent_thumbnail_pass(app: &PatronusPhotoApp, frames: &mut craft::ui::testing::Frames, key: &ThumbKey) -> craft::ui::primitives::TextureState {
         let ctx = app.ctx().clone();
         let mut state = None;
         frames.frame(Vec::new(), |_| {
@@ -492,7 +492,7 @@ mod tests {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn manual_recent_thumbnails(app: &PhotocraftApp) -> (craft::ui::testing::Frames, std::sync::Arc<craft::host::ManualJobs>) {
+    fn manual_recent_thumbnails(app: &PatronusPhotoApp) -> (craft::ui::testing::Frames, std::sync::Arc<craft::host::ManualJobs>) {
         let ctx = app.ctx().clone();
         let jobs = std::sync::Arc::new(craft::host::ManualJobs::new());
         // The production accessor uses this same salt; its later options keep this first-created loader.
@@ -521,7 +521,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("background.png");
         std::fs::write(&path, flat_png([20, 60, 100, 255])).unwrap();
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.background_jobs = true;
         app.push_recent(&path.to_string_lossy());
         let key = ThumbKey::Recent(path);
@@ -544,7 +544,7 @@ mod tests {
         let path = dir.path().join("invalidated.png");
         std::fs::write(&path, flat_png([100, 20, 60, 255])).unwrap();
         let path_string = path.to_string_lossy().into_owned();
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.background_jobs = true;
         app.push_recent(&path_string);
         let key = ThumbKey::Recent(path);
@@ -575,17 +575,17 @@ mod tests {
 
     /// The thumbnail source of a fresh pass over `app`.
     #[cfg(not(target_arch = "wasm32"))]
-    fn revision_of(app: &PhotocraftApp, path: &str) -> Revision {
+    fn revision_of(app: &PatronusPhotoApp, path: &str) -> Revision {
         let ctx = app.ctx().clone();
         source(app, &ctx).revision(&ThumbKey::Recent(PathBuf::from(path)), &ThumbRequest::for_cell(64.0, 1.0))
     }
 
     /// An app with a 64 x 64 document open at `path`, at document revision 0.
     #[cfg(not(target_arch = "wasm32"))]
-    fn app_with_open_document(path: &str) -> Box<PhotocraftApp> {
-        use photocraft_doc::{ColorMode, Document, SampleType, Size};
+    fn app_with_open_document(path: &str) -> Box<PatronusPhotoApp> {
+        use patronusphoto_doc::{ColorMode, Document, SampleType, Size};
 
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.push_recent(path);
         let doc = Document::new("open_doc.psd", Size::new(64, 64), ColorMode::Rgb, SampleType::U8);
         app.session.open_document(doc, Some(path.to_string()));
@@ -597,7 +597,7 @@ mod tests {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn set_document_revision(app: &mut PhotocraftApp, revision: u64) {
+    fn set_document_revision(app: &mut PatronusPhotoApp, revision: u64) {
         if let Some(st) = app.session.active_mut() {
             st.revision = revision;
         }
@@ -606,14 +606,15 @@ mod tests {
     /// A 4 x 4 PNG of one colour.
     #[cfg(not(target_arch = "wasm32"))]
     fn flat_png(rgba: [u8; 4]) -> Vec<u8> {
-        let img = photocraft_codecs::Image::from_raw(4, 4, photocraft_codecs::ChannelLayout::Rgba, photocraft_codecs::SampleType::U8, rgba.repeat(16)).unwrap();
-        photocraft_codecs::encode(&img, photocraft_codecs::Format::Png, &photocraft_codecs::EncodeOptions::default()).unwrap()
+        let img = patronusphoto_codecs::Image::from_raw(4, 4, patronusphoto_codecs::ChannelLayout::Rgba, patronusphoto_codecs::SampleType::U8, rgba.repeat(16))
+            .unwrap();
+        patronusphoto_codecs::encode(&img, patronusphoto_codecs::Format::Png, &patronusphoto_codecs::EncodeOptions::default()).unwrap()
     }
 
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn recent_thumbnail_updates_when_open_document_revision_changes() {
-        let path = "/tmp/photocraft-test/open_doc.psd";
+        let path = "/tmp/patronusphoto-test/open_doc.psd";
         let mut app = app_with_open_document(path);
         let first = revision_of(&app, path);
 
@@ -628,7 +629,7 @@ mod tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn open_document_thumbnail_regeneration_is_rate_limited() {
-        let path = "/tmp/photocraft-test/open_doc_throttle.psd";
+        let path = "/tmp/patronusphoto-test/open_doc_throttle.psd";
         let mut app = app_with_open_document(path);
         let first = revision_of(&app, path);
 
@@ -649,13 +650,13 @@ mod tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn recent_thumbnail_regenerates_when_disk_file_changes() {
-        let temp_dir = std::env::temp_dir().join(format!("photocraft_thumb_test_{}", std::process::id()));
+        let temp_dir = std::env::temp_dir().join(format!("patronusphoto_thumb_test_{}", std::process::id()));
         let _ = std::fs::create_dir_all(&temp_dir);
         let file_path = temp_dir.join("test_file.png");
         let path_str = file_path.to_string_lossy().into_owned();
         std::fs::write(&file_path, flat_png([255, 0, 0, 255])).unwrap();
 
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.push_recent(&path_str);
         let before = revision_of(&app, &path_str);
 
@@ -664,8 +665,8 @@ mod tests {
         for i in 0..(32 * 32) {
             px.extend_from_slice(&[(i % 256) as u8, ((i * 7) % 256) as u8, ((i * 13) % 256) as u8, 255]);
         }
-        let img = photocraft_codecs::Image::from_raw(32, 32, photocraft_codecs::ChannelLayout::Rgba, photocraft_codecs::SampleType::U8, px).unwrap();
-        let bigger = photocraft_codecs::encode(&img, photocraft_codecs::Format::Png, &photocraft_codecs::EncodeOptions::default()).unwrap();
+        let img = patronusphoto_codecs::Image::from_raw(32, 32, patronusphoto_codecs::ChannelLayout::Rgba, patronusphoto_codecs::SampleType::U8, px).unwrap();
+        let bigger = patronusphoto_codecs::encode(&img, patronusphoto_codecs::Format::Png, &patronusphoto_codecs::EncodeOptions::default()).unwrap();
         std::fs::write(&file_path, bigger).unwrap();
 
         // Let the recheck interval elapse (10 ms in tests).
@@ -678,13 +679,13 @@ mod tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn recent_thumbnail_recheck_interval_avoids_per_frame_disk_io() {
-        let temp_dir = std::env::temp_dir().join(format!("photocraft_fast_thumb_test_{}", std::process::id()));
+        let temp_dir = std::env::temp_dir().join(format!("patronusphoto_fast_thumb_test_{}", std::process::id()));
         let _ = std::fs::create_dir_all(&temp_dir);
         let file_path = temp_dir.join("test_file.png");
         let path_str = file_path.to_string_lossy().into_owned();
         std::fs::write(&file_path, flat_png([0, 255, 0, 255])).unwrap();
 
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.push_recent(&path_str);
         let first = revision_of(&app, &path_str);
 
@@ -773,15 +774,15 @@ mod tests {
         let file_path = temp_dir.join("large_payload.psd");
         let path_str = file_path.to_string_lossy().into_owned();
 
-        let img = photocraft_codecs::Image::from_raw(
+        let img = patronusphoto_codecs::Image::from_raw(
             512,
             512,
-            photocraft_codecs::ChannelLayout::Rgb,
-            photocraft_codecs::SampleType::U8,
+            patronusphoto_codecs::ChannelLayout::Rgb,
+            patronusphoto_codecs::SampleType::U8,
             [255, 0, 0].repeat(512 * 512),
         )
         .unwrap();
-        let jfif = photocraft_codecs::encode(&img, photocraft_codecs::Format::Jpeg, &photocraft_codecs::EncodeOptions::default()).unwrap();
+        let jfif = patronusphoto_codecs::encode(&img, patronusphoto_codecs::Format::Jpeg, &patronusphoto_codecs::EncodeOptions::default()).unwrap();
         let mut res_data = vec![0u8; 28];
         res_data[0..4].copy_from_slice(&1u32.to_be_bytes()); // format: 1 (kJpegRGB)
         res_data[4..8].copy_from_slice(&512u32.to_be_bytes()); // width: 512
@@ -820,15 +821,21 @@ mod tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn recent_thumbnail_skips_flat_image_larger_than_4k_dimensions() {
-        let temp_dir = std::env::temp_dir().join(format!("photocraft_huge_img_test_{}", std::process::id()));
+        let temp_dir = std::env::temp_dir().join(format!("patronusphoto_huge_img_test_{}", std::process::id()));
         let _ = std::fs::create_dir_all(&temp_dir);
         let file_path = temp_dir.join("huge_img.png");
         let path_str = file_path.to_string_lossy().into_owned();
 
         // Write a PNG with 4097x1 dimensions (exceeds 4096 cap on longest side)
-        let img = photocraft_codecs::Image::from_raw(4097, 1, photocraft_codecs::ChannelLayout::Rgba, photocraft_codecs::SampleType::U8, vec![0u8; 4097 * 4])
-            .unwrap();
-        let png = photocraft_codecs::encode(&img, photocraft_codecs::Format::Png, &photocraft_codecs::EncodeOptions::default()).unwrap();
+        let img = patronusphoto_codecs::Image::from_raw(
+            4097,
+            1,
+            patronusphoto_codecs::ChannelLayout::Rgba,
+            patronusphoto_codecs::SampleType::U8,
+            vec![0u8; 4097 * 4],
+        )
+        .unwrap();
+        let png = patronusphoto_codecs::encode(&img, patronusphoto_codecs::Format::Png, &patronusphoto_codecs::EncodeOptions::default()).unwrap();
         std::fs::write(&file_path, &png).unwrap();
 
         let thumb = load_thumbnail_image_bounded(&path_str, png.len() as u64);
@@ -840,7 +847,7 @@ mod tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn recent_thumbnail_skips_oversized_thumb_in_pcraft_dir() {
-        let temp_dir = std::env::temp_dir().join(format!("photocraft_oversized_pcraft_test_{}.pcraft", std::process::id()));
+        let temp_dir = std::env::temp_dir().join(format!("patronusphoto_oversized_pcraft_test_{}.pcraft", std::process::id()));
         let _ = std::fs::create_dir_all(&temp_dir);
         let thumb_path = temp_dir.join("thumb.png");
         let path_str = temp_dir.to_string_lossy().into_owned();

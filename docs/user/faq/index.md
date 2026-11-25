@@ -1,10 +1,10 @@
 ---
 title: FAQ
-description: Short answers about PhotoCraft's price, Photoshop files and how it compares with Photoshop.
+description: Short answers about Patronus Photo's price, Photoshop files and how it compares with Photoshop.
 order: 40
 verified: 0.8.2
 ---
 
-- [Is PhotoCraft free?](is-photocraft-free.md)
-- [Can PhotoCraft open my Photoshop files?](open-photoshop-files.md)
-- [Can PhotoCraft replace Photoshop?](replace-photoshop.md)
+- [Is Patronus Photo free?](is-patronusphoto-free.md)
+- [Can Patronus Photo open my Photoshop files?](open-photoshop-files.md)
+- [Can Patronus Photo replace Photoshop?](replace-photoshop.md)

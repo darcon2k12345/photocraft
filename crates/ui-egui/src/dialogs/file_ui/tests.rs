@@ -5,8 +5,8 @@ use craft::ui::patterns::form_dialogs::{DialogFields, FieldValue, HostedSaveForW
 use super::*;
 use std::sync::Arc;
 
-pub(super) fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+pub(super) fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.printer_source =
         Some(Arc::new(|| vec![craft::print::Printer { name: "Test printer".into(), default: true, two_sided: None, description: String::new() }]));
     app.run("file.new", json!({"width": 120, "height": 80, "name": "web"})).unwrap();
@@ -14,30 +14,30 @@ pub(super) fn app() -> Box<PhotocraftApp> {
 }
 
 /// Runs one pass of the dialogs, so each applies the answers and input it holds.
-pub(super) fn pass(app: &mut PhotocraftApp) {
+pub(super) fn pass(app: &mut PatronusPhotoApp) {
     let ctx = app.ctx().clone();
     ctx.run_ui(Default::default(), |ui| crate::dialogs::run(app, ui)).textures_delta.clear();
 }
 
 /// Sets a Save for Web field as `ui.dialog.set` does.
-pub(super) fn set_option(app: &mut PhotocraftApp, id: DialogId, field: &str, value: Value) {
+pub(super) fn set_option(app: &mut PatronusPhotoApp, id: DialogId, field: &str, value: Value) {
     let ctx = app.ctx().clone();
     app.framework.dialogs.set_json_field(&ctx, id, field, value).unwrap();
 }
 
-fn web_dialog(app: &mut PhotocraftApp, id: DialogId) -> &mut HostedSaveForWeb {
+fn web_dialog(app: &mut PatronusPhotoApp, id: DialogId) -> &mut HostedSaveForWeb {
     app.framework.dialogs.get_mut_by_id::<HostedSaveForWeb>(id).expect("Save for Web is open")
 }
 
 /// Answers the Save… request with `path`, as the save picker does.
-fn answer_path(app: &mut PhotocraftApp, id: DialogId, path: &str) {
+fn answer_path(app: &mut PatronusPhotoApp, id: DialogId, path: &str) {
     web_dialog(app, id).answer_path(SAVE_PATH_KEY, std::path::PathBuf::from(path));
     pass(app);
 }
 
 /// OK on Save for Web, then the app's takers run the export. The answered Save… finishes the dialog in its pass;
 /// a dialog still open takes OK, which needs the path.
-fn confirm(app: &mut PhotocraftApp, id: DialogId) {
+fn confirm(app: &mut PatronusPhotoApp, id: DialogId) {
     let ctx = app.ctx().clone();
     if app.framework.dialogs.get_by_id::<HostedSaveForWeb>(id).is_some() {
         crate::dialogs::confirm(app, &ctx, id).expect("OK needs the path answered");
@@ -53,7 +53,7 @@ fn field(f: &DialogFields, key: &str) -> Value {
     f.get(key).map_or(Value::Null, |v| serde_json::to_value(v).unwrap())
 }
 
-fn print_fields(app: &mut PhotocraftApp, id: DialogId) -> &mut DialogFields {
+fn print_fields(app: &mut PatronusPhotoApp, id: DialogId) -> &mut DialogFields {
     app.framework.dialogs.get_mut_by_id::<HostedPrint>(id).expect("Print is open").fields_mut()
 }
 
@@ -63,7 +63,7 @@ fn listed_printer(name: &str) -> craft::print::Printer {
 }
 
 /// The printer the open Print dialog has chosen.
-fn chosen_printer(app: &PhotocraftApp, id: DialogId) -> Value {
+fn chosen_printer(app: &PatronusPhotoApp, id: DialogId) -> Value {
     app.framework.dialogs.get_by_id::<HostedPrint>(id).and_then(|dialog| dialog.json_fields()).map_or(Value::Null, |f| f["printer"].clone())
 }
 
@@ -90,17 +90,17 @@ fn check_saved_settings_with_cached_printers(cached: &'static [&'static str]) {
         if listed.load(Ordering::SeqCst) { vec![listed_printer("Saved printer")] } else { cached.iter().map(|name| listed_printer(name)).collect() }
     }));
     app.session.prefs.edit(|p| {
-        p.dialogs.insert(photocraft_engine::print_cmds::REMEMBERED.into(), json!({"printer": "Saved printer", "printerSettings": "0011"}));
+        p.dialogs.insert(patronusphoto_engine::print_cmds::REMEMBERED.into(), json!({"printer": "Saved printer", "printerSettings": "0011"}));
     });
-    let mut lister = photocraft_engine::Session::new();
+    let mut lister = patronusphoto_engine::Session::new();
     lister.printer_source = app.session.printer_source.clone();
     let (held_tx, held) = std::sync::mpsc::channel();
     let (release, released_rx) = std::sync::mpsc::channel::<()>();
     let holder = std::thread::spawn(move || {
-        photocraft_engine::print_cmds::with_spooler(|| {
+        patronusphoto_engine::print_cmds::with_spooler(|| {
             // Both lists the dialog reads while the spooler is busy are kept from this listing.
-            let _ = photocraft_engine::print_cmds::rgb_printers(&lister);
-            let kept = photocraft_engine::print_cmds::printers_without_waiting(&mut lister);
+            let _ = patronusphoto_engine::print_cmds::rgb_printers(&lister);
+            let kept = patronusphoto_engine::print_cmds::printers_without_waiting(&mut lister);
             available.store(true, Ordering::SeqCst);
             held_tx.send(kept["printers"].as_array().map_or(0, Vec::len)).unwrap();
             let _ = released_rx.recv();
@@ -116,7 +116,7 @@ fn check_saved_settings_with_cached_printers(cached: &'static [&'static str]) {
     holder.join().unwrap();
     assert_eq!(kept, cached.len(), "the printers kept from before");
     assert_eq!(pending, (json!("Saved printer"), json!("0011"), false), "while the list is pending, cached {cached:?}");
-    photocraft_engine::print_cmds::with_spooler(|| {
+    patronusphoto_engine::print_cmds::with_spooler(|| {
         pass(&mut app);
         take(&mut app, &ctx);
         pass(&mut app);
@@ -133,10 +133,10 @@ fn an_empty_fresh_printer_list_drops_the_saved_driver_settings() {
     let ctx = app.ctx().clone();
     app.session.printer_source = Some(Arc::new(Vec::new));
     app.session.prefs.edit(|p| {
-        p.dialogs.insert(photocraft_engine::print_cmds::REMEMBERED.into(), json!({"printer": "Saved printer", "printerSettings": "0011"}));
+        p.dialogs.insert(patronusphoto_engine::print_cmds::REMEMBERED.into(), json!({"printer": "Saved printer", "printerSettings": "0011"}));
     });
     let id = open_print(&mut app);
-    photocraft_engine::print_cmds::with_spooler(|| {
+    patronusphoto_engine::print_cmds::with_spooler(|| {
         pass(&mut app);
         take(&mut app, &ctx);
         pass(&mut app);
@@ -146,7 +146,7 @@ fn an_empty_fresh_printer_list_drops_the_saved_driver_settings() {
 }
 
 /// Whether the open Print dialog's Print would start a job.
-fn print_ready(app: &mut PhotocraftApp, id: DialogId) -> bool {
+fn print_ready(app: &mut PatronusPhotoApp, id: DialogId) -> bool {
     let ctx = app.ctx().clone();
     app.framework.dialogs.get_mut_by_id::<HostedPrint>(id).expect("Print is open").confirm(&ctx).is_some()
 }
@@ -161,10 +161,10 @@ fn a_fresh_printer_list_without_the_saved_printer_drops_its_driver_settings() {
         let mut app = app();
         let ctx = app.ctx().clone();
         app.session.prefs.edit(|p| {
-            p.dialogs.insert(photocraft_engine::print_cmds::REMEMBERED.into(), remembered.clone());
+            p.dialogs.insert(patronusphoto_engine::print_cmds::REMEMBERED.into(), remembered.clone());
         });
         let id = open_print(&mut app);
-        photocraft_engine::print_cmds::with_spooler(|| {
+        patronusphoto_engine::print_cmds::with_spooler(|| {
             pass(&mut app);
             take(&mut app, &ctx);
             pass(&mut app);
@@ -190,7 +190,7 @@ fn print_dialog_retries_an_uncached_printer_list_after_the_spooler_is_released()
     let released = Arc::new(AtomicBool::new(false));
     let done = Arc::clone(&released);
     let holder = std::thread::spawn(move || {
-        photocraft_engine::print_cmds::with_spooler(|| {
+        patronusphoto_engine::print_cmds::with_spooler(|| {
             held_tx.send(()).unwrap();
             let _ = released_rx.recv_timeout(std::time::Duration::from_secs(5));
             done.store(true, Ordering::SeqCst);
@@ -207,7 +207,7 @@ fn print_dialog_retries_an_uncached_printer_list_after_the_spooler_is_released()
     holder.join().unwrap();
     assert!(!waited, "opening or drawing Print waited for the spooler");
     assert_eq!(calls_while_busy, 0);
-    photocraft_engine::print_cmds::with_spooler(|| {
+    patronusphoto_engine::print_cmds::with_spooler(|| {
         pass(&mut app);
         take(&mut app, &ctx);
         assert!(asked.load(Ordering::SeqCst) > 0, "the printer list is asked for again once the spooler is free");
@@ -222,8 +222,8 @@ fn print_dialog_retries_an_uncached_printer_list_after_the_spooler_is_released()
 fn print_drag_uses_the_resolved_layout_and_travel_in_paper_points_without_accumulation() {
     let app = app();
     let doc = app.session.active().unwrap().doc.clone();
-    let layout = |f: &DialogFields| photocraft_engine::print_cmds::layout(&doc, &print_params(f), "file.print").unwrap();
-    let top_left = |l: &photocraft_engine::print_cmds::PrintLayout| {
+    let layout = |f: &DialogFields| patronusphoto_engine::print_cmds::layout(&doc, &print_params(f), "file.print").unwrap();
+    let top_left = |l: &patronusphoto_engine::print_cmds::PrintLayout| {
         let (x, y, w, h) = l.rect;
         let x = if l.emulsion_down { l.paper.0 - x - w } else { x };
         egui::pos2(x as f32, (l.paper.1 - y - h) as f32)
@@ -269,15 +269,15 @@ fn print_drag_uses_the_resolved_layout_and_travel_in_paper_points_without_accumu
 fn print_drag_rejects_nonfinite_input_and_bounds_offsets() {
     let app = app();
     let doc = &app.session.active().unwrap().doc;
-    let start = photocraft_engine::print_cmds::layout(doc, &json!({}), "file.print").unwrap();
+    let start = patronusphoto_engine::print_cmds::layout(doc, &json!({}), "file.print").unwrap();
     let mut f = DialogFields::new();
     for position in [egui::pos2(f32::NAN, 0.0), egui::pos2(0.0, f32::INFINITY)] {
         assert!(!drag_print_position(&mut f, position, &start));
         assert!(f.is_empty());
     }
     assert!(drag_print_position(&mut f, egui::pos2(-f32::MAX, f32::MAX), &start));
-    assert_eq!(f.number("left"), Some(-photocraft_engine::print_cmds::MAX_POSITION_INCHES));
-    assert_eq!(f.number("top"), Some(photocraft_engine::print_cmds::MAX_POSITION_INCHES));
+    assert_eq!(f.number("left"), Some(-patronusphoto_engine::print_cmds::MAX_POSITION_INCHES));
+    assert_eq!(f.number("top"), Some(patronusphoto_engine::print_cmds::MAX_POSITION_INCHES));
 }
 
 #[test]
@@ -382,10 +382,10 @@ fn save_for_web_width_keeps_proportions_and_sizes_the_file() {
     let path = std::env::temp_dir().join(format!("pc-webui-wh-{}.png", std::process::id())).to_string_lossy().into_owned();
     answer_path(&mut app, id, &path);
     confirm(&mut app, id);
-    let written = photocraft_io::import("wh.png", &std::fs::read(&path).unwrap()).unwrap().document;
+    let written = patronusphoto_io::import("wh.png", &std::fs::read(&path).unwrap()).unwrap().document;
     assert_eq!((written.size.width, written.size.height), (60, 40));
     let st = app.session.active().unwrap();
-    assert_eq!((st.revision, st.doc.size), (revision, photocraft_doc::Size::new(120, 80)));
+    assert_eq!((st.revision, st.doc.size), (revision, patronusphoto_doc::Size::new(120, 80)));
     let _ = std::fs::remove_file(path);
 }
 
@@ -403,21 +403,22 @@ fn save_for_web_unlinked_width_and_height_size_the_file() {
     let path = std::env::temp_dir().join(format!("pc-webui-unlinked-{}.png", std::process::id())).to_string_lossy().into_owned();
     answer_path(&mut app, id, &path);
     confirm(&mut app, id);
-    let written = photocraft_io::import("unlinked.png", &std::fs::read(&path).unwrap()).unwrap().document;
+    let written = patronusphoto_io::import("unlinked.png", &std::fs::read(&path).unwrap()).unwrap().document;
     assert_eq!((written.size.width, written.size.height), (90, 20));
     let st = app.session.active().unwrap();
-    assert_eq!((st.revision, st.doc.size), (revision, photocraft_doc::Size::new(120, 80)));
+    assert_eq!((st.revision, st.doc.size), (revision, patronusphoto_doc::Size::new(120, 80)));
     let _ = std::fs::remove_file(path);
 }
 
 /// #15485: the panes get the ignored-slices notice only when the document has more slices than are resolved.
 #[test]
 fn save_for_web_warns_only_past_the_slice_limit() {
-    let mut doc = photocraft_doc::Document::new("slices", photocraft_doc::Size::new(8, 8), photocraft_doc::ColorMode::Rgb, photocraft_doc::SampleType::U8);
-    let slice = |i: usize| photocraft_doc::Slice { id: i as u32 + 1, rect: photocraft_doc::Rect::new(0, 0, 8, 8), ..Default::default() };
+    let mut doc =
+        patronusphoto_doc::Document::new("slices", patronusphoto_doc::Size::new(8, 8), patronusphoto_doc::ColorMode::Rgb, patronusphoto_doc::SampleType::U8);
+    let slice = |i: usize| patronusphoto_doc::Slice { id: i as u32 + 1, rect: patronusphoto_doc::Rect::new(0, 0, 8, 8), ..Default::default() };
     doc.slices.list = (0..3).map(slice).collect();
     assert!(super::web::slice_warning(&doc).is_none(), "a few slices: no notice");
-    doc.slices.list = (0..photocraft_doc::slices::MAX_RESOLVED_SLICES + 2).map(slice).collect();
+    doc.slices.list = (0..patronusphoto_doc::slices::MAX_RESOLVED_SLICES + 2).map(slice).collect();
     let warning = super::web::slice_warning(&doc).expect("past the limit: a notice");
     assert_eq!(warning.as_str(), "2 stored slices past the first 10000 were ignored");
 }
@@ -475,12 +476,12 @@ fn save_for_web_downloads_images_and_html_through_the_platform_writer() {
 }
 
 /// Presses Save… in the dialog's own UI and hands the app back.
-fn press_save(app: Box<PhotocraftApp>) -> Box<PhotocraftApp> {
+fn press_save(app: Box<PatronusPhotoApp>) -> Box<PatronusPhotoApp> {
     use egui_kittest::kittest::Queryable;
     let mut h = egui_kittest::Harness::builder()
         .with_size(egui::vec2(1600.0, 1100.0))
         .with_context(app.ctx().clone())
-        .build_ui_state(|ui, app: &mut Box<PhotocraftApp>| crate::dialogs::run(app, ui), app);
+        .build_ui_state(|ui, app: &mut Box<PatronusPhotoApp>| crate::dialogs::run(app, ui), app);
     h.run_steps(5);
     h.get_by_role_and_label(egui::accesskit::Role::Button, "Save…").click();
     h.run_steps(3);
@@ -490,8 +491,8 @@ fn press_save(app: Box<PhotocraftApp>) -> Box<PhotocraftApp> {
 /// The export policy judges the parameters when Save… asks for a path: a denied export opens no picker and writes nothing.
 #[test]
 fn save_for_web_authorizes_before_opening_a_picker() {
-    fn deny(_: &str, _: &Value) -> photocraft_engine::Result<()> {
-        Err(photocraft_engine::EngineError::Other("export denied".into()))
+    fn deny(_: &str, _: &Value) -> patronusphoto_engine::Result<()> {
+        Err(patronusphoto_engine::EngineError::Other("export denied".into()))
     }
     for synthetic_input in [false, true] {
         let mut app = app();
@@ -514,8 +515,8 @@ fn save_for_web_authorizes_before_opening_a_picker() {
 
 #[test]
 fn save_for_web_authorizes_generated_palette_before_opening_a_picker() {
-    fn deny_palette(_: &str, p: &Value) -> photocraft_engine::Result<()> {
-        if p.get("colorTable").is_some() { Err(photocraft_engine::EngineError::Other("palette denied".into())) } else { Ok(()) }
+    fn deny_palette(_: &str, p: &Value) -> patronusphoto_engine::Result<()> {
+        if p.get("colorTable").is_some() { Err(patronusphoto_engine::EngineError::Other("palette denied".into())) } else { Ok(()) }
     }
     for synthetic_input in [false, true] {
         let mut app = app();
@@ -569,8 +570,10 @@ fn the_printable_area_goes_only_with_a_print_to_the_printer() {
 fn print_dialog_opens_with_the_settings_remembered_from_an_earlier_session() {
     let mut app = app();
     app.session.prefs.edit(|p| {
-        p.dialogs
-            .insert(photocraft_engine::print_cmds::REMEMBERED.into(), json!({"paper": "a5", "scale": 50, "orientation": "landscape", "intent": "perceptual"}));
+        p.dialogs.insert(
+            patronusphoto_engine::print_cmds::REMEMBERED.into(),
+            json!({"paper": "a5", "scale": 50, "orientation": "landscape", "intent": "perceptual"}),
+        );
     });
     let id = open_print(&mut app);
     let f = print_fields(&mut app, id);

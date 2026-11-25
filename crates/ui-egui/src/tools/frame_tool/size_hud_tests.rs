@@ -4,8 +4,8 @@ use super::*;
 use crate::canvas::{ToolEvent, testing, tool_event, tool_event_response};
 use egui::Modifiers;
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 600, "height": 400})).unwrap();
     app.sync_views();
     app.ui.extras.snap = false;
@@ -14,7 +14,7 @@ fn app() -> Box<PhotocraftApp> {
 }
 
 /// The readout's W and H values in the response of the pass `ev` ran, if the tool asked for one.
-fn readout(app: &mut PhotocraftApp, ev: ToolEvent, m: Modifiers) -> Option<(String, String)> {
+fn readout(app: &mut PatronusPhotoApp, ev: ToolEvent, m: Modifiers) -> Option<(String, String)> {
     let rows = tool_event_response(app, ev, m).readout?.rows;
     match rows.as_slice() {
         [(_, w), (_, h)] => Some((w.clone(), h.clone())),
@@ -26,7 +26,7 @@ fn mv(x: f64, y: f64) -> ToolEvent {
     ToolEvent::Move { x, y, pressure: 1.0 }
 }
 
-fn frames(app: &PhotocraftApp) -> Vec<[f64; 6]> {
+fn frames(app: &PatronusPhotoApp) -> Vec<[f64; 6]> {
     let st = app.session.active().unwrap();
     st.doc.walk().into_iter().filter_map(|(_, _, l)| l.frame.as_ref().map(|f| f.transform.m)).collect()
 }

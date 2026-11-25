@@ -2,10 +2,10 @@
 //! vector mask's picture.
 
 use egui::Color32;
-use photocraft_doc::{Document, Layer, VectorMask};
+use patronusphoto_doc::{Document, Layer, VectorMask};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// Which of a layer's masks.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -48,7 +48,8 @@ pub fn click_command(l: &Layer, kind: MaskKind, m: egui::Modifiers) -> Option<(S
     }
     if m.alt {
         let mode = if m.shift { "toggleOverlay" } else { "toggleGray" };
-        return (kind == MaskKind::Pixel && l.mask.is_some()).then(|| (photocraft_engine::mask_view_cmds::ID.into(), json!({"layer": l.id.0, "mode": mode})));
+        return (kind == MaskKind::Pixel && l.mask.is_some())
+            .then(|| (patronusphoto_engine::mask_view_cmds::ID.into(), json!({"layer": l.id.0, "mode": mode})));
     }
     if !m.shift {
         return None;
@@ -68,7 +69,7 @@ pub fn load_params(l: &Layer, kind: MaskKind, mods: craft::keymap::Mods) -> Valu
 }
 
 /// What double-clicking a mask thumbnail does: pixel mask launches Select and Mask if preference is enabled.
-pub fn double_click_command(app: &PhotocraftApp, kind: MaskKind) -> Option<(&'static str, Value)> {
+pub fn double_click_command(app: &PatronusPhotoApp, kind: MaskKind) -> Option<(&'static str, Value)> {
     if kind == MaskKind::Pixel
         && app.session.prefs().tools.double_click_layer_mask_launches_select_and_mask
         && crate::menus::is_enabled(app, "select.selectAndMask")
@@ -80,15 +81,15 @@ pub fn double_click_command(app: &PhotocraftApp, kind: MaskKind) -> Option<(&'st
 }
 
 /// The active layer of `st` has a vector mask (shape layers' paths are content, not masks).
-pub fn has_vector_mask(st: &photocraft_engine::DocState) -> bool {
-    st.active_layer.and_then(|id| st.doc.layer(id)).is_some_and(|l| l.vector_mask.is_some() && !matches!(l.content, photocraft_doc::LayerContent::Shape(_)))
+pub fn has_vector_mask(st: &patronusphoto_engine::DocState) -> bool {
+    st.active_layer.and_then(|id| st.doc.layer(id)).is_some_and(|l| l.vector_mask.is_some() && !matches!(l.content, patronusphoto_doc::LayerContent::Shape(_)))
 }
 
 /// Cheap identity of a vector mask's geometry and state.
 pub fn vector_fingerprint(m: &VectorMask) -> u64 {
     let mut h: u64 = 0xcbf2_9ce4_8422_2325;
     let mut mix = |v: u64| h = (h ^ v).wrapping_mul(0x100_0000_01b3);
-    mix(u64::from(m.path.inverted) | u64::from(m.path.fill_rule == photocraft_doc::FillRule::EvenOdd) << 1);
+    mix(u64::from(m.path.inverted) | u64::from(m.path.fill_rule == patronusphoto_doc::FillRule::EvenOdd) << 1);
     mix(u64::from(m.density.to_bits()));
     for s in &m.path.subpaths {
         mix(u64::from(s.closed) | (s.op as u64) << 1 | (s.knots.len() as u64) << 8);
@@ -109,9 +110,9 @@ pub fn vector_thumb_image(doc: &Document, m: &VectorMask, side: usize) -> egui::
     let (w, h) = (f64::from(doc.size.width.max(1)), f64::from(doc.size.height.max(1)));
     let s = side as f64 / w.max(h);
     let (ox, oy) = ((side as f64 - w * s) / 2.0, (side as f64 - h * s) / 2.0);
-    let shown = VectorMask { path: m.path.transform(&photocraft_geom::Affine { m: [s, 0.0, 0.0, s, ox, oy] }), enabled: true, ..m.clone() };
+    let shown = VectorMask { path: m.path.transform(&patronusphoto_geom::Affine { m: [s, 0.0, 0.0, s, ox, oy] }), enabled: true, ..m.clone() };
     let n = side as i32;
-    let values = photocraft_vector::vector_mask_values(&shown, photocraft_geom::Rect::new(0, 0, n, n));
+    let values = patronusphoto_vector::vector_mask_values(&shown, patronusphoto_geom::Rect::new(0, 0, n, n));
     let (x0, y0, x1, y1) = (ox.floor() as usize, oy.floor() as usize, (ox + w * s).ceil() as usize, (oy + h * s).ceil() as usize);
     let mut px = vec![Color32::TRANSPARENT; side * side];
     for (i, p) in px.iter_mut().enumerate() {

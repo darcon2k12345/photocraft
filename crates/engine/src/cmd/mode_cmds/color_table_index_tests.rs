@@ -20,7 +20,7 @@ fn bars() -> Session {
         let mut data = Vec::new();
         for _ in b.y0..b.y1 {
             for x in b.x0..b.x1 {
-                data.extend(photocraft_raster::from_rgba(&fmt, [RED, GREEN, BLUE, YELLOW][x as usize / 2]));
+                data.extend(patronusphoto_raster::from_rgba(&fmt, [RED, GREEN, BLUE, YELLOW][x as usize / 2]));
             }
         }
         surf.write_region(b, &data);
@@ -79,8 +79,8 @@ const WHITE: [f32; 4] = [1.0; 4];
 fn red_white_white() -> Session {
     let row = [0u8, 0, 1, 1, 2, 2];
     let indices: Vec<u8> = row.iter().chain(&row).copied().collect();
-    let png = photocraft_codecs::encode_png_indexed(6, 2, &indices, &[[255, 0, 0], [255, 255, 255], [255, 255, 255]], None, None, None).unwrap();
-    let opened = photocraft_io::import("red-white-white.png", &png).unwrap();
+    let png = patronusphoto_codecs::encode_png_indexed(6, 2, &indices, &[[255, 0, 0], [255, 255, 255], [255, 255, 255]], None, None, None).unwrap();
+    let opened = patronusphoto_io::import("red-white-white.png", &png).unwrap();
     let mut s = Session::new();
     s.add_document(opened.document, None);
     s
@@ -131,8 +131,8 @@ fn indices_from_the_indexed_color_conversion_tell_equal_entries_apart() {
 #[test]
 fn a_saved_document_keeps_its_indices() {
     let s = red_white_white();
-    let saved = photocraft_io::export(&s.active().unwrap().doc, "pcraft", &Default::default()).unwrap();
-    let reopened = photocraft_io::import("red-white-white.pcraft", &saved.bytes).unwrap();
+    let saved = patronusphoto_io::export(&s.active().unwrap().doc, "pcraft", &Default::default()).unwrap();
+    let reopened = patronusphoto_io::import("red-white-white.pcraft", &saved.bytes).unwrap();
     assert!(reopened.document.color_indices.is_some());
     let mut s = Session::new();
     s.add_document(reopened.document, None);
@@ -148,7 +148,7 @@ fn painted_pixels_fall_back_to_the_nearest_entry() {
     s.edit("paint", |doc, _| {
         let surf = doc.layers[0].surface_mut().unwrap();
         let fmt = surf.format();
-        surf.write_region(Rect::from_xywh(5, 0, 1, 1), &photocraft_raster::from_rgba(&fmt, WHITE));
+        surf.write_region(Rect::from_xywh(5, 0, 1, 1), &patronusphoto_raster::from_rgba(&fmt, WHITE));
         Ok(())
     })
     .unwrap();
@@ -178,9 +178,9 @@ fn moved_pixels_fall_back_to_the_nearest_entry() {
     // left; a moved tile can share storage with the one recorded at its place, so the indices
     // must not be trusted after a move. The pixels of index 1 must not turn green.
     let indices: Vec<u8> = (0..256).flat_map(|_| (0..768).map(|x| [0u8, 2, 1][x / 256])).collect();
-    let png = photocraft_codecs::encode_png_indexed(768, 256, &indices, &[[255, 0, 0], [255, 255, 255], [255, 255, 255]], None, None, None).unwrap();
+    let png = patronusphoto_codecs::encode_png_indexed(768, 256, &indices, &[[255, 0, 0], [255, 255, 255], [255, 255, 255]], None, None, None).unwrap();
     let mut s = Session::new();
-    s.add_document(photocraft_io::import("solid.png", &png).unwrap().document, None);
+    s.add_document(patronusphoto_io::import("solid.png", &png).unwrap().document, None);
     s.execute("image.canvasSize", json!({"width": 668, "height": 256, "anchor": "right"})).unwrap();
     s.execute("image.mode.colorTable", json!({"entries": {"2": "#00ff00"}})).unwrap();
     let surf = s.active().unwrap().doc.layers[0].surface().unwrap();
@@ -226,7 +226,7 @@ fn palette_pngs_of_every_bit_depth_keep_their_indices() {
         let indices: Vec<u8> = row.iter().chain(&row).copied().collect();
         let palette: Vec<[u8; 3]> = (0..=max).map(|_| [255, 255, 255]).collect();
         let png = palette_png(w, &indices, depth, &palette, None);
-        let doc = photocraft_io::import("p.png", &png).unwrap().document;
+        let doc = patronusphoto_io::import("p.png", &png).unwrap().document;
         let layer = &doc.layers[0];
         let known = doc.color_indices.as_ref().unwrap().known(layer.id, layer.surface().unwrap(), doc.bounds());
         assert_eq!(known.as_deref(), Some(&indices[..]), "{depth:?}");
@@ -235,9 +235,9 @@ fn palette_pngs_of_every_bit_depth_keep_their_indices() {
 
 #[test]
 fn a_transparent_entry_keeps_its_index() {
-    let png = photocraft_codecs::encode_png_indexed(3, 1, &[0, 1, 2], &[[0, 0, 0], [255, 255, 255], [255, 255, 255]], Some(0), None, None).unwrap();
+    let png = patronusphoto_codecs::encode_png_indexed(3, 1, &[0, 1, 2], &[[0, 0, 0], [255, 255, 255], [255, 255, 255]], Some(0), None, None).unwrap();
     let mut s = Session::new();
-    s.add_document(photocraft_io::import("t.png", &png).unwrap().document, None);
+    s.add_document(patronusphoto_io::import("t.png", &png).unwrap().document, None);
     assert!(s.active().unwrap().doc.color_indices.is_some());
     s.execute("image.mode.colorTable", json!({"entries": {"2": "#00ff00"}})).unwrap();
     let surf = s.active().unwrap().doc.layers[0].surface().unwrap();
@@ -247,10 +247,10 @@ fn a_transparent_entry_keeps_its_index() {
 #[test]
 fn indices_taller_than_one_band_of_rows_land_in_place() {
     // Rows past the first band (one tile high) go in with the next one, and the last band is short.
-    let (w, h) = (3, photocraft_geom::TILE_SIZE as usize * 2 + 5);
+    let (w, h) = (3, patronusphoto_geom::TILE_SIZE as usize * 2 + 5);
     let indices: Vec<u8> = (0..w * h).map(|k| ((k / w + k % w) % 2) as u8).collect();
     let png = palette_png(w as u32, &indices, png::BitDepth::Eight, &[[255, 255, 255], [255, 255, 255]], None);
-    let doc = photocraft_io::import("tall.png", &png).unwrap().document;
+    let doc = patronusphoto_io::import("tall.png", &png).unwrap().document;
     let layer = &doc.layers[0];
     let known = doc.color_indices.as_ref().unwrap().known(layer.id, layer.surface().unwrap(), doc.bounds());
     assert_eq!(known.as_deref(), Some(&indices[..]));
@@ -260,9 +260,9 @@ fn indices_taller_than_one_band_of_rows_land_in_place() {
 fn a_palette_png_without_shared_colours_is_not_read_again() {
     // Every entry its own colour: the colours already name the entries, so the open skips the
     // second pass over the file, and Color Table still recolours by entry.
-    let png = photocraft_codecs::encode_png_indexed(3, 1, &[0, 1, 2], &[[0, 0, 0], [255, 255, 255], [0, 0, 255]], Some(0), None, None).unwrap();
+    let png = patronusphoto_codecs::encode_png_indexed(3, 1, &[0, 1, 2], &[[0, 0, 0], [255, 255, 255], [0, 0, 255]], Some(0), None, None).unwrap();
     let mut s = Session::new();
-    s.add_document(photocraft_io::import("unique.png", &png).unwrap().document, None);
+    s.add_document(patronusphoto_io::import("unique.png", &png).unwrap().document, None);
     assert!(s.active().unwrap().doc.color_indices.is_none());
     s.execute("image.mode.colorTable", json!({"entries": {"1": "#00ff00"}})).unwrap();
     let surf = s.active().unwrap().doc.layers[0].surface().unwrap();
@@ -275,12 +275,12 @@ fn a_turned_palette_png_records_no_indices() {
     // two white entries the colours can't show it.
     let exif = b"MM\x00\x2a\x00\x00\x00\x08\x00\x01\x01\x12\x00\x03\x00\x00\x00\x01\x00\x02\x00\x00\x00\x00\x00\x00";
     let png = palette_png(4, &[0, 0, 1, 1], png::BitDepth::Eight, &[[255, 255, 255], [255, 255, 255]], Some(exif));
-    let opened = photocraft_io::import("turned.png", &png).unwrap();
+    let opened = patronusphoto_io::import("turned.png", &png).unwrap();
     assert_eq!(opened.document.color_table.as_ref().map(|t| t.colors.len()), Some(2), "opens as Indexed Color");
     assert!(opened.document.color_indices.is_none());
     // Control: the same file without the eXIf block keeps them.
     let png = palette_png(4, &[0, 0, 1, 1], png::BitDepth::Eight, &[[255, 255, 255], [255, 255, 255]], None);
-    assert!(photocraft_io::import("upright.png", &png).unwrap().document.color_indices.is_some());
+    assert!(patronusphoto_io::import("upright.png", &png).unwrap().document.color_indices.is_some());
 }
 
 #[test]
@@ -290,12 +290,12 @@ fn a_flip_saved_and_reopened_leaves_the_indices_unknown() {
     // carry the indices from before the flip.
     let row = [0u8, 0, 1, 1, 2, 2];
     let indices: Vec<u8> = row.iter().chain(&row).copied().collect();
-    let png = photocraft_codecs::encode_png_indexed(6, 2, &indices, &[[255, 255, 255], [255, 0, 0], [255, 255, 255]], None, None, None).unwrap();
+    let png = patronusphoto_codecs::encode_png_indexed(6, 2, &indices, &[[255, 255, 255], [255, 0, 0], [255, 255, 255]], None, None, None).unwrap();
     let mut s = Session::new();
-    s.add_document(photocraft_io::import("wrw.png", &png).unwrap().document, None);
+    s.add_document(patronusphoto_io::import("wrw.png", &png).unwrap().document, None);
     s.execute("image.imageRotation.flipCanvasHorizontal", json!({})).unwrap();
-    let saved = photocraft_io::export(&s.active().unwrap().doc, "pcraft", &Default::default()).unwrap();
-    let reopened = photocraft_io::import("wrw.pcraft", &saved.bytes).unwrap();
+    let saved = patronusphoto_io::export(&s.active().unwrap().doc, "pcraft", &Default::default()).unwrap();
+    let reopened = patronusphoto_io::import("wrw.pcraft", &saved.bytes).unwrap();
     assert!(reopened.document.color_indices.is_none());
     let mut s = Session::new();
     s.add_document(reopened.document, None);

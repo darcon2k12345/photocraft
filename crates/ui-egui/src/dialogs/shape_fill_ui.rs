@@ -10,12 +10,12 @@ use std::sync::Arc;
 use craft::color_ui::ui::{ColorPickerDialog, PickedColor};
 use craft::theme::Srgba;
 use craft::ui::dialog::DialogId;
-use photocraft_color::Color;
-use photocraft_doc::{DocId, Document, Fill, LayerContent, LayerId};
+use patronusphoto_color::Color;
+use patronusphoto_doc::{DocId, Document, Fill, LayerContent, LayerId};
 use serde_json::{Value, json};
 
 use crate::color_picker_ui::{PickTarget, hex, rgb_hex};
-use crate::{PhotocraftApp, color_picker_ui};
+use crate::{PatronusPhotoApp, color_picker_ui};
 
 const COMMAND: &str = "shape.edit";
 
@@ -90,7 +90,7 @@ fn clamp_alpha(alpha: f32) -> f32 {
 }
 
 /// Opens the picker for the active layer when it is a shape filled with a solid colour.
-pub(crate) fn open(app: &mut PhotocraftApp) -> Option<DialogId> {
+pub(crate) fn open(app: &mut PatronusPhotoApp) -> Option<DialogId> {
     let st = app.session.active()?;
     let layer = st.active_layer?;
     let color = solid_fill(&st.doc, layer)?;
@@ -104,7 +104,7 @@ pub(crate) fn open(app: &mut PhotocraftApp) -> Option<DialogId> {
 /// selected shape), and of the next shape's colours too when `tool` (the options bar). It opens
 /// on the paint's solid colour, else on `fallback`, whose alpha a pick keeps. OK makes the paint
 /// that colour, also from No Color or a gradient.
-pub(crate) fn open_paint(app: &mut PhotocraftApp, which: Paint, layer: Option<LayerId>, tool: bool, fallback: [f32; 4]) -> Option<DialogId> {
+pub(crate) fn open_paint(app: &mut PatronusPhotoApp, which: Paint, layer: Option<LayerId>, tool: bool, fallback: [f32; 4]) -> Option<DialogId> {
     if layer.is_none() && !tool {
         return None;
     }
@@ -136,7 +136,7 @@ fn picked(t: &ShapeTarget, p: &PickedColor) -> Color {
 /// The target layer, unless the dialog has none or is stale (another document is active, or the
 /// layer is gone or no longer a shape). `Ok(None)`: only the next shape's colours, which need no
 /// document (`idx` is the active one's).
-fn target(app: &PhotocraftApp, t: &ShapeTarget, idx: Option<usize>) -> Result<Option<LayerId>, String> {
+fn target(app: &PatronusPhotoApp, t: &ShapeTarget, idx: Option<usize>) -> Result<Option<LayerId>, String> {
     let Some(layer) = t.layer else {
         return if t.tool { Ok(None) } else { Err("missing shape layer".into()) };
     };
@@ -154,7 +154,7 @@ fn target(app: &PhotocraftApp, t: &ShapeTarget, idx: Option<usize>) -> Result<Op
 
 /// OK: one `shape.edit` with the new paint, then the next shape's colour when the picker came from
 /// the options bar. A refused edit (a locked layer, a job running on the document) changes neither.
-pub(crate) fn confirm(app: &mut PhotocraftApp, t: &ShapeTarget, picker: &PickedColor) -> Result<Value, String> {
+pub(crate) fn confirm(app: &mut PatronusPhotoApp, t: &ShapeTarget, picker: &PickedColor) -> Result<Value, String> {
     let layer = target(app, t, app.session.active_index())?;
     let color = picked(t, picker);
     let rgba = [color.c[0], color.c[1], color.c[2], color.alpha];
@@ -180,7 +180,7 @@ pub(crate) fn confirm(app: &mut PhotocraftApp, t: &ShapeTarget, picker: &PickedC
 
 /// The `shape.edit` that gives `layer`'s paint the colour `rgba`; an unchanged solid colour keeps the
 /// stored one as it is.
-fn edit_paint(app: &mut PhotocraftApp, t: &ShapeTarget, layer: LayerId, rgba: [f32; 4]) -> Result<Value, String> {
+fn edit_paint(app: &mut PatronusPhotoApp, t: &ShapeTarget, layer: LayerId, rgba: [f32; 4]) -> Result<Value, String> {
     let which = t.which;
     let rgb_now = hex([rgba[0], rgba[1], rgba[2]]);
     let same =
@@ -210,7 +210,7 @@ fn edit_paint(app: &mut PhotocraftApp, t: &ShapeTarget, layer: LayerId, rgba: [f
 
 /// The canvas preview while the picker is open: the document with the shape re-rendered in the
 /// picked colour, cached per dialog, revision and colour.
-pub(crate) fn display_doc(app: &mut PhotocraftApp, idx: usize) -> Option<(Arc<Document>, u64)> {
+pub(crate) fn display_doc(app: &mut PatronusPhotoApp, idx: usize) -> Option<(Arc<Document>, u64)> {
     let Some((dialog, PickTarget::Shape(t))) = color_picker_ui::find(app, |t| matches!(t, PickTarget::Shape(_))) else {
         app.shape_fill_preview = None;
         return None;
@@ -249,7 +249,7 @@ pub(crate) fn display_doc(app: &mut PhotocraftApp, idx: usize) -> Option<(Arc<Do
                 stroke.paint = Fill::Solid(color);
             }
         }
-        photocraft_engine::vector_cmds::refresh_shape(&st.doc, sh);
+        patronusphoto_engine::vector_cmds::refresh_shape(&st.doc, sh);
     }
     let mut hash = std::collections::hash_map::DefaultHasher::new();
     (st.doc.id.0, st.revision, dialog, layer.0, which.key()).hash(&mut hash);
@@ -257,7 +257,7 @@ pub(crate) fn display_doc(app: &mut PhotocraftApp, idx: usize) -> Option<(Arc<Do
         component.to_bits().hash(&mut hash);
     }
     let key = (1 << 46) | (hash.finish() & ((1 << 40) - 1));
-    let shown = Arc::new(photocraft_engine::mode_cmds::display_document(&doc).unwrap_or(doc));
+    let shown = Arc::new(patronusphoto_engine::mode_cmds::display_document(&doc).unwrap_or(doc));
     app.shape_fill_preview = Some(Preview { document: st.doc.id, revision: st.revision, dialog, layer, color, shown: shown.clone(), key });
     Some((shown, key))
 }

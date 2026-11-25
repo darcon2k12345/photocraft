@@ -13,10 +13,10 @@ use craft::ui::text::{LinkedFields, NumberField};
 use serde_json::{Value, json};
 
 use super::run;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// Runs `command`; a value edit of one gesture shares one undo step through the gesture's id.
-fn edit(app: &mut PhotocraftApp, command: &str, mut params: Value, gesture: Option<GestureId>) {
+fn edit(app: &mut PatronusPhotoApp, command: &str, mut params: Value, gesture: Option<GestureId>) {
     if let Some(id) = gesture {
         params["coalesce"] = json!(format!("clone-source-{}", id.0));
     }
@@ -55,12 +55,12 @@ fn toggle(ui: &mut egui::Ui, label: &str, value: bool) -> Option<bool> {
 }
 
 /// The `cloneSource` registry body.
-pub fn panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn panel(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let cs = app.session.presets.clone.clone();
     let slot = cs.active().clone();
     let mut select = None;
     ui.horizontal(|ui| {
-        for i in 0..photocraft_engine::presets::clone_source::SLOTS {
+        for i in 0..patronusphoto_engine::presets::clone_source::SLOTS {
             let mut on = cs.active == i;
             let out = ToggleButton::new(format!("{}", i + 1), Bind::bound(&mut on)).show(ui);
             if out.events.landed() == Some(&true) && cs.active != i {
@@ -78,7 +78,7 @@ pub fn panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     };
     let source_line = match (slot.source, source_doc) {
         (Some(_), None) => tl!("Source: document closed").to_string(),
-        (Some(_), Some(d)) => match slot.layer.and_then(|l| d.doc.layer(photocraft_doc::LayerId(l))) {
+        (Some(_), Some(d)) => match slot.layer.and_then(|l| d.doc.layer(patronusphoto_doc::LayerId(l))) {
             Some(l) => format!("Source: {} : {}", d.doc.name, l.name),
             None => "Source: set".to_string(),
         },

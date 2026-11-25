@@ -2,10 +2,10 @@
 
 use std::sync::Arc;
 
-use photocraft_codecs::{ChannelLayout, EncodeOptions, Format, Image, SampleType, encode};
-use photocraft_doc::Document;
-use photocraft_io::{ImportOptions, ImportResult, PngImport, import_with_options_and_interrupt};
-use photocraft_raster::Interrupt;
+use patronusphoto_codecs::{ChannelLayout, EncodeOptions, Format, Image, SampleType, encode};
+use patronusphoto_doc::Document;
+use patronusphoto_io::{ImportOptions, ImportResult, PngImport, import_with_options_and_interrupt};
+use patronusphoto_raster::Interrupt;
 
 /// A pseudo-random `w`×`h` image.
 fn noise(w: u32, h: u32, layout: ChannelLayout, sample: SampleType) -> Image {
@@ -82,7 +82,7 @@ fn stepped_png_import_equals_import() {
 fn stepped_png_import_keeps_a_palette_as_indexed_colour() {
     let pal = [[255, 0, 0], [0, 255, 0], [0, 0, 255], [9, 9, 9]];
     let idx: Vec<u8> = (0..40 * 30).map(|i| (i % 4) as u8).collect();
-    let bytes = photocraft_codecs::encode_png_indexed(40, 30, &idx, &pal, Some(3), None, None).unwrap();
+    let bytes = patronusphoto_codecs::encode_png_indexed(40, 30, &idx, &pal, Some(3), None, None).unwrap();
     let (got, _) = stepped("p.png", &bytes, 0);
     assert!(got.document.color_table.is_some(), "an Indexed Color document");
     assert_stepped_equals_import("p.png", &bytes, "palette");
@@ -92,10 +92,10 @@ fn stepped_png_import_keeps_a_palette_as_indexed_colour() {
 /// and gives the indices the one-shot import gives (#14342).
 #[test]
 fn a_palette_png_is_read_for_its_indices_a_band_of_rows_per_step() {
-    let (w, h) = (3, photocraft_geom::TILE_SIZE as u32 * 3 + 5);
+    let (w, h) = (3, patronusphoto_geom::TILE_SIZE as u32 * 3 + 5);
     let idx: Vec<u8> = (0..w * h).map(|i| (i % 2) as u8).collect();
-    let shared = photocraft_codecs::encode_png_indexed(w, h, &idx, &[[255; 3], [255; 3]], None, None, None).unwrap();
-    let distinct = photocraft_codecs::encode_png_indexed(w, h, &idx, &[[255; 3], [0; 3]], None, None, None).unwrap();
+    let shared = patronusphoto_codecs::encode_png_indexed(w, h, &idx, &[[255; 3], [255; 3]], None, None, None).unwrap();
+    let distinct = patronusphoto_codecs::encode_png_indexed(w, h, &idx, &[[255; 3], [0; 3]], None, None, None).unwrap();
     assert!(whole("p.png", &shared).document.color_indices.is_some(), "the one-shot import records them");
     assert_stepped_equals_import("p.png", &shared, "entries sharing a colour");
     let (_, with) = stepped_zero_budget("p.png", &shared);

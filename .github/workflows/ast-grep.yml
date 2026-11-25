@@ -5,9 +5,9 @@ name: ast-grep
 on:
   push:
     branches: [main]
-    paths: ["lint/ast-grep/**", "apps/photocraft-cli/**", "crates/automation/src/args.rs", "apps/photocraft/src/launch_args.rs", "apps/photocraft/src/main.rs", ".github/workflows/ast-grep.yml"]
+    paths: ["lint/ast-grep/**", "apps/patronusphoto-cli/**", "crates/automation/src/args.rs", "apps/patronusphoto/src/launch_args.rs", "apps/patronusphoto/src/main.rs", ".github/workflows/ast-grep.yml"]
   pull_request:
-    paths: ["lint/ast-grep/**", "apps/photocraft-cli/**", "crates/automation/src/args.rs", "apps/photocraft/src/launch_args.rs", "apps/photocraft/src/main.rs", ".github/workflows/ast-grep.yml"]
+    paths: ["lint/ast-grep/**", "apps/patronusphoto-cli/**", "crates/automation/src/args.rs", "apps/patronusphoto/src/launch_args.rs", "apps/patronusphoto/src/main.rs", ".github/workflows/ast-grep.yml"]
   workflow_dispatch:
 
 permissions:
@@ -23,4 +23,4 @@ jobs:
     uses: storytold/craft-common-actions/.github/workflows/ast-grep.yml@main
     with:
       config: lint/ast-grep/sgconfig.yml
-      paths: apps/photocraft-cli crates/automation/src/args.rs apps/photocraft/src/launch_args.rs apps/photocraft/src/main.rs
+      paths: apps/patronusphoto-cli crates/automation/src/args.rs apps/patronusphoto/src/launch_args.rs apps/patronusphoto/src/main.rs

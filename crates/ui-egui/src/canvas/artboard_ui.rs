@@ -10,22 +10,22 @@ use craft::behavior::kurbo::{Rect as DocRect, Size};
 use craft::draw::ui::artboard::{ArtboardBackground as BoardBackground, ArtboardItem, ArtboardPreset, ArtboardProperties};
 use craft::theme::Srgba;
 use craft::ui::canvas::PageFrame;
-use photocraft_doc::{ArtboardBackground, Document, Layer};
+use patronusphoto_doc::{ArtboardBackground, Document, Layer};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// A document rect in the framework's document units. Each i32 coordinate widens on its own
 /// before any arithmetic: a board near ±2^30, or one whose far edge saturated at `i32::MAX`,
 /// overflows an i32 sum (#981).
-fn doc_rect(r: photocraft_geom::Rect) -> DocRect {
+fn doc_rect(r: patronusphoto_geom::Rect) -> DocRect {
     DocRect::new(f64::from(r.x0), f64::from(r.y0), f64::from(r.x1), f64::from(r.y1))
 }
 
 /// One frame per artboard of document `idx`, in `doc.artboards()` order. The active layer's board
 /// is the active frame, the others are marked inactive. The frames carry no fill: the document
 /// picture paints each board's background.
-pub(crate) fn pages(app: &PhotocraftApp, idx: usize) -> Arc<[PageFrame]> {
+pub(crate) fn pages(app: &PatronusPhotoApp, idx: usize) -> Arc<[PageFrame]> {
     let Some(st) = app.session.documents().get(idx) else { return Arc::new([]) };
     app.doc_queries.pages(&app.session, st, || {
         let active = st.active_layer.and_then(|id| st.doc.artboard_of(id));
@@ -44,23 +44,23 @@ pub(crate) fn uncovered(doc: &Document) -> Vec<DocRect> {
     doc.layers
         .iter()
         .filter(|l| l.visible && !is_artboard(l) && Some(l.id) != background)
-        .filter_map(|l| photocraft_compose::composite_bounds(l, canvas))
+        .filter_map(|l| patronusphoto_compose::composite_bounds(l, canvas))
         .filter(|b| !b.is_empty() && !b.contains_rect(&canvas))
         .map(doc_rect)
         .collect()
 }
 
 fn is_artboard(l: &Layer) -> bool {
-    matches!(&l.content, photocraft_doc::LayerContent::Group(g) if g.artboard.is_some())
+    matches!(&l.content, patronusphoto_doc::LayerContent::Group(g) if g.artboard.is_some())
 }
 
 /// The size presets the Properties section offers, from the engine's list.
 fn presets() -> Vec<ArtboardPreset> {
-    photocraft_engine::artboard_cmds::PRESETS.iter().map(|&(name, w, h)| ArtboardPreset::new(name, Size::new(f64::from(w), f64::from(h)))).collect()
+    patronusphoto_engine::artboard_cmds::PRESETS.iter().map(|&(name, w, h)| ArtboardPreset::new(name, Size::new(f64::from(w), f64::from(h)))).collect()
 }
 
 /// The framework's snapshot of the artboard `layer` holds.
-fn board_item(layer: &Layer, a: &photocraft_doc::Artboard) -> ArtboardItem {
+fn board_item(layer: &Layer, a: &patronusphoto_doc::Artboard) -> ArtboardItem {
     let mut item = ArtboardItem::new(layer.name.clone(), doc_rect(a.rect));
     item.background = match a.background {
         ArtboardBackground::White => BoardBackground::White,
@@ -72,7 +72,7 @@ fn board_item(layer: &Layer, a: &photocraft_doc::Artboard) -> ArtboardItem {
 }
 
 /// Properties panel for an artboard.
-pub fn properties(app: &mut PhotocraftApp, ui: &mut egui::Ui, layer: &Layer) {
+pub fn properties(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, layer: &Layer) {
     let Some(a) = layer.artboard() else { return };
     let item = board_item(layer, a);
     let presets = presets();
@@ -127,8 +127,8 @@ pub fn properties(app: &mut PhotocraftApp, ui: &mut egui::Ui, layer: &Layer) {
 mod tests {
     use super::*;
 
-    fn app() -> (Box<PhotocraftApp>, egui::Context) {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    fn app() -> (Box<PatronusPhotoApp>, egui::Context) {
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 100, "height": 50})).unwrap();
         app.sync_views();
         let ctx = app.ctx().clone();
@@ -141,8 +141,8 @@ mod tests {
         let (mut app, _) = app();
         app.run("layer.new.artboard", json!({"rect": [0, 0, 40, 50]})).unwrap();
         let mut doc = (*app.session.active().unwrap().doc).clone();
-        let mut px = photocraft_doc::Layer::raster("Work", doc.pixel_format());
-        px.surface_mut().unwrap().fill_rect(photocraft_geom::Rect::new(60, 10, 80, 30), &[1.0, 0.0, 0.0, 1.0]);
+        let mut px = patronusphoto_doc::Layer::raster("Work", doc.pixel_format());
+        px.surface_mut().unwrap().fill_rect(patronusphoto_geom::Rect::new(60, 10, 80, 30), &[1.0, 0.0, 0.0, 1.0]);
         doc.layers.insert(0, px);
         assert_eq!(uncovered(&doc), vec![DocRect::new(60.0, 10.0, 80.0, 30.0)]);
     }
@@ -155,7 +155,7 @@ mod tests {
         app.run("layer.new.artboard", json!({"rect": [0, 0, 40, 50]})).unwrap();
         let mut doc = (*app.session.active().unwrap().doc).clone();
         assert!(doc.background().is_some());
-        let mut px = photocraft_doc::Layer::raster("Wash", doc.pixel_format());
+        let mut px = patronusphoto_doc::Layer::raster("Wash", doc.pixel_format());
         px.surface_mut().unwrap().fill_rect(doc.bounds(), &[0.0, 0.0, 1.0, 1.0]);
         doc.layers.push(px);
         assert!(uncovered(&doc).is_empty());

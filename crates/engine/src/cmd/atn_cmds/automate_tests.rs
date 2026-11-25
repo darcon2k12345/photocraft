@@ -29,7 +29,7 @@ fn load(items: Vec<AtnItem>) -> (Session, Value) {
         ..Default::default()
     };
     let mut s = Session::new();
-    let r = s.execute("actions.load", json!({"data": photocraft_paint::tile::b64_encode(&atn::write(&file).unwrap())})).unwrap();
+    let r = s.execute("actions.load", json!({"data": patronusphoto_paint::tile::b64_encode(&atn::write(&file).unwrap())})).unwrap();
     (s, r)
 }
 
@@ -37,7 +37,7 @@ fn load(items: Vec<AtnItem>) -> (Session, Value) {
 fn saved(s: &mut Session) -> Vec<AtnItem> {
     let r = s.execute("actions.save", json!({"action": "A"})).unwrap();
     assert_eq!(r["skipped"], json!([]), "{r}");
-    atn::parse(&photocraft_paint::tile::b64_decode(r["data"].as_str().unwrap()).unwrap()).unwrap().actions.remove(0).items
+    atn::parse(&patronusphoto_paint::tile::b64_decode(r["data"].as_str().unwrap()).unwrap()).unwrap().actions.remove(0).items
 }
 
 /// The recorded step loads as `file.automate.fitImage` with its three settings and saves back
@@ -67,7 +67,7 @@ fn a_recorded_fit_image_step_loads_and_saves_back_unchanged() {
     }
 }
 
-/// The empty-message form in the measured key order is what a step recorded in PhotoCraft saves
+/// The empty-message form in the measured key order is what a step recorded in Patronus Photo saves
 /// as, so loading it keeps no descriptor of its own.
 #[test]
 fn the_canonical_form_carries_only_the_settings() {
@@ -77,11 +77,11 @@ fn the_canonical_form_carries_only_the_settings() {
     assert_eq!(item.descriptor.map(|d| d.to_bytes()), Some(recorded("", 300.0, 200.0, false).to_bytes()));
 }
 
-/// A step recorded in PhotoCraft writes the measured descriptor byte for byte: an empty class name,
+/// A step recorded in Patronus Photo writes the measured descriptor byte for byte: an empty class name,
 /// class `cjsp`, then `Msge` TEXT, `Hght` and `Wdth` UntF `#Pxl`, `limit` bool under a long key; the
 /// step is enabled, without its dialog, with a descriptor (flag -1).
 #[test]
-fn a_step_recorded_in_photocraft_writes_the_measured_descriptor() {
+fn a_step_recorded_in_patronusphoto_writes_the_measured_descriptor() {
     let item = export_item(FIT_IMAGE, &json!({"width": 250, "height": 180, "dontEnlarge": true}), "S").unwrap();
     assert_eq!((item.enabled, item.with_dialog, &item.event), (true, false, &AtnEvent::name(FIT_IMAGE_EVENT)));
     let mut expected = Vec::new();
@@ -233,17 +233,22 @@ fn changed_settings_save_with_the_recorded_message() {
 }
 
 /// A damaged recorded descriptor doesn't stop a step with valid settings from saving: it saves
-/// as a step recorded in PhotoCraft would (CodeRabbit review on steps_automate.rs:87-95).
+/// as a step recorded in Patronus Photo would (CodeRabbit review on steps_automate.rs:87-95).
 #[test]
 fn a_damaged_recorded_descriptor_saves_the_settings() {
-    let other_event = photocraft_paint::tile::b64_encode(&desc("null").with("Rds ", px(2.0)).to_bytes());
+    let other_event = patronusphoto_paint::tile::b64_encode(&desc("null").with("Rds ", px(2.0)).to_bytes());
     // A message beside a broken Fit Image field: neither the descriptor nor its message is kept.
     let mut missing_limit = recorded("Recorded message", 800.0, 600.0, true);
     missing_limit.items.retain(|(k, _)| !k.is("limit"));
-    let missing_limit = photocraft_paint::tile::b64_encode(&missing_limit.to_bytes());
-    for damaged in
-        [json!("not base64!"), json!(photocraft_paint::tile::b64_encode(b"not a descriptor")), json!(other_event), json!(missing_limit), json!(7), json!(null)]
-    {
+    let missing_limit = patronusphoto_paint::tile::b64_encode(&missing_limit.to_bytes());
+    for damaged in [
+        json!("not base64!"),
+        json!(patronusphoto_paint::tile::b64_encode(b"not a descriptor")),
+        json!(other_event),
+        json!(missing_limit),
+        json!(7),
+        json!(null),
+    ] {
         let p = json!({"width": 800, "height": 600, "dontEnlarge": true, SOURCE: damaged});
         assert_eq!(export_item(FIT_IMAGE, &p, "S").and_then(|item| item.descriptor), Some(recorded("", 800.0, 600.0, true)), "{p}");
     }

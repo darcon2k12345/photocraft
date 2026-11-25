@@ -20,18 +20,18 @@ fn new_action(name: &str, pairs: Vec<(String, Value)>) -> Action {
 }
 
 /// Add `action` to the session's list.
-fn add_action(app: &mut PhotocraftApp, action: Action) {
+fn add_action(app: &mut PatronusPhotoApp, action: Action) {
     app.session.actions.list.push(action).expect("a name the list does not hold yet");
 }
 
 /// The steps of action `index` as `(command, params)` pairs, the form the journal and the engine's
 /// results keep.
-fn pairs(app: &PhotocraftApp, index: usize) -> Vec<(String, Value)> {
+fn pairs(app: &PatronusPhotoApp, index: usize) -> Vec<(String, Value)> {
     app.session.actions.list.actions()[index].steps.iter().map(|s| (s.command.clone(), s.params.clone())).collect()
 }
 
 /// The commands of action `index`'s steps.
-fn commands(app: &PhotocraftApp, index: usize) -> Vec<String> {
+fn commands(app: &PatronusPhotoApp, index: usize) -> Vec<String> {
     app.session.actions.list.actions()[index].steps.iter().map(|s| s.command.clone()).collect()
 }
 
@@ -39,7 +39,7 @@ fn commands(app: &PhotocraftApp, index: usize) -> Vec<String> {
 /// (steps replaced under a running playback, an action inserted at a place). The edited list
 /// replaces the old one through [`ActionList::replace`], so the revision only moves forward; a
 /// name taken twice is renamed, as for any load.
-fn edit_actions(app: &mut PhotocraftApp, edit: impl FnOnce(&mut Vec<Action>)) {
+fn edit_actions(app: &mut PatronusPhotoApp, edit: impl FnOnce(&mut Vec<Action>)) {
     let mut file = app.session.actions.list.to_file();
     edit(&mut file.actions);
     app.session.actions.list.replace(ActionList::from_file(file));
@@ -47,18 +47,18 @@ fn edit_actions(app: &mut PhotocraftApp, edit: impl FnOnce(&mut Vec<Action>)) {
 
 /// Press the footer's Play on the selected action (or `action` from step `from`), as the panel
 /// reports it, and report the result in the status bar.
-fn play_event(app: &mut PhotocraftApp, action: usize, from: usize) {
+fn play_event(app: &mut PatronusPhotoApp, action: usize, from: usize) {
     super::apply_actions_events(app, vec![ActionsEvent::play(action, from)]);
 }
 
 /// The open dialog whose id has `value`, the number a playback report's `paused.dialog` carries.
-fn open_id(app: &PhotocraftApp, value: u64) -> Option<DialogId> {
+fn open_id(app: &PatronusPhotoApp, value: u64) -> Option<DialogId> {
     app.framework.dialogs.open_dialogs().into_iter().map(|dialog| dialog.id).find(|id| id.value() == value)
 }
 
 /// One `logic` pass of the app: the dialog host's answers reach the code that finishes their dialogs.
-// PLAN: assumes the host's answers are applied in `PhotocraftApp::logic` (dialogs-w19 owns the answer path).
-fn settle(app: &mut PhotocraftApp, ctx: &egui::Context) {
+// PLAN: assumes the host's answers are applied in `PatronusPhotoApp::logic` (dialogs-w19 owns the answer path).
+fn settle(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     use eframe::App as _;
     let mut frame = eframe::Frame::_new_kittest();
     let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1200.0, 800.0));
@@ -67,30 +67,30 @@ fn settle(app: &mut PhotocraftApp, ctx: &egui::Context) {
 }
 
 /// Done on Check Spelling: the app's own close, on the app's context.
-fn close_spelling(app: &mut PhotocraftApp) {
+fn close_spelling(app: &mut PatronusPhotoApp) {
     let ctx = app.ctx().clone();
     crate::type_panels_ui::close_spelling(app, &ctx);
 }
 
 /// How many misspellings the open Check Spelling dialog lists.
-fn spelling_items(app: &PhotocraftApp) -> usize {
+fn spelling_items(app: &PatronusPhotoApp) -> usize {
     app.framework.dialogs.get::<CheckSpellingDialog>().map_or(0, |dialog| dialog.items().len())
 }
 
 /// Select the set `set` and press the footer's Play on it.
-fn play_set(app: &mut PhotocraftApp, set: &str) {
+fn play_set(app: &mut PatronusPhotoApp, set: &str) {
     app.ui.actions.panel.selected = Some(ActionSelection::Set(set.into()));
     super::apply_actions_events(app, vec![ActionsEvent::PlaySet(set.into())]);
 }
 
 /// The value of the dialog opened last.
-fn last_dialog(app: &PhotocraftApp) -> u64 {
+fn last_dialog(app: &PatronusPhotoApp) -> u64 {
     app.framework.dialogs.open_dialogs().last().map(|dialog| dialog.id.value()).expect("a dialog is open")
 }
 
 /// Press OK on the open dialog `value` through the app's OK path, which answers a held OK at once. `Err` is the
 /// failure the dialog's finish left in the status bar, or a dialog that is not open or refused OK.
-fn answer_ok(app: &mut PhotocraftApp, value: u64) -> Result<(), String> {
+fn answer_ok(app: &mut PatronusPhotoApp, value: u64) -> Result<(), String> {
     let id = open_id(app, value).ok_or_else(|| format!("no dialog {value}"))?;
     let ctx = app.ctx().clone();
     app.ui.status.clear();
@@ -101,7 +101,7 @@ fn answer_ok(app: &mut PhotocraftApp, value: u64) -> Result<(), String> {
 }
 
 /// Cancel (Esc, the close box) the open dialog `value` through the dialog host.
-fn answer_cancel(app: &mut PhotocraftApp, value: u64) -> Result<(), String> {
+fn answer_cancel(app: &mut PatronusPhotoApp, value: u64) -> Result<(), String> {
     let id = open_id(app, value).ok_or_else(|| format!("no dialog {value}"))?;
     let ctx = app.ctx().clone();
     crate::dialogs::cancel(app, &ctx, id)?;
@@ -110,13 +110,13 @@ fn answer_cancel(app: &mut PhotocraftApp, value: u64) -> Result<(), String> {
 }
 
 /// The token of the playback paused at the open dialog `value`.
-fn token(app: &PhotocraftApp, value: u64) -> u64 {
+fn token(app: &PatronusPhotoApp, value: u64) -> u64 {
     token_of(app, open_id(app, value).expect("the dialog is open")).expect("a playback is paused at the dialog")
 }
 
 /// The fields of the open dialog `value`, as automation lists them. The framework keeps every number
 /// as a float; a whole one reads as the integer a parameter is written with.
-fn dialog_fields(app: &PhotocraftApp, value: u64) -> Value {
+fn dialog_fields(app: &PatronusPhotoApp, value: u64) -> Value {
     fn whole(v: Value) -> Value {
         match v {
             Value::Number(n) => match n.as_f64() {
@@ -133,7 +133,7 @@ fn dialog_fields(app: &PhotocraftApp, value: u64) -> Value {
 }
 
 /// Set `field` of the open dialog `value`, as `ui.dialog.set` does.
-fn set_field(app: &mut PhotocraftApp, value: u64, field: &str, to: Value) -> Result<(), String> {
+fn set_field(app: &mut PatronusPhotoApp, value: u64, field: &str, to: Value) -> Result<(), String> {
     let id = open_id(app, value).ok_or_else(|| format!("no dialog {value}"))?;
     let ctx = app.ctx().clone();
     let (request, _reply) = crate::control::ControlRequest::new("ui.dialog.set", json!({"dialog": id, "field": field, "value": to}));
@@ -153,7 +153,7 @@ fn set_field(app: &mut PhotocraftApp, value: u64, field: &str, to: Value) -> Res
 #[test]
 fn single_history_dialog_confirmation_and_cancel() {
     for (single, confirm, background) in [(true, true, false), (true, true, true), (true, false, false), (false, true, false)] {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width":4,"height":4,"background":"#804020"})).unwrap();
         app.run("actions.setHistory", json!({"singleState":single})).unwrap();
         app.background_jobs = background;
@@ -208,7 +208,7 @@ fn single_history_dialog_confirmation_and_cancel() {
 #[test]
 fn single_history_dialog_refuses_intervening_edit_or_document_switch() {
     for (single_state, switch) in [(true, false), (true, true), (false, false), (false, true)] {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width":4,"height":4,"background":"#804020"})).unwrap();
         app.run("actions.setHistory", json!({"singleState":single_state})).unwrap();
         let mut action =
@@ -234,8 +234,8 @@ fn single_history_dialog_refuses_intervening_edit_or_document_switch() {
 }
 
 /// Prepare a real paused spelling step with a known document and history boundary, under either grouping policy.
-fn paused_history_spelling(single: bool, gate: Option<Gate>) -> (Box<PhotocraftApp>, std::sync::Arc<photocraft_doc::Document>, usize) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn paused_history_spelling(single: bool, gate: Option<Gate>) -> (Box<PatronusPhotoApp>, std::sync::Arc<patronusphoto_doc::Document>, usize) {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width":300,"height":100})).unwrap();
     app.run("type.create", json!({"x":10,"y":50,"text":"Teh brwon"})).unwrap();
     app.run("actions.setHistory", json!({"singleState":single})).unwrap();
@@ -281,7 +281,7 @@ fn paused_spelling_repeated_changes_and_errors_keep_one_owned_history() {
             .walk()
             .into_iter()
             .filter_map(|(_, _, layer)| match &layer.content {
-                photocraft_doc::LayerContent::Text(text) => Some(text.text.as_str()),
+                patronusphoto_doc::LayerContent::Text(text) => Some(text.text.as_str()),
                 _ => None,
             })
             .collect();
@@ -323,8 +323,12 @@ fn spelling_playback_blocks_library_edits_until_done() {
     assert!(app.session.actions.list.actions().is_empty());
 }
 
-fn deny_second_spelling_change(id: &str, params: &Value) -> photocraft_engine::Result<()> {
-    if id == "edit.checkSpelling" && params["word"] == "brwon" { Err(photocraft_engine::EngineError::Other("original spelling gate".into())) } else { Ok(()) }
+fn deny_second_spelling_change(id: &str, params: &Value) -> patronusphoto_engine::Result<()> {
+    if id == "edit.checkSpelling" && params["word"] == "brwon" {
+        Err(patronusphoto_engine::EngineError::Other("original spelling gate".into()))
+    } else {
+        Ok(())
+    }
 }
 
 #[test]
@@ -375,7 +379,7 @@ fn paused_spelling_rejects_external_edit_switch_and_original_gate_before_change(
 
 #[test]
 fn shell_playback_resolves_recorded_eye_target_on_new_document() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 8, "height": 8})).unwrap();
     app.run("layer.new.layer", json!({"name": "Target"})).unwrap();
     app.run("actions.record", json!({"name": "Hide"})).unwrap();
@@ -392,7 +396,7 @@ fn shell_playback_resolves_recorded_eye_target_on_new_document() {
 
 #[test]
 fn playback_errors_are_visible_in_status_bar() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
     add_action(&mut app, new_action("Bad action", vec![("not.a.command".into(), json!({}))]));
     // The footer's Play on the selected action reports Play { action: 0, from: 0 }.
@@ -404,7 +408,7 @@ fn playback_errors_are_visible_in_status_bar() {
 /// Shell playback retains nested failures and Batch file outcomes without running later steps.
 #[test]
 fn nested_shell_actions_include_view_steps_and_propagate_failures() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width":40,"height":40})).unwrap();
     add_action(&mut app, new_action("Child", vec![("layer.new.layer".into(), json!({})), ("view.fitOnScreen".into(), json!({}))]));
     app.run("actions.record", json!({"name":"Parent"})).unwrap();
@@ -417,7 +421,7 @@ fn nested_shell_actions_include_view_steps_and_propagate_failures() {
     assert!(r.get("failed").is_none(), "{r}");
     assert_eq!(app.ui.views[0].pending.last(), Some(&ViewRequest::Command(ViewCommands::FitOnScreen)), "the nested Fit on Screen is asked of the canvas");
     app.session.authorize =
-        Some(|id, _| if id == "view.fitOnScreen" { Err(photocraft_engine::EngineError::Other("denied nested view".into())) } else { Ok(()) });
+        Some(|id, _| if id == "view.fitOnScreen" { Err(patronusphoto_engine::EngineError::Other("denied nested view".into())) } else { Ok(()) });
     let r = app.run("actions.play", json!({"action":"Parent"})).unwrap();
     assert!(r["failed"]["error"].as_str().unwrap().contains("denied nested view"));
     assert!(app.session.actions.playback_stack.is_empty());
@@ -427,7 +431,7 @@ fn nested_shell_actions_include_view_steps_and_propagate_failures() {
     let dir = tempfile::tempdir().unwrap();
     let input = dir.path().join("valid.png");
     let corrupt = dir.path().join("corrupt.png");
-    let bytes = photocraft_io::export(&app.session.active().unwrap().doc, "png", &Default::default()).unwrap().bytes;
+    let bytes = patronusphoto_io::export(&app.session.active().unwrap().doc, "png", &Default::default()).unwrap().bytes;
     std::fs::write(&input, bytes).unwrap();
     std::fs::write(&corrupt, b"not a PNG").unwrap();
     let before = app.session.documents().len();
@@ -464,7 +468,7 @@ fn nested_shell_actions_include_view_steps_and_propagate_failures() {
 /// opens a document they act on that document, and an action recorded around the playback records only the call.
 #[test]
 fn played_view_steps_act_on_the_document_the_steps_before_them_opened() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 40, "height": 40})).unwrap();
     app.sync_views();
     app.ui.views[0].clear_pending();
@@ -484,7 +488,7 @@ fn played_view_steps_act_on_the_document_the_steps_before_them_opened() {
 
 #[test]
 fn view_menu_commands_record_append_and_replay_after_resize() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 160, "height": 100})).unwrap();
     super::begin_recording(&mut app, None);
@@ -522,7 +526,7 @@ fn view_menu_commands_record_append_and_replay_after_resize() {
 
 #[test]
 fn view_action_failure_resume_and_authorization() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     add_action(&mut app, new_action("Fit", vec![("view.fitOnScreen".into(), json!({})), ("view.actualPixels".into(), json!({}))]));
     let result = app.run("actions.play", json!({"action": "Fit"})).unwrap();
     assert_eq!(result["ran"], 0);
@@ -532,7 +536,7 @@ fn view_action_failure_resume_and_authorization() {
     app.session.authorize =
         Some(
             |id, _| {
-                if id == "view.fitOnScreen" { Err(photocraft_engine::EngineError::BadParams { cmd: id.into(), msg: "denied view".into() }) } else { Ok(()) }
+                if id == "view.fitOnScreen" { Err(patronusphoto_engine::EngineError::BadParams { cmd: id.into(), msg: "denied view".into() }) } else { Ok(()) }
             },
         );
     let result = app.run("actions.play", json!({"action": 0})).unwrap();
@@ -548,7 +552,7 @@ fn view_action_failure_resume_and_authorization() {
 
 #[test]
 fn record_and_replay_on_another_document() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 40, "height": 40})).unwrap();
     app.sync_views();
     app.run("actions.record", json!({})).unwrap();
@@ -573,14 +577,16 @@ fn recorded_save_as_and_save_replay_and_write_the_file() {
     let written = std::rc::Rc::new(std::cell::RefCell::new(Vec::<String>::new()));
     let log = written.clone();
     let services = crate::Services {
-        export: Some(Box::new(|doc, path, _| photocraft_io::export(doc, path, &Default::default()).map(|r| (r.bytes, r.warnings)).map_err(|e| e.to_string()))),
+        export: Some(Box::new(|doc, path, _| {
+            patronusphoto_io::export(doc, path, &Default::default()).map(|r| (r.bytes, r.warnings)).map_err(|e| e.to_string())
+        })),
         write: Some(Box::new(move |path, _| {
             log.borrow_mut().push(path.to_string());
             Ok(())
         })),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 16, "height": 16})).unwrap();
     app.run("actions.record", json!({})).unwrap();
@@ -602,17 +608,19 @@ fn recorded_save_as_and_save_replay_and_write_the_file() {
 
 /// An app with the real importer/exporter and writer whose file picks go to `files`, the test's
 /// scripted file service (the test keeps its own `Arc` to queue answers and read the requests).
-pub(super) fn disk_app(files: std::sync::Arc<craft::host::ScriptedFiles>) -> Box<PhotocraftApp> {
+pub(super) fn disk_app(files: std::sync::Arc<craft::host::ScriptedFiles>) -> Box<PatronusPhotoApp> {
     let services = crate::Services {
         import: Some(Box::new(|name, bytes, opts| {
-            photocraft_io::import_with_options(name, bytes, opts).map(|r| (r.document, r.warnings)).map_err(|e| e.to_string())
+            patronusphoto_io::import_with_options(name, bytes, opts).map(|r| (r.document, r.warnings)).map_err(|e| e.to_string())
         })),
-        export: Some(Box::new(|doc, path, _| photocraft_io::export(doc, path, &Default::default()).map(|r| (r.bytes, r.warnings)).map_err(|e| e.to_string()))),
+        export: Some(Box::new(|doc, path, _| {
+            patronusphoto_io::export(doc, path, &Default::default()).map(|r| (r.bytes, r.warnings)).map_err(|e| e.to_string())
+        })),
         write: Some(Box::new(|path, bytes| std::fs::write(path, bytes).map_err(|e| e.to_string()))),
         files: Some(files),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     app.background_jobs = false;
     app
 }
@@ -622,7 +630,7 @@ pub(super) fn disk_app(files: std::sync::Arc<craft::host::ScriptedFiles>) -> Box
 /// changed on disk.
 fn record_save_on_a_play_on_b(ext: &str, layered: bool) -> (Value, bool, bool) {
     use craft::host::{Picked, ScriptedFiles};
-    let dir = std::env::temp_dir().join(format!("photocraft-rec-save-{ext}-{layered}-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("patronusphoto-rec-save-{ext}-{layered}-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = |n: &str| dir.join(format!("{n}.{ext}")).to_string_lossy().into_owned();
     let (a, b) = (path("a"), path("b"));
@@ -681,7 +689,7 @@ fn recorded_save_never_flattens_layers_over_a_flat_file() {
 fn play_imported_save_as(dest: &str, in_folder: bool, sources: &[&str]) -> (Vec<Value>, bool, Vec<String>) {
     use craft_psd::atn::{AtnAction, AtnEvent, AtnFile, AtnItem};
     use craft_psd::descriptor::{Descriptor, UnicodeString, Value as D};
-    let dir = std::env::temp_dir().join(format!("photocraft-atn-save-as-{dest}-{in_folder}-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("patronusphoto-atn-save-as-{dest}-{in_folder}-{}", std::process::id()));
     let out = dir.join("out");
     std::fs::create_dir_all(&out).unwrap();
     let path = |text: &str| {
@@ -722,7 +730,7 @@ fn play_imported_save_as(dest: &str, in_folder: bool, sources: &[&str]) -> (Vec<
         app.save_as(Some(src.clone())).unwrap();
         before.push(std::fs::read(src).unwrap());
     }
-    app.run("actions.load", json!({"data": photocraft_engine::paint::tile::b64_encode(&craft_psd::atn::write(&set).unwrap())})).unwrap();
+    app.run("actions.load", json!({"data": patronusphoto_engine::paint::tile::b64_encode(&craft_psd::atn::write(&set).unwrap())})).unwrap();
     let mut played = Vec::new();
     for src in &sources {
         app.open_path(src).unwrap();
@@ -774,14 +782,16 @@ fn recorded_save_as_with_the_suggested_name_saves_each_document_under_its_own() 
     let written = std::rc::Rc::new(std::cell::RefCell::new(Vec::<String>::new()));
     let log = written.clone();
     let services = crate::Services {
-        export: Some(Box::new(|doc, path, _| photocraft_io::export(doc, path, &Default::default()).map(|r| (r.bytes, r.warnings)).map_err(|e| e.to_string()))),
+        export: Some(Box::new(|doc, path, _| {
+            patronusphoto_io::export(doc, path, &Default::default()).map(|r| (r.bytes, r.warnings)).map_err(|e| e.to_string())
+        })),
         write: Some(Box::new(move |path, _| {
             log.borrow_mut().push(path.to_string());
             Ok(())
         })),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     app.background_jobs = false;
     let ctx = app.ctx().clone();
     app.run("file.new", json!({"width": 16, "height": 16, "name": "first"})).unwrap();
@@ -810,7 +820,7 @@ fn recorded_save_as_with_the_suggested_name_saves_each_document_under_its_own() 
     assert!(app.replay_save("file.saveAs", &json!({"folder": "out"})).is_err());
 }
 
-fn layer_names(app: &PhotocraftApp) -> Vec<String> {
+fn layer_names(app: &PatronusPhotoApp) -> Vec<String> {
     app.session.active().unwrap().doc.walk().iter().map(|(_, _, l)| l.name.clone()).filter(|n| n != "Background").collect()
 }
 
@@ -819,7 +829,7 @@ fn layer_names(app: &PhotocraftApp) -> Vec<String> {
 #[test]
 fn a_set_paused_at_a_step_dialog_plays_its_other_actions_after_ok() {
     for ok in [true, false] {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 8, "height": 8})).unwrap();
         let mut a = new_action(
             "A",
@@ -863,7 +873,7 @@ fn a_set_paused_at_a_step_dialog_plays_its_other_actions_after_ok() {
 /// middle of the list while the dialog is open neither plays in its place nor skips one of the set.
 #[test]
 fn a_set_paused_at_a_dialog_plays_its_own_actions_after_a_move() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 8, "height": 8})).unwrap();
     for (name, set, layer) in [("A", "S", "a"), ("B", "S", "b"), ("C", "S", "c"), ("X", "Other", "x")] {
         let mut a = new_action(name, vec![("layer.new.layer".into(), json!({"name": layer}))]);
@@ -888,7 +898,7 @@ fn a_set_paused_at_a_dialog_plays_its_own_actions_after_a_move() {
 /// the dialog is open is a different action, so the set ends there instead of playing it.
 #[test]
 fn a_set_paused_at_a_dialog_ends_at_an_action_replaced_under_its_name() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 8, "height": 8})).unwrap();
     for (name, layer) in [("A", "a"), ("B", "b"), ("C", "c")] {
         let mut a = new_action(name, vec![("layer.new.layer".into(), json!({"name": layer}))]);
@@ -915,7 +925,7 @@ fn a_set_paused_at_a_dialog_ends_at_an_action_replaced_under_its_name() {
 /// never finished.
 #[test]
 fn a_set_paused_inside_a_called_action_continues_into_its_caller_then_the_set() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 8, "height": 8})).unwrap();
     let before = app.session.active().unwrap().doc.clone();
     let count = app.session.active().unwrap().history.past_len();
@@ -951,7 +961,7 @@ fn a_set_paused_inside_a_called_action_continues_into_its_caller_then_the_set() 
 #[test]
 fn dialog_worker_failure_stops_action_before_following_steps() {
     for (background, locked) in [(true, true), (false, true), (true, false)] {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 8, "height": 6, "background": "#203040"})).unwrap();
         let mut action = new_action(
             "Worker Result",
@@ -987,7 +997,7 @@ fn dialog_worker_failure_stops_action_before_following_steps() {
 
 #[test]
 fn a_check_spelling_step_with_its_dialog_opens_it_and_done_continues() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 300, "height": 100})).unwrap();
     app.run("type.create", json!({"x": 10, "y": 50, "text": "Teh cat"})).unwrap();
     let mut a = new_action("Spell", vec![("edit.checkSpelling".into(), json!({"allLayers": false})), ("layer.new.layer".into(), json!({"name": "after"}))]);
@@ -1014,7 +1024,7 @@ fn a_check_spelling_step_with_its_dialog_opens_it_and_done_continues() {
         .walk()
         .into_iter()
         .filter_map(|(_, _, l)| match &l.content {
-            photocraft_doc::LayerContent::Text(t) => Some(t.text.clone()),
+            patronusphoto_doc::LayerContent::Text(t) => Some(t.text.clone()),
             _ => None,
         })
         .collect();
@@ -1025,7 +1035,7 @@ fn a_check_spelling_step_with_its_dialog_opens_it_and_done_continues() {
 /// of replacing it.
 #[test]
 fn a_check_spelling_step_fails_while_the_dialog_is_open_by_hand() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 300, "height": 100})).unwrap();
     app.run("type.create", json!({"x": 10, "y": 50, "text": "Teh cat"})).unwrap();
     let mut a = new_action("Spell", vec![("edit.checkSpelling".into(), json!({"allLayers": false})), ("layer.new.layer".into(), json!({"name": "after"}))]);
@@ -1043,7 +1053,7 @@ fn a_check_spelling_step_fails_while_the_dialog_is_open_by_hand() {
 /// Spelling: its dialog switch opens nothing.
 #[test]
 fn a_check_spelling_correction_with_its_dialog_on_runs_without_opening_it() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 300, "height": 100})).unwrap();
     app.run("type.create", json!({"x": 10, "y": 50, "text": "Teh cat"})).unwrap();
     let change = json!({"action": "change", "start": 0, "end": 3, "word": "Teh", "replace": "The"});
@@ -1059,7 +1069,7 @@ fn a_check_spelling_correction_with_its_dialog_on_runs_without_opening_it() {
         .walk()
         .into_iter()
         .filter_map(|(_, _, l)| match &l.content {
-            photocraft_doc::LayerContent::Text(t) => Some(t.text.clone()),
+            patronusphoto_doc::LayerContent::Text(t) => Some(t.text.clone()),
             _ => None,
         })
         .collect();
@@ -1070,7 +1080,7 @@ fn a_check_spelling_correction_with_its_dialog_on_runs_without_opening_it() {
 /// don't run on the other document.
 #[test]
 fn check_spelling_done_on_another_document_ends_the_waiting_action() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 300, "height": 100})).unwrap();
     app.run("type.create", json!({"x": 10, "y": 50, "text": "Teh cat"})).unwrap();
     let mut a = new_action("Spell", vec![("edit.checkSpelling".into(), json!({"allLayers": false})), ("layer.new.layer".into(), json!({"name": "after"}))]);
@@ -1088,15 +1098,15 @@ fn check_spelling_done_on_another_document_ends_the_waiting_action() {
     assert!(app.ui.status.contains("document"), "{}", app.ui.status);
 }
 
-fn deny_spelling(id: &str, p: &Value) -> photocraft_engine::Result<()> {
-    if id == "edit.checkSpelling" && p.get("action").is_none() { Err(photocraft_engine::EngineError::Other("spelling denied".into())) } else { Ok(()) }
+fn deny_spelling(id: &str, p: &Value) -> patronusphoto_engine::Result<()> {
+    if id == "edit.checkSpelling" && p.get("action").is_none() { Err(patronusphoto_engine::EngineError::Other("spelling denied".into())) } else { Ok(()) }
 }
 
 /// Done records the step and continues the waiting action: when recording it fails, the status
 /// keeps that error next to the playback's outcome.
 #[test]
 fn check_spelling_done_keeps_a_recording_error_beside_the_playback_status() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 300, "height": 100})).unwrap();
     app.run("type.create", json!({"x": 10, "y": 50, "text": "Teh cat"})).unwrap();
     let mut a = new_action("Spell", vec![("edit.checkSpelling".into(), json!({"allLayers": false})), ("layer.new.layer".into(), json!({"name": "after"}))]);
@@ -1116,7 +1126,7 @@ fn check_spelling_done_keeps_a_recording_error_beside_the_playback_status() {
 
 #[test]
 fn check_spelling_opened_again_while_an_action_waits_keeps_its_continuation() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 300, "height": 100})).unwrap();
     app.run("type.create", json!({"x": 10, "y": 50, "text": "Teh cat"})).unwrap();
     let mut a = new_action("Spell", vec![("edit.checkSpelling".into(), json!({"allLayers": false})), ("layer.new.layer".into(), json!({"name": "after"}))]);
@@ -1142,7 +1152,7 @@ fn check_spelling_opened_again_while_an_action_waits_keeps_its_continuation() {
 
 #[test]
 fn a_dialog_toggled_step_pauses_playback_and_resumes_on_ok() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 16, "height": 16})).unwrap();
     let mut a = new_action(
         "Blur",
@@ -1192,7 +1202,7 @@ fn a_dialog_toggled_step_pauses_playback_and_resumes_on_ok() {
 
 #[test]
 fn equalize_step_with_a_selection_opens_its_choices() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 16, "height": 16})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     app.run("select.rect", json!({"x": 0, "y": 0, "width": 16, "height": 8})).unwrap();
@@ -1203,7 +1213,7 @@ fn equalize_step_with_a_selection_opens_its_choices() {
     let mut action = new_action("Equalize", vec![(crate::equalize_ui::COMMAND.into(), json!({}))]);
     action.dialogs.insert(0);
     add_action(&mut app, action);
-    let gray = |app: &PhotocraftApp, x: i32, y: i32| {
+    let gray = |app: &PatronusPhotoApp, x: i32, y: i32| {
         let st = app.session.active().unwrap();
         st.doc.layer(st.active_layer.unwrap()).unwrap().surface().unwrap().pixel(x, y)[0]
     };
@@ -1221,14 +1231,14 @@ fn equalize_step_with_a_selection_opens_its_choices() {
 
 /// An 8×6 document, a Child action whose first step (a blur) shows its dialog and whose
 /// second step adds a "Suffix" layer, and recording into Owner started.
-fn recording_with_dialog_child() -> Box<PhotocraftApp> {
+fn recording_with_dialog_child() -> Box<PatronusPhotoApp> {
     recording_with_dialog_child_using(crate::Services::default())
 }
 
 /// [`recording_with_dialog_child`] with the app built on `services`: the file service is the framework's from
 /// construction on.
-fn recording_with_dialog_child_using(services: crate::Services) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+fn recording_with_dialog_child_using(services: crate::Services) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     app.run("file.new", json!({"width": 8, "height": 6, "background": "#203040"})).unwrap();
     let mut child =
         new_action("Child", vec![("filter.blur.gaussianBlur".into(), json!({"radius": 1.5})), ("layer.new.layer".into(), json!({"name": "Suffix"}))]);
@@ -1238,7 +1248,7 @@ fn recording_with_dialog_child_using(services: crate::Services) -> Box<Photocraf
     app
 }
 
-fn suffixes(app: &PhotocraftApp) -> usize {
+fn suffixes(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().doc.walk().iter().filter(|(_, _, l)| l.name == "Suffix").count()
 }
 
@@ -1247,7 +1257,7 @@ fn child_call() -> Vec<(String, Value)> {
 }
 
 /// Play Child and return the id of its step dialog.
-fn pause_child(app: &mut PhotocraftApp) -> u64 {
+fn pause_child(app: &mut PatronusPhotoApp) -> u64 {
     let v = play(app, &json!({"action": "Child"})).unwrap();
     v["paused"]["dialog"].as_u64().unwrap()
 }
@@ -1261,7 +1271,7 @@ fn a_recorded_call_paused_by_a_dialog_records_one_call_and_replays_once() {
     let live = app.session.journal.len();
     let id = pause_child(&mut app);
     assert!(app.session.actions.recording.is_none(), "recording stays suspended while the step dialog is open");
-    let names = |app: &PhotocraftApp| app.session.actions.list.actions().iter().map(|a| a.name.clone()).collect::<Vec<_>>();
+    let names = |app: &PatronusPhotoApp| app.session.actions.list.actions().iter().map(|a| a.name.clone()).collect::<Vec<_>>();
     let before = names(&app);
     assert_eq!(app.run("actions.record", json!({"name": "Intruder"})), Err(refusal.clone()), "no second recording while the call is suspended");
     assert_eq!(app.run("actions.delete", json!({"action": "Owner"})), Err(refusal.clone()), "the suspended owner can't be deleted");
@@ -1356,7 +1366,7 @@ fn escape_on_a_step_dialog_ends_the_recorded_call_once() {
         .with_context(app.ctx().clone())
         .with_size(egui::vec2(900.0, 700.0))
         .build_ui_state(|ui, app| crate::dialogs::run(app, ui), app);
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     h.run_steps(2);
     pause_child(h.state_mut());
     h.run_steps(4);
@@ -1372,7 +1382,7 @@ fn escape_on_a_step_dialog_ends_the_recorded_call_once() {
 
 #[test]
 fn a_step_dialog_keeps_its_continuation_token() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.background_jobs = false;
     app.run("file.new", json!({"width": 8, "height": 8})).unwrap();
     for (name, steps) in [
@@ -1405,7 +1415,7 @@ fn a_step_dialog_keeps_its_continuation_token() {
 }
 
 /// [`recording_with_dialog_child`] over a Displace step, whose map picker answers `answers` in turn.
-fn recording_with_displace_child(answers: impl IntoIterator<Item = craft::host::Picked>) -> Box<PhotocraftApp> {
+fn recording_with_displace_child(answers: impl IntoIterator<Item = craft::host::Picked>) -> Box<PatronusPhotoApp> {
     let services = crate::Services { files: Some(std::sync::Arc::new(craft::host::ScriptedFiles::answering(answers))), ..Default::default() };
     let mut app = recording_with_dialog_child_using(services);
     app.background_jobs = false;
@@ -1413,7 +1423,7 @@ fn recording_with_displace_child(answers: impl IntoIterator<Item = craft::host::
     app
 }
 
-fn assert_displace_call_finished(app: &mut PhotocraftApp, suffix_count: usize) {
+fn assert_displace_call_finished(app: &mut PatronusPhotoApp, suffix_count: usize) {
     assert!(!app.file_dialog_open());
     assert!(!app.dialog_open());
     assert!(app.paused_playbacks.paused.is_empty());
@@ -1451,7 +1461,7 @@ fn a_displace_step_resumes_and_records_its_call_once_after_choosing_a_map() {
     let dir = tempfile::tempdir().unwrap();
     let map = dir.path().join("map.png");
     let mut app = recording_with_displace_child([craft::host::Picked::Paths(vec![map.clone()])]);
-    let bytes = photocraft_io::export(&app.session.active().unwrap().doc, "png", &Default::default()).unwrap().bytes;
+    let bytes = patronusphoto_io::export(&app.session.active().unwrap().doc, "png", &Default::default()).unwrap().bytes;
     std::fs::write(&map, bytes).unwrap();
     let id = pause_child(&mut app);
     answer_ok(&mut app, id).unwrap();
@@ -1465,7 +1475,7 @@ fn a_step_dialog_takes_only_the_steps_values() {
     for (command, key, value) in
         [("filter.blur.gaussianBlur", "radius", 2), ("image.adjustments.curves", "smooth", 2), ("image.adjustments.levels", "gamma", 2)]
     {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 16, "height": 16})).unwrap();
         let mut params = json!({"__command": "select.all", "__label": "Other", "__adjust": "invert", "__resumeAction": 999999, "__insertStop": true, "__smartFilter": {"layer": 1}});
         params[key] = json!(value);
@@ -1488,22 +1498,22 @@ fn a_step_dialog_takes_only_the_steps_values() {
     }
 }
 
-fn deny_blur(id: &str, _: &Value) -> photocraft_engine::Result<()> {
-    if id == "filter.blur.gaussianBlur" { Err(photocraft_engine::EngineError::Other("blur denied".into())) } else { Ok(()) }
+fn deny_blur(id: &str, _: &Value) -> patronusphoto_engine::Result<()> {
+    if id == "filter.blur.gaussianBlur" { Err(patronusphoto_engine::EngineError::Other("blur denied".into())) } else { Ok(()) }
 }
 
 /// Permit the recorded small blur but reject an edited radius, so admission is tested against final dialog parameters.
-fn deny_wide_blur(id: &str, params: &Value) -> photocraft_engine::Result<()> {
+fn deny_wide_blur(id: &str, params: &Value) -> patronusphoto_engine::Result<()> {
     if id == "filter.blur.gaussianBlur" && params["radius"].as_f64().is_some_and(|radius| radius > 1.0) {
-        Err(photocraft_engine::EngineError::Other("edited blur radius denied".into()))
+        Err(patronusphoto_engine::EngineError::Other("edited blur radius denied".into()))
     } else {
         Ok(())
     }
 }
 
 /// Build a two-tone raster whose blur changes pixels, with a real action step configured to open its dialog.
-fn gated_blur_fixture(single: bool, background: bool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn gated_blur_fixture(single: bool, background: bool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 16, "height": 16, "background": "#000000"})).unwrap();
     app.run("select.rect", json!({"x": 8, "y": 0, "width": 8, "height": 16})).unwrap();
     app.run("edit.fill", json!({"color": "#ffffff"})).unwrap();
@@ -1517,7 +1527,7 @@ fn gated_blur_fixture(single: bool, background: bool) -> Box<PhotocraftApp> {
 }
 
 /// Simulate a temporary control gate: capture it at the pause and release the session gate before later confirmation.
-fn pause_gated_blur(app: &mut PhotocraftApp, gate: Option<Gate>) -> u64 {
+fn pause_gated_blur(app: &mut PatronusPhotoApp, gate: Option<Gate>) -> u64 {
     app.session.authorize = gate;
     let paused = play(app, &json!({"action": "Gated blur"})).unwrap();
     app.session.authorize = None; // The temporary control gate ends before a later human OK.
@@ -1599,8 +1609,12 @@ fn a_stricter_current_gate_still_denies_the_captured_dialog_edit() {
 #[test]
 /// Spelling corrections consult live Session and automation-service policies before resuming the owned history.
 fn paused_spelling_checks_the_live_gate_before_resuming_history() {
-    fn deny_correction(id: &str, p: &Value) -> photocraft_engine::Result<()> {
-        if id == "edit.checkSpelling" && p["action"] == "changeAll" { Err(photocraft_engine::EngineError::Other("live spelling gate".into())) } else { Ok(()) }
+    fn deny_correction(id: &str, p: &Value) -> patronusphoto_engine::Result<()> {
+        if id == "edit.checkSpelling" && p["action"] == "changeAll" {
+            Err(patronusphoto_engine::EngineError::Other("live spelling gate".into()))
+        } else {
+            Ok(())
+        }
     }
     for service in 0..3 {
         let (mut app, _, _) = paused_history_spelling(true, Some(deny_second_spelling_change));
@@ -1634,8 +1648,8 @@ fn paused_spelling_checks_the_live_gate_before_resuming_history() {
 #[test]
 /// A changed authority context cancels both direct and nested tails while keeping the admitted prefix undoable.
 fn a_changed_live_gate_cannot_be_replaced_for_the_remaining_action() {
-    fn deny_tail(id: &str, _: &Value) -> photocraft_engine::Result<()> {
-        if id == "layer.renameLayer" { Err(photocraft_engine::EngineError::Other("live tail denied".into())) } else { Ok(()) }
+    fn deny_tail(id: &str, _: &Value) -> patronusphoto_engine::Result<()> {
+        if id == "layer.renameLayer" { Err(patronusphoto_engine::EngineError::Other("live tail denied".into())) } else { Ok(()) }
     }
     for service in [false, true] {
         for nested in [false, true] {
@@ -1667,7 +1681,7 @@ fn a_changed_live_gate_cannot_be_replaced_for_the_remaining_action() {
 #[test]
 /// Distinct captured/live gates fail before applying the dialog or starting a worker, even if the edit is allowed.
 fn a_changed_context_is_rejected_before_dialog_or_worker_admission() {
-    fn allow_all(_: &str, _: &Value) -> photocraft_engine::Result<()> {
+    fn allow_all(_: &str, _: &Value) -> patronusphoto_engine::Result<()> {
         Ok(())
     }
     for background in [false, true] {
@@ -1704,8 +1718,8 @@ fn unchanged_and_released_gates_allow_the_action_tail() {
 /// Distinct configured policies permit manual confirmation but cannot be combined for automated dispatch.
 /// The identical-gate automated control proves the supported composed-policy path still completes and undoes once.
 fn configured_gates_require_one_composed_policy_for_automated_resume() {
-    fn deny_file_open(id: &str, _: &Value) -> photocraft_engine::Result<()> {
-        if id == "file.open" { Err(photocraft_engine::EngineError::Other("file open denied".into())) } else { Ok(()) }
+    fn deny_file_open(id: &str, _: &Value) -> patronusphoto_engine::Result<()> {
+        if id == "file.open" { Err(patronusphoto_engine::EngineError::Other("file open denied".into())) } else { Ok(()) }
     }
     assert!(!std::ptr::fn_addr_eq(deny_wide_blur as Gate, deny_file_open as Gate));
     for (automated, identical) in [(false, false), (true, false), (true, true)] {
@@ -1772,7 +1786,7 @@ fn paused_adjustments_bind_implicit_pixel_and_mask_receivers() {
             app.run("edit.fill", json!({"color":"#808080"})).unwrap();
             app.run("layer.layerMask.revealAll", json!({})).unwrap();
             app.run("edit.fill", json!({"color":"#808080","target":"mask"})).unwrap();
-            let b = photocraft_doc::LayerId(app.run("layer.new.layer", json!({"name":"B"})).unwrap()["layer"].as_u64().unwrap());
+            let b = patronusphoto_doc::LayerId(app.run("layer.new.layer", json!({"name":"B"})).unwrap()["layer"].as_u64().unwrap());
             // Native mask eligibility checks the active layer, so keep both receivers eligible.
             // The assertions below still require the explicitly named A mask alone to change.
             app.run("layer.layerMask.revealAll", json!({})).unwrap();
@@ -1814,7 +1828,7 @@ fn paused_adjustments_bind_implicit_pixel_and_mask_receivers() {
     {
         let mut app = gated_blur_fixture(true, false);
         let a = app.session.active().unwrap().active_layer.unwrap();
-        let b = photocraft_doc::LayerId(app.run("layer.new.layer", json!({"name":"B"})).unwrap()["layer"].as_u64().unwrap());
+        let b = patronusphoto_doc::LayerId(app.run("layer.new.layer", json!({"name":"B"})).unwrap()["layer"].as_u64().unwrap());
         app.session.select_layer(a).unwrap();
         app.session
             .actions
@@ -1856,7 +1870,7 @@ fn paused_adjustments_bind_implicit_pixel_and_mask_receivers() {
 fn a_document_channel_adjustment_survives_an_active_layer_change() {
     let mut app = gated_blur_fixture(true, false);
     let a = app.session.active().unwrap().active_layer.unwrap();
-    let b = photocraft_doc::LayerId(app.run("layer.new.layer", json!({"name":"B"})).unwrap()["layer"].as_u64().unwrap());
+    let b = patronusphoto_doc::LayerId(app.run("layer.new.layer", json!({"name":"B"})).unwrap()["layer"].as_u64().unwrap());
     app.run("channel.new", json!({"name":"Alpha","fill":"black"})).unwrap();
     app.run("edit.fill", json!({"color":"#808080","target":{"channel":0}})).unwrap();
     app.session.select_layer(a).unwrap();
@@ -1881,7 +1895,7 @@ fn an_implicit_paused_filter_refuses_a_public_api_receiver_change() {
         for explicit in [false, true] {
             let mut app = gated_blur_fixture(single, false);
             let a = app.session.active().unwrap().active_layer.unwrap();
-            let b = photocraft_doc::LayerId(app.run("layer.new.layer", json!({"name": "B"})).unwrap()["layer"].as_u64().unwrap());
+            let b = patronusphoto_doc::LayerId(app.run("layer.new.layer", json!({"name": "B"})).unwrap()["layer"].as_u64().unwrap());
             app.run("select.rect", json!({"x": 0, "y": 0, "width": 8, "height": 16})).unwrap();
             app.run("edit.fill", json!({"color": "#ff0000"})).unwrap();
             app.run("select.deselect", json!({})).unwrap();
@@ -1916,7 +1930,7 @@ fn an_implicit_paused_filter_refuses_a_public_api_receiver_change() {
 fn an_implicit_filter_keeps_its_receiver_when_only_other_selected_layers_change() {
     let mut app = gated_blur_fixture(true, false);
     let a = app.session.active().unwrap().active_layer.unwrap();
-    let b = photocraft_doc::LayerId(app.run("layer.new.layer", json!({"name": "Other"})).unwrap()["layer"].as_u64().unwrap());
+    let b = patronusphoto_doc::LayerId(app.run("layer.new.layer", json!({"name": "Other"})).unwrap()["layer"].as_u64().unwrap());
     app.session.select_layer(a).unwrap();
     let dialog = pause_gated_blur(&mut app, None);
     app.session.execute("layer.select", json!({"layer": b.0, "mode": "add"})).unwrap();
@@ -1929,9 +1943,9 @@ fn an_implicit_filter_keeps_its_receiver_when_only_other_selected_layers_change(
     assert_eq!(after.layer(b).unwrap().surface().unwrap().content_bounds(), before.layer(b).unwrap().surface().unwrap().content_bounds());
 }
 
-fn deny_displace_file(id: &str, params: &Value) -> photocraft_engine::Result<()> {
+fn deny_displace_file(id: &str, params: &Value) -> patronusphoto_engine::Result<()> {
     if id == "filter.distort.displace" && params.get("mapPath").is_some() {
-        Err(photocraft_engine::EngineError::Other("chosen displacement map denied".into()))
+        Err(patronusphoto_engine::EngineError::Other("chosen displacement map denied".into()))
     } else {
         Ok(())
     }
@@ -1960,7 +1974,7 @@ fn a_deferred_displace_map_is_authorized_before_reading_or_resuming_history() {
 
 #[test]
 fn a_step_the_gate_denies_opens_no_dialog() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 16, "height": 16})).unwrap();
     let mut a = new_action("Blur", vec![("filter.blur.gaussianBlur".into(), json!({"radius": 1}))]);
     a.dialogs.insert(0);
@@ -1973,8 +1987,8 @@ fn a_step_the_gate_denies_opens_no_dialog() {
     assert!(app.paused_playbacks.paused.is_empty());
 }
 
-fn deny_select_all(id: &str, _: &Value) -> photocraft_engine::Result<()> {
-    if id == "select.all" { Err(photocraft_engine::EngineError::Other("select.all denied".into())) } else { Ok(()) }
+fn deny_select_all(id: &str, _: &Value) -> patronusphoto_engine::Result<()> {
+    if id == "select.all" { Err(patronusphoto_engine::EngineError::Other("select.all denied".into())) } else { Ok(()) }
 }
 
 /// An action an automation client plays (`control::handle` installs the gate, then removes
@@ -1982,7 +1996,7 @@ fn deny_select_all(id: &str, _: &Value) -> photocraft_engine::Result<()> {
 /// OK, runs the remaining steps under the same gate.
 #[test]
 fn a_paused_playback_keeps_its_automation_gate_when_the_dialog_is_confirmed() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 16, "height": 16})).unwrap();
     let mut a = new_action("Seeded", vec![("filter.blur.gaussianBlur".into(), json!({"radius": 1})), ("select.all".into(), json!({}))]);
     a.dialogs.insert(0);
@@ -2003,11 +2017,11 @@ fn a_paused_playback_keeps_its_automation_gate_when_the_dialog_is_confirmed() {
 #[test]
 fn a_users_key_plays_an_action_automation_wrote_under_its_gate() {
     /// The automation policy this test stands in for: every `file.` command is refused.
-    fn deny_file(id: &str, _: &Value) -> photocraft_engine::Result<()> {
-        if id.starts_with("file.") { Err(photocraft_engine::EngineError::Other(format!("automation command `{id}` is disabled"))) } else { Ok(()) }
+    fn deny_file(id: &str, _: &Value) -> patronusphoto_engine::Result<()> {
+        if id.starts_with("file.") { Err(patronusphoto_engine::EngineError::Other(format!("automation command `{id}` is disabled"))) } else { Ok(()) }
     }
     let services = crate::Services { automation_authorize: Some(deny_file), ..Default::default() };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     let mut planted = new_action("Backup", vec![("file.openAs".into(), json!({"path": "/outside/secret.png"}))]);
     planted.automation = true;
     add_action(&mut app, planted);
@@ -2026,14 +2040,14 @@ fn a_users_key_plays_an_action_automation_wrote_under_its_gate() {
 #[test]
 fn a_kept_gate_does_not_carry_into_the_rest_of_a_set_after_a_pause() {
     /// The automation policy this test stands in for: it refuses only layers named `a2` and `b`.
-    fn deny_a2_and_b(id: &str, p: &Value) -> photocraft_engine::Result<()> {
+    fn deny_a2_and_b(id: &str, p: &Value) -> patronusphoto_engine::Result<()> {
         match p.get("name").and_then(Value::as_str) {
-            Some(name @ ("a2" | "b")) if id == "layer.new.layer" => Err(photocraft_engine::EngineError::Other(format!("layer {name} denied"))),
+            Some(name @ ("a2" | "b")) if id == "layer.new.layer" => Err(patronusphoto_engine::EngineError::Other(format!("layer {name} denied"))),
             _ => Ok(()),
         }
     }
     let services = crate::Services { automation_authorize: Some(deny_a2_and_b), ..Default::default() };
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
     app.run("file.new", json!({"width": 8, "height": 8})).unwrap();
     let mut a = new_action(
         "A",
@@ -2075,7 +2089,7 @@ fn a_kept_gate_does_not_carry_into_the_rest_of_a_set_after_a_pause() {
 /// The dialog is bound to its pause by id: no field of it can name another action to resume.
 #[test]
 fn a_step_dialog_resumes_only_the_playback_that_paused_it() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 16, "height": 16})).unwrap();
     let mut a = new_action("Blur", vec![("filter.blur.gaussianBlur".into(), json!({"radius": 1}))]);
     a.dialogs.insert(0);
@@ -2098,7 +2112,7 @@ fn save_hook_closing_the_target_stops_an_imported_close_with_save() {
     use std::{cell::RefCell, rc::Rc};
     // A one-step .atn: Close (`Cls `) with Save: Yes.
     let seed = new_action("Seed", vec![("layer.new.layer".into(), json!({}))]);
-    let (bytes, _) = photocraft_engine::atn_cmds::export("Set", &[&seed], &[], false).unwrap();
+    let (bytes, _) = patronusphoto_engine::atn_cmds::export("Set", &[&seed], &[], false).unwrap();
     let mut f = atn::parse(&bytes).unwrap();
     f.actions[0].items = vec![AtnItem {
         event: AtnEvent::Code(*b"Cls "),
@@ -2106,7 +2120,7 @@ fn save_hook_closing_the_target_stops_an_imported_close_with_save() {
         descriptor: Some(Descriptor::new("null").with("Svng", D::Enumerated { type_id: Id::new("YsN "), value: Id::new("Ys  ") })),
         ..Default::default()
     }];
-    let imported = photocraft_engine::atn_cmds::import(&atn::write(&f).unwrap()).unwrap();
+    let imported = patronusphoto_engine::atn_cmds::import(&atn::write(&f).unwrap()).unwrap();
     let close_with_save = imported.actions[0].clone();
     assert_eq!(close_with_save.steps, [ActionStep::new("file.save", json!({})), ActionStep::new("file.close", json!({}))]);
     for hook in ["none", "activate", "close"] {
@@ -2120,7 +2134,7 @@ fn save_hook_closing_the_target_stops_an_imported_close_with_save() {
             })),
             ..Default::default()
         };
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), services);
         // B is dirty with an unsaved KeepB layer; A is active and has its own file.
         for name in ["B", "A"] {
             app.run("file.new", json!({"name": name, "width": 2, "height": 2})).unwrap();

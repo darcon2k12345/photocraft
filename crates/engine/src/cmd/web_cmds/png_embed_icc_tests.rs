@@ -6,7 +6,7 @@ use serde_json::json;
 use crate::Session;
 
 fn tmp(name: &str) -> String {
-    let d = std::env::temp_dir().join(format!("photocraft-png-icc-{}-{name}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("patronusphoto-png-icc-{}-{name}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).unwrap();
     d.to_string_lossy().into_owned()
@@ -35,8 +35,8 @@ fn chunks(bytes: &[u8]) -> Vec<String> {
 }
 
 fn pixels(path: &str) -> Vec<u8> {
-    let img = photocraft_codecs::decode(&std::fs::read(path).unwrap()).unwrap();
-    img.convert(photocraft_codecs::ChannelLayout::Rgba, photocraft_codecs::SampleType::U8).data().to_vec()
+    let img = patronusphoto_codecs::decode(&std::fs::read(path).unwrap()).unwrap();
+    img.convert(patronusphoto_codecs::ChannelLayout::Rgba, patronusphoto_codecs::SampleType::U8).data().to_vec()
 }
 
 #[test]
@@ -49,7 +49,7 @@ fn a_quick_export_png_embeds_no_profile_with_convert_to_srgb_on_or_off() {
         s.execute("file.export.quickExport", json!({"path": path})).unwrap();
         let found = chunks(&std::fs::read(&path).unwrap());
         assert!(!found.iter().any(|c| c == "iCCP"), "convert {convert}: {found:?}");
-        assert!(photocraft_codecs::decode(&std::fs::read(&path).unwrap()).unwrap().icc.is_none(), "convert {convert}");
+        assert!(patronusphoto_codecs::decode(&std::fs::read(&path).unwrap()).unwrap().icc.is_none(), "convert {convert}");
     }
     s.execute("prefs.reset", json!({"path": "export"})).unwrap();
 }

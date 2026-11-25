@@ -8,7 +8,7 @@ use craft_psd::{
     PsdFile,
     layer::{CHANNEL_REAL_USER_MASK, CHANNEL_USER_MASK, Rect},
 };
-use photocraft_geom::TILE_SIZE;
+use patronusphoto_geom::TILE_SIZE;
 
 use crate::IoError;
 

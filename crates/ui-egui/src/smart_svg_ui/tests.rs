@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::rc::Rc;
 
-use photocraft_engine::Session;
+use patronusphoto_engine::Session;
 
 use super::*;
 use crate::Services;
@@ -30,7 +30,7 @@ impl ExternalSvgSession for NativeTestSession {
     }
 }
 
-fn fixture() -> (Box<PhotocraftApp>, Saves, Calls) {
+fn fixture() -> (Box<PatronusPhotoApp>, Saves, Calls) {
     let saves = Saves::default();
     let calls = Calls::default();
     let (queue, launched) = (saves.clone(), calls.clone());
@@ -42,14 +42,14 @@ fn fixture() -> (Box<PhotocraftApp>, Saves, Calls) {
         })),
         ..Default::default()
     };
-    let mut app = PhotocraftApp::new(Session::new(), services);
+    let mut app = PatronusPhotoApp::new(Session::new(), services);
     app.session.execute("file.new", json!({"width":64,"height":64})).unwrap();
-    photocraft_engine::file_cmds::place_bytes(&mut app.session, "Artwork.svg", SVG.as_bytes().to_vec(), None, &json!({"smartObject":true})).unwrap();
+    patronusphoto_engine::file_cmds::place_bytes(&mut app.session, "Artwork.svg", SVG.as_bytes().to_vec(), None, &json!({"smartObject":true})).unwrap();
     app.sync_views();
     (app, saves, calls)
 }
 
-fn open(app: &mut PhotocraftApp) {
+fn open(app: &mut PatronusPhotoApp) {
     assert!(intercept(app, "layer.smartObjects.editContents", &json!({})).unwrap().unwrap()["deferred"].as_bool().unwrap());
 }
 
@@ -460,10 +460,10 @@ fn saved_changes_wait_on_implicit_mask_then_resume_without_another_save() {
     confirm(&mut app).unwrap();
     let st = app.session.active_mut().unwrap();
     let layer = st.active_layer.unwrap();
-    Arc::make_mut(st.doc_mut()).layer_mut(layer).unwrap().mask = Some(photocraft_doc::LayerMask::reveal_all());
-    st.channel_view.color_hidden = vec![true; photocraft_engine::channel_cmds::color_count(&st.doc)];
+    Arc::make_mut(st.doc_mut()).layer_mut(layer).unwrap().mask = Some(patronusphoto_doc::LayerMask::reveal_all());
+    st.channel_view.color_hidden = vec![true; patronusphoto_engine::channel_cmds::color_count(&st.doc)];
     st.channel_view.alpha_visible.clear();
-    assert_eq!(st.channel_view.target, photocraft_engine::channel_cmds::ChannelTarget::Composite);
+    assert_eq!(st.channel_view.target, patronusphoto_engine::channel_cmds::ChannelTarget::Composite);
     assert!(st.channel_view.layer_mask.is_none());
     let before = st.doc.clone();
     let revision = st.revision;
@@ -539,7 +539,7 @@ fn bounded_sessions_require_reuse_or_closing_a_document() {
     for _ in 0..MAX_SESSIONS {
         open(&mut app);
         confirm(&mut app).unwrap();
-        photocraft_engine::file_cmds::place_bytes(&mut app.session, "Artwork.svg", SVG.as_bytes().to_vec(), None, &json!({"smartObject":true})).unwrap();
+        patronusphoto_engine::file_cmds::place_bytes(&mut app.session, "Artwork.svg", SVG.as_bytes().to_vec(), None, &json!({"smartObject":true})).unwrap();
     }
     open(&mut app);
     assert!(confirm(&mut app).unwrap_err().contains("limit: 8"));
@@ -556,7 +556,7 @@ fn embedded_ai_link_table_handoff_preserves_source_until_saved_and_undo_restores
     let original = b"%PDF-1.6\nsynthetic vector".to_vec();
     {
         let doc = Arc::make_mut(app.session.active_mut().unwrap().doc_mut());
-        let payload = photocraft_io::linked::encode_linked_file(&photocraft_io::linked::LinkedFile {
+        let payload = patronusphoto_io::linked::encode_linked_file(&patronusphoto_io::linked::LinkedFile {
             uuid: "embedded-ai".into(),
             file_name: "Logo.ai".into(),
             bytes: original.clone(),
@@ -612,8 +612,8 @@ fn saved_changes_wait_through_quick_mask_and_resume_without_another_save() {
     poll(&mut app, &ctx);
     assert!(app.smart_svg.editing.first().unwrap().saved.is_none());
     let st = app.session.active().unwrap();
-    let photocraft_doc::LayerContent::Smart(sm) = &st.doc.layer(st.active_layer.unwrap()).unwrap().content else { panic!("smart object") };
-    let photocraft_doc::SmartSource::Embedded { bytes, .. } = &sm.source else { panic!("embedded") };
+    let patronusphoto_doc::LayerContent::Smart(sm) = &st.doc.layer(st.active_layer.unwrap()).unwrap().content else { panic!("smart object") };
+    let patronusphoto_doc::SmartSource::Embedded { bytes, .. } = &sm.source else { panic!("embedded") };
     assert_eq!(bytes.as_slice(), SVG.replace("red", "blue").as_bytes());
 }
 

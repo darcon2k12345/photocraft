@@ -6,12 +6,12 @@
 //! Artboard and Group (#10883).
 
 use craft::layers::ui::filter::{EffectKind, FilterBy, FilterKind, LayerAttribute, LayerFilter, SmartKind};
-use photocraft_color::BlendMode;
-use photocraft_doc::LabelColor;
+use patronusphoto_color::BlendMode;
+use patronusphoto_doc::LabelColor;
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The fields `ui.set {layerFilter}` takes.
 const FIELDS: [&str; 8] = ["by", "kinds", "name", "effect", "mode", "attribute", "color", "smart"];
@@ -68,7 +68,7 @@ pub fn patched(current: &LayerFilter, v: &Value) -> Result<LayerFilter, String> 
     }
     if let Some(mode) = o.get("mode") {
         let name = mode.as_str().ok_or("layerFilter.mode must be a blend mode name")?;
-        let m = photocraft_engine::commands::parse_blend(name).filter(|m| BlendMode::LAYER_MODES.contains(m)).ok_or_else(|| {
+        let m = patronusphoto_engine::commands::parse_blend(name).filter(|m| BlendMode::LAYER_MODES.contains(m)).ok_or_else(|| {
             let modes: Vec<&str> = BlendMode::LAYER_MODES.iter().map(|m| m.label()).collect();
             format!("layerFilter.mode: `{name}` is not a layer blend mode the filter lists (modes: {})", modes.join(", "))
         })?;
@@ -96,7 +96,7 @@ pub fn patched(current: &LayerFilter, v: &Value) -> Result<LayerFilter, String> 
 
 /// Store `filter` as the Layers panel's filter; a change deselects what it hides
 /// ([`deselect_hidden`]), an unchanged filter does nothing.
-pub fn apply(app: &mut PhotocraftApp, filter: LayerFilter) {
+pub fn apply(app: &mut PatronusPhotoApp, filter: LayerFilter) {
     let before = std::mem::replace(&mut app.ui.layer_filter, filter);
     deselect_hidden(app, &before);
 }
@@ -105,7 +105,7 @@ pub fn apply(app: &mut PhotocraftApp, filter: LayerFilter) {
 /// own filter row does (#10879): the listed ones stay selected, one of them active, and a Smart
 /// Filter row selected on its own stays so only while it is listed. Like any layer selection this
 /// is no history step.
-pub(crate) fn deselect_hidden(app: &mut PhotocraftApp, before: &LayerFilter) {
+pub(crate) fn deselect_hidden(app: &mut PatronusPhotoApp, before: &LayerFilter) {
     let filter = app.ui.layer_filter.clone();
     if filter == *before {
         return;

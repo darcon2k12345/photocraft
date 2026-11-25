@@ -6,19 +6,19 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::theme::AppTheme;
 
 /// The real app (every panel on) in `theme`, with a document open when `document`.
-fn app(theme: AppTheme, document: bool, auto_show: bool) -> Harness<'static, Box<PhotocraftApp>> {
-    let mut s = photocraft_engine::Session::new();
+fn app(theme: AppTheme, document: bool, auto_show: bool) -> Harness<'static, Box<PatronusPhotoApp>> {
+    let mut s = patronusphoto_engine::Session::new();
     if document {
         s.execute("file.new", json!({"width": 8, "height": 8})).unwrap();
     }
     s.edit_prefs(|p| p.general.auto_show_home_screen = auto_show);
     let mut h = Harness::builder().with_size(egui::vec2(1200.0, 800.0)).with_max_steps(64).build_eframe(move |cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, theme.clone());
-        let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), s, crate::Services::default());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, theme.clone());
+        let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), s, crate::Services::default());
         app.ui.theme = theme;
         app
     });
@@ -26,7 +26,7 @@ fn app(theme: AppTheme, document: bool, auto_show: bool) -> Harness<'static, Box
     h
 }
 
-fn chrome_shown(h: &Harness<'static, Box<PhotocraftApp>>, when: &str) -> bool {
+fn chrome_shown(h: &Harness<'static, Box<PatronusPhotoApp>>, when: &str) -> bool {
     // Tool buttons are named "Move Tool  (V)" (the shortcut follows), the dock's footer button "Create a new layer".
     let toolbar = h.query_all_by_label_contains("Move Tool").next().is_some();
     let dock = h.query_all_by_label_contains("Create a new layer").next().is_some();
@@ -35,18 +35,18 @@ fn chrome_shown(h: &Harness<'static, Box<PhotocraftApp>>, when: &str) -> bool {
 }
 
 /// Whether the Home page is up: its drop hint and its Pinned Folders heading.
-fn home_content(h: &Harness<'static, Box<PhotocraftApp>>) -> bool {
+fn home_content(h: &Harness<'static, Box<PatronusPhotoApp>>) -> bool {
     h.query_all_by_label_contains("Drop an image or PSD anywhere").next().is_some() || h.query_all_by_label("Pinned Folders").next().is_some()
 }
 
 /// The options bar and the status bar: a widget of each ("Auto-Select:" of the Move tool's options,
 /// the status bar's zoom field).
-fn bars_shown(h: &Harness<'static, Box<PhotocraftApp>>) -> (bool, bool) {
+fn bars_shown(h: &Harness<'static, Box<PatronusPhotoApp>>) -> (bool, bool) {
     (h.query_all_by_label_contains("Auto-Select").next().is_some(), h.query_all_by_label("Zoom").next().is_some())
 }
 
 /// Click the Home entry: the options bar's button with a document in front, the rail's on Home.
-fn click_home(h: &mut Harness<'static, Box<PhotocraftApp>>) {
+fn click_home(h: &mut Harness<'static, Box<PatronusPhotoApp>>) {
     let top = h.query_all_by_label("Home").min_by(|a, b| a.rect().min.y.total_cmp(&b.rect().min.y)).expect("a Home button");
     top.click();
     h.run_steps(6);

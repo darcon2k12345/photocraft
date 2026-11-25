@@ -15,18 +15,18 @@ pub struct DocState {
     pub revision: u64,
     pub saved_revision: u64,
     /// Native save cache shared with this document's workers, released with the editing state.
-    pub pcraft_cache: photocraft_io::PcraftExportCache,
+    pub pcraft_cache: patronusphoto_io::PcraftExportCache,
     /// How much of `revision` came from view-only changes (channel eyes, targeting): pixel caches can ignore those.
     pub view_revision: u64,
     /// Area changed since revision [`DocState::damage_from`] (None = assume everything changed):
     /// the latest revision's, or a whole command's when it made several.
-    pub last_damage: Option<photocraft_geom::Rect>,
+    pub last_damage: Option<patronusphoto_geom::Rect>,
     /// `(from, to)`: the command that moved `revision` from `from` to `to` in more than one step,
     /// whose whole span `last_damage` covers. Written only by `Session::dispatch`; any later
     /// revision makes it stale, so [`DocState::damage_from`] falls back to one revision.
     pub(crate) damage_span: Option<(u64, u64)>,
     /// Bounded revision spans; unknown damage remains unknown when spans are combined.
-    damage_log: std::collections::VecDeque<(u64, u64, Option<photocraft_geom::Rect>)>,
+    damage_log: std::collections::VecDeque<(u64, u64, Option<patronusphoto_geom::Rect>)>,
     /// Coalescing key of the latest history step (see [`Session::execute`]'s `coalesce` param).
     pub coalesce: Option<String>,
     /// Channels panel: targeted channel and eye toggles (view state, not history).
@@ -63,7 +63,7 @@ pub struct DocState {
     /// When Saving), so saving an unchanged document again doesn't add a duplicate row.
     pub(crate) save_snapshot: Option<u64>,
     /// The snapshot set as the History Brush's source (`history.setSource {snapshot}`); `None`:
-    /// the source is a state, kept by the history ([`photocraft_ops::History::brush_source`]).
+    /// the source is a state, kept by the history ([`patronusphoto_ops::History::brush_source`]).
     pub(crate) source_snapshot: Option<u64>,
     /// Names the user gave layers (Rename Layer, Duplicate Layer's Name, `type.edit`'s name): a
     /// type layer keeps such a name although it looks like a copy's ("Title copy 2"), while a
@@ -115,7 +115,7 @@ impl DocState {
         history.set_current_layers(target.clone());
         // Spot channels open visible, printing over the composite; alpha channels open hidden.
         let channel_view = channel_cmds::ChannelView {
-            alpha_visible: (0..doc.channels.len()).map(|i| photocraft_compose::multichannel::is_overprint_spot(&doc, i)).collect(),
+            alpha_visible: (0..doc.channels.len()).map(|i| patronusphoto_compose::multichannel::is_overprint_spot(&doc, i)).collect(),
             ..Default::default()
         };
         let doc = Arc::new(doc);
@@ -165,7 +165,7 @@ impl DocState {
     }
     /// A number that identifies the snapshot list: every [`Self::snapshots_mut`] takes a fresh
     /// one, clones keep it, and no two lists that differ share one. With
-    /// [`photocraft_ops::History::generation`] it says when the History panel's rows change.
+    /// [`patronusphoto_ops::History::generation`] it says when the History panel's rows change.
     pub fn snapshots_generation(&self) -> u64 {
         self.snapshots_generation
     }
@@ -222,12 +222,12 @@ impl DocState {
         self.saved_revision == self.revision && layer_multi_cmds::selection_only_change(before, &self.doc)
     }
     /// Damage since `revision`, or `None` when a revision is missing or has unknown damage.
-    pub fn damage_since(&self, revision: u64) -> Option<photocraft_geom::Rect> {
+    pub fn damage_since(&self, revision: u64) -> Option<patronusphoto_geom::Rect> {
         if revision == self.revision {
-            return Some(photocraft_geom::Rect::EMPTY);
+            return Some(patronusphoto_geom::Rect::EMPTY);
         }
         let mut at = revision;
-        let mut total = photocraft_geom::Rect::EMPTY;
+        let mut total = patronusphoto_geom::Rect::EMPTY;
         for &(from, to, damage) in &self.damage_log {
             if to <= at {
                 continue;
@@ -251,7 +251,7 @@ impl DocState {
         None
     }
 
-    fn record_damage_span(&mut self, from: u64, to: u64, damage: Option<photocraft_geom::Rect>) {
+    fn record_damage_span(&mut self, from: u64, to: u64, damage: Option<patronusphoto_geom::Rect>) {
         while self.damage_log.back().is_some_and(|(_, end, _)| *end > from) {
             self.damage_log.pop_back();
         }
@@ -273,7 +273,7 @@ impl DocState {
         // Keep the effect reach at the time of the edit: later pixel-neutral revisions can
         // change which effects are visible without changing this already-painted damage.
         // The existing growth walk is recursive, so refuse a bounded answer on hostile depth.
-        fn bounded(layers: &[photocraft_doc::Layer], depth: usize) -> bool {
+        fn bounded(layers: &[patronusphoto_doc::Layer], depth: usize) -> bool {
             depth < 256 && layers.iter().all(|layer| layer.children().is_none_or(|children| bounded(children, depth + 1)))
         }
         let damage = self.last_damage.and_then(|r| {
@@ -311,7 +311,7 @@ impl DocState {
     /// drawing again.
     pub(crate) fn bump_selection_revision(&mut self) {
         self.bump_revision(!self.is_dirty());
-        self.last_damage = Some(photocraft_geom::Rect::EMPTY);
+        self.last_damage = Some(patronusphoto_geom::Rect::EMPTY);
         self.record_damage();
     }
     /// Moves when an effects list or a group in the Layers panel opens or closes. That is view
@@ -330,7 +330,7 @@ impl DocState {
     pub(crate) fn bump_view_revision(&mut self, keep_clean: bool) {
         self.view_revision += 1;
         self.bump_revision(keep_clean);
-        self.last_damage = Some(photocraft_geom::Rect::EMPTY);
+        self.last_damage = Some(patronusphoto_geom::Rect::EMPTY);
         self.record_damage();
     }
     /// The targeted layers, as history stores them with each state.
@@ -349,17 +349,17 @@ fn next_snapshots_generation() -> u64 {
 pub struct ToolState {
     pub foreground: [f32; 4],
     pub background: [f32; 4],
-    pub brush: photocraft_paint::BrushSettings,
+    pub brush: patronusphoto_paint::BrushSettings,
     /// Brush presets (built-ins plus user presets; see `brush.presets.*`).
-    pub presets: Arc<Vec<photocraft_paint::BrushPreset>>,
+    pub presets: Arc<Vec<patronusphoto_paint::BrushPreset>>,
     /// Bumped whenever `presets` changes ([`Session::brush_presets_changed`]); the preset store
     /// syncs when it moves.
     pub presets_rev: u64,
     /// Mixer Brush paint carried between strokes.
-    pub mixer: photocraft_paint::mixer::MixerState,
+    pub mixer: patronusphoto_paint::mixer::MixerState,
     /// The coalescing key of the running `tools.setBrush` gesture and the brush before it, so the
     /// gesture journals as one call ([`brush_cmds::coalesce_journal`]).
-    pub brush_gesture: Option<(String, photocraft_paint::BrushSettings)>,
+    pub brush_gesture: Option<(String, patronusphoto_paint::BrushSettings)>,
     /// Name of the preset the current brush was last picked from. Kept across later edits (the
     /// preset stays "the current brush" so `brush.presets.update` can overwrite it); cleared when
     /// the brush is reset or the preset is gone.
@@ -448,11 +448,11 @@ impl Default for ToolState {
             foreground: Self::PIXEL_COLORS[0],
             background: Self::PIXEL_COLORS[1],
             // Photoshop's Brush tool starts at 10 % Smoothing.
-            brush: photocraft_paint::BrushSettings {
-                smoothing: photocraft_paint::brush::Smoothing { amount: 0.1, ..Default::default() },
+            brush: patronusphoto_paint::BrushSettings {
+                smoothing: patronusphoto_paint::brush::Smoothing { amount: 0.1, ..Default::default() },
                 ..Default::default()
             },
-            presets: photocraft_paint::presets::builtin_shared(),
+            presets: patronusphoto_paint::presets::builtin_shared(),
             presets_rev: 0,
             mixer: Default::default(),
             brush_gesture: None,
@@ -470,20 +470,20 @@ impl Default for ToolState {
 /// copies them (Paste Layer Style puts them all on each target).
 #[derive(Clone, Debug)]
 pub struct CopiedStyle {
-    pub effects: photocraft_doc::Effects,
-    pub blend: photocraft_color::BlendMode,
+    pub effects: patronusphoto_doc::Effects,
+    pub blend: patronusphoto_color::BlendMode,
     pub fill: f32,
-    pub advanced: photocraft_doc::AdvancedBlending,
-    pub blend_if: photocraft_doc::BlendIf,
+    pub advanced: patronusphoto_doc::AdvancedBlending,
+    pub blend_if: patronusphoto_doc::BlendIf,
     pub excluded_channels: u32,
     /// The colour mode it was copied in: Blend If's channel ranges and the channel restrictions
     /// only carry over to a document in the same mode.
-    pub mode: photocraft_color::ColorMode,
+    pub mode: patronusphoto_color::ColorMode,
 }
 
 /// The commands whose [`Session::precheck`] is complete: it accepts what `execute` does (Free
 /// Transform applies its box before these, and only when they will run), but for the group
-/// nesting limit ([`photocraft_doc::MAX_GROUP_DEPTH`]): grouping layers already that deep is
+/// nesting limit ([`patronusphoto_doc::MAX_GROUP_DEPTH`]): grouping layers already that deep is
 /// refused only as the edit is made. Layer via Copy and
 /// Cut aren't: whether they have anything to copy (a selection over transparent pixels, a group
 /// or fill layer) is known only when they run.
@@ -505,7 +505,7 @@ pub fn selected_in(doc: &Document, active: Option<LayerId>, selected: &[LayerId]
 #[cfg(test)]
 mod selected_tests {
     use super::selected_in;
-    use photocraft_doc::{ColorMode, Document, Layer, LayerId, PixelFormat, SampleType, Size};
+    use patronusphoto_doc::{ColorMode, Document, Layer, LayerId, PixelFormat, SampleType, Size};
 
     fn raster(name: &str) -> Layer {
         Layer::raster(name, PixelFormat::RGBA8)
@@ -594,9 +594,9 @@ mod selected_tests {
 #[cfg(test)]
 mod damage_log_tests {
     use super::DocState;
-    use photocraft_color::{ColorMode, SampleType};
-    use photocraft_doc::Document;
-    use photocraft_geom::{Rect, Size};
+    use patronusphoto_color::{ColorMode, SampleType};
+    use patronusphoto_doc::Document;
+    use patronusphoto_geom::{Rect, Size};
 
     #[test]
     fn revision_helpers_keep_empty_damage_and_signal_view_changes() {
@@ -618,8 +618,8 @@ mod damage_log_tests {
     #[test]
     fn damage_keeps_the_effect_reach_that_existed_at_the_edit() {
         let mut doc = Document::new("test", Size::new(40, 40), ColorMode::Rgb, SampleType::U8);
-        let mut layer = photocraft_doc::Layer::raster("empty", photocraft_color::PixelFormat::RGBA8);
-        layer.effects.items.push(photocraft_doc::Effect::default_drop_shadow());
+        let mut layer = patronusphoto_doc::Layer::raster("empty", patronusphoto_color::PixelFormat::RGBA8);
+        layer.effects.items.push(patronusphoto_doc::Effect::default_drop_shadow());
         doc.layers = vec![layer].into();
         let mut st = DocState::new(doc, None);
         let before = st.revision;
@@ -640,9 +640,9 @@ mod damage_log_tests {
     #[test]
     fn deeply_nested_effect_growth_falls_back_to_full_damage() {
         let mut doc = Document::new("test", Size::new(20, 20), ColorMode::Rgb, SampleType::U8);
-        let mut group = photocraft_doc::Layer::group("leaf", Vec::new());
+        let mut group = patronusphoto_doc::Layer::group("leaf", Vec::new());
         for _ in 0..256 {
-            group = photocraft_doc::Layer::group("group", vec![group]);
+            group = patronusphoto_doc::Layer::group("group", vec![group]);
         }
         doc.layers = vec![group].into();
         let mut st = DocState::new(doc, None);

@@ -3,14 +3,14 @@
 use std::sync::Arc;
 
 use craft_cms::Builtin;
-use photocraft_color::{BlendMode, Color, ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{
+use patronusphoto_color::{BlendMode, Color, ColorMode, PixelFormat, SampleType};
+use patronusphoto_doc::{
     Document, Effect, Effects, FxCommon, FxPaint, Layer, LayerContent, LayerId, LayerMask, Path, SmartFilter, SmartObject, SmartSource, StrokeFx,
     StrokePosition, Subpath, VectorMask,
 };
-use photocraft_engine::{Session, smart_cmds};
-use photocraft_geom::{Affine, Rect, Size};
-use photocraft_raster::Surface;
+use patronusphoto_engine::{Session, smart_cmds};
+use patronusphoto_geom::{Affine, Rect, Size};
+use patronusphoto_raster::Surface;
 use serde_json::{Value, json};
 
 const SVG: &[u8] = br##"<svg xmlns="http://www.w3.org/2000/svg" width="6" height="4"><rect width="3" height="4" fill="#ff0000"/><rect x="3" width="3" height="2" fill="#00ff00"/></svg>"##;
@@ -53,7 +53,7 @@ fn from_document(doc: Document, active: Option<LayerId>) -> Session {
 }
 
 fn composed(s: &Session) -> Vec<[f32; 4]> {
-    photocraft_compose::flatten(&s.active().unwrap().doc).into_px()
+    patronusphoto_compose::flatten(&s.active().unwrap().doc).into_px()
 }
 
 /// The public source-first control must differ from conversion before flattening.

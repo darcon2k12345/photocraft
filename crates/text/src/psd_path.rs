@@ -3,7 +3,7 @@
 //! path's bounds as its `BoxBounds`).
 //!
 //! Observed layout (Photoshop 2026, `text/path-circle.psd` and `text/path-wave-open.psd` in
-//! photocraft-corpus): a frame `<< /0 << /1 << /0 [ … ] >> /2 << /0 2 /2 [ matrix ] … >> >> >>`
+//! patronusphoto-corpus): a frame `<< /0 << /1 << /0 [ … ] >> /2 << /0 2 /2 [ matrix ] … >> >> >>`
 //! has the kind `/2 /0` (absent for point text, 1 for a text box, 2 for type on a path) and its
 //! outline at `/1 /0` as a flat list of cubic Bézier segments, eight numbers each
 //! (`p0 c1 c2 p1`, the next segment starting where the previous one ends, a closed path ending
@@ -21,9 +21,9 @@
 //! flipped type is still written into the path itself (see [`frame_path`]) and a file's flag is
 //! read as the same range on the path run backwards.
 
-use photocraft_doc::text::TextShape;
-use photocraft_doc::vector::{Knot, PathOp, Subpath};
-use photocraft_geom::{Affine, Point};
+use patronusphoto_doc::text::TextShape;
+use patronusphoto_doc::vector::{Knot, PathOp, Subpath};
+use patronusphoto_geom::{Affine, Point};
 
 use crate::engine_data::Value as E;
 
@@ -372,7 +372,7 @@ fn starting_at(path: &Subpath, s: f64) -> Subpath {
 
 /// The path a frame is written with for `TextShape::Path { path, start, flip }` with its range
 /// left at the default: flipped type is the path run backwards and a moved start the path from
-/// there on (exactly how PhotoCraft lays type on a path out), so the reference editor, which
+/// there on (exactly how Patronus Photo lays type on a path out), so the reference editor, which
 /// starts at the path's beginning, sets the same type.
 pub(crate) fn frame_path(path: &Subpath, start: f32, flip: bool) -> Subpath {
     let path = if flip { reversed(path) } else { path.clone() };

@@ -4,7 +4,7 @@
 use std::collections::BTreeMap;
 
 use craft::ui::patterns::preferences::SettingRule;
-use photocraft_engine::prefs::{self, SECTIONS};
+use patronusphoto_engine::prefs::{self, SECTIONS};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
@@ -142,7 +142,7 @@ pub(super) fn rules() -> Vec<SettingRule> {
     ] {
         tweak(&mut rules, path, |r| r.hidden());
     }
-    // The web build has no Agents page (`custom_rows::AGENTS_PAGE`): it shows the settings PhotoCraft had before the
+    // The web build has no Agents page (`custom_rows::AGENTS_PAGE`): it shows the settings Patronus Photo had before the
     // ArtCraft Launcher's switch.
     if cfg!(target_arch = "wasm32") {
         for key in ["connectAgents", "readRoot", "writeRoot", "whenAppClosed"] {

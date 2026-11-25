@@ -1,6 +1,6 @@
 # Summary
 
-[PhotoCraft Documentation](README.md)
+[Patronus Photo Documentation](README.md)
 
 # Getting started
 

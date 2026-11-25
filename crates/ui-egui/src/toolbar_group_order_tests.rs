@@ -3,19 +3,19 @@
 use egui::{Key, Modifiers};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 const HEALING: [Tool; 6] = [Tool::SpotHealing, Tool::Remove, Tool::Healing, Tool::Patch, Tool::ContentAwareMove, Tool::RedEye];
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 20, "height": 10})).unwrap();
     app.run("layer.new.layer", json!({})).unwrap();
     app
 }
 
-fn press(app: &mut PhotocraftApp, key: Key, modifiers: Modifiers) {
+fn press(app: &mut PatronusPhotoApp, key: Key, modifiers: Modifiers) {
     crate::canvas::testing::key(app, key, modifiers);
 }
 

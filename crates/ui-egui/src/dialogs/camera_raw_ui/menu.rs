@@ -1,5 +1,5 @@
 use super::open::{open, open_smart_filter};
-use super::{LayerId, PhotocraftApp, Value, describe};
+use super::{LayerId, PatronusPhotoApp, Value, describe};
 #[cfg(not(target_arch = "wasm32"))]
 use super::{dismiss, take_with};
 
@@ -7,7 +7,7 @@ use super::{dismiss, take_with};
 const ID: &str = "filter.cameraRaw";
 
 /// Menu / control-channel entry point. `None` when the call isn't for this dialog.
-pub fn menu(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, params: &Value) -> Option<Result<Value, String>> {
+pub fn menu(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: &str, params: &Value) -> Option<Result<Value, String>> {
     #[cfg(not(target_arch = "wasm32"))]
     let request = workspace_request;
     #[cfg(target_arch = "wasm32")]
@@ -16,11 +16,11 @@ pub fn menu(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, params: &Val
 }
 
 fn menu_with_workspace_request(
-    app: &mut PhotocraftApp,
+    app: &mut PatronusPhotoApp,
     ctx: &egui::Context,
     id: &str,
     params: &Value,
-    request: impl FnOnce(&mut PhotocraftApp, &egui::Context, &Value) -> Option<Result<Value, String>>,
+    request: impl FnOnce(&mut PatronusPhotoApp, &egui::Context, &Value) -> Option<Result<Value, String>>,
 ) -> Option<Result<Value, String>> {
     if id != ID {
         return None;
@@ -47,13 +47,13 @@ fn menu_with_workspace_request(
 }
 
 #[cfg(any(target_arch = "wasm32", test))]
-fn browser_workspace_request(_app: &mut PhotocraftApp, _ctx: &egui::Context, params: &Value) -> Option<Result<Value, String>> {
+fn browser_workspace_request(_app: &mut PatronusPhotoApp, _ctx: &egui::Context, params: &Value) -> Option<Result<Value, String>> {
     // A workspace control must never fall through to an engine edit with default parameters.
     params.get("ui").map(|_| Err("Workspace controls are unavailable in the browser".into()))
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn workspace_request(app: &mut PhotocraftApp, ctx: &egui::Context, params: &Value) -> Option<Result<Value, String>> {
+fn workspace_request(app: &mut PatronusPhotoApp, ctx: &egui::Context, params: &Value) -> Option<Result<Value, String>> {
     let ui = params.get("ui")?;
     app.raw_reply = None;
     let was_closed = app.raw.is_none();
@@ -82,7 +82,7 @@ mod tests {
 
     #[test]
     fn browser_workspace_controls_are_consumed_without_editing() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
         let ctx = app.ctx().clone();
         app.run("file.new", json!({"width": 4, "height": 4})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();

@@ -4,13 +4,13 @@ use crate::common;
 use std::io::Read;
 
 use craft_psd::Compression;
-use photocraft_codecs::{ChannelLayout, Format, Image, SampleType as CodecSample};
-use photocraft_color::{ColorMode, SampleType};
-use photocraft_doc::{Document, Layer, LayerContent};
-use photocraft_format::{SaveOptions, load_from_bytes, read_thumbnail, save_to_bytes};
-use photocraft_geom::Size;
-use photocraft_io::{PsdExportOptions, document_to_psd_with, import};
-use photocraft_raster::Rgba8Image;
+use patronusphoto_codecs::{ChannelLayout, Format, Image, SampleType as CodecSample};
+use patronusphoto_color::{ColorMode, SampleType};
+use patronusphoto_doc::{Document, Layer, LayerContent};
+use patronusphoto_format::{SaveOptions, load_from_bytes, read_thumbnail, save_to_bytes};
+use patronusphoto_geom::Size;
+use patronusphoto_io::{PsdExportOptions, document_to_psd_with, import};
+use patronusphoto_raster::Rgba8Image;
 
 fn document(depth: SampleType, size: Size) -> Document {
     let mut doc = Document::new("compatibility", size, ColorMode::Rgb, depth);
@@ -33,7 +33,7 @@ fn old_and_new_inflate(bytes: &[u8]) -> (Vec<u8>, Vec<u8>) {
 
 /// Read new PNGs and PNGs with legacy-miniz IDAT data through the codec.
 fn check_png(bytes: &[u8], image: &Image) {
-    assert_eq!(photocraft_codecs::decode(bytes).unwrap().data(), image.data());
+    assert_eq!(patronusphoto_codecs::decode(bytes).unwrap().data(), image.data());
     let mut idat = Vec::new();
     let mut legacy_png = bytes[..8].to_vec();
     let mut idat_offset = None;
@@ -56,7 +56,7 @@ fn check_png(bytes: &[u8], image: &Image) {
     chunk.extend_from_slice(&crc32fast::hash(&chunk[4..]).to_be_bytes());
     let at = idat_offset.unwrap();
     legacy_png.splice(at..at, chunk);
-    assert_eq!(photocraft_codecs::decode(&legacy_png).unwrap().data(), image.data());
+    assert_eq!(patronusphoto_codecs::decode(&legacy_png).unwrap().data(), image.data());
 }
 
 /// New zlib-rs streams and legacy-miniz streams preserve the same document samples.
@@ -68,7 +68,7 @@ fn png_psd_and_pcraft_decode_identically() {
         if depth != SampleType::F32 {
             let sample = if depth == SampleType::U8 { CodecSample::U8 } else { CodecSample::U16 };
             let image = Image::from_normalized(257, 131, ChannelLayout::Rgba, sample, &pixels).unwrap();
-            check_png(&photocraft_codecs::encode(&image, Format::Png, &Default::default()).unwrap(), &image);
+            check_png(&patronusphoto_codecs::encode(&image, Format::Png, &Default::default()).unwrap(), &image);
         }
         let raw_opts = PsdExportOptions { merged_compression: Compression::Raw, merged_matte: false, ..Default::default() };
         let merged = document_to_psd_with(&doc, &raw_opts).unwrap().0.image_data.data;
@@ -128,10 +128,10 @@ fn pdf_image_stream_is_no_bigger_than_miniz_fast() {
             vals.push(1.0);
         }
     }
-    let mut surface = photocraft_raster::Surface::new(doc.pixel_format());
+    let mut surface = patronusphoto_raster::Surface::new(doc.pixel_format());
     surface.write_region(doc.bounds(), &vals);
     doc.layers.push(Layer::new("photo", LayerContent::Raster(surface)));
-    let pdf = photocraft_io::export(&doc, "photo.pdf", &Default::default()).unwrap().bytes;
+    let pdf = patronusphoto_io::export(&doc, "photo.pdf", &Default::default()).unwrap().bytes;
     let at = pdf.windows(15).position(|s| s == b"/Subtype /Image").unwrap();
     let dict = &pdf[at..];
     let len_at = dict.windows(8).position(|s| s == b"/Length ").unwrap() + 8;

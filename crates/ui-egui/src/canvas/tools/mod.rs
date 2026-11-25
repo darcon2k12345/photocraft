@@ -3,7 +3,7 @@
 //! picks the tool for the pass, wraps it in the press preflight, runs the host and hands what the host reports to the
 //! families that keep state between passes.
 //!
-//! A family tool holds the [`ToolScope`] and its own state, never a `&mut PhotocraftApp`: the scope gives the app to one
+//! A family tool holds the [`ToolScope`] and its own state, never a `&mut PatronusPhotoApp`: the scope gives the app to one
 //! method at a time (`with_app`), so the host can borrow the app's `Ui` and the tool in the same pass.
 
 // PLAN: the sheet's Files row says "no `mod crop`", but canvas-widgets-w20's decision (cw.P5) makes `canvas/tools/crop.rs`
@@ -29,7 +29,7 @@ use craft::ui::primitives::Draw;
 
 use super::document_display::{self, CanvasHost};
 use super::scroll_all_windows::{self, Source};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// A family tool built for one pass: it borrows the pass's [`ToolScope`] and its family's state.
@@ -238,28 +238,28 @@ pub(crate) fn takes_command_stand_in(tool: Tool) -> bool {
         && family(tool) != Family::Vector
 }
 
-/// The app for one tool method at a time. A tool in the pass holds the scope instead of `&mut PhotocraftApp`, so the
+/// The app for one tool method at a time. A tool in the pass holds the scope instead of `&mut PatronusPhotoApp`, so the
 /// canvas's `Ui` and the tool coexist.
 pub(crate) struct ToolScope<'a> {
-    app: RefCell<&'a mut PhotocraftApp>,
+    app: RefCell<&'a mut PatronusPhotoApp>,
     ctx: egui::Context,
 }
 
 impl<'a> ToolScope<'a> {
-    fn new(app: &'a mut PhotocraftApp, ctx: egui::Context) -> Self {
+    fn new(app: &'a mut PatronusPhotoApp, ctx: egui::Context) -> Self {
         Self { app: RefCell::new(app), ctx }
     }
 
     /// A scope for a family tool's unit test, with no canvas pass.
-    // PLAN: the contract takes `&PhotocraftApp`, but `with_app` hands out `&mut PhotocraftApp`; the constructor takes `&mut`.
+    // PLAN: the contract takes `&PatronusPhotoApp`, but `with_app` hands out `&mut PatronusPhotoApp`; the constructor takes `&mut`.
     #[cfg(test)]
-    pub(crate) fn for_test(app: &'a mut PhotocraftApp) -> Self {
+    pub(crate) fn for_test(app: &'a mut PatronusPhotoApp) -> Self {
         let ctx = super::testing::ctx(app);
         Self::new(app, ctx)
     }
 
     /// Runs `f` on the app. A nested call panics: a tool method calls `with_app` once at a time.
-    pub(crate) fn with_app<R>(&self, f: impl FnOnce(&mut PhotocraftApp) -> R) -> R {
+    pub(crate) fn with_app<R>(&self, f: impl FnOnce(&mut PatronusPhotoApp) -> R) -> R {
         f(&mut self.app.borrow_mut())
     }
 
@@ -271,7 +271,7 @@ impl<'a> ToolScope<'a> {
 
 /// Why a press with `tool` must not start: it would paint on or move a hidden target layer (the engine refuses the
 /// command; refusing the press keeps the live stroke from drawing first).
-fn hidden_target(app: &PhotocraftApp, tool: Tool) -> Option<&'static str> {
+fn hidden_target(app: &PatronusPhotoApp, tool: Tool) -> Option<&'static str> {
     let cmd = match tool {
         Tool::Move => "layer.translate",
         // The live Gradient makes a new Gradient Fill layer above the target, which Photoshop allows over a hidden
@@ -281,13 +281,13 @@ fn hidden_target(app: &PhotocraftApp, tool: Tool) -> Option<&'static str> {
         t if t.is_brushlike() || matches!(t, Tool::Gradient | Tool::PaintBucket | Tool::MagicEraser) => "paint.stroke",
         _ => return None,
     };
-    photocraft_engine::hidden_target::refusal(&app.session, cmd, &serde_json::json!({}))
+    patronusphoto_engine::hidden_target::refusal(&app.session, cmd, &serde_json::json!({}))
 }
 
 /// The press-time refusals: a hidden target layer, and for the tools with an alert in `brush_refusal` a locked layer or
 /// a group's pixels. Those tools say why in an alert; the other tools say a hidden target in the status bar. True when
 /// the press is refused.
-fn press_refused(app: &mut PhotocraftApp, tool: Tool) -> bool {
+fn press_refused(app: &mut PatronusPhotoApp, tool: Tool) -> bool {
     let hidden = hidden_target(app, tool);
     if let Some(message) = crate::brush_refusal::alert(app, tool, hidden.is_some()) {
         let _ = crate::dialogs::alerts::alert(app, message);
@@ -306,12 +306,12 @@ fn press_refused(app: &mut PhotocraftApp, tool: Tool) -> bool {
 /// A Remove press on a hidden active pixel layer does nothing and says nothing, as in Photoshop (#12554). Only that
 /// case was measured: a layer inside a hidden group, a targeted mask, Sample All Layers and the other layer kinds keep
 /// the status-bar error. Hidden is checked before the lock, so a hidden layer with Lock All is quiet too.
-fn quiet_hidden_refusal(app: &PhotocraftApp, tool: Tool) -> bool {
+fn quiet_hidden_refusal(app: &PatronusPhotoApp, tool: Tool) -> bool {
     if tool != Tool::Remove || app.ui.tool_options.sample_all.remove || super::paint_target(app) != serde_json::json!("pixels") {
         return false;
     }
     let Some(st) = app.session.active() else { return false };
-    let Some(id) = st.active_layer.filter(|&id| st.doc.layer(id).is_some_and(|l| matches!(l.content, photocraft_doc::LayerContent::Raster(_)))) else {
+    let Some(id) = st.active_layer.filter(|&id| st.doc.layer(id).is_some_and(|l| matches!(l.content, patronusphoto_doc::LayerContent::Raster(_)))) else {
         return false;
     };
     let Some(path) = st.doc.path_of(id) else { return false };
@@ -321,10 +321,10 @@ fn quiet_hidden_refusal(app: &PhotocraftApp, tool: Tool) -> bool {
 /// A press with `tool` that would paint the pixels of a group (the active layer, with neither its mask, an alpha channel
 /// nor the Quick Mask targeted): a group has none, so the press is refused with Photoshop's message. Returns whether it
 /// was refused.
-fn refuse_group(app: &mut PhotocraftApp, tool: Tool) -> bool {
+fn refuse_group(app: &mut PatronusPhotoApp, tool: Tool) -> bool {
     let group = crate::rasterize_prompt::paints_pixels(app, tool)
         && super::paint_target(app) == serde_json::json!("pixels")
-        && app.session.active().and_then(|st| st.doc.layer(st.active_layer?)).is_some_and(photocraft_doc::Layer::is_group);
+        && app.session.active().and_then(|st| st.doc.layer(st.active_layer?)).is_some_and(patronusphoto_doc::Layer::is_group);
     if group {
         let message = crate::i18n::fmt(tl!("Could not use the {tool} because the target layer is a group."), &[("tool", tl!(tool.label()))]);
         crate::dialogs::alerts::alert(app, message);
@@ -491,7 +491,7 @@ fn dynamic<'x>(tool: &'x mut FamilyTool<'_>) -> DynTool<'x> {
 /// tools. The tool is, in order: the top dialog's armed pick, the open Free Transform's tool, the painting tool with a
 /// symmetry session, else the selected tool's family. The crop pass finishes after `f`, with the app free again.
 fn with_rig<R>(
-    app: &mut PhotocraftApp,
+    app: &mut PatronusPhotoApp,
     ctx: &egui::Context,
     host: CanvasHost,
     tools: &mut CanvasTools,
@@ -679,7 +679,7 @@ fn with_rig<R>(
 /// (`shown` is what they reported) and before its picture, and applies what it reports: the view a tool or the
 /// autoscroll moved (in the response's `view`), the Scroll All Windows follow, and each family's drain, which feeds
 /// the picture of the same pass. Tools are active only on the document's own canvas (`CanvasHost::primary`).
-pub(crate) fn run(app: &mut PhotocraftApp, ui: &egui::Ui, host: CanvasHost, out: &ToolPass, shown: BodyShown) -> ToolHostResponse {
+pub(crate) fn run(app: &mut PatronusPhotoApp, ui: &egui::Ui, host: CanvasHost, out: &ToolPass, shown: BodyShown) -> ToolHostResponse {
     let ctx = ui.ctx().clone();
     let primary = host.is_primary(app);
     let mut tools = std::mem::take(&mut app.canvas_tools);
@@ -728,7 +728,7 @@ pub(crate) fn run(app: &mut PhotocraftApp, ui: &egui::Ui, host: CanvasHost, out:
 /// The regions the tool of the canvas `host`'s next pass claims over the canvas controls (`CanvasTool::regions`), for
 /// `Canvas::tool_regions`: asked before the canvas shows, from the same pick as the pass (`with_rig`). Tools run in the
 /// document's own canvas only (`CanvasHost::primary`), so the other canvases claim nothing.
-pub(crate) fn claimed_regions(app: &mut PhotocraftApp, ctx: &egui::Context, host: CanvasHost) -> Vec<ToolRegion> {
+pub(crate) fn claimed_regions(app: &mut PatronusPhotoApp, ctx: &egui::Context, host: CanvasHost) -> Vec<ToolRegion> {
     let primary = host.is_primary(app);
     if !primary {
         return Vec::new();
@@ -741,7 +741,7 @@ pub(crate) fn claimed_regions(app: &mut PhotocraftApp, ctx: &egui::Context, host
 
 /// Ends a gesture that began on another document than the one the canvas `host` shows now: a document switch while the
 /// button is down. Call it at the start of the canvas pass of the active document.
-pub(crate) fn end_foreign_gesture(app: &mut PhotocraftApp, ctx: &egui::Context, shown: u64) {
+pub(crate) fn end_foreign_gesture(app: &mut PatronusPhotoApp, ctx: &egui::Context, shown: u64) {
     let Some((started, host)) = app.canvas_tools.gesture_on else { return };
     if started != shown {
         app.canvas_tools.gesture_on = None;
@@ -752,7 +752,7 @@ pub(crate) fn end_foreign_gesture(app: &mut PhotocraftApp, ctx: &egui::Context, 
 /// What the app does with a finished pass of the host: each family takes its gesture's events (the painting family
 /// first, so a fed stroke shows in the pass's picture), and a pan follows into the other windows when Scroll All
 /// Windows asks.
-pub(crate) fn after_run(app: &mut PhotocraftApp, tools: &mut CanvasTools, response: &ToolHostResponse) {
+pub(crate) fn after_run(app: &mut PatronusPhotoApp, tools: &mut CanvasTools, response: &ToolHostResponse) {
     super::paint_tool::drain(app, &mut tools.paint, response);
     selection::drain(app, &mut tools.selection, response);
     super::eyedropper_tool::drain(app, &mut tools.eyedropper, response);
@@ -780,7 +780,7 @@ pub(crate) fn after_run(app: &mut PhotocraftApp, tools: &mut CanvasTools, respon
 /// app replaces the tool, with `app.ui.tool` still the selected tool of the gesture's pass. The host is built with the
 /// pass's stand-ins and momentary set, so a gesture the ⌘ Move, an Alt stand-in or a held Hand runs is cancelled on
 /// that tool. The one cancel path of the canvas tools.
-pub(crate) fn tool_changed(app: &mut PhotocraftApp, ctx: &egui::Context, host: CanvasHost) {
+pub(crate) fn tool_changed(app: &mut PatronusPhotoApp, ctx: &egui::Context, host: CanvasHost) {
     let mut tools = std::mem::take(&mut app.canvas_tools);
     let id = host.canvas_id();
     let primary = host.is_primary(app);
@@ -791,7 +791,7 @@ pub(crate) fn tool_changed(app: &mut PhotocraftApp, ctx: &egui::Context, host: C
 }
 
 /// Whether the active document's own canvas has a gesture running, for the readers with no `Context` at hand.
-pub(crate) fn in_gesture(app: &PhotocraftApp) -> bool {
+pub(crate) fn in_gesture(app: &PatronusPhotoApp) -> bool {
     let Some(idx) = app.session.active_index() else { return false };
     ToolHost::in_gesture(app.ctx(), CanvasHost::primary(app, idx).canvas_id())
 }

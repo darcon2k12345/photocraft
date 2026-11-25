@@ -1,6 +1,6 @@
 use super::*;
-use photocraft_color::{ColorMode, SampleType};
-use photocraft_geom::Size;
+use patronusphoto_color::{ColorMode, SampleType};
+use patronusphoto_geom::Size;
 use std::io::Write;
 
 fn drawing(label: &str, omitted: bool) -> Vec<u8> {
@@ -35,8 +35,8 @@ fn saved_svgz_refresh_keeps_native_size_pixels_and_place_reports_omissions() {
     assert!(warnings.iter().any(|warning| warning.as_str().is_some_and(|warning| warning.contains("embedded image was omitted"))));
     let state = session.active().unwrap();
     let layer = state.active_layer.unwrap();
-    let saved = photocraft_format::save_to_bytes(&state.doc, &Default::default()).unwrap();
-    let mut doc = photocraft_format::load_from_bytes(&saved).unwrap();
+    let saved = patronusphoto_format::save_to_bytes(&state.doc, &Default::default()).unwrap();
+    let mut doc = patronusphoto_format::load_from_bytes(&saved).unwrap();
     let format = doc.pixel_format();
     let mut changed = doc.layer(layer).unwrap().clone();
     let LayerContent::Smart(sm) = &mut changed.content else { panic!("saved SVGZ smart object") };
@@ -48,7 +48,7 @@ fn saved_svgz_refresh_keeps_native_size_pixels_and_place_reports_omissions() {
     let source = crate::file_cmds::import(name, &encoded).unwrap();
     let bounds = source.bounds();
     let source = super::super::source::flattened_source(&source, format).unwrap();
-    let expected = photocraft_algo::warp::place_source(&source, bounds, &sm.transform, None).unwrap();
+    let expected = patronusphoto_algo::warp::place_source(&source, bounds, &sm.transform, None).unwrap();
     assert_eq!(source_box(&doc, sm), Some([0., 0., 8., 8.]));
     assert!(refresh_layer(&doc, &mut changed).unwrap());
     let LayerContent::Smart(sm) = &mut changed.content else { panic!("refreshed SVGZ smart object") };
@@ -83,7 +83,7 @@ fn memo_prices_owned_output_and_does_not_retain_encoded_capacity() {
     let bytes = Arc::new(reserved);
     let weak = Arc::downgrade(&bytes);
     let sm = object("reserved.svg", bytes);
-    let tile = photocraft_raster::tile_storage_bytes(doc.bounds(), &doc.pixel_format()) as usize;
+    let tile = patronusphoto_raster::tile_storage_bytes(doc.bounds(), &doc.pixel_format()) as usize;
     let mut memo = WarningRenderSources::with_limits(&doc, tile + 4096, 32);
     WARNING_SOURCE_DECODES.with(|value| value.set(0));
     let first = render_with_warnings_using(&sm, &mut memo).unwrap();
@@ -112,8 +112,8 @@ fn empty_memo_with_stale_accounting_recovers_without_panicking() {
 
 #[test]
 fn raster_named_svg_keeps_the_ordinary_import_path() {
-    let image = photocraft_codecs::Image::from_u8(1, 1, photocraft_codecs::ChannelLayout::Rgb, vec![0, 255, 0]).unwrap();
-    let png = photocraft_codecs::encode(&image, photocraft_codecs::Format::Png, &Default::default()).unwrap();
+    let image = patronusphoto_codecs::Image::from_u8(1, 1, patronusphoto_codecs::ChannelLayout::Rgb, vec![0, 255, 0]).unwrap();
+    let png = patronusphoto_codecs::encode(&image, patronusphoto_codecs::Format::Png, &Default::default()).unwrap();
     let doc = document();
     let sm = object("renamed.svg", Arc::new(png));
     let rendered = render(&doc, &sm).unwrap().unwrap();

@@ -20,7 +20,7 @@ use craft::ui::text::{NumberField, TextField};
 use serde_json::{Value, json};
 
 use super::fields::{PrefPages, choice_label};
-use super::{PhotocraftApp, prefs};
+use super::{PatronusPhotoApp, prefs};
 use craft::ui::patterns::preferences::{CustomSettings, SettingsDraft};
 
 const MEMORY_PERCENT: &str = "performance.memoryUsagePercent";
@@ -61,7 +61,7 @@ pub(super) struct PrefsCustom {
 impl PrefsCustom {
     /// The rows for the next pass. `picker_open` is the dialog host's answer: whether a Color Picker opened from the
     /// window is open.
-    pub(super) fn new(app: &PhotocraftApp, picker_open: bool) -> Self {
+    pub(super) fn new(app: &PatronusPhotoApp, picker_open: bool) -> Self {
         let mut gpu_info = app.perf.gpu_info.lines();
         gpu_info.extend(gpu_memory_lines(app));
         PrefsCustom {
@@ -108,7 +108,7 @@ impl CustomSettings<PrefPages> for PrefsCustom {
 }
 
 /// The GPU memory budget lines of Performance › Graphics.
-fn gpu_memory_lines(app: &PhotocraftApp) -> Vec<String> {
+fn gpu_memory_lines(app: &PatronusPhotoApp) -> Vec<String> {
     let mut v = Vec::new();
     if app.perf.gpu_budget_mb > 0 {
         let budget = crate::chrome_ui::fmt_bytes(app.perf.gpu_budget_mb.saturating_mul(1 << 20));
@@ -351,12 +351,12 @@ fn scratch_disks_row(ui: &mut egui::Ui, draft: &mut SettingsDraft) {
         disks.push(json!({"enabled": true, "path": ""}));
         draft.set(SCRATCH_DISKS, &disks);
     }
-    let scratch = photocraft_raster::spill::stats();
+    let scratch = patronusphoto_raster::spill::stats();
     if scratch.free_space_unmeasured {
         let dir = scratch.dir.as_deref().map(|p| p.display().to_string()).unwrap_or_else(|| tl!("Unknown").into());
         let warning = crate::i18n::fmt(
             tl!(
-                "The current scratch directory ({path}) doesn't report its free space, so PhotoCraft can't stop before it fills up, and large files get no extra room from it without a Scratch Size Limit. This warning applies to the current configuration; changes above take effect on Apply or OK. Set a limit or use a local disk."
+                "The current scratch directory ({path}) doesn't report its free space, so Patronus Photo can't stop before it fills up, and large files get no extra room from it without a Scratch Size Limit. This warning applies to the current configuration; changes above take effect on Apply or OK. Set a limit or use a local disk."
             ),
             &[("path", &dir)],
         );

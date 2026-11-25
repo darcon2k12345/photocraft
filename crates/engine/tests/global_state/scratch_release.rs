@@ -1,8 +1,8 @@
 //! The process-wide scratch pool is isolated from parallel unit tests (#10479); these tests take
 //! turns on it.
-use photocraft_engine::Session;
-use photocraft_engine::jobs::Started;
-use photocraft_raster::scratch;
+use patronusphoto_engine::Session;
+use patronusphoto_engine::jobs::Started;
+use patronusphoto_raster::scratch;
 use serde_json::json;
 
 /// Holds the test lock with the pool's idle release off, so a slow runner can't empty the pool

@@ -16,10 +16,10 @@
 //! One pick is one history step for all the layers it recolours; a drag in the Color panel's field
 //! or sliders is one step too.
 
-use photocraft_doc::{Color, Fill, LayerContent};
+use patronusphoto_doc::{Color, Fill, LayerContent};
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 fn hex(c: [f32; 4]) -> String {
@@ -47,17 +47,17 @@ fn recolours_shapes(tool: Tool) -> bool {
 /// Picker: recolour what is selected, as the tool in hand says (see the module docs).
 /// Picks of one `gesture` (the coalesce key of a Color panel edit gesture, a drag or a typed
 /// value) share one history step; `None` (a swatch, the Color Picker) is a step of its own.
-pub fn foreground_changed(app: &mut PhotocraftApp, gesture: Option<String>) {
+pub fn foreground_changed(app: &mut PatronusPhotoApp, gesture: Option<String>) {
     recolour(app, gesture, false);
 }
 
 /// A swatch just set the foreground: recolour the selected characters while editing type, else
 /// every selected type layer and shape fill, whatever the tool (see the module docs).
-pub fn swatch_picked(app: &mut PhotocraftApp) {
+pub fn swatch_picked(app: &mut PatronusPhotoApp) {
     recolour(app, None, true);
 }
 
-fn recolour(app: &mut PhotocraftApp, gesture: Option<String>, any_tool: bool) {
+fn recolour(app: &mut PatronusPhotoApp, gesture: Option<String>, any_tool: bool) {
     // Editing type: the selected characters, in the editing session's step; nothing else.
     if app.ui.text_edit.is_some() {
         crate::type_tool::foreground_changed(app);

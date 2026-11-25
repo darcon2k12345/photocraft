@@ -7,7 +7,7 @@ use craft::ui::dialog::DialogId;
 use egui_kittest::kittest::Queryable;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::cam_no_pixels_alert_tests::{drag, selected, steps};
 use crate::state::Tool;
 
@@ -20,25 +20,25 @@ const OVER_WHITE: &[[f64; 2]] = &[[650.0, 20.0], [780.0, 80.0]];
 /// The issue's document: 800 x 600 white Background and the active pixel layer Shapes with a red
 /// rectangle 100,100-300,250, a blue disc (centre 500,175, radius 75) and a grey ramp at y
 /// 350-450, transparent elsewhere. Object Selection with Object Finder on, Sample All Layers off.
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 800, "height": 600, "background": "white"})).unwrap();
     app.run("layer.new.layer", json!({"name": "Shapes"})).unwrap();
     app.session
         .edit("paint", |doc, a| {
             let s = doc.layer_mut(a.unwrap()).unwrap().surface_mut().unwrap();
-            s.fill_rect(photocraft_geom::Rect::new(100, 100, 300, 250), &[220.0 / 255.0, 30.0 / 255.0, 30.0 / 255.0, 1.0]);
+            s.fill_rect(patronusphoto_geom::Rect::new(100, 100, 300, 250), &[220.0 / 255.0, 30.0 / 255.0, 30.0 / 255.0, 1.0]);
             for y in 100..250 {
                 for x in 425..575 {
                     let (dx, dy) = (x as f32 + 0.5 - 500.0, y as f32 + 0.5 - 175.0);
                     if dx * dx + dy * dy <= 75.0 * 75.0 {
-                        s.fill_rect(photocraft_geom::Rect::new(x, y, x + 1, y + 1), &[30.0 / 255.0, 30.0 / 255.0, 220.0 / 255.0, 1.0]);
+                        s.fill_rect(patronusphoto_geom::Rect::new(x, y, x + 1, y + 1), &[30.0 / 255.0, 30.0 / 255.0, 220.0 / 255.0, 1.0]);
                     }
                 }
             }
             for x in 0..800 {
                 let v = x as f32 / 799.0;
-                s.fill_rect(photocraft_geom::Rect::new(x, 350, x + 1, 450), &[v, v, v, 1.0]);
+                s.fill_rect(patronusphoto_geom::Rect::new(x, 350, x + 1, 450), &[v, v, v, 1.0]);
             }
             Ok(())
         })
@@ -50,21 +50,21 @@ fn app() -> Box<PhotocraftApp> {
 }
 
 /// The open alerts: the tool opens no other, so any alert is the "Couldn't find an object" one.
-fn alerts(app: &PhotocraftApp) -> Vec<DialogId> {
+fn alerts(app: &PatronusPhotoApp) -> Vec<DialogId> {
     crate::dialogs::alerts::alerts(app)
 }
 
-fn no_dialogs(app: &PhotocraftApp) -> bool {
+fn no_dialogs(app: &PatronusPhotoApp) -> bool {
     app.framework.dialogs.open_dialogs().is_empty()
 }
 
-fn confirm(app: &mut PhotocraftApp, id: DialogId) {
+fn confirm(app: &mut PatronusPhotoApp, id: DialogId) {
     let ctx = app.ctx().clone();
     crate::dialogs::confirm(app, &ctx, id).unwrap();
 }
 
 /// The name of the latest History state.
-fn last_step(app: &PhotocraftApp) -> Option<String> {
+fn last_step(app: &PatronusPhotoApp) -> Option<String> {
     app.session.active().unwrap().history.undo_label().map(str::to_owned)
 }
 

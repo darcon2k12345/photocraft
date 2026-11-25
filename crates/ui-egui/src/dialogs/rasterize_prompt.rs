@@ -17,7 +17,7 @@ use craft::ui::dialog::{DialogId, PromptAnswer, PromptChoice, StandardPrompt};
 use serde_json::{Value, json};
 
 use super::alerts;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// A layer kind that must be rasterized before its pixels can be painted.
@@ -66,7 +66,7 @@ impl Kind {
 }
 
 /// Does `tool` paint the layer's pixels (so a vector or Smart Object layer must be rasterized)?
-pub fn paints_pixels(app: &PhotocraftApp, tool: Tool) -> bool {
+pub fn paints_pixels(app: &PatronusPhotoApp, tool: Tool) -> bool {
     tool.is_brushlike()
         || matches!(tool, Tool::PaintBucket | Tool::MagicEraser | Tool::RedEye)
         || (tool == Tool::Gradient && app.ui.tool_options.gradient_classic)
@@ -75,7 +75,7 @@ pub fn paints_pixels(app: &PhotocraftApp, tool: Tool) -> bool {
 /// The active layer's kind when painting its pixels needs rasterizing first: the tool targets
 /// the layer's pixels (not its mask, an alpha channel or the Quick Mask) and the layer is a
 /// type, shape, Smart Object or fill layer that isn't locked.
-pub fn needed(app: &PhotocraftApp) -> Option<(Kind, photocraft_doc::LayerId)> {
+pub fn needed(app: &PatronusPhotoApp) -> Option<(Kind, patronusphoto_doc::LayerId)> {
     if crate::canvas::paint_target(app) != json!("pixels") {
         return None;
     }
@@ -86,7 +86,7 @@ pub fn needed(app: &PhotocraftApp) -> Option<(Kind, photocraft_doc::LayerId)> {
     if locks.all || locks.pixels {
         return None;
     }
-    use photocraft_doc::LayerContent as C;
+    use patronusphoto_doc::LayerContent as C;
     let kind = match &l.content {
         C::Text(_) => Kind::Type,
         C::Shape(_) => Kind::Shape,
@@ -100,7 +100,7 @@ pub fn needed(app: &PhotocraftApp) -> Option<(Kind, photocraft_doc::LayerId)> {
 /// A tool's pointer press: when it would paint a layer that must be rasterized first, open the
 /// prompt, or drop the press (the Remove tool on a type layer), and return true (the tool must not
 /// see the press).
-pub fn intercept(app: &mut PhotocraftApp, tool: Tool, x: f64, y: f64, pressure: f32) -> bool {
+pub fn intercept(app: &mut PatronusPhotoApp, tool: Tool, x: f64, y: f64, pressure: f32) -> bool {
     if !paints_pixels(app, tool) {
         return false;
     }
@@ -116,9 +116,9 @@ pub fn intercept(app: &mut PhotocraftApp, tool: Tool, x: f64, y: f64, pressure: 
 /// Opens the prompt for `layer`; OK rasterizes it, and the id of the prompt already open comes back
 /// when there is one. `tool` and `at` (x, y, pressure) name the press that opened it; the press is
 /// never replayed, so they change nothing.
-pub fn open(app: &mut PhotocraftApp, kind: Kind, layer: photocraft_doc::LayerId, _tool: Tool, _at: [f64; 3]) -> DialogId {
+pub fn open(app: &mut PatronusPhotoApp, kind: Kind, layer: patronusphoto_doc::LayerId, _tool: Tool, _at: [f64; 3]) -> DialogId {
     let prompt = StandardPrompt::custom(tl!(kind.message()).to_owned())
-        .title(tl!("PhotoCraft").to_owned())
+        .title(tl!("Patronus Photo").to_owned())
         .button(PromptChoice::Proceed, tl!("OK").to_owned())
         .button(PromptChoice::Cancel, tl!("Cancel").to_owned())
         .tag(Rasterize { kind, layer: layer.0, filter: None });
@@ -128,13 +128,13 @@ pub fn open(app: &mut PhotocraftApp, kind: Kind, layer: photocraft_doc::LayerId,
 /// The active type layer when `id` is a filter that only needs it rasterized: the engine greys it
 /// for not being a pixel layer, and the layer is not locked. The flag says whether the filter also
 /// runs on a Smart Object, as a smart filter (Vanishing Point doesn't).
-pub fn filter_needs(app: &PhotocraftApp, id: &str) -> Option<(photocraft_doc::LayerId, bool)> {
+pub fn filter_needs(app: &PatronusPhotoApp, id: &str) -> Option<(patronusphoto_doc::LayerId, bool)> {
     if !id.starts_with("filter.") {
         return None;
     }
     let st = app.session.active()?;
     let layer = st.active_layer?;
-    if !matches!(st.doc.layer(layer)?.content, photocraft_doc::LayerContent::Text(_)) {
+    if !matches!(st.doc.layer(layer)?.content, patronusphoto_doc::LayerContent::Text(_)) {
         return None;
     }
     let locks = st.doc.effective_locks(layer);
@@ -142,7 +142,7 @@ pub fn filter_needs(app: &PhotocraftApp, id: &str) -> Option<(photocraft_doc::La
         return None;
     }
     // Last Filter checks the layer before the journal: with no filter to repeat it stays grey.
-    if id == "filter.lastFilter" && photocraft_engine::filters::last_filter(&app.session).is_none() {
+    if id == "filter.lastFilter" && patronusphoto_engine::filters::last_filter(&app.session).is_none() {
         return None;
     }
     // The engine's reason for a type layer: "filters need a pixel layer (active layer is a Type
@@ -154,10 +154,10 @@ pub fn filter_needs(app: &PhotocraftApp, id: &str) -> Option<(photocraft_doc::La
 }
 
 /// A filter chosen on a type layer: open the prompt instead and return its answer to the caller.
-pub fn intercept_filter(app: &mut PhotocraftApp, id: &str, params: &Value) -> Option<Result<Value, String>> {
+pub fn intercept_filter(app: &mut PatronusPhotoApp, id: &str, params: &Value) -> Option<Result<Value, String>> {
     let (layer, smart) = filter_needs(app, id)?;
     let mut prompt = StandardPrompt::custom(tl!(Kind::Type.message()).to_owned())
-        .title(tl!("PhotoCraft").to_owned())
+        .title(tl!("Patronus Photo").to_owned())
         .button(PromptChoice::Proceed, tl!("Rasterize").to_owned());
     if smart {
         prompt = prompt.button(PromptChoice::Alternate, tl!("Convert to Smart Object").to_owned());
@@ -174,7 +174,7 @@ pub fn intercept_filter(app: &mut PhotocraftApp, id: &str, params: &Value) -> Op
 /// The `PROMPTS` entry: Proceed rasterizes, Alternate converts to a Smart Object (the filter prompt
 /// only), Cancel does nothing. The filter of a filter prompt runs at once, as the menu would, now
 /// that the layer can take it. `false` for another family's answer.
-pub(crate) fn answer(app: &mut PhotocraftApp, ctx: &egui::Context, answer: &mut PromptAnswer) -> bool {
+pub(crate) fn answer(app: &mut PatronusPhotoApp, ctx: &egui::Context, answer: &mut PromptAnswer) -> bool {
     let Some(Rasterize { kind, layer, filter }) = answer.take_tag::<Rasterize>() else { return false };
     let result = match (answer.choice, filter) {
         (PromptChoice::Proceed, None) => rasterize(app, kind, layer),
@@ -188,7 +188,7 @@ pub(crate) fn answer(app: &mut PhotocraftApp, ctx: &egui::Context, answer: &mut 
 }
 
 /// OK: rasterize the layer. The click that opened the prompt does not paint.
-fn rasterize(app: &mut PhotocraftApp, kind: Kind, layer: u64) -> Result<Value, String> {
+fn rasterize(app: &mut PatronusPhotoApp, kind: Kind, layer: u64) -> Result<Value, String> {
     let revision = app.session.active().map(|st| st.revision);
     let r = app.run(kind.command(), json!({ "layer": layer }))?;
     // A painting tool's type prompt names its step as the reference does (#12888); Layer ›
@@ -204,7 +204,7 @@ fn rasterize(app: &mut PhotocraftApp, kind: Kind, layer: u64) -> Result<Value, S
 }
 
 /// The filter prompt's answer: convert (`smart`) or rasterize the layer, then run the filter.
-fn convert_for_filter(app: &mut PhotocraftApp, ctx: &egui::Context, smart: bool, filter: &str, params: Value, layer: u64) -> Result<Value, String> {
+fn convert_for_filter(app: &mut PatronusPhotoApp, ctx: &egui::Context, smart: bool, filter: &str, params: Value, layer: u64) -> Result<Value, String> {
     let command = if smart { "layer.smartObjects.convertToSmartObject" } else { Kind::Type.command() };
     let converted = app.run(command, json!({ "layer": layer }))?;
     crate::menus::invoke(app, ctx, filter, params)?;

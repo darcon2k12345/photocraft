@@ -3,10 +3,10 @@
 //! cases; this complementary fixture proves the real control-input route is reachable before
 //! result application, independently of the full app's wall-clock progress-modal policy.
 
-use photocraft_doc::LayerId;
-use photocraft_engine::Session;
-use photocraft_engine::jobs::Started;
-use photocraft_ui_egui::{PhotocraftApp, Services, control};
+use patronusphoto_doc::LayerId;
+use patronusphoto_engine::Session;
+use patronusphoto_engine::jobs::Started;
+use patronusphoto_ui_egui::{PatronusPhotoApp, Services, control};
 
 const REMOVE: &str = r#"{"points":[[12,10],[16,12]],"size":6}"#;
 
@@ -14,10 +14,10 @@ const REMOVE: &str = r#"{"points":[[12,10],[16,12]],"size":6}"#;
 // after selection. The full app's progress modal intentionally blocks canvas input on slow
 // hosts, and its logic tick may collect the result before the click, so it is not this
 // pending-result regression's fixture.
-struct CanvasApp(Box<PhotocraftApp>);
+struct CanvasApp(Box<PatronusPhotoApp>);
 
 impl std::ops::Deref for CanvasApp {
-    type Target = PhotocraftApp;
+    type Target = PatronusPhotoApp;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -40,7 +40,7 @@ impl eframe::App for CanvasApp {
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        egui::CentralPanel::default().show(ui, |ui| photocraft_ui_egui::canvas::document_area(&mut self.0, ui));
+        egui::CentralPanel::default().show(ui, |ui| patronusphoto_ui_egui::canvas::document_area(&mut self.0, ui));
     }
 }
 
@@ -51,7 +51,7 @@ fn run(s: &mut Session, id: &str, p: &str) {
 }
 
 /// Context for assertion messages: who is active, whether a text edit is open, and whether the job is done.
-fn state_line(app: &PhotocraftApp, job: photocraft_engine::jobs::JobId) -> String {
+fn state_line(app: &PatronusPhotoApp, job: patronusphoto_engine::jobs::JobId) -> String {
     format!(
         "active layer {:?}, text-edit session open {}, job finished {}",
         app.session.active().and_then(|d| d.active_layer),
@@ -100,9 +100,9 @@ fn control_pointer_selects_text_before_remove_result_application() {
     // The app runs in a harness so the canvas takes the control channel's pointer input on the
     // frames after the call.
     let mut h = Harness::builder().with_size(egui::vec2(1100.0, 720.0)).with_max_steps(64).build_eframe(move |cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
         // The app shares the harness's context, which is where the control channel's pointer input arrives.
-        CanvasApp(PhotocraftApp::with_context(cc.egui_ctx.clone(), a, Services::default()))
+        CanvasApp(PatronusPhotoApp::with_context(cc.egui_ctx.clone(), a, Services::default()))
     });
     h.run_steps(4);
 

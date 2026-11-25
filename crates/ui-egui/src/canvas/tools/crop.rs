@@ -4,7 +4,7 @@
 
 use craft::draw::ui::crop::{CropOutput, CropShown, CropTool, CropToolPass};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::crop_ui::CropRun;
 
 /// The tool for one pass of the host: `tool` over this pass's `run`, with what the canvas body's frame reported in the
@@ -15,13 +15,13 @@ pub(crate) fn pass<'a>(tool: &'a mut CropTool, run: &'a CropRun, ctx: &'a egui::
 
 /// Shows the Crop tool's frame in the canvas body at `rect`. What it reported goes to the host's pass of this canvas
 /// (`tools::run`), which hands its snap lines and autoscroll to the host and its events to [`finish`].
-pub(crate) fn show_frame(app: &mut PhotocraftApp, ui: &mut egui::Ui, rect: egui::Rect) -> Option<CropShown> {
+pub(crate) fn show_frame(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, rect: egui::Rect) -> Option<CropShown> {
     let run = CropRun::of(app)?;
     let ctx = ui.ctx().clone();
     Some(app.canvas_tools.crop.tool.show_frame(ui, rect, &run.input(&ctx)))
 }
 
 /// Applies what the pass reported to the document and the crop options.
-pub(crate) fn finish(app: &mut PhotocraftApp, output: CropOutput) {
+pub(crate) fn finish(app: &mut PatronusPhotoApp, output: CropOutput) {
     crate::crop_ui::finish(app, output);
 }

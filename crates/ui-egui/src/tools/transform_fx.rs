@@ -16,14 +16,14 @@
 use craft::imaging::ui::transform_preview::{StylePlan, StyledContent, StyledSource};
 use craft::ui::canvas::PixelRect;
 use egui::{Color32, ColorImage};
-use photocraft_color::{BlendMode, PixelFormat};
-use photocraft_compose::Buffer;
-use photocraft_compose::effects::{self, TextureCtx};
-use photocraft_doc::{Document, Effect, Layer, LayerContent, LayerId};
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use patronusphoto_color::{BlendMode, PixelFormat};
+use patronusphoto_compose::Buffer;
+use patronusphoto_compose::effects::{self, TextureCtx};
+use patronusphoto_doc::{Document, Effect, Layer, LayerContent, LayerId};
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::Surface;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// Rough cost of compositing one work pixel with `layer`'s style, in nanoseconds: measured per
 /// effect at default settings on an Apple M3 Pro, release build. A Stroke costs the most by far
@@ -54,7 +54,7 @@ pub fn work_layer(layer: &Layer, scale: f64) -> Layer {
     l.vector_mask = None;
     l.fill_cache = None;
     l.blend = BlendMode::Normal;
-    photocraft_engine::image_cmds::scale_effects_preview(&mut l.effects, scale as f32);
+    patronusphoto_engine::image_cmds::scale_effects_preview(&mut l.effects, scale as f32);
     l.effects.reference = l.effects.reference.map(|(x, y)| (x * scale, y * scale));
     l
 }
@@ -74,7 +74,7 @@ impl<'a> LayerStyleSource<'a> {
     /// The source of the open session's moving layer. `None` for a layer without a style (also
     /// once it is switched off while the box is open) or a hidden one: the bare pixels are drawn
     /// instead.
-    pub fn new(app: &'a PhotocraftApp) -> Option<Self> {
+    pub fn new(app: &'a PatronusPhotoApp) -> Option<Self> {
         let (t, pv) = (app.ui.transform.as_ref()?, app.transform_preview.as_ref()?);
         let st = app.session.active().filter(|st| st.doc.id == pv.doc.id)?;
         let layer = st.doc.layer(LayerId(t.layer)).filter(|l| l.visible && effects::has_effects(l))?;
@@ -199,8 +199,8 @@ mod tests {
     use craft::behavior::geometry::Homography;
     use craft::behavior::kurbo::Point;
     use craft::imaging::ui::transform_preview::{StyledBudget, resample};
-    use photocraft_color::Color;
-    use photocraft_doc::{Contour, FxCommon, FxPaint, Shadow, StrokeFx, StrokePosition};
+    use patronusphoto_color::Color;
+    use patronusphoto_doc::{Contour, FxCommon, FxPaint, Shadow, StrokeFx, StrokePosition};
 
     const BLUE: Color32 = Color32::from_rgb(0, 0, 255);
 
@@ -259,7 +259,7 @@ mod tests {
     }
 
     fn doc() -> Document {
-        Document::new("t", photocraft_geom::Size::new(200, 200), photocraft_color::ColorMode::Rgb, photocraft_color::SampleType::U8)
+        Document::new("t", patronusphoto_geom::Size::new(200, 200), patronusphoto_color::ColorMode::Rgb, patronusphoto_color::SampleType::U8)
     }
 
     fn rect_quad(r: [f64; 4]) -> [Point; 4] {

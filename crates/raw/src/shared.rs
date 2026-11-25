@@ -1,4 +1,4 @@
-//! Format-neutral adapter from craft-raw metadata into PhotoCraft's develop model.
+//! Format-neutral adapter from craft-raw metadata into Patronus Photo's develop model.
 
 use crate::RawFormat;
 use crate::color::{Calibration, IDENTITY, illuminant_temperature};
@@ -104,12 +104,12 @@ fn warnings(image: &craft_raw::RawImage) -> Vec<String> {
     }
     for op in image.opcodes.list1.iter().chain(&image.opcodes.list2).chain(&image.opcodes.list3) {
         if !matches!(op, craft_raw::Opcode::GainMap { .. } | craft_raw::Opcode::MapPolynomial { .. }) {
-            out.push("some raw correction opcodes are not applied by PhotoCraft".to_string());
+            out.push("some raw correction opcodes are not applied by Patronus Photo".to_string());
             break;
         }
     }
     if image.notices.gain_table_omitted || image.color.profile.gain_table_map.is_some() {
-        out.push("the raw camera profile's ProfileGainTableMap is not applied by PhotoCraft".to_string());
+        out.push("the raw camera profile's ProfileGainTableMap is not applied by Patronus Photo".to_string());
     }
     out
 }

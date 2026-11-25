@@ -9,13 +9,13 @@ use craft::behavior::PixelSize;
 use craft::ui::canvas::{PixelRect, RasterSource};
 use craft::ui::primitives::Revision;
 use egui::{Color32, ColorImage};
-use photocraft_engine::display_color::CanvasDisplay;
+use patronusphoto_engine::display_color::CanvasDisplay;
 
 use super::channel_view::Overlay;
 use super::display::{LiveProposal, cache_key, display_image};
 use super::textures::{CanvasPicture, ProxyPreview, canvas_picture, damage_since};
-use super::{Document, PhotocraftApp};
-use photocraft_geom::Rect as DRect;
+use super::{Document, PatronusPhotoApp};
+use patronusphoto_geom::Rect as DRect;
 
 /// How many of the revisions a source handed out it can still tell damage since: a display's whole-document and
 /// detail textures may each lag a few passes behind.
@@ -42,7 +42,7 @@ impl Shown {
         Shown { revision: p.revision, key: p.preview_key ^ display_key, bounds: p.bounds, reduced: p.reduced }
     }
 
-    fn revision(&self, id: photocraft_doc::DocId, view: u64) -> Revision {
+    fn revision(&self, id: patronusphoto_doc::DocId, view: u64) -> Revision {
         let b = self.bounds;
         Revision::of(&(id.0, self.revision, self.key, view, (b.x0, b.y0, b.x1, b.y1), self.reduced))
     }
@@ -117,7 +117,7 @@ impl SourceLogs {
 
 /// The picture a source draws from this pass ([`canvas_picture`]) and what its damage reads.
 struct Picture<'a> {
-    app: &'a PhotocraftApp,
+    app: &'a PatronusPhotoApp,
     idx: usize,
     doc: Arc<Document>,
     /// The document's revision and the raw preview key.
@@ -130,7 +130,7 @@ struct Picture<'a> {
 }
 
 impl<'a> Picture<'a> {
-    fn new(app: &'a PhotocraftApp, idx: usize, p: CanvasPicture, display_key: u64) -> Self {
+    fn new(app: &'a PatronusPhotoApp, idx: usize, p: CanvasPicture, display_key: u64) -> Self {
         let shown = Shown::of(&p, display_key);
         Picture { app, idx, doc: p.doc, now: (p.revision, p.preview_key), display_key, last_damage: p.last_damage, shown }
     }
@@ -192,13 +192,13 @@ pub(crate) struct CompositePrep {
     picture: CanvasPicture,
     display: Option<Arc<CanvasDisplay>>,
     revision: Revision,
-    log_key: (photocraft_doc::DocId, u32),
+    log_key: (patronusphoto_doc::DocId, u32),
 }
 
 impl CompositePrep {
     /// Document `idx`'s picture on `output` (`None`: the main window's display); `None` when no such document is open.
     /// `live` is the gradient a tool proposes this pass.
-    pub(crate) fn new(app: &mut PhotocraftApp, ctx: &egui::Context, idx: usize, output: Option<u32>, live: LiveProposal<'_>) -> Option<Self> {
+    pub(crate) fn new(app: &mut PatronusPhotoApp, ctx: &egui::Context, idx: usize, output: Option<u32>, live: LiveProposal<'_>) -> Option<Self> {
         let mut p = canvas_picture(app, ctx, idx, output, ProxyPreview::Document, live)?;
         let display = p.display.take();
         let shown = Shown::of(&p, p.display_key);
@@ -209,7 +209,7 @@ impl CompositePrep {
     }
 
     /// The source over `app`, the app this was prepared with.
-    pub(crate) fn source(self, app: &PhotocraftApp) -> PhotoComposite<'_> {
+    pub(crate) fn source(self, app: &PatronusPhotoApp) -> PhotoComposite<'_> {
         let log = app.raster_logs.get(&self.log_key).map(|l| &l.composite);
         let display_key = self.picture.display_key;
         PhotoComposite { picture: Picture::new(app, self.idx, self.picture, display_key), display: self.display, revision: self.revision, log }
@@ -243,7 +243,7 @@ impl RasterSource for PhotoComposite<'_> {
     fn read(&self, region: PixelRect, factor: u32, out: &mut ColorImage) {
         let doc = &self.picture.doc;
         self.picture.read(region, factor, out, |area, factor| {
-            let buf = photocraft_compose::render_reduced_by(doc, area, factor);
+            let buf = patronusphoto_compose::render_reduced_by(doc, area, factor);
             let img = display_image(self.display.as_deref(), &buf);
             Some((img.size[0], img.pixels))
         });
@@ -267,13 +267,13 @@ pub(crate) struct OverlayPrep {
     picture: CanvasPicture,
     overlay: Overlay,
     revision: Revision,
-    log_key: (photocraft_doc::DocId, u32),
+    log_key: (patronusphoto_doc::DocId, u32),
 }
 
 impl OverlayPrep {
     /// Document `idx`'s view on `output` (`None`: the main window's display); `None` when no such document is open or
     /// it shows the plain composite. `live` is the gradient a tool proposes this pass.
-    pub(crate) fn new(app: &mut PhotocraftApp, ctx: &egui::Context, idx: usize, output: Option<u32>, live: LiveProposal<'_>) -> Option<Self> {
+    pub(crate) fn new(app: &mut PatronusPhotoApp, ctx: &egui::Context, idx: usize, output: Option<u32>, live: LiveProposal<'_>) -> Option<Self> {
         let p = canvas_picture(app, ctx, idx, output, ProxyPreview::Preview, live)?;
         let overlay = Overlay::of(app, idx, &p.doc, output)?;
         let shown = OverlayShown { picture: Shown::of(&p, 0), view: overlay.key };
@@ -284,7 +284,7 @@ impl OverlayPrep {
     }
 
     /// The source over `app`, the app this was prepared with.
-    pub(crate) fn source(self, app: &PhotocraftApp) -> ChannelOverlay<'_> {
+    pub(crate) fn source(self, app: &PatronusPhotoApp) -> ChannelOverlay<'_> {
         let log = app.raster_logs.get(&self.log_key).map(|l| &l.overlay);
         ChannelOverlay { picture: Picture::new(app, self.idx, self.picture, 0), overlay: self.overlay, revision: self.revision, log }
     }

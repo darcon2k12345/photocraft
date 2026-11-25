@@ -1,9 +1,9 @@
 //! Recorded Replace Color samples are a Lab box, not a single RGB colour.
 use craft_cms::{Builtin, TransformOptions};
-use photocraft_algo::{selection, tone};
-use photocraft_doc::{PixelFormat, SampleType};
-use photocraft_geom::{Rect, TileCoord};
-use photocraft_raster::Surface;
+use patronusphoto_algo::{selection, tone};
+use patronusphoto_doc::{PixelFormat, SampleType};
+use patronusphoto_geom::{Rect, TileCoord};
+use patronusphoto_raster::Surface;
 use serde_json::Value;
 
 use super::{bad, num};
@@ -44,7 +44,7 @@ fn replace_sample(format: &PixelFormat, pixel: &mut [f32], sample: &[f32; 4], ra
     if coverage <= 0.0 {
         return false;
     }
-    let original = photocraft_raster::to_rgba(format, pixel);
+    let original = patronusphoto_raster::to_rgba(format, pixel);
     let mut edited = [original];
     tone::replace_color_masked(&mut edited, &[coverage], shift[0], shift[1], shift[2]);
     // Unchanged native samples must not take an incidental RGB roundtrip.
@@ -53,7 +53,7 @@ fn replace_sample(format: &PixelFormat, pixel: &mut [f32], sample: &[f32; 4], ra
     }
     let mut mixed = std::array::from_fn(|c| original[c] * (1.0 - selected) + edited[0][c] * selected);
     mixed[3] = original[3];
-    photocraft_raster::from_rgba_into(format, mixed, pixel);
+    patronusphoto_raster::from_rgba_into(format, mixed, pixel);
     true
 }
 
@@ -178,7 +178,7 @@ pub(super) fn apply(s: &mut Session, p: &Value) -> Result<Option<Value>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use photocraft_color::PixelFormat;
+    use patronusphoto_color::PixelFormat;
 
     /// Work buffers follow explicit selected pixels without cropping implicitly selected coverage.
     #[test]

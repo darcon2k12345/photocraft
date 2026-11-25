@@ -12,12 +12,12 @@ use craft::ui::runtime::requests::ColorRequest;
 use egui::{Modifiers, PointerButton, Pos2, vec2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use photocraft_doc::{LayerContent, LayerId, TextLayer};
-use photocraft_geom::{Affine, Point};
+use patronusphoto_doc::{LayerContent, LayerId, TextLayer};
+use patronusphoto_geom::{Affine, Point};
 use serde_json::json;
 
 use super::{PathClick, layout, path_target, text_layer};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing::{ToolEvent, tool_event, tool_event_response};
 
 const ANTI_ALIAS_METHODS: [TextAntiAlias; 5] = [TextAntiAlias::None, TextAntiAlias::Sharp, TextAntiAlias::Crisp, TextAntiAlias::Strong, TextAntiAlias::Smooth];
@@ -28,40 +28,40 @@ fn edit_of(layer: u64, caret: usize, anchor: usize, session: &str) -> crate::sta
 }
 
 /// Starts the session on the active type layer.
-fn begin_edit(app: &mut PhotocraftApp) -> Result<(), String> {
+fn begin_edit(app: &mut PatronusPhotoApp) -> Result<(), String> {
     let ctx = app.ctx().clone();
     super::edit_active(app, &ctx)
 }
 
-fn commit_edit(app: &mut PhotocraftApp) {
+fn commit_edit(app: &mut PatronusPhotoApp) {
     super::commit(app);
 }
 
-fn cancel_edit(app: &mut PhotocraftApp) {
+fn cancel_edit(app: &mut PatronusPhotoApp) {
     super::cancel(app);
 }
 
-fn type_text(app: &mut PhotocraftApp, s: &str) {
+fn type_text(app: &mut PatronusPhotoApp, s: &str) {
     super::host::type_text(app, s);
 }
 
 /// The panel and options-bar edit path: defaults, or the target's selection or layers.
-fn defaults_apply(app: &mut PhotocraftApp, props: serde_json::Value) {
+fn defaults_apply(app: &mut PatronusPhotoApp, props: serde_json::Value) {
     super::apply(app, props, None);
 }
 
 /// Screen position of document point (`x`, `y`) in the active canvas.
-fn canvas_at(app: &PhotocraftApp, x: f64, y: f64) -> Pos2 {
+fn canvas_at(app: &PatronusPhotoApp, x: f64, y: f64) -> Pos2 {
     crate::canvas::testing::to_screen(app, [x, y])
 }
 
-fn canvas_rect(app: &PhotocraftApp) -> egui::Rect {
+fn canvas_rect(app: &PatronusPhotoApp) -> egui::Rect {
     crate::canvas::testing::view(app).expect("a canvas view").rect
 }
 
 /// Sets the main view's zoom and centre through the `ui.set` view command, then runs the passes
 /// that show it.
-fn set_view(h: &mut Harness<'static, Box<PhotocraftApp>>, zoom: f32, center: [f32; 2]) {
+fn set_view(h: &mut Harness<'static, Box<PatronusPhotoApp>>, zoom: f32, center: [f32; 2]) {
     let ctx = h.ctx.clone();
     let (req, _rx) = crate::control::ControlRequest::new("ui.set", json!({"zoom": zoom, "center": center}));
     let app = h.state_mut();
@@ -70,7 +70,7 @@ fn set_view(h: &mut Harness<'static, Box<PhotocraftApp>>, zoom: f32, center: [f3
 }
 
 /// Click (or drag out a box to `to`) with the current tool through the canvas pass.
-fn drag_create(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2]) {
+fn drag_create(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2]) {
     tool_event(app, ToolEvent::Down { x: from[0], y: from[1], pressure: 1.0 }, Modifiers::NONE);
     if from != to {
         tool_event(app, ToolEvent::Move { x: to[0], y: to[1], pressure: 1.0 }, Modifiers::NONE);
@@ -78,26 +78,26 @@ fn drag_create(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2]) {
     tool_event(app, ToolEvent::Up { x: to[0], y: to[1] }, Modifiers::NONE);
 }
 
-fn open_swatch_picker(app: &mut PhotocraftApp, request: Option<ColorRequest>) {
+fn open_swatch_picker(app: &mut PatronusPhotoApp, request: Option<ColorRequest>) {
     if let Some(request) = request {
         let rgb = request.color.map_or([0.0; 3], |c| [c.r, c.g, c.b]);
         super::open_color_picker(app, rgb);
     }
 }
 
-fn dialog_set(app: &mut PhotocraftApp, dialog: craft::ui::dialog::DialogId, field: &str, value: serde_json::Value) {
+fn dialog_set(app: &mut PatronusPhotoApp, dialog: craft::ui::dialog::DialogId, field: &str, value: serde_json::Value) {
     let ctx = app.ctx().clone();
     for (field, value) in crate::control::dialogs::map_request(app, dialog, field, value) {
         app.framework.dialogs.set_json_field(&ctx, dialog, &field, value).unwrap();
     }
 }
 
-fn dialog_confirm(app: &mut PhotocraftApp, dialog: craft::ui::dialog::DialogId) {
+fn dialog_confirm(app: &mut PatronusPhotoApp, dialog: craft::ui::dialog::DialogId) {
     let ctx = app.ctx().clone();
     crate::dialogs::confirm(app, &ctx, dialog).unwrap();
 }
 
-fn dialog_cancel(app: &mut PhotocraftApp, dialog: craft::ui::dialog::DialogId) {
+fn dialog_cancel(app: &mut PatronusPhotoApp, dialog: craft::ui::dialog::DialogId) {
     let ctx = app.ctx().clone();
     crate::dialogs::cancel(app, &ctx, dialog).unwrap();
 }
@@ -105,7 +105,7 @@ fn dialog_cancel(app: &mut PhotocraftApp, dialog: craft::ui::dialog::DialogId) {
 /// The Character and Paragraph controls as the Character panel shows them: values of the type
 /// target in, edit events applied through the type tool's value rules.
 // PLAN: the production panel's entry belongs to panels-w42; this host drives the same controls and rules
-fn show_panels(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+fn show_panels(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let character = super::values::character_values(app);
     let paragraph = super::values::paragraph_values(app);
     let unit = super::values::doc_unit(app);
@@ -127,7 +127,7 @@ fn show_panels(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 /// The options bar's type strip. Orientation and anti-aliasing show fixed values: these tests
 /// assert the edits the bar makes, not what it shows for them.
 // PLAN: the "Toggle text orientation" button and the colour well's "Text color" label are assumed (TypeBar words)
-fn show_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+fn show_bar(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let character = super::values::bar_character_values(app);
     let paragraph = super::values::paragraph_values(app);
     let unit = super::values::doc_unit(app);
@@ -151,14 +151,14 @@ fn show_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 
 /// Clicks the presets chevron of the number field named `menu` minus " presets" ("Font size presets"): the button
 /// inside that field's spin button.
-fn open_presets(h: &Harness<'static, Box<PhotocraftApp>>, menu: &str) {
+fn open_presets(h: &Harness<'static, Box<PatronusPhotoApp>>, menu: &str) {
     let field = menu.strip_suffix(" presets").unwrap_or(menu);
     h.get_by_role_and_label(egui::accesskit::Role::SpinButton, field).get_by_role_and_label(egui::accesskit::Role::Button, "Presets").click();
 }
 
 /// The accessible name of the field `label` of the Properties panel, or of the options bar's own name for it
 /// ("Font size" is "Set font size" there).
-fn field_name(h: &Harness<'static, Box<PhotocraftApp>>, role: egui::accesskit::Role, label: &str) -> String {
+fn field_name(h: &Harness<'static, Box<PatronusPhotoApp>>, role: egui::accesskit::Role, label: &str) -> String {
     // The Character panel names its style field "Style"; the options bar names it "Set font style".
     let lower = label.to_lowercase();
     [label.to_owned(), format!("Set {lower}"), format!("Set font {lower}")]
@@ -169,7 +169,7 @@ fn field_name(h: &Harness<'static, Box<PhotocraftApp>>, role: egui::accesskit::R
 
 /// Scrolls the open popup list until the row `label` is shown: lists draw only the rows in view, so a row near the end
 /// of a long one is not in the access tree until the wheel has brought it into view.
-pub(super) fn reveal(h: &mut Harness<'static, Box<PhotocraftApp>>, label: &str) {
+pub(super) fn reveal(h: &mut Harness<'static, Box<PatronusPhotoApp>>, label: &str) {
     for _ in 0..40 {
         if h.query_by_label(label).is_some() {
             return;
@@ -188,11 +188,11 @@ pub(super) fn reveal(h: &mut Harness<'static, Box<PhotocraftApp>>, label: &str) 
     panic!("the row {label} never came into view");
 }
 
-fn panel_harness(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
+fn panel_harness(app: Box<PatronusPhotoApp>) -> Harness<'static, Box<PatronusPhotoApp>> {
     // Wait for the font scan: while it runs the panels repaint every 100 ms and `Harness::run` gives up.
-    let _ = photocraft_text::shared();
+    let _ = patronusphoto_text::shared();
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(vec2(760.0, 800.0)).with_max_steps(16).build_app(
-        |ui, app: &mut PhotocraftApp| {
+        |ui, app: &mut PatronusPhotoApp| {
             ui.set_width(340.0);
             show_panels(app, ui);
         },
@@ -204,10 +204,10 @@ fn panel_harness(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>
 
 /// The Properties panel without the app's frame logic, which ends a text edit whose layer is not the
 /// active one: for a session on a layer other than the primary.
-fn panel_harness_without_frame_logic(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
-    let _ = photocraft_text::shared();
+fn panel_harness_without_frame_logic(app: Box<PatronusPhotoApp>) -> Harness<'static, Box<PatronusPhotoApp>> {
+    let _ = patronusphoto_text::shared();
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(vec2(760.0, 800.0)).with_max_steps(16).build_ui_state(
-        |ui, app: &mut Box<PhotocraftApp>| {
+        |ui, app: &mut Box<PatronusPhotoApp>| {
             ui.set_width(340.0);
             show_panels(app, ui);
         },
@@ -217,11 +217,11 @@ fn panel_harness_without_frame_logic(app: Box<PhotocraftApp>) -> Harness<'static
     h
 }
 
-fn bar_harness(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
-    let _ = photocraft_text::shared();
+fn bar_harness(app: Box<PatronusPhotoApp>) -> Harness<'static, Box<PatronusPhotoApp>> {
+    let _ = patronusphoto_text::shared();
     // As tall as a window, so the bar's popup lists open in full below it.
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(vec2(1100.0, 600.0)).with_max_steps(16).build_app(
-        |ui, app: &mut PhotocraftApp| {
+        |ui, app: &mut PatronusPhotoApp| {
             ui.horizontal(|ui| show_bar(app, ui));
         },
         app,
@@ -234,7 +234,7 @@ mod panel_defaults {
     use super::*;
     use crate::state::{Tool, ToolOptions};
     use egui::accesskit::Role;
-    use photocraft_doc::text::{Caps, Kerning, Orientation, TextAlign, TextShape};
+    use patronusphoto_doc::text::{Caps, Kerning, Orientation, TextAlign, TextShape};
 
     /// Without a type target the preset chevrons set the next layer's defaults, with no
     /// document edit.
@@ -258,7 +258,7 @@ mod panel_defaults {
         assert_eq!(h.state().session.active().unwrap().history.entries().len(), steps, "defaults are not a document edit");
     }
 
-    fn number(h: &mut Harness<'static, Box<PhotocraftApp>>, label: &str, value: &str) {
+    fn number(h: &mut Harness<'static, Box<PatronusPhotoApp>>, label: &str, value: &str) {
         let name = field_name(h, Role::SpinButton, label);
         h.get_by_role_and_label(Role::SpinButton, &name).click();
         h.run();
@@ -300,7 +300,7 @@ mod panel_defaults {
                 assert_eq!(c.tracking, 80.0);
                 assert_eq!(c.leading_pt, Some(44.0));
                 assert!(c.faux_bold && c.discretionary_ligatures && !c.ligatures);
-                assert!(photocraft_engine::type_extra_cmds::feature_on(c, "frac"));
+                assert!(patronusphoto_engine::type_extra_cmds::feature_on(c, "frac"));
                 assert_eq!(c.color.to_rgba8(), [51, 102, 153, 255]);
                 assert_eq!(p.align, TextAlign::Center);
                 assert_eq!(p.start_indent_pt, 9.0);
@@ -317,7 +317,7 @@ mod panel_defaults {
 
     #[test]
     fn extended_defaults_merge_serialize_and_reset_without_replacing_legacy_options() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         let ctx = app.ctx().clone();
         defaults_apply(
             &mut app,
@@ -347,7 +347,7 @@ mod panel_defaults {
         assert_eq!(restored, app.ui.tool_options);
         crate::tool_memory::persist(&mut app, &ctx);
         let remembered = app.session.prefs().tool_options.clone();
-        let mut restarted = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut restarted = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         restarted.session.prefs.edit(|p| p.tool_options = remembered);
         crate::tool_memory::restore(&mut restarted);
         assert_eq!(restarted.ui.tool_options, restored, "the real preference restore path retains panel defaults");
@@ -375,8 +375,8 @@ mod panel_defaults {
         super::super::toggle_opentype(&mut app, "type.openType.fractions", false);
         let runs = text(&app, id).char_runs();
         assert_eq!(runs.iter().map(|r| (r.len, r.style.tracking)).collect::<Vec<_>>(), [(1, 0.0), (2, 15.0), (2, 0.0)]);
-        assert!(photocraft_engine::type_extra_cmds::feature_on(&runs[1].style, "frac"));
-        assert!(!photocraft_engine::type_extra_cmds::feature_on(&runs[0].style, "frac"));
+        assert!(patronusphoto_engine::type_extra_cmds::feature_on(&runs[1].style, "frac"));
+        assert!(!patronusphoto_engine::type_extra_cmds::feature_on(&runs[0].style, "frac"));
         assert_eq!(app.ui.tool_options.type_style_defaults, defaults);
         app.run("edit.undo", json!({})).unwrap();
         assert_eq!(text(&app, id).char_runs().len(), 1, "selection edits keep their typing-session coalescing");
@@ -429,22 +429,26 @@ mod panel_defaults {
     }
 }
 
-fn harness(ppp: f32, app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
+fn harness(ppp: f32, app: Box<PatronusPhotoApp>) -> Harness<'static, Box<PatronusPhotoApp>> {
     make_harness_with(Harness::builder(), ppp, app)
 }
 
 /// 60 frames a second: every queued event is a frame, and the default quarter-second step puts
 /// the second click of a double-click past egui's double-click delay.
-fn fast_harness(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
+fn fast_harness(app: Box<PatronusPhotoApp>) -> Harness<'static, Box<PatronusPhotoApp>> {
     make_harness_with(Harness::builder().with_step_dt(1.0 / 60.0), 1.0, app)
 }
 
-fn make_harness_with(builder: egui_kittest::HarnessBuilder<Box<PhotocraftApp>>, ppp: f32, app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
+fn make_harness_with(
+    builder: egui_kittest::HarnessBuilder<Box<PatronusPhotoApp>>,
+    ppp: f32,
+    app: Box<PatronusPhotoApp>,
+) -> Harness<'static, Box<PatronusPhotoApp>> {
     // The tests type CJK text; the UI stack loads a system face only after a pass that missed the glyph,
     // so the first pass draws tofu on any machine and the layout under test does not depend on a face.
     let builder = builder.allow_missing_glyphs().with_context(app.ctx().clone()).with_size(vec2(1200.0, 800.0)).with_pixels_per_point(ppp);
     let mut h = builder.build_app(
-        |ui, app: &mut PhotocraftApp| {
+        |ui, app: &mut PatronusPhotoApp| {
             egui::CentralPanel::default().show(ui, |ui| crate::canvas::document_area(app, ui));
         },
         app,
@@ -453,8 +457,8 @@ fn make_harness_with(builder: egui_kittest::HarnessBuilder<Box<PhotocraftApp>>, 
     h
 }
 
-fn new_app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn new_app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 1600, "height": 900})).unwrap();
     app.sync_views();
     app.ui.extras.rulers = false;
@@ -463,7 +467,7 @@ fn new_app() -> Box<PhotocraftApp> {
 }
 
 /// Screen position of a text-space point of layer `id`.
-fn screen(h: &mut Harness<'static, Box<PhotocraftApp>>, id: LayerId, x: f32, y: f32) -> Pos2 {
+fn screen(h: &mut Harness<'static, Box<PatronusPhotoApp>>, id: LayerId, x: f32, y: f32) -> Pos2 {
     let app = h.state_mut();
     let (_, aff, _) = layout(app, id).unwrap();
     let p = aff.apply(Point::new(f64::from(x), f64::from(y)));
@@ -472,7 +476,7 @@ fn screen(h: &mut Harness<'static, Box<PhotocraftApp>>, id: LayerId, x: f32, y: 
 
 /// A point inside glyph `i` (character index): `f` of the way along its advance, in the upper
 /// half of its line.
-fn glyph(h: &mut Harness<'static, Box<PhotocraftApp>>, id: LayerId, i: usize, f: f32) -> Pos2 {
+fn glyph(h: &mut Harness<'static, Box<PatronusPhotoApp>>, id: LayerId, i: usize, f: f32) -> Pos2 {
     let (l, _, text) = layout(h.state_mut(), id).unwrap();
     let b = text.char_indices().nth(i).unwrap().0;
     let c = l.clusters.iter().find(|c| c.range.start == b).unwrap().clone();
@@ -480,12 +484,12 @@ fn glyph(h: &mut Harness<'static, Box<PhotocraftApp>>, id: LayerId, i: usize, f:
     screen(h, id, c.x + c.advance * f, ln.baseline - ln.ascent * 0.35)
 }
 
-fn press(h: &mut Harness<'static, Box<PhotocraftApp>>, p: Pos2, down: bool) {
+fn press(h: &mut Harness<'static, Box<PatronusPhotoApp>>, p: Pos2, down: bool) {
     h.event(egui::Event::PointerButton { pos: p, button: PointerButton::Primary, pressed: down, modifiers: Modifiers::NONE });
     h.run_steps(1);
 }
 
-fn click(h: &mut Harness<'static, Box<PhotocraftApp>>, p: Pos2) {
+fn click(h: &mut Harness<'static, Box<PatronusPhotoApp>>, p: Pos2) {
     h.hover_at(p);
     h.run_steps(1);
     press(h, p, true);
@@ -494,7 +498,7 @@ fn click(h: &mut Harness<'static, Box<PhotocraftApp>>, p: Pos2) {
 }
 
 /// Two clicks within egui's double-click delay (use [`fast_harness`]).
-fn double_click(h: &mut Harness<'static, Box<PhotocraftApp>>, p: Pos2) {
+fn double_click(h: &mut Harness<'static, Box<PatronusPhotoApp>>, p: Pos2) {
     h.hover_at(p);
     h.run_steps(1);
     // One pass per press and release, as the window delivers them: the runtime takes one press per pass.
@@ -505,7 +509,7 @@ fn double_click(h: &mut Harness<'static, Box<PhotocraftApp>>, p: Pos2) {
     h.run_steps(1);
 }
 
-fn drag(h: &mut Harness<'static, Box<PhotocraftApp>>, a: Pos2, b: Pos2) {
+fn drag(h: &mut Harness<'static, Box<PatronusPhotoApp>>, a: Pos2, b: Pos2) {
     h.hover_at(a);
     h.run_steps(1);
     press(h, a, true);
@@ -517,7 +521,7 @@ fn drag(h: &mut Harness<'static, Box<PhotocraftApp>>, a: Pos2, b: Pos2) {
     h.run_steps(1);
 }
 
-fn selection(h: &Harness<'static, Box<PhotocraftApp>>) -> (usize, usize) {
+fn selection(h: &Harness<'static, Box<PatronusPhotoApp>>) -> (usize, usize) {
     let Some(e) = h.state().ui.text_edit.clone() else { return (usize::MAX, usize::MAX) };
     (e.anchor, e.caret)
 }
@@ -579,7 +583,7 @@ fn clicks_and_drags_land_on_the_glyph_under_the_pointer() {
     }
 }
 
-fn text(app: &PhotocraftApp, id: LayerId) -> TextLayer {
+fn text(app: &PatronusPhotoApp, id: LayerId) -> TextLayer {
     text_layer(&app.session.active().unwrap().doc, id).unwrap().clone()
 }
 
@@ -594,7 +598,7 @@ fn editing_psd_type_shows_our_layout_and_cancel_restores_it() {
     let moved = {
         let mut t = text(&app, id);
         t.transform = Affine::translate(330.0, 380.0);
-        photocraft_text::shared().lock().unwrap().render(&t, 72.0, photocraft_color::PixelFormat::RGBA8).1.surface
+        patronusphoto_text::shared().lock().unwrap().render(&t, 72.0, patronusphoto_color::PixelFormat::RGBA8).1.surface
     };
     let st = app.session.active_mut().unwrap();
     let mut doc = (*st.doc).clone();
@@ -627,7 +631,7 @@ fn editing_psd_type_shows_our_layout_and_cancel_restores_it() {
     assert_eq!(h.state().session.active().unwrap().history.entries().len(), steps);
 }
 
-fn size_at(app: &PhotocraftApp, id: LayerId, ci: usize) -> f32 {
+fn size_at(app: &PatronusPhotoApp, id: LayerId, ci: usize) -> f32 {
     let t = text(app, id);
     let b = t.text.char_indices().nth(ci).map_or(t.text.len(), |(b, _)| b);
     let mut at = 0;
@@ -651,8 +655,8 @@ fn size_applies_at_layer_and_selection_scope() {
         app.run("type.edit", json!({"layer": id.0, "transform": [2.0, 0.0, 0.0, 2.0, 300.0, 420.0]})).unwrap();
         let id = if psd {
             let doc = (*app.session.active().unwrap().doc).clone();
-            let out = photocraft_io::export(&doc, "t.psd", &Default::default()).unwrap();
-            let back = photocraft_io::import("t.psd", &out.bytes).unwrap().document;
+            let out = patronusphoto_io::export(&doc, "t.psd", &Default::default()).unwrap();
+            let back = patronusphoto_io::import("t.psd", &out.bytes).unwrap().document;
             app.session.add_document(back, None);
             app.sync_views();
             let d = &app.session.active().unwrap().doc;
@@ -677,7 +681,7 @@ fn size_applies_at_layer_and_selection_scope() {
     }
 }
 
-fn history_len(h: &Harness<'static, Box<PhotocraftApp>>) -> usize {
+fn history_len(h: &Harness<'static, Box<PatronusPhotoApp>>) -> usize {
     h.state().session.active().unwrap().history.entries().len()
 }
 
@@ -720,7 +724,7 @@ fn size_drag_is_live_and_one_history_step_per_drag() {
 
 /// A point inside glyph `i` of vertical type: `f` of the way down its advance, right of the
 /// column's centre line.
-fn vglyph(h: &mut Harness<'static, Box<PhotocraftApp>>, id: LayerId, i: usize, f: f32) -> Pos2 {
+fn vglyph(h: &mut Harness<'static, Box<PatronusPhotoApp>>, id: LayerId, i: usize, f: f32) -> Pos2 {
     let (l, _, text) = layout(h.state_mut(), id).unwrap();
     assert!(l.vertical);
     let b = text.char_indices().nth(i).unwrap().0;
@@ -730,7 +734,7 @@ fn vglyph(h: &mut Harness<'static, Box<PhotocraftApp>>, id: LayerId, i: usize, f
     screen(h, id, x, y)
 }
 
-fn key(h: &mut Harness<'static, Box<PhotocraftApp>>, k: egui::Key) {
+fn key(h: &mut Harness<'static, Box<PatronusPhotoApp>>, k: egui::Key) {
     h.event(egui::Event::Key { key: k, physical_key: None, pressed: true, repeat: false, modifiers: Modifiers::NONE });
     h.run_steps(1);
 }
@@ -785,7 +789,7 @@ fn vertical_type_caret_selection_and_arrows_follow_the_columns() {
     }
 }
 
-fn rgb_at(app: &PhotocraftApp, id: LayerId, ci: usize) -> [u8; 4] {
+fn rgb_at(app: &PatronusPhotoApp, id: LayerId, ci: usize) -> [u8; 4] {
     let t = text(app, id);
     let b = t.text.char_indices().nth(ci).map_or(t.text.len(), |(b, _)| b);
     let mut at = 0;
@@ -823,7 +827,7 @@ fn foreground_colour_recolours_only_selected_type() {
 
 #[test]
 fn vertical_type_tool_creates_point_and_paragraph_text_with_one_undo() {
-    use photocraft_doc::text::{Orientation, TextShape};
+    use patronusphoto_doc::text::{Orientation, TextShape};
     for end in [[100.0, 100.0], [240.0, 230.0]] {
         let mut app = new_app();
         app.ui.tool = crate::state::Tool::VerticalType;
@@ -903,21 +907,21 @@ fn command_mods() -> Mods {
 }
 
 /// The modifiers held in the harness's last pass: the real keys plus the shell's latch (tp.T15).
-fn held(h: &Harness<'static, Box<PhotocraftApp>>) -> Mods {
+fn held(h: &Harness<'static, Box<PatronusPhotoApp>>) -> Mods {
     craft::ui::runtime::pointer::frame(&h.ctx).mods
 }
 
-fn hold(h: &mut Harness<'static, Box<PhotocraftApp>>, mods: Modifiers) {
+fn hold(h: &mut Harness<'static, Box<PatronusPhotoApp>>, mods: Modifiers) {
     h.event(egui::Event::ModifiersChanged(mods));
     h.run_steps(1);
 }
 
-fn transform_press(h: &mut Harness<'static, Box<PhotocraftApp>>, p: Pos2, down: bool, mods: Modifiers) {
+fn transform_press(h: &mut Harness<'static, Box<PatronusPhotoApp>>, p: Pos2, down: bool, mods: Modifiers) {
     h.event(egui::Event::PointerButton { pos: p, button: PointerButton::Primary, pressed: down, modifiers: mods });
     h.run_steps(1);
 }
 
-fn transform_drag(h: &mut Harness<'static, Box<PhotocraftApp>>, a: Pos2, b: Pos2, mods: Modifiers, release_command: bool) {
+fn transform_drag(h: &mut Harness<'static, Box<PatronusPhotoApp>>, a: Pos2, b: Pos2, mods: Modifiers, release_command: bool) {
     hold(h, mods);
     h.hover_at(a);
     h.run_steps(1);
@@ -933,7 +937,7 @@ fn transform_drag(h: &mut Harness<'static, Box<PhotocraftApp>>, a: Pos2, b: Pos2
     hold(h, Modifiers::NONE);
 }
 
-fn transform_app(paragraph: bool, vertical: bool, transform: Affine) -> (Box<PhotocraftApp>, LayerId) {
+fn transform_app(paragraph: bool, vertical: bool, transform: Affine) -> (Box<PatronusPhotoApp>, LayerId) {
     let mut app = new_app();
     // The tests assert where a drag lands, which a snap to a guide or an edge would move.
     app.ui.extras.snap = false;
@@ -961,12 +965,12 @@ struct Frame {
     pivot: [f64; 2],
 }
 
-fn frame_of(app: &mut PhotocraftApp) -> Option<Frame> {
+fn frame_of(app: &mut PatronusPhotoApp) -> Option<Frame> {
     let f = crate::type_transform::frame(app)?;
     Some(Frame { rect: [f.rect.x0, f.rect.y0, f.rect.x1, f.rect.y1], quad: f.state.quad.map(|p| [p.x, p.y]), pivot: [f.state.pivot.x, f.state.pivot.y] })
 }
 
-fn frame_point(app: &PhotocraftApp, p: [f64; 2]) -> Pos2 {
+fn frame_point(app: &PatronusPhotoApp, p: [f64; 2]) -> Pos2 {
     canvas_at(app, p[0], p[1])
 }
 
@@ -1190,7 +1194,7 @@ fn click_inside_the_paragraph_box_off_the_glyphs_moves_the_caret() {
     let (mut app, id) = transform_app(true, false, Affine::translate(400.0, 350.0));
     let (bx, by, _, h) = super::box_shape(&app, id).unwrap();
     let (l, aff, _) = layout(&mut app, id).unwrap();
-    let click = |app: &mut PhotocraftApp, tx: f32, ty: f32| {
+    let click = |app: &mut PatronusPhotoApp, tx: f32, ty: f32| {
         let p = aff.apply(Point::new(f64::from(tx), f64::from(ty)));
         drag_create(app, [p.x, p.y], [p.x, p.y]);
     };
@@ -1198,7 +1202,7 @@ fn click_inside_the_paragraph_box_off_the_glyphs_moves_the_caret() {
     // Below the two lines, just right of the box's left edge and 40 units above its bottom: clear of the bottom-left
     // handle's reach at the zoom the view fits the document to (the reach is in screen points; the box shows at
     // about half size).
-    assert!(!photocraft_text::text_point_inside(&l, bx + 8.0, by + h - 40.0, 6.0), "the point is off the glyphs");
+    assert!(!patronusphoto_text::text_point_inside(&l, bx + 8.0, by + h - 40.0, 6.0), "the point is off the glyphs");
     click(&mut app, bx + 8.0, by + h - 40.0);
     let ed = app.ui.text_edit.clone().expect("still editing");
     // "Hello é世界\n" is 10 characters: the start of the second line.
@@ -1285,8 +1289,8 @@ fn temporary_type_transform_control_roundtrip_and_input_safety() {
     assert_ne!(text(&app, id).transform, initial);
     let doc = &app.session.active().unwrap().doc;
     for name in ["type.pcraft", "type.psd"] {
-        let out = photocraft_io::export(doc, name, &Default::default()).unwrap();
-        let back = photocraft_io::import(name, &out.bytes).unwrap().document;
+        let out = patronusphoto_io::export(doc, name, &Default::default()).unwrap();
+        let back = patronusphoto_io::import(name, &out.bytes).unwrap().document;
         let t = back.walk().into_iter().find_map(|(_, _, l)| if let LayerContent::Text(t) = &l.content { Some(t) } else { None }).unwrap();
         assert_affine(t.transform, text(&app, id).transform);
         assert_eq!(t.text, text(&app, id).text);
@@ -1309,9 +1313,9 @@ fn temporary_type_transform_control_roundtrip_and_input_safety() {
 #[test]
 fn temporary_type_transform_preserves_depth_and_color_model() {
     for (depth, mode) in [(8, "rgb"), (16, "rgb"), (32, "rgb"), (16, "gray"), (8, "cmyk"), (16, "lab")] {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 1200, "height": 900, "depth": depth, "mode": mode})).unwrap();
-        let id = LayerId(app.run("type.create", json!({"text": "PhotoCraft é世界", "size": 32, "x": 300, "y": 350})).unwrap()["layer"].as_u64().unwrap());
+        let id = LayerId(app.run("type.create", json!({"text": "Patronus Photo é世界", "size": 32, "x": 300, "y": 350})).unwrap()["layer"].as_u64().unwrap());
         begin_edit(&mut app).unwrap();
         let format = app.session.active().unwrap().doc.pixel_format();
         let a = frame_of(&mut app).unwrap().quad[2];
@@ -1322,7 +1326,7 @@ fn temporary_type_transform_preserves_depth_and_color_model() {
         assert_eq!(text_layer(&shown, id).unwrap().cache.as_ref().unwrap().format(), format);
         tool_event(&mut app, ToolEvent::Up { x: a[0] + 30.0, y: a[1] + 15.0 }, Modifiers::NONE);
         assert_eq!(text(&app, id).cache.as_ref().unwrap().format(), format);
-        assert_eq!(text(&app, id).text, "PhotoCraft é世界");
+        assert_eq!(text(&app, id).text, "Patronus Photo é世界");
     }
 }
 
@@ -1362,8 +1366,8 @@ fn temporary_type_transform_imported_psd_retains_editability_and_styles() {
         .unwrap();
     app.run("layer.renameLayer", json!({"layer": original_id.0, "name": "Styled caption"})).unwrap();
     app.run("layer.layerStyle.dropShadow", json!({"layer": original_id.0, "distance": 8, "size": 4})).unwrap();
-    let exported = photocraft_io::export(&app.session.active().unwrap().doc, "type.psd", &Default::default()).unwrap();
-    let imported = photocraft_io::import("type.psd", &exported.bytes).unwrap().document;
+    let exported = patronusphoto_io::export(&app.session.active().unwrap().doc, "type.psd", &Default::default()).unwrap();
+    let imported = patronusphoto_io::import("type.psd", &exported.bytes).unwrap().document;
     let mut app = new_app();
     app.session.add_document(imported, None);
     app.sync_views();
@@ -1396,8 +1400,8 @@ fn temporary_type_transform_imported_psd_retains_editability_and_styles() {
 fn postscript_only_style_shows_actual_subfamily() {
     // `selected_style` reads the engine only once the font scan is done (try_shared). Under nextest
     // this test runs in a process of its own, where nothing else has started the scan, so start it.
-    let _ = photocraft_text::shared();
-    let style = photocraft_doc::text::CharStyle { font_family: "Inter".into(), postscript_name: Some("Inter-SemiBold".into()), ..Default::default() };
+    let _ = patronusphoto_text::shared();
+    let style = patronusphoto_doc::text::CharStyle { font_family: "Inter".into(), postscript_name: Some("Inter-SemiBold".into()), ..Default::default() };
     // PLAN: `values::character_values` reads `fonts::selected_style` for `CharacterValues.style`; no layer constructor sets only a PostScript name
     assert_eq!(super::selected_style(&style), "SemiBold");
 }
@@ -1406,8 +1410,8 @@ fn postscript_only_style_shows_actual_subfamily() {
 /// included; an unknown family offers Regular alone.
 #[test]
 fn variable_faces_list_the_weights_of_their_axis() {
-    let _ = photocraft_text::shared();
-    let catalog = photocraft_text::fonts::catalog();
+    let _ = patronusphoto_text::shared();
+    let catalog = patronusphoto_text::fonts::catalog();
     let listed = super::fonts::styles("Inter");
     let expected: Vec<String> = catalog.styles("Inter").into_iter().map(|face| face.style).collect();
     assert!(!expected.is_empty(), "Inter is installed");
@@ -1422,7 +1426,7 @@ fn variable_faces_list_the_weights_of_their_axis() {
 fn the_font_menu_lists_served_families() {
     {
         let _catalog = crate::served_fonts::changing_catalog();
-        photocraft_text::served::add_families(["Served Menu Test Serif".to_string()]);
+        patronusphoto_text::served::add_families(["Served Menu Test Serif".to_string()]);
     }
     let app = new_app();
     let mut state = super::font_state(&app);
@@ -1435,15 +1439,15 @@ mod multi_layer_formatting {
     use super::*;
     use egui::accesskit::Role;
     use egui_kittest::kittest::NodeT;
-    use photocraft_doc::text::{AntiAlias, CharStyle, Orientation, TextAlign};
+    use patronusphoto_doc::text::{AntiAlias, CharStyle, Orientation, TextAlign};
 
-    fn selected(app: &mut PhotocraftApp, ids: &[LayerId]) {
+    fn selected(app: &mut PatronusPhotoApp, ids: &[LayerId]) {
         for (i, id) in ids.iter().enumerate() {
             app.run("layer.select", json!({"layer": id.0, "mode": if i == 0 { "replace" } else { "add" }})).unwrap();
         }
     }
 
-    fn fixture() -> (Box<PhotocraftApp>, [LayerId; 3]) {
+    fn fixture() -> (Box<PatronusPhotoApp>, [LayerId; 3]) {
         let mut app = new_app();
         let ids = std::array::from_fn(|i| {
             LayerId(
@@ -1455,7 +1459,7 @@ mod multi_layer_formatting {
         (app, ids)
     }
 
-    fn style(app: &PhotocraftApp, id: LayerId, ci: usize) -> CharStyle {
+    fn style(app: &PatronusPhotoApp, id: LayerId, ci: usize) -> CharStyle {
         let t = text(app, id);
         let byte = t.text.char_indices().nth(ci).unwrap().0;
         let mut end = 0;
@@ -1470,11 +1474,11 @@ mod multi_layer_formatting {
     }
 
     /// The Properties panel (`properties`) or the options bar over `app`.
-    fn controls(app: Box<PhotocraftApp>, properties: bool) -> Harness<'static, Box<PhotocraftApp>> {
+    fn controls(app: Box<PatronusPhotoApp>, properties: bool) -> Harness<'static, Box<PatronusPhotoApp>> {
         if properties { panel_harness(app) } else { bar_harness(app) }
     }
 
-    fn number(h: &mut Harness<'static, Box<PhotocraftApp>>, label: &str, value: &str) {
+    fn number(h: &mut Harness<'static, Box<PatronusPhotoApp>>, label: &str, value: &str) {
         // Variable-font axes add numeric fields before size/leading. Select the setting by
         // its accessible name, so a font scan cannot shift this action onto another control.
         let name = field_name(h, Role::SpinButton, label);
@@ -1486,7 +1490,7 @@ mod multi_layer_formatting {
         h.run();
     }
 
-    fn preset(h: &mut Harness<'static, Box<PhotocraftApp>>, label: &str) {
+    fn preset(h: &mut Harness<'static, Box<PatronusPhotoApp>>, label: &str) {
         reveal(h, label);
         h.run();
         h.get_by_label(label).click();
@@ -1494,13 +1498,13 @@ mod multi_layer_formatting {
     }
 
     /// Opens a preset chevron by its accessible name and picks `label`.
-    fn pick(h: &mut Harness<'static, Box<PhotocraftApp>>, menu: &str, label: &str) {
+    fn pick(h: &mut Harness<'static, Box<PatronusPhotoApp>>, menu: &str, label: &str) {
         open_presets(h, menu);
         h.run();
         preset(h, label);
     }
 
-    fn editing(app: &mut PhotocraftApp, id: LayerId) {
+    fn editing(app: &mut PatronusPhotoApp, id: LayerId) {
         app.ui.text_edit = Some(edit_of(id.0, 3, 1, "batch-type-edit"));
     }
 
@@ -1508,7 +1512,7 @@ mod multi_layer_formatting {
     /// (type_bar.rs:92), so the direction buttons are driven through the Paragraph controls.
     #[test]
     fn options_bar_direction_sets_selected_layers_and_new_type() {
-        use photocraft_doc::text::TextDirection;
+        use patronusphoto_doc::text::TextDirection;
         let (app, ids) = fixture();
         let mut h = controls(app, true);
         h.get_by_label("Right-to-left paragraph direction").click();
@@ -1570,7 +1574,7 @@ mod multi_layer_formatting {
             expected.font_family = "JetBrains Mono".into();
             // #3556: the new family's installed face at the peer's weight and italic is named (no
             // name without such a face), so a PSD names a real font.
-            expected.postscript_name = photocraft_text::shared()
+            expected.postscript_name = patronusphoto_text::shared()
                 .lock()
                 .unwrap()
                 .fonts
@@ -1616,7 +1620,7 @@ mod multi_layer_formatting {
         app.run("type.setStyle", json!({"layer": id.0, "range": [3, 10], "font": "JetBrains Mono", "fontStyle": "Regular"})).unwrap();
         assert_eq!((style(&app, id, 0).font_family.as_str(), style(&app, id, 5).font_family.as_str()), ("Inter", "JetBrains Mono"));
         let mut h = controls(app, false);
-        let shown = |h: &Harness<'static, Box<PhotocraftApp>>| {
+        let shown = |h: &Harness<'static, Box<PatronusPhotoApp>>| {
             (
                 h.get_by_role_and_label(Role::ComboBox, "Font family").value().unwrap_or_default(),
                 h.get_by_role_and_label(Role::ComboBox, &field_name(h, Role::ComboBox, "Style")).value(),
@@ -1783,7 +1787,7 @@ mod multi_layer_formatting {
         app.run("type.orientation.vertical", json!({"layer": ids[0].0})).unwrap();
         app.run("type.antiAlias.crisp", json!({"layer": ids[1].0})).unwrap();
         app.run("type.orientation.horizontal", json!({"layer": ids[1].0})).unwrap();
-        let checks = |app: &mut PhotocraftApp| -> Vec<String> {
+        let checks = |app: &mut PatronusPhotoApp| -> Vec<String> {
             let ctx = app.ctx().clone();
             let rows = &crate::menus::model(app, &ctx).rows;
             for id in ["type.antiAlias.none", "type.antiAlias.crisp", "type.orientation.horizontal", "type.orientation.vertical"] {
@@ -1817,7 +1821,7 @@ mod multi_layer_formatting {
             let mut h = Harness::builder()
                 .with_context(app.ctx().clone())
                 .with_size(vec2(900.0, 700.0))
-                .build_app(|ui, app: &mut PhotocraftApp| crate::dialogs::run(app, ui), app);
+                .build_app(|ui, app: &mut PatronusPhotoApp| crate::dialogs::run(app, ui), app);
             h.run_steps(4);
             h.get_by_role_and_label(egui::accesskit::Role::SpinButton, "Bend");
             assert!(h.query_all_by_label("Bend").count() >= 1, "the actual Warp form is visible");
@@ -1867,7 +1871,7 @@ mod multi_layer_formatting {
             for i in 0..3 {
                 let mut expected = originals[i].clone();
                 if confirm && i < 2 {
-                    expected.color = photocraft_color::Color::rgb(0.0, 1.0, 0.0);
+                    expected.color = patronusphoto_color::Color::rgb(0.0, 1.0, 0.0);
                 }
                 assert_eq!(style(h.state(), ids[i], 0), expected);
             }
@@ -1910,12 +1914,12 @@ fn move_tool_double_click_on_type_edits_it() {
     assert!(h.state().ui.text_edit.is_none());
 }
 
-fn selection_bounds(app: &PhotocraftApp) -> Option<photocraft_geom::Rect> {
+fn selection_bounds(app: &PatronusPhotoApp) -> Option<patronusphoto_geom::Rect> {
     app.session.active().unwrap().doc.selection.as_ref().map(|m| m.content_bounds())
 }
 
 /// Click with `tool` at (200, 300), type `text` and commit.
-fn type_with(app: &mut PhotocraftApp, tool: crate::state::Tool, text: &str) {
+fn type_with(app: &mut PatronusPhotoApp, tool: crate::state::Tool, text: &str) {
     app.ui.tool = tool;
     drag_create(app, [200.0, 300.0], [200.0, 300.0]);
     type_text(app, text); // replaces the Type tool's selected placeholder
@@ -1972,12 +1976,12 @@ fn type_mask_cancel_leaves_the_selection_unchanged() {
 }
 
 /// A harness with short frames, so a run of clicks stays inside egui's double-click delay.
-fn quick_harness(app: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
+fn quick_harness(app: Box<PatronusPhotoApp>) -> Harness<'static, Box<PatronusPhotoApp>> {
     make_harness_with(Harness::builder().with_step_dt(0.02), 1.0, app)
 }
 
 /// `n` quick clicks at `p`, then a pause long enough that the next click starts a new run.
-fn clicks(h: &mut Harness<'static, Box<PhotocraftApp>>, p: Pos2, n: usize) -> (usize, usize) {
+fn clicks(h: &mut Harness<'static, Box<PatronusPhotoApp>>, p: Pos2, n: usize) -> (usize, usize) {
     h.hover_at(p);
     h.run_steps(1);
     for _ in 0..n {
@@ -1990,7 +1994,7 @@ fn clicks(h: &mut Harness<'static, Box<PhotocraftApp>>, p: Pos2, n: usize) -> (u
 }
 
 /// Centre the view on layer `id` at 50 % zoom.
-fn centre_on(h: &mut Harness<'static, Box<PhotocraftApp>>, id: LayerId) {
+fn centre_on(h: &mut Harness<'static, Box<PatronusPhotoApp>>, id: LayerId) {
     let (l, aff, _) = layout(h.state_mut(), id).unwrap();
     let b = l.bounds().unwrap();
     let m = aff.apply(Point::new(f64::from(b[0] + b[2]) / 2.0, f64::from(b[1] + b[3]) / 2.0));
@@ -1999,12 +2003,12 @@ fn centre_on(h: &mut Harness<'static, Box<PhotocraftApp>>, id: LayerId) {
 }
 
 /// Laid-out line (character range) holding character `i`.
-fn line_chars(h: &mut Harness<'static, Box<PhotocraftApp>>, id: LayerId, i: usize) -> (usize, usize) {
+fn line_chars(h: &mut Harness<'static, Box<PatronusPhotoApp>>, id: LayerId, i: usize) -> (usize, usize) {
     let (l, _, text) = layout(h.state_mut(), id).unwrap();
     let b = text.char_indices().nth(i).unwrap().0;
     let c = l.clusters.iter().find(|c| c.range.start == b).unwrap();
     let ln = &l.lines[c.line];
-    (photocraft_text::char_index(&text, ln.range.start), photocraft_text::char_index(&text, ln.range.end))
+    (patronusphoto_text::char_index(&text, ln.range.start), patronusphoto_text::char_index(&text, ln.range.end))
 }
 
 /// The eight handles of the text frame as (left, right, top, bottom) sides.
@@ -2136,7 +2140,7 @@ fn type_mask_shift_and_alt_replace_without_a_layer_row() {
     app.ui.extras.snap = false; // the second text would snap to the first one's selected edge
     app.run("select.rect", json!({"x": 1000, "y": 100, "width": 100, "height": 100})).unwrap();
     // Type, then commit with a click outside the text holding `m`.
-    let type_and_commit = |app: &mut PhotocraftApp, m: Modifiers| {
+    let type_and_commit = |app: &mut PatronusPhotoApp, m: Modifiers| {
         app.ui.tool = Tool::HorizontalTypeMask;
         drag_create(app, [200.0, 300.0], [200.0, 300.0]);
         type_text(app, "I");
@@ -2162,10 +2166,10 @@ fn type_mask_shift_and_alt_replace_without_a_layer_row() {
 fn justify_buttons_are_greyed_on_point_text() {
     use egui_kittest::kittest::NodeT;
     let justify = ["Justify last left", "Justify last centered", "Justify last right", "Justify all"];
-    let area = |app: &mut PhotocraftApp| {
+    let area = |app: &mut PatronusPhotoApp| {
         app.run("type.create", json!({"text": "one two three four five six", "size": 24, "x": 300, "y": 420})).unwrap();
         std::sync::Arc::make_mut(app.session.active_mut().unwrap().doc_mut()).work_path =
-            Some(photocraft_doc::Path::new(vec![photocraft_doc::Subpath::polygon(&[(300.0, 300.0), (600.0, 300.0), (600.0, 500.0), (300.0, 500.0)])]));
+            Some(patronusphoto_doc::Path::new(vec![patronusphoto_doc::Subpath::polygon(&[(300.0, 300.0), (600.0, 300.0), (600.0, 500.0), (300.0, 500.0)])]));
         app.run("type.fillPath", json!({})).unwrap();
     };
     for (kind, enabled) in [("point", false), ("paragraph", true), ("area", true)] {
@@ -2203,7 +2207,7 @@ fn justify_buttons_are_greyed_on_point_text() {
 /// included) and point text — which has no box — never set it.
 #[test]
 fn the_overflow_handle_flags_a_box_that_cannot_hold_its_text() {
-    let build = |mut app: Box<PhotocraftApp>, p: serde_json::Value, caret: usize| {
+    let build = |mut app: Box<PatronusPhotoApp>, p: serde_json::Value, caret: usize| {
         let id = app.run("type.create", p).unwrap()["layer"].as_u64().unwrap();
         app.session.select_layer(LayerId(id)).unwrap();
         app.ui.text_edit = Some(edit_of(id, caret, caret, "s"));
@@ -2241,17 +2245,17 @@ fn inspect_gates_the_overflow_flag_on_the_session() {
     assert_eq!(crate::control::inspect(&a, &ctx)["textEdit"], json!(null), "the session is closed either way");
 }
 
-fn ellipse_layer(app: &mut PhotocraftApp) -> u64 {
+fn ellipse_layer(app: &mut PatronusPhotoApp) -> u64 {
     app.run("shape.create", json!({"kind": "ellipse", "rect": [200, 200, 400, 300], "fill": "#dddddd"})).unwrap()["layer"].as_u64().unwrap()
 }
 
-fn click_at(app: &mut PhotocraftApp, x: f64, y: f64) {
+fn click_at(app: &mut PatronusPhotoApp, x: f64, y: f64) {
     drag_create(app, [x, y], [x, y]);
 }
 
 #[test]
 fn clicking_inside_a_shape_starts_area_type_in_one_step() {
-    use photocraft_doc::text::TextShape;
+    use patronusphoto_doc::text::TextShape;
     let mut app = new_app();
     let shape = ellipse_layer(&mut app);
     assert!(matches!(path_target(&app, 400.0, 350.0), Some(PathClick::Area { shape: Some(s) }) if s == shape));
@@ -2268,7 +2272,7 @@ fn clicking_inside_a_shape_starts_area_type_in_one_step() {
 
 #[test]
 fn clicking_on_a_path_outline_starts_type_on_the_path_where_clicked() {
-    use photocraft_doc::text::TextShape;
+    use patronusphoto_doc::text::TextShape;
     let mut app = new_app();
     ellipse_layer(&mut app);
     // The ellipse's bottom point (400, 500); its perimeter is about 1105 px.
@@ -2296,7 +2300,7 @@ fn clicking_on_a_path_outline_starts_type_on_the_path_where_clicked() {
 fn the_path_pointer_is_off_while_dragging_a_text_box_or_editing() {
     let mut app = new_app();
     ellipse_layer(&mut app);
-    let hover = |app: &mut PhotocraftApp, x: f64, y: f64| tool_event_response(app, ToolEvent::Move { x, y, pressure: 1.0 }, Modifiers::NONE).cursor;
+    let hover = |app: &mut PatronusPhotoApp, x: f64, y: f64| tool_event_response(app, ToolEvent::Move { x, y, pressure: 1.0 }, Modifiers::NONE).cursor;
     let path_pointer = hover(&mut app, 400.0, 350.0);
     assert!(path_pointer.is_some(), "a hover inside the shape shows a pointer");
     // Press and hold on the shape, then a flat drag: still a click on release.
@@ -2308,7 +2312,7 @@ fn the_path_pointer_is_off_while_dragging_a_text_box_or_editing() {
     tool_event(&mut app, ToolEvent::Up { x: 1200.0, y: 351.0 }, Modifiers::NONE);
     let id = LayerId(app.ui.text_edit.as_ref().expect("editing").layer);
     assert!(
-        matches!(text_layer(&app.session.active().unwrap().doc, id).unwrap().shape, photocraft_doc::text::TextShape::Area { .. }),
+        matches!(text_layer(&app.session.active().unwrap().doc, id).unwrap().shape, patronusphoto_doc::text::TextShape::Area { .. }),
         "the release made area type"
     );
     let mut app = new_app();
@@ -2324,7 +2328,7 @@ fn the_path_pointer_is_off_while_dragging_a_text_box_or_editing() {
 
 #[test]
 fn click_outside_paths_still_makes_point_text() {
-    use photocraft_doc::text::TextShape;
+    use patronusphoto_doc::text::TextShape;
     let mut app = new_app();
     ellipse_layer(&mut app);
     assert!(path_target(&app, 1200.0, 700.0).is_none());
@@ -2346,7 +2350,7 @@ fn type_mask_tools_ignore_paths() {
     app.ui.tool = crate::state::Tool::HorizontalTypeMask;
     click_at(&mut app, 400.0, 350.0);
     let id = LayerId(app.ui.text_edit.as_ref().unwrap().layer);
-    assert_eq!(text_layer(&app.session.active().unwrap().doc, id).unwrap().shape, photocraft_doc::text::TextShape::Point);
+    assert_eq!(text_layer(&app.session.active().unwrap().doc, id).unwrap().shape, patronusphoto_doc::text::TextShape::Point);
 }
 
 #[test]
@@ -2371,7 +2375,7 @@ fn over_existing_type_on_a_shape_the_pointer_is_the_plain_i_beam_and_a_click_edi
     let app = h.state();
     assert_eq!(app.ui.text_edit.as_ref().expect("editing").layer, text, "the click edits the existing layer");
     assert_eq!(app.session.active().unwrap().doc.walk().len(), layers, "no new layer");
-    assert_eq!(text_layer(&app.session.active().unwrap().doc, LayerId(text)).unwrap().shape, photocraft_doc::text::TextShape::Point);
+    assert_eq!(text_layer(&app.session.active().unwrap().doc, LayerId(text)).unwrap().shape, patronusphoto_doc::text::TextShape::Point);
 }
 
 #[test]
@@ -2382,13 +2386,13 @@ fn an_unselected_work_path_is_not_an_area_target() {
     // path, as before area type (#5180).
     let mut app = new_app();
     std::sync::Arc::make_mut(app.session.active_mut().unwrap().doc_mut()).work_path =
-        Some(photocraft_doc::Path::new(vec![photocraft_doc::Subpath::polygon(&[(300.0, 300.0), (700.0, 300.0), (700.0, 500.0), (300.0, 500.0)])]));
+        Some(patronusphoto_doc::Path::new(vec![patronusphoto_doc::Subpath::polygon(&[(300.0, 300.0), (700.0, 300.0), (700.0, 500.0), (300.0, 500.0)])]));
     app.ui.selected_path = None;
     assert!(path_target(&app, 500.0, 400.0).is_none(), "inside a hidden work path");
     assert!(matches!(path_target(&app, 500.0, 301.0), Some(PathClick::OnPath { shape: None, .. })));
     click_at(&mut app, 500.0, 400.0);
     let id = LayerId(app.ui.text_edit.as_ref().expect("editing").layer);
-    assert_eq!(text_layer(&app.session.active().unwrap().doc, id).unwrap().shape, photocraft_doc::text::TextShape::Point);
+    assert_eq!(text_layer(&app.session.active().unwrap().doc, id).unwrap().shape, patronusphoto_doc::text::TextShape::Point);
     app.ui.selected_path = Some("work".into());
     assert!(matches!(path_target(&app, 500.0, 400.0), Some(PathClick::Area { shape: None })));
 }
@@ -2404,7 +2408,7 @@ fn options_bar_alignment_follows_the_target_paragraph() {
     app.run("type.setStyle", json!({"layer": id, "align": "center", "direction": "rtl"})).unwrap();
     assert_eq!(app.ui.tool_options.type_align, "left", "the tool default stays Left");
     let mut h = bar_harness(app);
-    let on = |h: &Harness<'static, Box<PhotocraftApp>>, label: &str| h.get_by_label(label).accesskit_node().toggled() == Some(Toggled::True);
+    let on = |h: &Harness<'static, Box<PatronusPhotoApp>>, label: &str| h.get_by_label(label).accesskit_node().toggled() == Some(Toggled::True);
     assert!(on(&h, "Center text") && !on(&h, "Left align text"), "the layer's centred paragraph");
     h.state_mut().run("layer.new.layer", json!({})).unwrap();
     h.run_steps(2);
@@ -2426,7 +2430,7 @@ fn styles_at_follows_the_text_edit_document() {
     app.run("type.setStyle", json!({"layer": id, "align": "right"})).unwrap();
     assert_ne!(app.session.active().unwrap().doc.id.0, a, "the other document is active");
     let (_, p) = super::styles_at(&app).unwrap();
-    assert_eq!(p.align, photocraft_doc::text::TextAlign::Center, "the edited document's paragraph");
+    assert_eq!(p.align, patronusphoto_doc::text::TextAlign::Center, "the edited document's paragraph");
 }
 
 /// A collapsed caret shows the paragraph it is in, as Photoshop's options bar and Paragraph panel
@@ -2436,7 +2440,7 @@ fn styles_at_a_collapsed_caret_shows_the_caret_s_paragraph() {
     let mut app = new_app();
     let id = app.run("type.create", json!({"text": "First\rSecond", "size": 20, "x": 300, "y": 420})).unwrap()["layer"].as_u64().unwrap();
     app.run("type.setStyle", json!({"layer": id, "range": [6, 12], "align": "right"})).unwrap();
-    use photocraft_doc::text::TextAlign;
+    use patronusphoto_doc::text::TextAlign;
     for (caret, want) in
         [(0, TextAlign::Left), (3, TextAlign::Left), (5, TextAlign::Left), (6, TextAlign::Right), (9, TextAlign::Right), (12, TextAlign::Right)]
     {

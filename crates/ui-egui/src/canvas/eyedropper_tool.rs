@@ -1,4 +1,4 @@
-//! The Eyedropper tool and the Alt stand-in that samples with a painting tool: PhotoCraft's two
+//! The Eyedropper tool and the Alt stand-in that samples with a painting tool: Patronus Photo's two
 //! uses of the framework's `EyedropperTool`.
 //!
 //! As the Eyedropper tool, a press and each drag sample the foreground (Alt: the background). As
@@ -19,7 +19,7 @@ use super::cursor_policy::shape_alt_sets_fill;
 use super::document_display::CanvasHost;
 use super::sampling;
 use super::tools::{FamilyTool, ToolScope};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// The gesture's flags, kept in `CanvasTools::eyedropper`.
 #[derive(Debug, Default)]
@@ -28,7 +28,7 @@ pub(crate) struct EyedropperState {
     sampler_added: bool,
 }
 
-/// The Eyedropper over PhotoCraft's sampling, options and colours. A pick applies only in the
+/// The Eyedropper over Patronus Photo's sampling, options and colours. A pick applies only in the
 /// `press` or `drag` call that took it, so a second pass in a frame, which gets no new pointer
 /// input, picks nothing again.
 pub(crate) struct PcEyedropper<'a> {
@@ -54,13 +54,13 @@ pub(crate) fn stand_in_tool<'a>(scope: &'a ToolScope<'a>, state: &'a mut Eyedrop
 
 /// Nothing to drain: `press`, `release` and `cancel` clear the gesture's flags themselves. Kept for
 /// the family shape of `CanvasTools`.
-pub(crate) fn drain(_app: &mut PhotocraftApp, _state: &mut EyedropperState, _response: &ToolHostResponse) {}
+pub(crate) fn drain(_app: &mut PatronusPhotoApp, _state: &mut EyedropperState, _response: &ToolHostResponse) {}
 
 impl<'a> PcEyedropper<'a> {
     fn new(scope: &'a ToolScope<'a>, state: &'a mut EyedropperState, stand_in: bool) -> Self {
         let (mut options, foreground, precise, shape_fill) = scope.with_app(|app| {
             let [r, g, b, _] = app.session.tools.foreground;
-            let precise = app.session.prefs().cursors.other == photocraft_engine::prefs::OtherCursor::Precise;
+            let precise = app.session.prefs().cursors.other == patronusphoto_engine::prefs::OtherCursor::Precise;
             (app.ui.tool_options.eyedropper, Srgba::rgb(r, g, b), precise, shape_alt_sets_fill(app.ui.tool))
         });
         // Preferences › Cursors › Other Cursors = Precise wants the plain crosshair, so no ring.
@@ -108,7 +108,7 @@ impl<'a> PcEyedropper<'a> {
             if inside && let Err(e) = app.run("view.colorSamplers.add", json!({"x": x, "y": y})) {
                 // Only the limit is a plain report; any other refusal (a failed Pen draft left in
                 // another document) stays an error, also when the document is full.
-                let limit = e == photocraft_engine::sampler_cmds::limit_message();
+                let limit = e == patronusphoto_engine::sampler_cmds::limit_message();
                 app.ui.status = e;
                 app.ui.status_error = !limit;
             }
@@ -118,7 +118,7 @@ impl<'a> PcEyedropper<'a> {
 }
 
 /// Whether document point (x, y) is on a colour sampler, within the Color Sampler tool's reach of one.
-fn on_sampler(app: &PhotocraftApp, x: f64, y: f64) -> bool {
+fn on_sampler(app: &PatronusPhotoApp, x: f64, y: f64) -> bool {
     let tol = app.tool_reach();
     app.session.active().is_some_and(|d| d.color_samplers.iter().any(|q| (q[0] - x).hypot(q[1] - y) <= tol))
 }

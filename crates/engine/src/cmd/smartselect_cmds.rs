@@ -1,16 +1,16 @@
 //! Smart selection commands: Quick Selection, Object Selection, Select Subject, Select and Mask
-//! (Refine Edge) and Focus Area. The algorithms live in `photocraft_algo::segment` and
-//! `photocraft_algo::matting`; these commands pick the pixels to analyse (active layer or
+//! (Refine Edge) and Focus Area. The algorithms live in `patronusphoto_algo::segment` and
+//! `patronusphoto_algo::matting`; these commands pick the pixels to analyse (active layer or
 //! composite), run them, and store the result as the selection (or a mask / new layer).
 
 use std::borrow::Cow;
 
-use photocraft_algo::matting::{self, RefineParams};
-use photocraft_algo::segment::{Sampler, SurfaceSampler, focus, grabcut, quick, subject};
-use photocraft_algo::selection::{Region, SelectionMode, combine_region};
-use photocraft_doc::{Document, Layer, LayerContent, LayerId, LayerMask};
-use photocraft_geom::Rect;
-use photocraft_raster::to_rgba;
+use patronusphoto_algo::matting::{self, RefineParams};
+use patronusphoto_algo::segment::{Sampler, SurfaceSampler, focus, grabcut, quick, subject};
+use patronusphoto_algo::selection::{Region, SelectionMode, combine_region};
+use patronusphoto_doc::{Document, Layer, LayerContent, LayerId, LayerMask};
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::to_rgba;
 use serde_json::{Value, json};
 
 use crate::commands::CommandSpec;
@@ -52,7 +52,7 @@ struct CompositeSampler<'a>(&'a Document);
 
 impl Sampler for CompositeSampler<'_> {
     fn rgba(&self, r: Rect) -> Vec<[f32; 4]> {
-        photocraft_compose::render(self.0, r).into_px()
+        patronusphoto_compose::render(self.0, r).into_px()
     }
 }
 
@@ -144,7 +144,7 @@ const RIM_HALO: i32 = 3 * ENHANCE.radius as i32 + 1;
 /// walked one existing tile at a time with [`RIM_HALO`] of halo, so the float buffers cost a tile and
 /// its edge band rather than the selection's bounding box. Pixels past `canvas` repeat the canvas
 /// edge, so a cut that touches the document border keeps its full coverage there.
-fn enhance_rim(cut: &photocraft_raster::Surface, canvas: Rect) -> std::result::Result<photocraft_raster::Surface, photocraft_raster::AllocationError> {
+fn enhance_rim(cut: &patronusphoto_raster::Surface, canvas: Rect) -> std::result::Result<patronusphoto_raster::Surface, patronusphoto_raster::AllocationError> {
     let mut out = cut.clone();
     for (tc, _) in cut.tiles() {
         let tile = tc.rect().intersect(&canvas);
@@ -153,7 +153,7 @@ fn enhance_rim(cut: &photocraft_raster::Surface, canvas: Rect) -> std::result::R
         }
         let read = tile.inflate(RIM_HALO).intersect(&canvas);
         let rw = read.width() as usize;
-        let cover = photocraft_algo::selection::mask_from_surface(Some(cut), read);
+        let cover = patronusphoto_algo::selection::mask_from_surface(Some(cut), read);
         // A pixel can only lose coverage if it is selected itself and something unselected lies
         // within the blur's reach. The band where those two boxes meet is all of the tile that can
         // change, and blurring that band instead of the whole tile is what keeps one click on a
@@ -220,8 +220,8 @@ fn touched_box(cover: &[f32], area: Rect, rw: usize, holds: impl Fn(f32) -> bool
 
 /// The reference application's Quick Selection alert in the modes it refuses (#12934).
 /// Multichannel and Duotone weren't measured and keep selecting.
-pub fn quick_mode_refusal(mode: photocraft_color::ColorMode) -> Option<&'static str> {
-    use photocraft_color::ColorMode;
+pub fn quick_mode_refusal(mode: patronusphoto_color::ColorMode) -> Option<&'static str> {
+    use patronusphoto_color::ColorMode;
     match mode {
         ColorMode::Indexed => {
             Some("Could not use the Quick Selection because it does not work with Indexed Color images (convert image to RGB Color mode to edit).")
@@ -266,14 +266,14 @@ fn quick_selection(s: &mut Session, p: &Value) -> Result<Value> {
     let pixels_targeted = !s.tools.mask_targeted && s.active().is_some_and(|d| d.channel_view.target == crate::channel_cmds::ChannelTarget::Composite);
     let active = s.active().and_then(|d| d.active_layer).filter(|_| pixels_targeted);
     let selected = s.edit("Quick Selection", |doc, _| {
-        let empty = photocraft_raster::Surface::new(photocraft_color::PixelFormat::GRAY8);
+        let empty = patronusphoto_raster::Surface::new(patronusphoto_color::PixelFormat::GRAY8);
         let old = doc.selection.as_ref().unwrap_or(&empty);
         let area = old.content_bounds().union(&bounds).intersect(&doc.bounds());
         let out = match m {
             SelectionMode::Replace => region.clone(),
-            SelectionMode::Add => photocraft_algo::selection::combine_sparse(old, &region, area, f32::max),
-            SelectionMode::Subtract => photocraft_algo::selection::combine_sparse(old, &region, area, |a, b| (a - b).max(0.0)),
-            SelectionMode::Intersect => photocraft_algo::selection::combine_surfaces(old, &region, area, f32::min),
+            SelectionMode::Add => patronusphoto_algo::selection::combine_sparse(old, &region, area, f32::max),
+            SelectionMode::Subtract => patronusphoto_algo::selection::combine_sparse(old, &region, area, |a, b| (a - b).max(0.0)),
+            SelectionMode::Intersect => patronusphoto_algo::selection::combine_surfaces(old, &region, area, f32::min),
         };
         // Sample All Layers off on a pixel or type layer: the stroke also drops the layer's fully
         // transparent pixels from the selection it leaves, in every mode (#12919).
@@ -293,18 +293,18 @@ fn quick_selection(s: &mut Session, p: &Value) -> Result<Value> {
 ///
 /// It visits the selection's own tiles, one at a time, so a stroke costs the tiles the selection
 /// holds, not its bounding box: two small pieces far apart don't make a canvas-sized RGBA buffer.
-fn drop_transparent(layer: &Layer, sel: photocraft_raster::Surface) -> photocraft_raster::Surface {
+fn drop_transparent(layer: &Layer, sel: patronusphoto_raster::Surface) -> patronusphoto_raster::Surface {
     if !matches!(layer.content, LayerContent::Raster(_) | LayerContent::Text(_)) {
         return sel;
     }
     let Some(surf) = layer.surface() else { return sel };
-    let coords: Vec<photocraft_geom::TileCoord> = sel.tiles().map(|(tc, _)| *tc).collect();
+    let coords: Vec<patronusphoto_geom::TileCoord> = sel.tiles().map(|(tc, _)| *tc).collect();
     let mut out = sel.clone();
     for tc in coords {
         let rect = tc.rect();
         let mask: Vec<u8> = SurfaceSampler(surf).rgba(rect).iter().map(|p| if p[3] > 0.0 { 255 } else { 0 }).collect();
         let opaque = matting::region_surface(&Region { bbox: rect, mask });
-        let kept = photocraft_algo::selection::combine_surfaces(&sel, &opaque, rect, f32::min);
+        let kept = patronusphoto_algo::selection::combine_surfaces(&sel, &opaque, rect, f32::min);
         match kept.tile(tc) {
             Some(tile) => out.put_tiles([(tc, std::sync::Arc::clone(tile))]),
             // `take_tiles` only allocates for a tile that is missing; this one is there.
@@ -354,7 +354,7 @@ pub const OBJECT_FINDER_ENTRIES: usize = 12;
 #[derive(Debug, Default)]
 pub struct ObjectFinderCache {
     doc: std::sync::Weak<Document>,
-    doc_id: Option<photocraft_doc::DocId>,
+    doc_id: Option<patronusphoto_doc::DocId>,
     target: Option<LayerId>,
     regions: Vec<std::sync::Arc<Region>>,
 }
@@ -401,7 +401,7 @@ impl ObjectFinderCache {
     }
 
     /// Forget the results if they were computed from the document `id` (it is closing).
-    pub(crate) fn forget_doc(&mut self, id: photocraft_doc::DocId) {
+    pub(crate) fn forget_doc(&mut self, id: patronusphoto_doc::DocId) {
         if self.doc_id == Some(id) {
             *self = Self::default();
         }
@@ -569,8 +569,8 @@ fn object_at_point(s: &mut Session, p: &Value, (x, y): (f32, f32)) -> Result<Val
 
 /// The reference application's Object Selection alert in the modes it refuses (#12867).
 /// Multichannel and Duotone weren't measured and keep selecting.
-pub fn object_mode_refusal(mode: photocraft_color::ColorMode) -> Option<&'static str> {
-    use photocraft_color::ColorMode;
+pub fn object_mode_refusal(mode: patronusphoto_color::ColorMode) -> Option<&'static str> {
+    use patronusphoto_color::ColorMode;
     match mode {
         ColorMode::Indexed => Some(
             "Could not complete your request because the tool does not work with Indexed Color images. Please convert the image to RGB or another supported mode before using..",
@@ -621,7 +621,7 @@ fn object_selection(s: &mut Session, p: &Value) -> Result<Value> {
 #[derive(Debug, Default)]
 pub struct SubjectCache {
     doc: std::sync::Weak<Document>,
-    doc_id: Option<photocraft_doc::DocId>,
+    doc_id: Option<patronusphoto_doc::DocId>,
     /// The sampled layer; `None` = the composite.
     target: Option<LayerId>,
     region: Option<std::sync::Arc<Region>>,
@@ -629,7 +629,7 @@ pub struct SubjectCache {
 
 impl SubjectCache {
     /// Forget the result if it was computed from the document `id` (it is closing).
-    pub(crate) fn forget_doc(&mut self, id: photocraft_doc::DocId) {
+    pub(crate) fn forget_doc(&mut self, id: patronusphoto_doc::DocId) {
         if self.doc_id == Some(id) {
             *self = Self::default();
         }
@@ -783,7 +783,7 @@ fn refine_edge(s: &mut Session, p: &Value) -> Result<Value> {
         "layerMask" => {
             let id = active.ok_or_else(|| EngineError::Other("no active layer".into()))?;
             s.edit("Select and Mask", |doc, _| {
-                let surface = region.clone().unwrap_or_else(|| photocraft_raster::Surface::new(photocraft_color::PixelFormat::GRAY8));
+                let surface = region.clone().unwrap_or_else(|| patronusphoto_raster::Surface::new(patronusphoto_color::PixelFormat::GRAY8));
                 crate::extra_cmds::background_to_layer_for_mask(doc, id);
                 let existing = doc.layer(id).and_then(|l| l.mask.as_ref()).cloned().unwrap_or_else(LayerMask::reveal_all);
                 doc.layer_mut(id).ok_or(EngineError::NoLayer(id))?.mask = Some(LayerMask { surface, ..existing });
@@ -799,7 +799,7 @@ fn refine_edge(s: &mut Session, p: &Value) -> Result<Value> {
                 EngineError::Other(format!("the active layer is {} {} layer without pixels", src_layer.content.article(), src_layer.content.kind_name()))
             })?;
             let name = d.doc.copy_name(&src_layer.name);
-            let empty = photocraft_raster::Surface::new(photocraft_color::PixelFormat::GRAY8);
+            let empty = patronusphoto_raster::Surface::new(patronusphoto_color::PixelFormat::GRAY8);
             let reg = region.as_ref().unwrap_or(&empty);
             let pixels = if decontaminate { matting::decontaminate_surface(src, reg, params.radius, amount) } else { src.clone() };
             let with_mask = matches!(output.as_str(), "newLayerWithMask" | "newDocumentWithMask");

@@ -1,6 +1,6 @@
 [package]
-name = "photocraft-raw"
-description = "PhotoCraft camera-raw develop pipeline over craft-raw's format-neutral decoded sensor model"
+name = "patronusphoto-raw"
+description = "Patronus Photo camera-raw develop pipeline over craft-raw's format-neutral decoded sensor model"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -25,9 +25,9 @@ flate2 = { workspace = true, optional = true }
 rayon = { workspace = true }
 
 [dev-dependencies]
-photocraft-raw = { path = ".", features = ["testgen"] }
+patronusphoto-raw = { path = ".", features = ["testgen"] }
 # Writes sRGB PNG previews in the `rawinfo` example.
-photocraft-codecs = { workspace = true }
+patronusphoto-codecs = { workspace = true }
 # JPEG XL encoder used by legacy test fixtures only.
 zune-jpegxl = { version = "=0.5.2", default-features = false, features = ["std"] }
 zune-core = "0.5"

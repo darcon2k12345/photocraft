@@ -1,21 +1,21 @@
-//! What a click or double-click on a Layers panel thumbnail runs in PhotoCraft: the panel reports
-//! the part and modifiers (`ThumbClick`, `Activate`), PhotoCraft picks the command.
+//! What a click or double-click on a Layers panel thumbnail runs in Patronus Photo: the panel reports
+//! the part and modifiers (`ThumbClick`, `Activate`), Patronus Photo picks the command.
 
 use craft::layers::ui::tree::LayerPart;
 use egui::Modifiers;
 use egui_kittest::Harness;
-use photocraft_engine::Session;
+use patronusphoto_engine::Session;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::layers_panel_nodes::{click, layer_id, thumb};
 
-type H = Harness<'static, Box<PhotocraftApp>>;
+type H = Harness<'static, Box<PatronusPhotoApp>>;
 
 fn harness(s: Session) -> H {
     let mut h = Harness::builder().with_size(egui::vec2(1440.0, 900.0)).with_step_dt(1.0 / 60.0).with_max_steps(64).build_eframe(|cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::with_context(cc.egui_ctx.clone(), s, crate::Services::default())
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        PatronusPhotoApp::with_context(cc.egui_ctx.clone(), s, crate::Services::default())
     });
     let ctx = h.ctx.clone();
     let (r, _) = crate::control::ControlRequest::new("ui.set", json!({"dock": {"collapsed": ["color", "properties", "history", "navigator"]}}));
@@ -144,7 +144,7 @@ fn made(v: serde_json::Value) -> u64 {
 /// Edit Text (the type thumbnail's double-click) on no document or a non-type layer changes nothing.
 #[test]
 fn edit_type_command_rejects_missing_or_non_type_layers_without_changes() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     let ctx = app.ctx().clone();
     for has_document in [false, true] {
         if has_document {
@@ -170,7 +170,7 @@ fn a_masked_artboards_thumbnail_retargets_it_and_ends_the_mask_view() {
     s.execute("layer.layerMask.revealAll", json!({"layer": board})).unwrap();
     s.execute("layer.select", json!({"layer": board})).unwrap();
     let mut h = harness(s);
-    let viewing = |h: &H| h.state().session.active().and_then(photocraft_engine::mask_view_cmds::current).is_some();
+    let viewing = |h: &H| h.state().session.active().and_then(patronusphoto_engine::mask_view_cmds::current).is_some();
     let at = thumb(&h, "Board", LayerPart::LayerMask).center();
     click(&mut h, at, Modifiers::ALT);
     assert!(viewing(&h), "Alt-click shows the mask");

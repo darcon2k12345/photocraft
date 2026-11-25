@@ -2,17 +2,17 @@
 //! paths Direct Selection edits, one history step per click.
 
 use egui::Modifiers;
-use photocraft_doc::vector::Path;
-use photocraft_geom::Point;
+use patronusphoto_doc::vector::Path;
+use patronusphoto_geom::Point;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing;
 use crate::direct_select::PathRef;
 use crate::state::Tool;
 
-fn app(tool: Tool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app(tool: Tool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.session.execute("file.new", json!({"width": 200, "height": 200})).unwrap();
     app.sync_views();
     app.ui.tool = tool;
@@ -20,7 +20,7 @@ fn app(tool: Tool) -> Box<PhotocraftApp> {
 }
 
 /// A square work path; knot 1 at (120, 40) is smooth, so the top edge (0 → 1) is a curve.
-fn with_path(app: &mut PhotocraftApp) {
+fn with_path(app: &mut PatronusPhotoApp) {
     let path = json!({"subpaths": [{"closed": true, "knots": [
         [40, 40],
         {"anchor": [120, 40], "in": [100, 20], "out": [140, 60], "smooth": true},
@@ -30,15 +30,15 @@ fn with_path(app: &mut PhotocraftApp) {
     app.run("path.set", json!({"name": "work", "path": path})).unwrap();
 }
 
-fn work(app: &PhotocraftApp) -> Path {
+fn work(app: &PatronusPhotoApp) -> Path {
     app.session.active().unwrap().doc.work_path.clone().unwrap()
 }
 
-pub(super) fn steps(app: &PhotocraftApp) -> usize {
+pub(super) fn steps(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().history.entries().len()
 }
 
-pub(super) fn click(app: &mut PhotocraftApp, at: [f64; 2], mods: Modifiers) {
+pub(super) fn click(app: &mut PatronusPhotoApp, at: [f64; 2], mods: Modifiers) {
     testing::click(app, at, mods);
 }
 
@@ -141,7 +141,7 @@ fn a_click_off_the_paths_starts_no_pen_path() {
     }
 }
 
-fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2]) {
+fn drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2]) {
     testing::press(app, from, Modifiers::NONE);
     let mid = [(from[0] + to[0]) / 2.0, (from[1] + to[1]) / 2.0];
     for at in [mid, to] {
@@ -151,7 +151,7 @@ fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2]) {
 }
 
 /// A smooth knot: both handles pulled out, on one line through the anchor, on opposite sides.
-fn assert_smooth(k: &photocraft_doc::Knot) {
+fn assert_smooth(k: &patronusphoto_doc::Knot) {
     let (vi, vo) = ((k.in_ctrl.x - k.anchor.x, k.in_ctrl.y - k.anchor.y), (k.out_ctrl.x - k.anchor.x, k.out_ctrl.y - k.anchor.y));
     assert!(k.smooth, "{k:?}");
     assert!(vi.0.hypot(vi.1) > 1.0 && vo.0.hypot(vo.1) > 1.0, "both handles pulled out: {k:?}");
@@ -176,8 +176,8 @@ fn assert_close(got: &Path, want: &Path, what: &str) {
 /// `path` with the anchor a click at `at` adds, as the vector edit makes it, and that anchor.
 fn added_at(path: &Path, at: Point) -> (Path, [usize; 2]) {
     let mut p = path.clone();
-    let Some(photocraft_vector::edit::Hit::Segment(k, t)) = photocraft_vector::edit::hit(&p, at, 6.0, &[]) else { panic!("no segment at {at:?}") };
-    let added = photocraft_vector::edit::add_anchor(&mut p, k, t).unwrap();
+    let Some(patronusphoto_vector::edit::Hit::Segment(k, t)) = patronusphoto_vector::edit::hit(&p, at, 6.0, &[]) else { panic!("no segment at {at:?}") };
+    let added = patronusphoto_vector::edit::add_anchor(&mut p, k, t).unwrap();
     (p, added)
 }
 
@@ -189,16 +189,16 @@ fn dragging_from_an_add_moves_the_new_anchor_in_one_step() {
         let mut app = app(tool);
         with_path(&mut app);
         let (before, n) = (work(&app), steps(&app));
-        let on = photocraft_vector::edit::eval(&before.subpaths[0].segments()[0], 0.5);
+        let on = patronusphoto_vector::edit::eval(&before.subpaths[0].segments()[0], 0.5);
         drag(&mut app, [on.x, on.y], [on.x + 5.0, on.y + 15.0]);
         let (mut want, k) = added_at(&before, on);
         if tool == Tool::AddAnchorPoint {
             let knot = &mut want.subpaths[k[0]].knots[k[1]];
             let out = Point::new(knot.anchor.x + 5.0, knot.anchor.y + 15.0);
-            *knot = photocraft_doc::Knot::smooth(knot.anchor, Point::new(2.0 * knot.anchor.x - out.x, 2.0 * knot.anchor.y - out.y), out);
+            *knot = patronusphoto_doc::Knot::smooth(knot.anchor, Point::new(2.0 * knot.anchor.x - out.x, 2.0 * knot.anchor.y - out.y), out);
             assert_close(&work(&app), &want, "AddAnchorPoint: the new anchor's handles pulled out");
         } else {
-            photocraft_vector::edit::move_anchors(&mut want, &[k], [5.0, 15.0]).unwrap();
+            patronusphoto_vector::edit::move_anchors(&mut want, &[k], [5.0, 15.0]).unwrap();
             assert_close(&work(&app), &want, &format!("{tool:?}: the new anchor moved with its handles"));
         }
         assert_smooth(&work(&app).subpaths[0].knots[1]);

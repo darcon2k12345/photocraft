@@ -23,7 +23,7 @@
 use craft::ui::dialog::{PromptAnswer, PromptChoice, StandardPrompt};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::{Tool, ToolOptions};
 
 pub const RESET: &str = "tool.reset";
@@ -33,7 +33,7 @@ pub const RESET_ALL: &str = "tool.resetAll";
 struct ResetAllTools;
 
 /// Run `tool.reset` / `tool.resetAll`; `None` for any other command.
-pub fn invoke(app: &mut PhotocraftApp, id: &str, params: &Value) -> Option<Result<Value, String>> {
+pub fn invoke(app: &mut PatronusPhotoApp, id: &str, params: &Value) -> Option<Result<Value, String>> {
     match id {
         RESET => {
             let tool = app.ui.tool;
@@ -62,7 +62,7 @@ pub fn invoke(app: &mut PhotocraftApp, id: &str, params: &Value) -> Option<Resul
 /// Answers the Reset All Tools prompt: OK resets every tool, Cancel resets nothing. `false` for
 /// another prompt's answer. A host cancel (a replaced prompt, a closed parent) reaches no answer
 /// and resets nothing. The answer is taken once, so a second pass of the frame resets nothing again.
-pub(crate) fn answer(app: &mut PhotocraftApp, _ctx: &egui::Context, answer: &mut PromptAnswer) -> bool {
+pub(crate) fn answer(app: &mut PatronusPhotoApp, _ctx: &egui::Context, answer: &mut PromptAnswer) -> bool {
     if answer.take_tag::<ResetAllTools>().is_none() {
         return false;
     }
@@ -73,7 +73,7 @@ pub(crate) fn answer(app: &mut PhotocraftApp, _ctx: &egui::Context, answer: &mut
 }
 
 /// Reset Tool: `tool`'s options, its selection mode and its brush.
-fn reset_tool(app: &mut PhotocraftApp, tool: Tool) {
+fn reset_tool(app: &mut PatronusPhotoApp, tool: Tool) {
     if tool == Tool::Frame {
         crate::frame_tool::clear(app);
         app.ui.frame_tool = Default::default();
@@ -95,7 +95,7 @@ fn reset_tool(app: &mut PhotocraftApp, tool: Tool) {
 }
 
 /// Reset All Tools: every option, the selection mode and every tool's brush.
-fn reset_all(app: &mut PhotocraftApp) {
+fn reset_all(app: &mut PatronusPhotoApp) {
     crate::frame_tool::clear(app);
     app.ui.frame_tool = Default::default();
     app.ui.tool_options = ToolOptions::default();
@@ -113,7 +113,7 @@ fn reset_all(app: &mut PhotocraftApp) {
 }
 
 /// The live brush is `app.ui.brush_tool`'s: give it that tool's starting brush.
-fn reset_session_brush(app: &mut PhotocraftApp) {
+fn reset_session_brush(app: &mut PatronusPhotoApp) {
     app.session.tools.brush = crate::paint_mouse::fresh_brush(app.ui.brush_tool, &app.session.tools.brush);
     app.session.tools.brush_gesture = None;
     app.session.tools.current_preset = None;
@@ -313,10 +313,10 @@ pub fn option_keys(tool: Tool) -> &'static [&'static str] {
 mod tests {
     use super::*;
 
-    fn app() -> Box<PhotocraftApp> {
-        let mut s = photocraft_engine::Session::new();
+    fn app() -> Box<PatronusPhotoApp> {
+        let mut s = patronusphoto_engine::Session::new();
         s.execute("file.new", json!({"width": 8, "height": 8})).unwrap();
-        PhotocraftApp::new(s, crate::Services::default())
+        PatronusPhotoApp::new(s, crate::Services::default())
     }
 
     /// Every option belongs to a tool, so Reset Tool and tool presets (#7356) miss none, and every
@@ -373,7 +373,7 @@ mod tests {
     }
 
     /// `ui.dialog.confirm` / `ui.dialog.cancel` on a hosted dialog, as the control channel sends them.
-    fn answer_dialog(app: &mut PhotocraftApp, ctx: &egui::Context, method: &str, dialog: &str) -> Value {
+    fn answer_dialog(app: &mut PatronusPhotoApp, ctx: &egui::Context, method: &str, dialog: &str) -> Value {
         use crate::control::{ControlRequest, Reply, handle};
         let (req, _rx) = ControlRequest::new(method, json!({"dialog": dialog}));
         match handle(app, ctx, &req) {
@@ -405,7 +405,7 @@ mod tests {
         let mut app = app();
         assert!(app.ui.tool_options.object_hard_edge);
         app.ui.tool = Tool::ObjectSelection;
-        let last = |app: &PhotocraftApp| app.session.journal.last().filter(|(id, _)| id == "select.object").map(|(_, p)| p["hardEdge"].clone());
+        let last = |app: &PatronusPhotoApp| app.session.journal.last().filter(|(id, _)| id == "select.object").map(|(_, p)| p["hardEdge"].clone());
         for hard in [false, true] {
             app.ui.tool_options.object_hard_edge = hard;
             crate::retouch_ui::finish_object_selection(&mut app, [4.0, 4.0], [4.0, 4.0], craft::keymap::Mods::default());

@@ -8,11 +8,11 @@
 
 use craft::ui::dialog::{DialogId, DialogResult};
 use craft::ui::patterns::form_dialogs::{FormatOptions, HostedFormatOptions};
-use photocraft_doc::DocId;
+use patronusphoto_doc::DocId;
 use serde_json::{Value, json};
 
 use super::{dds_options_ui, jpeg_options_ui, targa_options_ui, tiff_options_ui};
-use crate::{ExportSettings, PhotocraftApp};
+use crate::{ExportSettings, PatronusPhotoApp};
 
 /// A save waiting on a format's options.
 pub struct ParkedSave {
@@ -46,7 +46,7 @@ impl ParkedSave {
     /// The save settings of the waiting document (its path resolves linked smart objects), even
     /// if another tab is active now. Closed meanwhile, the active tab's, and the write reports
     /// the closed document.
-    pub fn settings(&self, app: &mut PhotocraftApp) -> ExportSettings {
+    pub fn settings(&self, app: &mut PatronusPhotoApp) -> ExportSettings {
         app.with_document(self.doc, |app| Ok(app.save_settings())).unwrap_or_else(|_| app.save_settings())
     }
 
@@ -59,7 +59,7 @@ impl ParkedSave {
 
 /// Parks `save` behind `dialog` and opens it; the id of the dialog. Refuses while another save
 /// waits.
-pub fn park(app: &mut PhotocraftApp, save: ParkedSave, dialog: HostedFormatOptions) -> Result<DialogId, String> {
+pub fn park(app: &mut PatronusPhotoApp, save: ParkedSave, dialog: HostedFormatOptions) -> Result<DialogId, String> {
     if app.parked_save.is_some() {
         return Err(crate::SAVE_OPTIONS_OPEN.into());
     }
@@ -71,7 +71,7 @@ pub fn park(app: &mut PhotocraftApp, save: ParkedSave, dialog: HostedFormatOptio
 /// Takes the dialog's answer for the parked save (a `dialogs::TAKERS` entry): answers a pending
 /// JPEG size request, then writes the save on OK or drops it on Cancel. Everything it drains is
 /// taken once, so a second pass in the same frame finds nothing and changes nothing.
-pub fn take(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub fn take(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     jpeg_options_ui::poll_estimate(app, ctx);
     let Some(result) = app.framework.dialogs.take::<HostedFormatOptions>() else { return };
     let Some(save) = app.parked_save.take() else { return };
@@ -86,7 +86,7 @@ pub fn take(app: &mut PhotocraftApp, ctx: &egui::Context) {
 }
 
 /// The save was canceled: nothing is written.
-fn canceled(app: &mut PhotocraftApp) {
+fn canceled(app: &mut PatronusPhotoApp) {
     app.ui.status = tl!("Save canceled").into();
     app.ui.status_error = false;
 }
@@ -95,7 +95,7 @@ fn canceled(app: &mut PhotocraftApp) {
 /// does (no copy, recorded as `file.saveAs`) behind the options of `params.format` (`jpeg`,
 /// `tiff`, `targa` or `dds`). The request opens the prompt for the format it names, whatever the
 /// path's extension.
-pub fn open(app: &mut PhotocraftApp, _ctx: &egui::Context, params: &Value) -> Result<DialogId, String> {
+pub fn open(app: &mut PatronusPhotoApp, _ctx: &egui::Context, params: &Value) -> Result<DialogId, String> {
     let format = params.get("format").and_then(Value::as_str).ok_or("formatOptions: `format` must be a string")?;
     let path = params.get("path").and_then(Value::as_str).ok_or("formatOptions: `path` must be a string")?.to_owned();
     let record = "file.saveAs";
@@ -110,7 +110,7 @@ pub fn open(app: &mut PhotocraftApp, _ctx: &egui::Context, params: &Value) -> Re
 
 /// OK on the open dialog, then [`take`], as the button and the next pass do.
 #[cfg(test)]
-pub fn confirm(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub fn confirm(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     app.framework.dialogs.confirm::<HostedFormatOptions>(ctx);
     take(app, ctx);
 }

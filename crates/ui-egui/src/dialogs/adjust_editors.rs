@@ -26,13 +26,13 @@ use craft::ui::contract::Bind;
 use craft::ui::runtime::env::Env;
 use craft::ui::runtime::requests::ColorRequest;
 use egui::Ui;
-use photocraft_doc::LayerId;
-use photocraft_engine::adjust_params::HUE_RANGES;
-use photocraft_engine::presets::gradients::StopColor;
+use patronusphoto_doc::LayerId;
+use patronusphoto_engine::adjust_params::HUE_RANGES;
+use patronusphoto_engine::presets::gradients::StopColor;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 mod session;
 pub mod values;
@@ -405,7 +405,7 @@ pub fn answer_auto(value: &mut AdjustValue, weights: &Value) -> bool {
 /// Black & White's Auto (#9269): the weights `image.adjustments.blackWhite.auto` finds for `layer` (an adjustment
 /// layer: the image under it; a pixel layer: its pixels; with `filter`, the smart object's pixels below that smart
 /// filter). The caller writes them into its value with [`answer_auto`].
-pub fn black_white_auto(app: &mut PhotocraftApp, layer: Option<LayerId>, filter: Option<u64>) -> Result<Value, String> {
+pub fn black_white_auto(app: &mut PatronusPhotoApp, layer: Option<LayerId>, filter: Option<u64>) -> Result<Value, String> {
     let mut params = layer.map_or(json!({}), |id| json!({"layer": id.0}));
     if let Some(index) = filter {
         params["filter"] = json!(index);
@@ -414,19 +414,19 @@ pub fn black_white_auto(app: &mut PhotocraftApp, layer: Option<LayerId>, filter:
 }
 
 /// Whether a document of this mode edits Levels/Curves through a single Gray channel.
-pub fn is_gray(mode: photocraft_doc::ColorMode) -> bool {
-    matches!(mode, photocraft_doc::ColorMode::Grayscale | photocraft_doc::ColorMode::Duotone | photocraft_doc::ColorMode::Bitmap)
+pub fn is_gray(mode: patronusphoto_doc::ColorMode) -> bool {
+    matches!(mode, patronusphoto_doc::ColorMode::Grayscale | patronusphoto_doc::ColorMode::Duotone | patronusphoto_doc::ColorMode::Bitmap)
 }
 
 /// The current foreground and background colours.
-pub fn swatches(app: &PhotocraftApp) -> [[f32; 3]; 2] {
+pub fn swatches(app: &PatronusPhotoApp) -> [[f32; 3]; 2] {
     let c = |x: [f32; 4]| [x[0], x[1], x[2]];
     [c(app.session.tools.foreground), c(app.session.tools.background)]
 }
 
 /// The session's gradient presets as the Gradient Map picker takes them: colour stops only, the Foreground and
 /// Background stops resolved to the current swatches. Converted once when the dialog opens.
-pub fn gradient_presets(app: &PhotocraftApp) -> Vec<GradientGroup> {
+pub fn gradient_presets(app: &PatronusPhotoApp) -> Vec<GradientGroup> {
     let [foreground, background] = swatches(app);
     let resolved = |color: &StopColor| match color {
         StopColor::Foreground => foreground,
@@ -458,7 +458,7 @@ pub fn gradient_presets(app: &PhotocraftApp) -> Vec<GradientGroup> {
 mod tests {
     use super::values::{ValueCx, from_params};
     use super::*;
-    use photocraft_doc::ColorMode;
+    use patronusphoto_doc::ColorMode;
 
     /// The `kind` tag is the key `set_json_field` replaces and the name `KINDS` lists: every kind's value carries its own.
     #[test]

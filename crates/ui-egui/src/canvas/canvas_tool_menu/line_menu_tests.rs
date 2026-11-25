@@ -8,13 +8,13 @@ use serde_json::{Value, json};
 
 use super::available;
 use super::tests::{any_dialog, app, harness, open_here, pick, right_click};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing;
 use crate::state::Tool;
 use craft::draw::ui::VectorMode;
 
 /// A pixel layer filled red, active, with the Line tool selected in Shape mode.
-fn pixel_layer() -> Box<PhotocraftApp> {
+fn pixel_layer() -> Box<PatronusPhotoApp> {
     let mut app = app();
     app.run("layer.new.layer", json!({})).unwrap();
     app.run("edit.fill", json!({"color": "#ff0000"})).unwrap();
@@ -25,7 +25,7 @@ fn pixel_layer() -> Box<PhotocraftApp> {
 
 /// A line drawn with the Line tool near the top of the canvas, with a fill and a 1 px stroke as
 /// in the measured document: its shape layer is active.
-fn line_layer() -> Box<PhotocraftApp> {
+fn line_layer() -> Box<PatronusPhotoApp> {
     let mut app = app();
     app.ui.tool = Tool::Line;
     app.ui.tool_options.stroke_width = 1.0;
@@ -35,13 +35,13 @@ fn line_layer() -> Box<PhotocraftApp> {
     testing::release(&mut app, [28.0, 4.0], Modifiers::NONE);
     let st = app.session.active().unwrap();
     let layer = st.doc.layer(st.active_layer.unwrap()).unwrap();
-    assert!(matches!(layer.content, photocraft_doc::LayerContent::Shape(_)), "the line made a shape layer");
+    assert!(matches!(layer.content, patronusphoto_doc::LayerContent::Shape(_)), "the line made a shape layer");
     app
 }
 
 /// Right-click the middle of the canvas (empty, away from the line): the open menu's entries as
 /// `ui.inspect` lists them.
-fn right_click_entries(h: &mut Harness<'static, Box<PhotocraftApp>>) -> Vec<Value> {
+fn right_click_entries(h: &mut Harness<'static, Box<PatronusPhotoApp>>) -> Vec<Value> {
     let center = h.state().last_canvas_rect.center();
     right_click(h, center, Modifiers::NONE);
     let inspected = crate::control::inspect(h.state(), &h.ctx);
@@ -120,7 +120,7 @@ fn over_a_line_shape_layer_the_menu_lists_the_reference_rows() {
 fn path_and_pixels_mode_open_no_menu() {
     for mode in [VectorMode::Path, VectorMode::Pixels] {
         // One app at a time: an array of built apps keeps them all on the test thread's stack.
-        for make in [pixel_layer as fn() -> Box<PhotocraftApp>, line_layer] {
+        for make in [pixel_layer as fn() -> Box<PatronusPhotoApp>, line_layer] {
             let mut app = make();
             app.ui.tool_options.shape_mode = mode;
             let mut h = harness(app);
@@ -173,7 +173,7 @@ fn layer_rows_run_the_menu_bar_command() {
     pick(&mut app, "layer.rasterize.layer");
     assert_eq!(app.session.journal.last().map(|(id, _)| id.as_str()), Some("layer.rasterize.layer"));
     let st = app.session.active().unwrap();
-    assert!(matches!(st.doc.layer(st.active_layer.unwrap()).unwrap().content, photocraft_doc::LayerContent::Raster(_)), "rasterized");
+    assert!(matches!(st.doc.layer(st.active_layer.unwrap()).unwrap().content, patronusphoto_doc::LayerContent::Raster(_)), "rasterized");
 
     // Over a pixel layer with no path, Free Transform starts the box on the layer.
     let mut app = pixel_layer();

@@ -8,10 +8,10 @@
 use craft::behavior::kurbo;
 use craft::ui::canvas_controls::{HoverOutline, HoverShape};
 use craft::ui::contract::Show as _;
-use photocraft_doc::{DocId, Document, Layer, LayerContent, LayerId};
-use photocraft_geom::Rect;
+use patronusphoto_doc::{DocId, Document, Layer, LayerContent, LayerId};
+use patronusphoto_geom::Rect;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// The last answer: what a click at `at` on that revision of the document would outline.
@@ -28,7 +28,7 @@ pub(crate) struct Hover {
 /// nothing is highlighted: the preference is off, another tool is current, a click wouldn't
 /// Auto-Select (it's off without ⌘, or the selected pixels move instead), a button is down (which
 /// covers every drag), or a transform is under way.
-pub(crate) fn target(app: &mut PhotocraftApp, at: Option<[f64; 2]>, command: bool, pressed: bool) -> Option<Rect> {
+pub(crate) fn target(app: &mut PatronusPhotoApp, at: Option<[f64; 2]>, command: bool, pressed: bool) -> Option<Rect> {
     if !app.session.prefs().tools.show_highlight_on_rollover
         || app.ui.tool != Tool::Move
         || !app.ui.tool_options.move_show_hover_bounds
@@ -52,7 +52,7 @@ pub(crate) fn target(app: &mut PhotocraftApp, at: Option<[f64; 2]>, command: boo
         app.canvas_hover_layer = h.target_layer;
         return h.bounds;
     }
-    let target_layer = photocraft_engine::pick_cmds::move_auto_select_target(&st.doc, at[0], at[1], group);
+    let target_layer = patronusphoto_engine::pick_cmds::move_auto_select_target(&st.doc, at[0], at[1], group);
     let bounds = target_layer.and_then(|id| outline(&st.doc, id));
     let target_layer = if bounds.is_some() { target_layer } else { None };
     app.move_hover = Some(Hover { doc, revision, at, group, target_layer, bounds });
@@ -79,7 +79,7 @@ fn bounds(doc: &Document, l: &Layer) -> Rect {
     if let Some(a) = l.artboard() {
         return a.rect;
     }
-    let content = |s| photocraft_compose::bounds::content_bounds(s);
+    let content = |s| patronusphoto_compose::bounds::content_bounds(s);
     match &l.content {
         LayerContent::Group(_) | LayerContent::Adjustment(_) => Rect::EMPTY,
         // A fill layer covers the canvas; its mask limits it.
@@ -90,7 +90,7 @@ fn bounds(doc: &Document, l: &Layer) -> Rect {
 
 /// The document-space bounds to outline: either a layer hovered in the Layers panel, or what a
 /// click at `at` would pick with the Move tool.
-pub(crate) fn active_outline(app: &mut PhotocraftApp, at: Option<[f64; 2]>, command: bool, pressed: bool) -> Option<Rect> {
+pub(crate) fn active_outline(app: &mut PatronusPhotoApp, at: Option<[f64; 2]>, command: bool, pressed: bool) -> Option<Rect> {
     if !app.session.prefs().tools.show_highlight_on_rollover {
         app.canvas_hover_layer = None;
         return None;
@@ -109,7 +109,7 @@ pub(crate) fn active_outline(app: &mut PhotocraftApp, at: Option<[f64; 2]>, comm
 
 /// Shows the highlight over the active document's canvas `canvas`; `pointer` is the screen hover
 /// position. The Layers panel reads `canvas_hover_layer`, so a change of it asks for a repaint.
-pub(crate) fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui, canvas: egui::Rect, pointer: Option<egui::Pos2>) {
+pub(crate) fn show(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, canvas: egui::Rect, pointer: Option<egui::Pos2>) {
     let prev_canvas_hover = app.canvas_hover_layer;
     let command = craft::ui::runtime::pointer::frame(ui.ctx()).mods.cmd;
     let pressed = crate::canvas::tools::in_gesture(app);
@@ -130,7 +130,7 @@ mod tests {
 
     #[test]
     fn rollover_outlines_the_layer_a_click_would_pick() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.session.execute("file.new", json!({"width": 64, "height": 64})).unwrap();
         app.session.execute("layer.new.layer", json!({})).unwrap();
         app.session
@@ -167,7 +167,7 @@ mod tests {
 
     #[test]
     fn layer_panel_hover_outlines_layer_on_canvas() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.session.execute("file.new", json!({"width": 64, "height": 64})).unwrap();
         app.session.execute("layer.new.layer", json!({})).unwrap();
         app.session
@@ -195,7 +195,7 @@ mod tests {
 
     #[test]
     fn canvas_hover_sets_canvas_hover_layer() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.session.execute("file.new", json!({"width": 64, "height": 64})).unwrap();
         app.session.execute("layer.new.layer", json!({})).unwrap();
         app.session

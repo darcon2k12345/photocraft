@@ -5,14 +5,14 @@ use craft::ui::dialog::DialogId;
 use egui::Key;
 use std::sync::Arc;
 
-fn app_with_docs(n: usize) -> Box<PhotocraftApp> {
+fn app_with_docs(n: usize) -> Box<PatronusPhotoApp> {
     app_with_docs_over(n, None)
 }
 
 /// `n` new documents in an app whose host serves `files`: the host takes them when the app is made, so a
 /// later `services.files` assignment would not reach the pickers.
-fn app_with_docs_over(n: usize, files: Option<Arc<dyn Files>>) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services { files, ..Default::default() });
+fn app_with_docs_over(n: usize, files: Option<Arc<dyn Files>>) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services { files, ..Default::default() });
     for _ in 0..n {
         app.run("file.new", json!({"width": 8, "height": 8})).unwrap();
     }
@@ -20,23 +20,23 @@ fn app_with_docs_over(n: usize, files: Option<Arc<dyn Files>>) -> Box<Photocraft
     app
 }
 
-fn make_dirty(app: &mut PhotocraftApp, doc: usize) {
+fn make_dirty(app: &mut PatronusPhotoApp, doc: usize) {
     app.session.set_active(doc);
     app.run("layer.new.layer", json!({})).unwrap();
 }
 
-fn doc_id(app: &PhotocraftApp, i: usize) -> DocId {
+fn doc_id(app: &PatronusPhotoApp, i: usize) -> DocId {
     app.session.documents()[i].doc.id
 }
 
 #[test]
 fn a_save_document_script_that_edits_the_document_keeps_the_prompt_up() {
-    use photocraft_engine::automate_cmds::ScriptBinding;
+    use patronusphoto_engine::automate_cmds::ScriptBinding;
     let mut app = app_with_docs(1);
     let ctx = app.ctx().clone();
     make_dirty(&mut app, 0);
     app.session.active_mut().unwrap().path = Some("/pics/kept.psd".into());
-    app.services.export = Some(Box::new(|_: &photocraft_doc::Document, _: &str, _: &crate::ExportSettings| Ok((b"out".to_vec(), Vec::new()))));
+    app.services.export = Some(Box::new(|_: &patronusphoto_doc::Document, _: &str, _: &crate::ExportSettings| Ok((b"out".to_vec(), Vec::new()))));
     app.services.write = Some(Box::new(|_: &str, _: &[u8]| Ok(())));
     app.session.edit_prefs(|prefs| {
         prefs.script_events.enabled = true;
@@ -192,11 +192,11 @@ fn exit_is_held_back_until_confirmed() {
     assert!(app.allow_close);
 }
 
-type Prompted = egui_kittest::Harness<'static, Box<PhotocraftApp>>;
+type Prompted = egui_kittest::Harness<'static, Box<PatronusPhotoApp>>;
 
 /// The unsaved-changes prompt for `command` over `app`'s dirty documents, as `os` draws it (with
 /// the file dialogs answered at the end of each frame, as the app does).
-fn prompt_for(app: Box<PhotocraftApp>, command: &str, os: craft::host::target::Os) -> Prompted {
+fn prompt_for(app: Box<PatronusPhotoApp>, command: &str, os: craft::host::target::Os) -> Prompted {
     let mut h = egui_kittest::Harness::builder().with_context(app.ctx().clone()).with_size(egui::vec2(800.0, 600.0)).build_ui_state(
         |ui, app| {
             // As `ui_frame` starts: a pass carrying injected input acts for the automation client.
@@ -206,7 +206,7 @@ fn prompt_for(app: Box<PhotocraftApp>, command: &str, os: craft::host::target::O
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     craft::ui::testing::windows::set_os(&h.ctx, os);
     assert!(intercept(h.state_mut(), command, &Value::Null));
     // The first pass opens the question, the second draws it, the third shows it to the access tree.
@@ -344,7 +344,7 @@ fn a_second_pass_in_one_frame_applies_an_answer_once() {
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     assert!(intercept(h.state_mut(), "file.closeAll", &Value::Null));
     h.run_steps(2);
     answer(&mut h, "dontSave", false);
@@ -485,7 +485,7 @@ fn command_d_answers_the_prompt_rather_than_deselecting() {
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     craft::ui::testing::windows::set_os(&h.ctx, craft::host::target::Os::Mac);
     assert!(intercept(h.state_mut(), "file.close", &json!({"document": 0})));
     h.run_steps(3);
@@ -506,7 +506,7 @@ fn saving_from_the_prompt_waits_for_the_save_dialog_then_closes() {
     let files = Arc::new(ScriptedFiles::held());
     let mut app = app_with_docs_over(1, Some(files.clone()));
     make_dirty(&mut app, 0);
-    app.services.export = Some(Box::new(|_: &photocraft_doc::Document, _: &str, _: &crate::ExportSettings| Ok((b"out".to_vec(), Vec::new()))));
+    app.services.export = Some(Box::new(|_: &patronusphoto_doc::Document, _: &str, _: &crate::ExportSettings| Ok((b"out".to_vec(), Vec::new()))));
     app.services.write = Some(Box::new(move |p: &str, _: &[u8]| {
         w.borrow_mut().push(p.to_string());
         Ok(())
@@ -557,7 +557,7 @@ fn saving_from_the_prompt_waits_for_a_background_save_then_closes() {
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::pro());
     craft::ui::testing::windows::set_os(&h.ctx, craft::host::target::Os::Windows);
     assert!(intercept(h.state_mut(), "file.close", &Value::Null));
     h.run_steps(2);
@@ -588,7 +588,7 @@ fn saving_from_the_prompt_closes_after_an_unconfirmed_write() {
     make_dirty(&mut app, 0);
     app.session.active_mut().unwrap().path = Some("/pics/kept.psd".into());
     app.services.write_unconfirmed = true;
-    app.services.export = Some(Box::new(|_: &photocraft_doc::Document, _: &str, _: &crate::ExportSettings| Ok((b"out".to_vec(), Vec::new()))));
+    app.services.export = Some(Box::new(|_: &patronusphoto_doc::Document, _: &str, _: &crate::ExportSettings| Ok((b"out".to_vec(), Vec::new()))));
     app.services.write = Some(Box::new(move |p: &str, _: &[u8]| {
         w.borrow_mut().push(p.to_string());
         Ok(())
@@ -612,7 +612,7 @@ fn a_synthetic_save_press_on_the_hosted_prompt_is_refused_and_reported() {
     let mut app = app_with_docs(1);
     make_dirty(&mut app, 0);
     app.session.active_mut().unwrap().path = Some("/pics/kept.psd".into());
-    app.services.export = Some(Box::new(|_: &photocraft_doc::Document, _: &str, _: &crate::ExportSettings| Ok((b"out".to_vec(), Vec::new()))));
+    app.services.export = Some(Box::new(|_: &patronusphoto_doc::Document, _: &str, _: &crate::ExportSettings| Ok((b"out".to_vec(), Vec::new()))));
     app.services.write = Some(Box::new(move |p: &str, _: &[u8]| {
         w.borrow_mut().push(p.to_string());
         Ok(())
@@ -650,7 +650,7 @@ mod dds_tests;
 mod jpeg_tests;
 
 /// One frame with the window's close button pressed; the commands the close path sent.
-fn window_close_commands(app: &mut PhotocraftApp) -> Vec<egui::ViewportCommand> {
+fn window_close_commands(app: &mut PatronusPhotoApp) -> Vec<egui::ViewportCommand> {
     let mut info = egui::ViewportInfo::default();
     info.events.push(egui::ViewportEvent::Close);
     let mut input = egui::RawInput::default();
@@ -661,7 +661,7 @@ fn window_close_commands(app: &mut PhotocraftApp) -> Vec<egui::ViewportCommand> 
 }
 
 /// One frame with the window's close button pressed; whether the guard cancelled the close.
-fn press_window_close(app: &mut PhotocraftApp) -> bool {
+fn press_window_close(app: &mut PatronusPhotoApp) -> bool {
     let commands = &window_close_commands(app);
     let cancelled = commands.iter().any(|c| matches!(c, egui::ViewportCommand::CancelClose));
     assert_eq!(commands.iter().any(|c| matches!(c, egui::ViewportCommand::Focus)), cancelled);
@@ -693,7 +693,7 @@ fn window_close_goes_through_once_the_window_device_is_lost() {
 /// lost they must close instead.
 #[test]
 fn file_exit_quits_without_a_prompt_once_the_window_device_is_lost() {
-    let exit = |app: &mut PhotocraftApp| {
+    let exit = |app: &mut PatronusPhotoApp| {
         let ctx = app.ctx().clone();
         let mut out = ctx.run_ui(egui::RawInput::default(), |ui| {
             let _ = crate::menus::invoke(app, ui.ctx(), EXIT, json!({}));

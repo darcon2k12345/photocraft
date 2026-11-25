@@ -25,8 +25,8 @@ impl Backend for Fake {
     fn attach(&mut self, _dispatch: Dispatch) {}
 }
 
-fn app(doc: bool) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app(doc: bool) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     if doc {
         app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
         app.sync_views();
@@ -35,12 +35,12 @@ fn app(doc: bool) -> Box<PhotocraftApp> {
 }
 
 /// The whole app on its own context, with a Mac menu over a fake backend.
-fn harness(doc: bool) -> (Harness<'static, Box<PhotocraftApp>>, Synced, Events) {
+fn harness(doc: bool) -> (Harness<'static, Box<PatronusPhotoApp>>, Synced, Events) {
     let (synced, events): (Synced, Events) = Default::default();
     let backend = Fake { synced: synced.clone(), events: events.clone() };
     let mut h = Harness::builder().with_size(egui::vec2(1440.0, 900.0)).with_max_steps(64).build_eframe(move |cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), crate::Services::default());
+        PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+        let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), crate::Services::default());
         if doc {
             app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
             app.sync_views();
@@ -53,14 +53,14 @@ fn harness(doc: bool) -> (Harness<'static, Box<PhotocraftApp>>, Synced, Events) 
 }
 
 /// A menu click: the event the backend reports, polled before the frame like the app's input hook does.
-fn click(h: &mut Harness<'static, Box<PhotocraftApp>>, events: &Events, id: &str) {
+fn click(h: &mut Harness<'static, Box<PatronusPhotoApp>>, events: &Events, id: &str) {
     events.borrow_mut().push(Event::Click(CommandRef::new(id)));
     let ctx = h.ctx.clone();
     poll(h.state_mut(), &ctx);
     h.run_steps(3);
 }
 
-fn laid(app: &mut PhotocraftApp) -> Layout {
+fn laid(app: &mut PatronusPhotoApp) -> Layout {
     let ctx = app.ctx().clone();
     laid_out(app, &ctx)
 }
@@ -95,7 +95,7 @@ fn the_app_menu_switches_the_ui_language() {
     let mut a = app(false);
     let ctx = a.ctx().clone();
     // PLAN: assumed the fired command is `app.language` with `{"lang": code}` (top-w12's `LanguageChoice` handling in `invoke`).
-    let set = |a: &mut PhotocraftApp, code: &str| crate::menus::invoke(a, &ctx, "app.language", json!({"lang": code}));
+    let set = |a: &mut PatronusPhotoApp, code: &str| crate::menus::invoke(a, &ctx, "app.language", json!({"lang": code}));
     set(&mut a, "fr").unwrap();
     assert_eq!(a.session.prefs().interface.language, "fr");
     set(&mut a, "sr").unwrap();
@@ -114,7 +114,7 @@ fn an_open_dialog_blocks_menu_clicks_except_view_navigation() {
     crate::menus::invoke(h.state_mut(), &ctx, "image.imageSize", json!({})).unwrap();
     h.run_steps(2);
     assert!(h.state().dialog_open(), "Image Size opened its dialog");
-    let size = |app: &PhotocraftApp| app.session.active().map(|d| (d.doc.size.width, d.doc.size.height));
+    let size = |app: &PatronusPhotoApp| app.session.active().map(|d| (d.doc.size.width, d.doc.size.height));
     let zoom = h.state().ui.views[0].zoom;
     click(&mut h, &events, "image.imageRotation.90cw");
     click(&mut h, &events, "view.zoomIn");
@@ -130,15 +130,15 @@ fn an_open_dialog_blocks_menu_clicks_except_view_navigation() {
     assert_eq!(find("image.imageRotation.90cw"), Some(true));
 }
 
-fn type_layer(app: &mut PhotocraftApp, ctx: &egui::Context) -> photocraft_doc::LayerId {
-    let id = photocraft_doc::LayerId(app.run("type.create", json!({"text": "Hello", "size": 12, "x": 4, "y": 24})).unwrap()["layer"].as_u64().unwrap());
+fn type_layer(app: &mut PatronusPhotoApp, ctx: &egui::Context) -> patronusphoto_doc::LayerId {
+    let id = patronusphoto_doc::LayerId(app.run("type.create", json!({"text": "Hello", "size": 12, "x": 4, "y": 24})).unwrap()["layer"].as_u64().unwrap());
     crate::menus::invoke(app, ctx, "type.editText", json!({})).unwrap();
     id
 }
 
-fn type_text(app: &PhotocraftApp, id: photocraft_doc::LayerId) -> String {
+fn type_text(app: &PatronusPhotoApp, id: patronusphoto_doc::LayerId) -> String {
     match &app.session.active().unwrap().doc.layer(id).unwrap().content {
-        photocraft_doc::LayerContent::Text(t) => t.text.clone(),
+        patronusphoto_doc::LayerContent::Text(t) => t.text.clone(),
         _ => panic!("type layer changed kind"),
     }
 }
@@ -253,6 +253,6 @@ fn the_menu_state_follows_the_preferences_the_rows_show() {
     app.session.edit_prefs(|p| p.menus.hidden.push("filter.blur.gaussian".into()));
     let hidden = state_hash(&app, None);
     assert_ne!(hidden, shown, "Edit › Menus hides a row");
-    app.session.edit_prefs(|p| p.export.quick_export_format = photocraft_engine::prefs::QuickExportFormat::Jpg);
+    app.session.edit_prefs(|p| p.export.quick_export_format = patronusphoto_engine::prefs::QuickExportFormat::Jpg);
     assert_ne!(state_hash(&app, None), hidden, "the Quick Export label names the format");
 }

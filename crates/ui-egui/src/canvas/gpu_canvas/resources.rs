@@ -22,11 +22,11 @@ pub(super) struct Resources {
     /// the level directly (see [`separate_mip_targets`]).
     pub(super) separate_mip_targets: bool,
     /// The wgpu layer compositor (created on first use).
-    pub(super) compositor: Option<photocraft_gpu::Compositor>,
+    pub(super) compositor: Option<patronusphoto_gpu::Compositor>,
     /// Why the wgpu compositor couldn't be created (then the CPU compositor is used).
-    pub(super) compositor_failed: Option<photocraft_gpu::Unsupported>,
+    pub(super) compositor_failed: Option<patronusphoto_gpu::Unsupported>,
     /// The device's health: the paint callback issues no GPU work once it's lost.
-    pub(super) health: photocraft_gpu::DeviceHealth,
+    pub(super) health: patronusphoto_gpu::DeviceHealth,
     /// GPU memory the compositor may hold (`None`: its default), and the document area the
     /// view shows; applied before every composite.
     pub(super) compositor_budget: Option<u64>,
@@ -34,7 +34,7 @@ pub(super) struct Resources {
     /// (bytes): when they don't fit, full refreshes go to the CPU ([`OVER_BUDGET`]).
     pub(super) layer_fit: Option<LayerFit>,
     pub(super) compositor_cache_budget: Option<u64>,
-    pub(super) compositor_focus: Option<photocraft_geom::Rect>,
+    pub(super) compositor_focus: Option<patronusphoto_geom::Rect>,
     /// GPU bytes the documents' display textures may take together (see [`canvas_budget`]).
     pub(super) canvas_budget: std::sync::Arc<std::sync::atomic::AtomicU64>,
     /// How that budget is split between the open documents (see [`super::residency`]).
@@ -357,7 +357,7 @@ impl Resources {
             separate_mip_targets: false,
             compositor: None,
             compositor_failed: None,
-            health: photocraft_gpu::DeviceHealth::new(),
+            health: patronusphoto_gpu::DeviceHealth::new(),
             compositor_budget: None,
             layer_fit: None,
             compositor_cache_budget: None,

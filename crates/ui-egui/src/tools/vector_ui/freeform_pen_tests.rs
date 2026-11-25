@@ -5,13 +5,13 @@
 use egui::Modifiers;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::{ToolEvent, testing, tool_event};
 use crate::state::Tool;
 use craft::draw::ui::VectorMode;
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 400, "height": 300})).unwrap();
     app.sync_views();
     app.ui.tool = Tool::FreeformPen;
@@ -20,7 +20,7 @@ fn app() -> Box<PhotocraftApp> {
 }
 
 /// An app drawing into the saved path "Saved drawing", with a Work Path beside it.
-fn freeform_app() -> Box<PhotocraftApp> {
+fn freeform_app() -> Box<PatronusPhotoApp> {
     let mut app = app();
     for name in ["work", "Saved drawing"] {
         app.run("path.set", json!({"name": name, "path":{"subpaths":[{"knots":[[20,20],[220,20]]}]}})).unwrap();
@@ -31,7 +31,7 @@ fn freeform_app() -> Box<PhotocraftApp> {
 }
 
 /// A ⌥-click at the document point `(x, y)`, with a drag of `drag_by` px when given.
-fn alt_click_raw(app: &mut PhotocraftApp, x: f64, y: f64, drag_by: Option<f64>) {
+fn alt_click_raw(app: &mut PatronusPhotoApp, x: f64, y: f64, drag_by: Option<f64>) {
     tool_event(app, ToolEvent::Down { x, y, pressure: 1.0 }, Modifiers::ALT);
     if let Some(d) = drag_by {
         tool_event(app, ToolEvent::Move { x: x + d, y: y + d, pressure: 1.0 }, Modifiers::ALT);
@@ -40,12 +40,12 @@ fn alt_click_raw(app: &mut PhotocraftApp, x: f64, y: f64, drag_by: Option<f64>) 
 }
 
 /// Whether the Freeform Pen has a trace open: after a release with ⌥ held the trace stays open between presses.
-fn tracing(app: &PhotocraftApp) -> bool {
+fn tracing(app: &PatronusPhotoApp) -> bool {
     app.canvas_tools.vector.freeform.draft.is_open()
 }
 
 /// A freehand run released with ⌥ held, then a ⌥-click: the fitted path stays in progress.
-fn freeform_run_and_straight_click(app: &mut PhotocraftApp) {
+fn freeform_run_and_straight_click(app: &mut PatronusPhotoApp) {
     testing::press(app, [50.0, 50.0], Modifiers::NONE);
     testing::move_to(app, [90.0, 40.0], Modifiers::NONE);
     testing::move_to(app, [120.0, 50.0], Modifiers::NONE);
@@ -70,7 +70,7 @@ fn real_freeform_freehand_and_alt_straight_segments_append_to_the_owned_saved_pa
     assert_eq!(path.subpaths.len(), 2);
     assert_eq!(path.subpaths[0], original.paths[0].path.subpaths[0]);
     let knots = &path.subpaths[1].knots;
-    assert_eq!(knots.last().unwrap().anchor, photocraft_geom::Point::new(180.0, 100.0));
+    assert_eq!(knots.last().unwrap().anchor, patronusphoto_geom::Point::new(180.0, 100.0));
     assert_eq!(knots.last().unwrap().in_ctrl, knots.last().unwrap().anchor);
     assert_eq!(knots[knots.len() - 2].out_ctrl, knots[knots.len() - 2].anchor);
     assert_eq!(st.history.past_len(), n + 1);
@@ -110,7 +110,7 @@ fn real_freeform_stale_target_source_revision_and_document_cancel_without_finish
 fn another_freeform_trace_cannot_replace_a_failed_owned_draft_or_retry_it_automatically() {
     let mut app = app();
     app.ui.tool_options.vector_mode = VectorMode::Path;
-    app.session.authorize = Some(|id, _| if id == "path.set" { Err(photocraft_engine::EngineError::Other("refused path fixture".into())) } else { Ok(()) });
+    app.session.authorize = Some(|id, _| if id == "path.set" { Err(patronusphoto_engine::EngineError::Other("refused path fixture".into())) } else { Ok(()) });
     for [x, y] in [[40.0, 60.0], [100.0, 60.0], [140.0, 80.0]] {
         alt_click_raw(&mut app, x, y, None);
     }

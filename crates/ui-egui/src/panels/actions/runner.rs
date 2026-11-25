@@ -8,10 +8,10 @@ use craft::ui::patterns::form_dialogs::{HostedCanvasSize, HostedImageSize, Hoste
 use serde_json::{Value, json};
 use web_time::Duration;
 
-use photocraft_engine::actions_cmds::{self, Action};
+use patronusphoto_engine::actions_cmds::{self, Action};
 
 use super::{dialogs, label_of, playback, record_again};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// Play `targets` one after another, stopping at the first that fails or can't start. One that
 /// pauses for a step dialog of its own hands the rest to that dialog, which plays them after its OK
@@ -19,7 +19,7 @@ use crate::PhotocraftApp;
 /// continues into its callers first. A Stop with its dialog off ends the set. Returns the last result with `ran` counting the steps
 /// of all of them plus `before` (steps the same Play ran before a pause), or `None` when there was nothing to play.
 /// `from` is the step the first target starts at (the footer's Play on a selected step); the rest start at 0.
-pub(crate) fn play_targets(app: &mut PhotocraftApp, targets: &[usize], from: usize, before: u64) -> Result<Option<Value>, String> {
+pub(crate) fn play_targets(app: &mut PatronusPhotoApp, targets: &[usize], from: usize, before: u64) -> Result<Option<Value>, String> {
     // A new Play ends a Step by Step or Pause For playback that is waiting for its next step.
     playback::stop(app);
     let (mut last, mut ran) = (None, before);
@@ -62,7 +62,7 @@ fn waiting_dialog(paused: &Value) -> Option<&Value> {
 }
 
 /// The token of the paused playback waiting at `dialog` (see [`waiting_dialog`]).
-fn paused_token(app: &PhotocraftApp, dialog: &Value) -> Option<u64> {
+fn paused_token(app: &PatronusPhotoApp, dialog: &Value) -> Option<u64> {
     match dialog.as_u64() {
         Some(id) => app.paused_playbacks.paused.iter().find(|(_, p)| p.dialog.is_some_and(|d| d.value() == id)).map(|(token, _)| *token),
         None if dialog.as_str() == Some(playback::PLAYBACK_TIMER) => playback::waiting(app),
@@ -72,13 +72,13 @@ fn paused_token(app: &PhotocraftApp, dialog: &Value) -> Option<u64> {
 
 /// The token of the paused playback that opened `dialog`: the one lookup from a step dialog to its
 /// continuation. `None` for a dialog no paused playback owns (a dialog opened by hand).
-pub(crate) fn token_of(app: &PhotocraftApp, dialog: DialogId) -> Option<u64> {
+pub(crate) fn token_of(app: &PatronusPhotoApp, dialog: DialogId) -> Option<u64> {
     paused_token(app, &json!(dialog.value()))
 }
 
 /// Replay edits synchronously, with view steps handled by the shell in the same order.
 /// Engine steps keep the headless action semantics (no dialogs or background jobs).
-pub(crate) fn play(app: &mut PhotocraftApp, params: &Value) -> Result<Value, String> {
+pub(crate) fn play(app: &mut PatronusPhotoApp, params: &Value) -> Result<Value, String> {
     // A new Play ends a Step by Step or Pause For playback that is waiting for its next step (none
     // waits while a playback runs its steps, so a Play Action step never ends its own).
     playback::stop(app);
@@ -89,7 +89,7 @@ pub(crate) fn play(app: &mut PhotocraftApp, params: &Value) -> Result<Value, Str
 /// like a Play Action step (inside the same `budget`), so the branch's steps keep their pacing, step
 /// dialogs and Stop messages. The result is the engine command's, with the branch's `paused` or
 /// `stopped`. Malformed params go to the engine command, which refuses them with its own error.
-fn conditional(app: &mut PhotocraftApp, p: &Value, budget: &mut PlaybackBudget) -> Result<Value, String> {
+fn conditional(app: &mut PatronusPhotoApp, p: &Value, budget: &mut PlaybackBudget) -> Result<Value, String> {
     let branch = |key: &str| match p.get(key) {
         None | Some(Value::Null) => Some(None),
         Some(Value::String(n)) => Some(Some(n.clone()).filter(|n| !n.trim().is_empty())),
@@ -98,7 +98,7 @@ fn conditional(app: &mut PhotocraftApp, p: &Value, budget: &mut PlaybackBudget) 
     let (Some(condition), Some(then), Some(otherwise)) = (p.get("if").and_then(Value::as_str), branch("then"), branch("else")) else {
         return app.session.execute("actions.conditional", p.clone()).map_err(|e| e.to_string());
     };
-    let Ok(holds) = photocraft_engine::actions_edit_cmds::evaluate(&app.session, condition) else {
+    let Ok(holds) = patronusphoto_engine::actions_edit_cmds::evaluate(&app.session, condition) else {
         return app.session.execute("actions.conditional", p.clone()).map_err(|e| e.to_string());
     };
     let played = if holds { then } else { otherwise };
@@ -119,8 +119,8 @@ fn conditional(app: &mut PhotocraftApp, p: &Value, budget: &mut PlaybackBudget) 
 /// Step `i` of `action` is a Stop: with its dialog toggle on it shows its message and pauses
 /// (Continue, when the step allows it, resumes after it); with the toggle off it ends the playback
 /// without a word, as in the reference application.
-fn stop_step(app: &mut PhotocraftApp, action: &Action, i: usize, p: &Value) -> (StepOutcome, Value) {
-    let id = photocraft_engine::atn_cmds::STOP_MESSAGE;
+fn stop_step(app: &mut PatronusPhotoApp, action: &Action, i: usize, p: &Value) -> (StepOutcome, Value) {
+    let id = patronusphoto_engine::atn_cmds::STOP_MESSAGE;
     if !action.dialogs.contains(&i) {
         return (StepOutcome::Stopped, json!({"step": i, "id": id}));
     }
@@ -137,8 +137,8 @@ fn stop_step(app: &mut PhotocraftApp, action: &Action, i: usize, p: &Value) -> (
 
 /// Let the engine handle programmatic playback and stateless items. Interactive Play opens
 /// the settings editor and retains its command, document and receiver until confirmation.
-fn pause_menu_item(app: &mut PhotocraftApp, action: &str, from: usize, id: &str, params: &Value) -> Result<Option<DialogId>, String> {
-    use photocraft_engine::atn_cmds::{MENU_ITEM, menu_item_command, menu_item_needs_settings};
+fn pause_menu_item(app: &mut PatronusPhotoApp, action: &str, from: usize, id: &str, params: &Value) -> Result<Option<DialogId>, String> {
+    use patronusphoto_engine::atn_cmds::{MENU_ITEM, menu_item_command, menu_item_needs_settings};
 
     if id != MENU_ITEM || !playback::is_interactive(app) {
         return Ok(None);
@@ -166,7 +166,7 @@ fn pause_menu_item(app: &mut PhotocraftApp, action: &str, from: usize, id: &str,
 
 /// Route playback and Record Again to the same settings editor used by the command. A sizing
 /// command opens on `values`; the other editors take theirs from [`open_recorded_editor`].
-fn open_step_editor(app: &mut PhotocraftApp, command: &str, values: &Value) -> Result<DialogId, String> {
+fn open_step_editor(app: &mut PatronusPhotoApp, command: &str, values: &Value) -> Result<DialogId, String> {
     if crate::sizing::is_sizing(command) {
         crate::sizing::open_with(app, command, values).ok_or_else(|| tl!("No document.").into())
     } else if crate::filter_dialog::has_dialog(command)
@@ -180,7 +180,7 @@ fn open_step_editor(app: &mut PhotocraftApp, command: &str, values: &Value) -> R
 }
 
 /// Initialize a recorded editor in its target's space before attaching playback or Record Again state.
-pub(crate) fn open_recorded_editor(app: &mut PhotocraftApp, id: &str, params: &Value) -> Result<DialogId, String> {
+pub(crate) fn open_recorded_editor(app: &mut PatronusPhotoApp, id: &str, params: &Value) -> Result<DialogId, String> {
     let adjustment = crate::adjust_dialog::has_dialog(id);
     if adjustment && !params.is_object() && !params.is_null() {
         return Err("adjustment parameters must be an object or null".into());
@@ -205,7 +205,7 @@ pub(crate) fn open_recorded_editor(app: &mut PhotocraftApp, id: &str, params: &V
 /// Put a recorded step's values into the open editor `dialog`, field by field, as `ui.dialog.set`
 /// does. A field the editor refuses is not one of its values and stays out, as the editor's own
 /// fields are the only ones its confirmation reads.
-fn fill_editor(app: &mut PhotocraftApp, dialog: DialogId, values: &Value) {
+fn fill_editor(app: &mut PatronusPhotoApp, dialog: DialogId, values: &Value) {
     let Some(object) = values.as_object() else { return };
     let ctx = app.ctx().clone();
     for (key, value) in object {
@@ -214,7 +214,7 @@ fn fill_editor(app: &mut PhotocraftApp, dialog: DialogId, values: &Value) {
 }
 
 /// Open a recorded step's dialog and bind it to the paused playback.
-fn pause_for_dialog(app: &mut PhotocraftApp, action: &Action, step: usize, id: &str, params: &Value) -> Result<DialogId, String> {
+fn pause_for_dialog(app: &mut PatronusPhotoApp, action: &Action, step: usize, id: &str, params: &Value) -> Result<DialogId, String> {
     let active_layer = app.session.active().and_then(|st| st.active_layer);
     let dialog = open_recorded_editor(app, id, params)?;
     let token = app.paused_playbacks.pause(action.name.clone(), step + 1, app.session.authorize);
@@ -235,7 +235,7 @@ fn pause_for_dialog(app: &mut PhotocraftApp, action: &Action, step: usize, id: &
 /// the one this action's step before `from` called ([`resume`]). `budget` is the one the whole
 /// playback tree shares: a called action plays on its caller's.
 fn play_owned(
-    app: &mut PhotocraftApp,
+    app: &mut PatronusPhotoApp,
     params: &Value,
     suspended: Option<Value>,
     inner: &[(String, usize)],
@@ -281,7 +281,7 @@ enum Called {
 /// Read the result of step `i` (`id`) of `caller`: a nested failure, a pause (the caller joins the
 /// paused playback's [`PausedPlayback::callers`], so it continues after the called action) or a
 /// silent stop end the caller there.
-fn called(app: &mut PhotocraftApp, caller: &str, i: usize, id: &str, value: &Value, target: Option<photocraft_doc::DocId>) -> Called {
+fn called(app: &mut PatronusPhotoApp, caller: &str, i: usize, id: &str, value: &Value, target: Option<patronusphoto_doc::DocId>) -> Called {
     if let Some(error) = actions_cmds::nested_failure(id, value).or_else(|| actions_cmds::save_target_closed(&app.session, id, target)) {
         // Keep the same child-result detail as headless Actions and Scripts.
         return Called::Failed(error, Some(value.clone()));
@@ -317,7 +317,7 @@ fn failure(step: usize, id: &str, error: &str, result: Option<Value>) -> Value {
 
 /// How long Step by Step or Pause For waits after step `i` of `action`, or `None` when it goes on at
 /// once: no pacing is set, or no enabled step follows.
-fn wait_after(app: &PhotocraftApp, action: &Action, i: usize) -> Option<Duration> {
+fn wait_after(app: &PatronusPhotoApp, action: &Action, i: usize) -> Option<Duration> {
     playback::step_pause(app).filter(|_| action.enabled_steps().any(|(j, _)| j > i))
 }
 
@@ -325,7 +325,7 @@ fn wait_after(app: &PhotocraftApp, action: &Action, i: usize) -> Option<Duration
 /// pause the playback, nested actions, shell saves and views, and the engine's commands for the
 /// rest. One runner plays one action; a called action gets its own on the same budget.
 struct ShellRunner<'a> {
-    app: &'a mut PhotocraftApp,
+    app: &'a mut PatronusPhotoApp,
     /// Whether a person is playing: only then do dialog toggles, Stop messages and pacing apply.
     interactive: bool,
     /// The params of the step being run after [`ActionRunner::authorize`] resolved them.
@@ -346,7 +346,7 @@ impl ShellRunner<'_> {
     }
 
     /// The outcome of a nested call's result, as [`called`] reads it.
-    fn after_call(&mut self, action: &Action, i: usize, id: &str, result: Result<Value, String>, target: Option<photocraft_doc::DocId>) -> StepOutcome {
+    fn after_call(&mut self, action: &Action, i: usize, id: &str, result: Result<Value, String>, target: Option<patronusphoto_doc::DocId>) -> StepOutcome {
         let value = match result {
             Ok(value) => value,
             Err(error) => return StepOutcome::Failed(error),
@@ -399,7 +399,7 @@ impl ActionRunner for ShellRunner<'_> {
         let interactive = self.interactive;
         // A Stop shows its message or ends the playback (`stop_step`). Agents keep the headless
         // semantics of the engine command.
-        if id == photocraft_engine::atn_cmds::STOP_MESSAGE && interactive {
+        if id == patronusphoto_engine::atn_cmds::STOP_MESSAGE && interactive {
             let (outcome, entry) = stop_step(self.app, action, i, &p);
             self.ending = Some(entry);
             return outcome;
@@ -484,7 +484,7 @@ fn refusal_text(refusal: &PlaybackRefusal) -> String {
 /// [`play_owned`] installed; pauses at a step whose dialog is toggled on. `inner` is as in
 /// [`play_owned`].
 fn play_steps(
-    app: &mut PhotocraftApp,
+    app: &mut PatronusPhotoApp,
     params: &Value,
     suspended: Option<Value>,
     inner: &[(String, usize)],
@@ -609,7 +609,7 @@ fn play_steps(
 /// app code (menus, action steps, automation): asks the active document's canvas for the framework's command, which its
 /// next pass runs as it runs the command's chord, and journals it now, so an action step plays and records in order.
 /// The canvas runs it on the document as the steps before it left it.
-pub(crate) fn run_view(app: &mut PhotocraftApp, id: &str, params: Value) -> Result<Value, String> {
+pub(crate) fn run_view(app: &mut PatronusPhotoApp, id: &str, params: Value) -> Result<Value, String> {
     let command = crate::shortcut_dispatch::view_command(id).ok_or_else(|| format!("unsupported view command: {id}"))?;
     app.sync_views();
     let i = app.session.active_index().ok_or("no document")?;
@@ -619,13 +619,13 @@ pub(crate) fn run_view(app: &mut PhotocraftApp, id: &str, params: Value) -> Resu
 }
 
 /// Journals the view command `id` that ran, which records it into the action being recorded.
-pub(crate) fn journal_view(app: &mut PhotocraftApp, id: &str, params: Value) {
+pub(crate) fn journal_view(app: &mut PatronusPhotoApp, id: &str, params: Value) {
     actions_cmds::note_automation_step(&mut app.session, id, &params);
     app.session.journal.push((id.into(), params));
 }
 
 /// Show the outcome of a playback report (`{action, ran, failed | paused | stopped}`) in the status bar.
-pub(crate) fn report_play(app: &mut PhotocraftApp, v: &Value) {
+pub(crate) fn report_play(app: &mut PatronusPhotoApp, v: &Value) {
     if v.get("stopped").is_some_and(Value::is_object) {
         app.ui.status = tl!("Action playback stopped").to_string();
         app.ui.status_error = false;
@@ -657,7 +657,7 @@ pub(crate) fn report_play(app: &mut PhotocraftApp, v: &Value) {
 }
 
 /// Resume the recording a paused call suspended and journal that call, once.
-fn restore_recording(app: &mut PhotocraftApp, owner: Option<&Value>) {
+fn restore_recording(app: &mut PatronusPhotoApp, owner: Option<&Value>) {
     let Some(owner) = owner else { return };
     let (Some(idx), Some(into), Some(name)) = (
         owner.get("index").and_then(Value::as_u64).and_then(|n| usize::try_from(n).ok()),
@@ -680,7 +680,7 @@ fn restore_recording(app: &mut PhotocraftApp, owner: Option<&Value>) {
 }
 
 /// Whether a paused playback holds a suspended recording.
-fn suspended(app: &PhotocraftApp) -> bool {
+fn suspended(app: &PatronusPhotoApp) -> bool {
     app.paused_playbacks.paused.values().any(|p| p.record.is_some())
 }
 
@@ -688,7 +688,7 @@ fn suspended(app: &PhotocraftApp) -> bool {
 /// recording (the restore would find recording taken), deleting/moving actions or changing the
 /// whole library (the recorded action could go away or change place). The engine checks these
 /// against `recording`, which is `None` then.
-pub(crate) fn suspended_guard(app: &PhotocraftApp, id: &str) -> Result<(), String> {
+pub(crate) fn suspended_guard(app: &PatronusPhotoApp, id: &str) -> Result<(), String> {
     if matches!(
         id,
         "actions.record"
@@ -709,7 +709,7 @@ pub(crate) fn suspended_guard(app: &PhotocraftApp, id: &str) -> Result<(), Strin
 }
 
 /// A step dialog's command failed: the action ends there.
-pub fn abandoned(app: &mut PhotocraftApp, token: u64) {
+pub fn abandoned(app: &mut PatronusPhotoApp, token: u64) {
     let paused = app.paused_playbacks.take(token);
     let record = paused.and_then(|p| {
         drop(p.history);
@@ -719,11 +719,11 @@ pub fn abandoned(app: &mut PhotocraftApp, token: u64) {
     restore_recording(app, record.as_ref());
 }
 
-/// The automation gate a session installs ([`photocraft_engine::Session::authorize`]).
-pub(crate) type Gate = fn(&str, &Value) -> photocraft_engine::Result<()>;
+/// The automation gate a session installs ([`patronusphoto_engine::Session::authorize`]).
+pub(crate) type Gate = fn(&str, &Value) -> patronusphoto_engine::Result<()>;
 
 /// Deferred Actions dialogs retain their caller's gate and also honor current permissions.
-pub(crate) fn authorize_owned(app: &PhotocraftApp, id: &str, params: &Value, gate: Option<Gate>, automated: bool) -> Result<(), String> {
+pub(crate) fn authorize_owned(app: &PatronusPhotoApp, id: &str, params: &Value, gate: Option<Gate>, automated: bool) -> Result<(), String> {
     if let Some(gate) = gate {
         gate(id, params).map_err(|e| e.to_string())?;
     }
@@ -775,10 +775,10 @@ pub(crate) struct PausedPlayback {
     pub(super) ran: u64,
     /// The document a pause at Check Spelling was playing on. That dialog doesn't block the
     /// document tabs, so Done ([`resume_spelling`]) continues only on this document.
-    pub(super) doc: Option<photocraft_doc::DocId>,
+    pub(super) doc: Option<patronusphoto_doc::DocId>,
     /// An implicit filter/adjustment step resolves this active layer at the pause. The outer Option marks
     /// that binding even when there was no active layer; explicit-layer and other dialogs omit it.
-    pub(super) filter_receiver: Option<Option<photocraft_doc::LayerId>>,
+    pub(super) filter_receiver: Option<Option<patronusphoto_doc::LayerId>>,
     /// The layer the recorded step names. The settings editor has no row for it, so the confirmed command takes it
     /// from here: the step keeps its receiver, whatever layer is active at OK.
     pub(super) explicit_layer: Option<Value>,
@@ -868,7 +868,7 @@ fn document_target(params: &Value) -> bool {
 }
 
 /// Before a preview or confirmation evaluates settings, check the actual editor and its permissions.
-pub(crate) fn authorize_panel_preview(app: &PhotocraftApp, dialog: DialogId, command: &str, params: &Value) -> Result<(), String> {
+pub(crate) fn authorize_panel_preview(app: &PatronusPhotoApp, dialog: DialogId, command: &str, params: &Value) -> Result<(), String> {
     record_again::authorize_preview(app, dialog, command, params)?;
     if let Some(paused) = app.paused_playbacks.paused.values().find(|p| p.menu_editor.as_ref().is_some_and(|(id, _)| *id == dialog)) {
         check_menu_editor(app, paused, command, params)?;
@@ -879,7 +879,7 @@ pub(crate) fn authorize_panel_preview(app: &PhotocraftApp, dialog: DialogId, com
 
 /// Makes the open editor `dialog` hold its OK, so [`check_editor`] judges the answer before the editor closes: a
 /// parameter form or a sizing dialog files it for the host; an adjustment editor holds its own.
-pub(crate) fn hold_editor_ok(app: &mut PhotocraftApp, dialog: DialogId) {
+pub(crate) fn hold_editor_ok(app: &mut PatronusPhotoApp, dialog: DialogId) {
     let dialogs = &mut app.framework.dialogs;
     if let Some(form) = dialogs.get_mut_by_id::<HostedParamDialog>(dialog) {
         form.hold_ok();
@@ -891,13 +891,13 @@ pub(crate) fn hold_editor_ok(app: &mut PhotocraftApp, dialog: DialogId) {
 }
 
 /// Whether `dialog` is an editor whose OK a step judges: the one Record Again opened or the one a paused menu step opened.
-pub(crate) fn is_editor(app: &PhotocraftApp, dialog: DialogId) -> bool {
+pub(crate) fn is_editor(app: &PatronusPhotoApp, dialog: DialogId) -> bool {
     record_again::owns_dialog(app, dialog) || app.paused_playbacks.paused.values().any(|p| p.menu_editor.as_ref().is_some_and(|(id, _)| *id == dialog))
 }
 
 /// The held OK of the editor `dialog` with the answer `command` and `params`: what the editor's Record Again or paused
 /// menu step requires before it takes the answer. A refusal keeps the editor open.
-pub(crate) fn check_editor(app: &PhotocraftApp, dialog: DialogId, command: &str, params: &Value) -> Result<(), String> {
+pub(crate) fn check_editor(app: &PatronusPhotoApp, dialog: DialogId, command: &str, params: &Value) -> Result<(), String> {
     if record_again::owns_dialog(app, dialog) {
         record_again::check(app, dialog, command, params)
     } else {
@@ -906,7 +906,7 @@ pub(crate) fn check_editor(app: &PhotocraftApp, dialog: DialogId, command: &str,
 }
 
 /// Check that preview and confirmation still target the command and receiver that opened the editor.
-fn check_menu_editor(app: &PhotocraftApp, paused: &PausedPlayback, command: &str, params: &Value) -> Result<(), String> {
+fn check_menu_editor(app: &PatronusPhotoApp, paused: &PausedPlayback, command: &str, params: &Value) -> Result<(), String> {
     let actions = app.session.actions.list.actions();
     if let Some((_, original)) = &paused.menu_editor
         && (original != command
@@ -922,7 +922,7 @@ fn check_menu_editor(app: &PhotocraftApp, paused: &PausedPlayback, command: &str
 /// Admit the final dialog command before resuming history or starting a worker. The captured
 /// policy judges the edited parameters; a current live gate still governs dispatch and nested
 /// work. With no live gate, reinstall the captured gate for job admission and rendering.
-pub(crate) fn run_step_dialog(app: &mut PhotocraftApp, dialog: DialogId, command: &str, params: Value) -> Result<Value, String> {
+pub(crate) fn run_step_dialog(app: &mut PatronusPhotoApp, dialog: DialogId, command: &str, params: Value) -> Result<Value, String> {
     match token_of(app, dialog) {
         Some(token) => run_paused_command(app, token, command, params),
         None => app.run(command, params),
@@ -930,7 +930,7 @@ pub(crate) fn run_step_dialog(app: &mut PhotocraftApp, dialog: DialogId, command
 }
 
 /// [`run_step_dialog`] for the playback `token` names, which Check Spelling holds itself.
-fn run_paused_command(app: &mut PhotocraftApp, token: u64, command: &str, params: Value) -> Result<Value, String> {
+fn run_paused_command(app: &mut PatronusPhotoApp, token: u64, command: &str, params: Value) -> Result<Value, String> {
     let paused = app.paused_playbacks.paused.get(&token).ok_or("this dialog doesn't belong to a paused action")?;
     let mut params = params;
     if let (Some(layer), Some(object)) = (&paused.explicit_layer, params.as_object_mut()) {
@@ -963,7 +963,7 @@ fn run_paused_command(app: &mut PhotocraftApp, token: u64, command: &str, params
 }
 
 /// Bind the dialog's own edit to its suspended action before it runs or starts a worker.
-pub(crate) fn prepare_history(app: &mut PhotocraftApp, token: u64) -> Result<(), String> {
+pub(crate) fn prepare_history(app: &mut PatronusPhotoApp, token: u64) -> Result<(), String> {
     let history = app.paused_playbacks.paused.get_mut(&token).ok_or("this dialog doesn't belong to a paused action")?.history.take();
     if let Some(history) = history
         && let Err(e) = history.resume(&mut app.session)
@@ -977,7 +977,7 @@ pub(crate) fn prepare_history(app: &mut PhotocraftApp, token: u64) -> Result<(),
 }
 
 /// Check Spelling owns each correction only while it runs; the open window owns a bound token.
-pub(crate) fn spelling_change(app: &mut PhotocraftApp, params: Value) -> Result<Value, String> {
+pub(crate) fn spelling_change(app: &mut PatronusPhotoApp, params: Value) -> Result<Value, String> {
     let Some(token) = app.ui.type_panels.spell.as_ref().and_then(|dialog| dialog.resume) else {
         return app.run("edit.checkSpelling", params);
     };
@@ -1011,7 +1011,7 @@ pub(crate) fn spelling_change(app: &mut PhotocraftApp, params: Value) -> Result<
 /// Check Spelling's Done for the action paused at its step: the action continues when the document
 /// it was playing on is still the active one, and otherwise ends there with the reason in the
 /// status bar. Returns `Ok` when nothing failed.
-pub(crate) fn resume_spelling(app: &mut PhotocraftApp, token: u64) -> Result<(), String> {
+pub(crate) fn resume_spelling(app: &mut PatronusPhotoApp, token: u64) -> Result<(), String> {
     let Some((from, doc)) = app.paused_playbacks.paused.get(&token).map(|p| (p.from, p.doc)) else {
         return resume(app, token);
     };
@@ -1028,7 +1028,7 @@ pub(crate) fn resume_spelling(app: &mut PhotocraftApp, token: u64) -> Result<(),
 ///
 /// The remaining steps run under the gate the playback paused with, however the dialog was
 /// confirmed: a control request, synthetic Enter or OK, or a click.
-pub fn resume(app: &mut PhotocraftApp, token: u64) -> Result<(), String> {
+pub fn resume(app: &mut PatronusPhotoApp, token: u64) -> Result<(), String> {
     let Some(paused) = app.paused_playbacks.take(token) else {
         return Err("this dialog doesn't belong to a paused action".into());
     };
@@ -1156,7 +1156,7 @@ pub fn resume(app: &mut PhotocraftApp, token: u64) -> Result<(), String> {
 }
 
 /// A step dialog cancelled: the action stops there, as in Photoshop.
-pub fn stopped(app: &mut PhotocraftApp, token: u64) {
+pub fn stopped(app: &mut PatronusPhotoApp, token: u64) {
     abandoned(app, token);
     app.ui.status = tl!("Action playback stopped").to_string();
     app.ui.status_error = false;

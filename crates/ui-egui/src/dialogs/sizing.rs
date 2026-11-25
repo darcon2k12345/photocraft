@@ -13,14 +13,14 @@ use craft::ui::patterns::form_dialogs::{
 use craft::ui::runtime::env::{ColumnSize, Label, UnitKind};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 const IMAGE_COMMAND: &str = "image.imageSize";
 const CANVAS_COMMAND: &str = "image.canvasSize";
 
 /// The dialog unit of the Units & Rulers preference.
-pub(crate) fn pref_unit(u: photocraft_engine::prefs::Unit) -> UnitKind {
-    use photocraft_engine::prefs::Unit;
+pub(crate) fn pref_unit(u: patronusphoto_engine::prefs::Unit) -> UnitKind {
+    use patronusphoto_engine::prefs::Unit;
     match u {
         Unit::Pixels => UnitKind::Pixels,
         Unit::Percent => UnitKind::Percent,
@@ -33,8 +33,8 @@ pub(crate) fn pref_unit(u: photocraft_engine::prefs::Unit) -> UnitKind {
 }
 
 /// Image Size resampling for Preferences › General › Image Interpolation.
-pub(crate) fn pref_resample(i: photocraft_engine::prefs::Interpolation) -> &'static str {
-    use photocraft_engine::prefs::Interpolation;
+pub(crate) fn pref_resample(i: patronusphoto_engine::prefs::Interpolation) -> &'static str {
+    use patronusphoto_engine::prefs::Interpolation;
     match i {
         Interpolation::BicubicAutomatic => "automatic",
         Interpolation::Nearest => "nearest",
@@ -68,7 +68,7 @@ fn resample_from_key(key: &str) -> Option<Resample> {
 }
 
 /// The method the Image Interpolation preference opens the dialog with.
-fn resample_of(i: photocraft_engine::prefs::Interpolation) -> Resample {
+fn resample_of(i: patronusphoto_engine::prefs::Interpolation) -> Resample {
     resample_from_key(pref_resample(i)).unwrap_or(Resample::Automatic)
 }
 
@@ -126,8 +126,8 @@ pub fn human_bytes(b: f64) -> String {
 /// channels at the document's depth, no alpha, whatever the layers store. An Indexed image is one index channel and a
 /// Bitmap one 1-bit channel, though both are stored expanded for editing. A Multichannel image counts its inks; with
 /// none it counts the mode's channels.
-fn flat_bytes_per_pixel(d: &photocraft_doc::Document) -> f64 {
-    use photocraft_color::ColorMode;
+fn flat_bytes_per_pixel(d: &patronusphoto_doc::Document) -> f64 {
+    use patronusphoto_color::ColorMode;
     match d.mode {
         ColorMode::Bitmap => 1.0 / 8.0,
         ColorMode::Indexed => 1.0,
@@ -140,12 +140,12 @@ fn flat_bytes_per_pixel(d: &photocraft_doc::Document) -> f64 {
 }
 
 /// Opens Image Size or Canvas Size for the active document; `None` without one.
-pub(crate) fn open(app: &mut PhotocraftApp, command: &str) -> Option<DialogId> {
+pub(crate) fn open(app: &mut PatronusPhotoApp, command: &str) -> Option<DialogId> {
     open_with(app, command, &Value::Null)
 }
 
 /// [`open`] with the `width`, `height`, `resolution` and `resample` of a recorded step applied, in pixels.
-pub(crate) fn open_with(app: &mut PhotocraftApp, command: &str, params: &Value) -> Option<DialogId> {
+pub(crate) fn open_with(app: &mut PatronusPhotoApp, command: &str, params: &Value) -> Option<DialogId> {
     let prefs = app.session.prefs();
     let ur = &prefs.units_and_rulers;
     let seeded = params.get("width").is_some() || params.get("height").is_some();
@@ -161,7 +161,7 @@ pub(crate) fn open_with(app: &mut PhotocraftApp, command: &str, params: &Value) 
     let image_bytes_per_pixel = flat_bytes_per_pixel(d);
     let id = if command == IMAGE_COMMAND {
         // Indexed Color resamples with Nearest Neighbor only, as the command does (#6019).
-        let indexed = d.mode == photocraft_color::ColorMode::Indexed;
+        let indexed = d.mode == patronusphoto_color::ColorMode::Indexed;
         let mut method = resample_of(interpolation);
         if indexed && method != Resample::Automatic {
             method = Resample::NearestNeighbor;
@@ -183,7 +183,7 @@ pub(crate) fn open_with(app: &mut PhotocraftApp, command: &str, params: &Value) 
 }
 
 /// Sets the recorded fields of `params` on the dialog `id`. A value the dialog refuses leaves the opening one.
-fn seed(app: &mut PhotocraftApp, id: DialogId, image: bool, params: &Value) {
+fn seed(app: &mut PatronusPhotoApp, id: DialogId, image: bool, params: &Value) {
     let ctx = app.ctx().clone();
     // Resample first: it decides which fields take input.
     let keys: &[&str] = if image { &["resample", "resolution", "width", "height"] } else { &["width", "height"] };
@@ -200,7 +200,7 @@ fn seed(app: &mut PhotocraftApp, id: DialogId, image: bool, params: &Value) {
 
 /// Judges the held OK of the sizing editor of Record Again or of a paused menu step (the only sizing dialogs that hold
 /// their OK): a stale step, a changed document or a denied size refuses it and the editor stays open.
-fn answer_held(app: &mut PhotocraftApp) {
+fn answer_held(app: &mut PatronusPhotoApp) {
     let id = dialog_id(HostedImageSize::KEY);
     if let Some(result) = app.framework.dialogs.get_mut_by_id::<HostedImageSize>(id).and_then(HostedImageSize::take_ok) {
         let answer = crate::actions::check_editor(app, id, IMAGE_COMMAND, &image_params(app, &result));
@@ -218,7 +218,7 @@ fn answer_held(app: &mut PhotocraftApp) {
 }
 
 /// Runs the answer of Image Size or Canvas Size, when one finished this pass.
-pub(crate) fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
+pub(crate) fn take(app: &mut PatronusPhotoApp, _ctx: &egui::Context) {
     answer_held(app);
     if let Some(result) = app.framework.dialogs.take::<HostedImageSize>() {
         let params = match result {
@@ -239,7 +239,7 @@ pub(crate) fn take(app: &mut PhotocraftApp, _ctx: &egui::Context) {
 
 /// The `image.imageSize` parameters of a result. While the resolution is the opening one the
 /// document keeps its own, which may lie outside the dialog's range (#9260).
-fn image_params(app: &PhotocraftApp, r: &ImageSizeResult) -> Value {
+fn image_params(app: &PatronusPhotoApp, r: &ImageSizeResult) -> Value {
     let own = app.session.active().map(|st| f64::from(st.doc.resolution_dpi));
     let resolution = if r.resolution_changed { r.pixels_per_inch } else { own.unwrap_or(r.pixels_per_inch) };
     json!({
@@ -263,7 +263,7 @@ fn canvas_params(r: &CanvasSizeResult) -> Value {
 
 /// Runs `command` with `params` (`None`: the dialog was cancelled), then continues or abandons the
 /// paused playback that opened the dialog.
-fn finish(app: &mut PhotocraftApp, id: DialogId, command: &str, params: Option<Value>) {
+fn finish(app: &mut PatronusPhotoApp, id: DialogId, command: &str, params: Option<Value>) {
     // The editor Record Again opened answers the step it was opened for, not a new run of the command.
     if crate::actions::record_again::owns_dialog(app, id) {
         match params {
@@ -278,7 +278,7 @@ fn finish(app: &mut PhotocraftApp, id: DialogId, command: &str, params: Option<V
         return;
     }
     let token = crate::actions::token_of(app, id);
-    let abandon = |app: &mut PhotocraftApp| {
+    let abandon = |app: &mut PatronusPhotoApp| {
         if let Some(token) = token {
             crate::actions::abandoned(app, token);
         }

@@ -6,13 +6,13 @@ use egui::Modifiers;
 use serde_json::json;
 
 use super::add_anchor_delete_key_tests::{app as add_app, ctrl_click, layers, path1, press, steps};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::testing;
 use crate::state::Tool;
 
 /// The measured document: Path 1 holds a square, the open line B (400,300) to (700,300) and an
 /// S-curve; the Delete Anchor Point tool is on.
-fn app() -> Box<PhotocraftApp> {
+fn app() -> Box<PatronusPhotoApp> {
     let mut app = add_app();
     let path = json!({"subpaths": [
         {"closed": true, "knots": [[100, 100], [200, 100], [200, 200], [100, 200]]},
@@ -24,12 +24,12 @@ fn app() -> Box<PhotocraftApp> {
     app
 }
 
-fn click(app: &mut PhotocraftApp, at: [f64; 2]) {
+fn click(app: &mut PatronusPhotoApp, at: [f64; 2]) {
     testing::click(app, at, Modifiers::NONE);
 }
 
 /// B's end deleted by a click, then B's last anchor selected.
-fn with_lone_anchor_selected() -> Box<PhotocraftApp> {
+fn with_lone_anchor_selected() -> Box<PatronusPhotoApp> {
     let mut app = app();
     click(&mut app, [700.0, 300.0]);
     ctrl_click(&mut app, [400.0, 300.0]);

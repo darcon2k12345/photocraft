@@ -2,8 +2,8 @@
 //! (`docs/atn.md`, "Recorded through the menus").
 
 use super::*;
-use photocraft_doc::{Layer, LayerId};
-use photocraft_geom::Rect;
+use patronusphoto_doc::{Layer, LayerId};
+use patronusphoto_geom::Rect;
 
 const FRAME: &str = "layer.new.frameFromLayers";
 const SOURCE: &str = "_atnFrameSectionDescriptor";
@@ -29,13 +29,13 @@ fn without(mut d: Descriptor, drop: &[&str]) -> Descriptor {
     d
 }
 
-/// The step PhotoCraft writes: the measured keys without the session ids.
+/// The step Patronus Photo writes: the measured keys without the session ids.
 fn canonical(from: D, name: Option<&str>) -> Descriptor {
     let d = without(recorded(from, name.unwrap_or("")), &["layerSectionStart", "layerSectionEnd"]);
     if name.is_some() { d } else { without(d, &["Nm  "]) }
 }
 
-/// The target layer, the `From` of a step recorded in PhotoCraft without a layer of its own.
+/// The target layer, the `From` of a step recorded in Patronus Photo without a layer of its own.
 fn target_layer() -> D {
     D::Reference(vec![ReferenceItem::Enumerated { class: class("Lyr "), type_id: Id::new("Ordn"), value: Id::new("Trgt") }])
 }
@@ -49,7 +49,7 @@ fn load(ds: Vec<Descriptor>) -> (Session, Value) {
         ..Default::default()
     };
     let mut s = Session::new();
-    let r = s.execute("actions.load", json!({"data": photocraft_paint::tile::b64_encode(&atn::write(&file).unwrap())})).unwrap();
+    let r = s.execute("actions.load", json!({"data": patronusphoto_paint::tile::b64_encode(&atn::write(&file).unwrap())})).unwrap();
     (s, r)
 }
 
@@ -57,7 +57,7 @@ fn load(ds: Vec<Descriptor>) -> (Session, Value) {
 fn saved(s: &mut Session) -> Option<Vec<u8>> {
     let r = s.execute("actions.save", json!({"action": "A"})).unwrap();
     assert_eq!(r["skipped"], json!([]), "{r}");
-    let mut items = atn::parse(&photocraft_paint::tile::b64_decode(r["data"].as_str().unwrap()).unwrap()).unwrap().actions.remove(0).items;
+    let mut items = atn::parse(&patronusphoto_paint::tile::b64_decode(r["data"].as_str().unwrap()).unwrap()).unwrap().actions.remove(0).items;
     assert_eq!(items[0].event, AtnEvent::Code(*b"Mk  "));
     items.remove(0).descriptor.as_ref().map(Descriptor::to_bytes)
 }
@@ -75,7 +75,7 @@ fn two_layers(s: &mut Session) -> (LayerId, LayerId) {
         s.edit(name, |doc, active| {
             let fmt = doc.pixel_format();
             let mut l = Layer::raster(name, fmt);
-            l.surface_mut().unwrap().fill_rect(r, &photocraft_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 1.0]));
+            l.surface_mut().unwrap().fill_rect(r, &patronusphoto_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 1.0]));
             let id = doc.insert_above(None, l);
             *active = Some(id);
             Ok(id)
@@ -171,7 +171,7 @@ fn without_a_layer_the_selected_layers_are_framed() {
     assert!(doc.layer(other).is_none() && doc.layers.iter().any(|l| l.id == photo));
 }
 
-/// A step recorded in PhotoCraft writes the measured keys without the session ids: the layer by
+/// A step recorded in Patronus Photo writes the measured keys without the session ids: the layer by
 /// name (the target layer without one) and `Nm  ` for a name that isn't blank. It loads back to
 /// the same settings.
 #[test]

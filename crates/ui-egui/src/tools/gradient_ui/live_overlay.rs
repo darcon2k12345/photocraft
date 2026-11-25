@@ -8,12 +8,12 @@ use craft::color_ui::gradient::{StopRows, StopRules};
 use craft::draw::ui::gradient::{GradientLine, GradientOverlay, GradientStyle as OverlayStyle, LineGradient};
 use craft::ui::contract::{Bind, Show as _};
 use egui::{Rect, Ui};
-use photocraft_doc::{Fill, GradientStyle, Layer, LayerContent, LayerId};
-use photocraft_engine::gradient_fill_cmds as cmds;
+use patronusphoto_doc::{Fill, GradientStyle, Layer, LayerContent, LayerId};
+use patronusphoto_engine::gradient_fill_cmds as cmds;
 use serde_json::{Value, json};
 
 use super::{active_gradient, edit_stop_color, edited_fill, live_mode, stops};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// The overlay's style for a document fill style: Radial and Angle share the circle the overlay draws.
@@ -53,7 +53,7 @@ fn fill_of(layer: &Layer) -> Option<&Fill> {
 /// committed (the document then holds the value). `at` is the canvas body rect, as the canvas's other controls take
 /// it. A pass applies only its own events, so a second pass in one frame,
 /// which carries none of the first pass's input, runs no command twice.
-pub(crate) fn show(app: &mut PhotocraftApp, ui: &mut Ui, at: Rect) -> Option<(LayerId, Fill)> {
+pub(crate) fn show(app: &mut PatronusPhotoApp, ui: &mut Ui, at: Rect) -> Option<(LayerId, Fill)> {
     if !live_mode(app) {
         return None;
     }
@@ -63,7 +63,7 @@ pub(crate) fn show(app: &mut PhotocraftApp, ui: &mut Ui, at: Rect) -> Option<(La
     }
     let (layer, frame, canvas) = active_gradient(app)?;
     let fill = fill_of(&layer)?.clone();
-    let (start, end) = photocraft_compose::gradient_fill::fill_handles(&fill, frame)?;
+    let (start, end) = patronusphoto_compose::gradient_fill::fill_handles(&fill, frame)?;
     let Fill::Gradient { style, reverse, .. } = &fill else { return None };
     let value = LineGradient::new(GradientLine::new(point(start), point(end)), stops::of_fill(&fill));
     let sampler = stops::sampler(app.session.tools.foreground, app.session.tools.background);

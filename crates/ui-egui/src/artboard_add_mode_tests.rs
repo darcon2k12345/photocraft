@@ -2,16 +2,16 @@
 //! canvas puts a board of the bar's size with its top-left corner at the click.
 
 use egui::Modifiers;
-use photocraft_geom::Rect;
+use patronusphoto_geom::Rect;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::{ToolEvent, tool_event};
 use crate::state::Tool;
 
 /// The measured document: two boards, the 750 x 1334 one selected, the other one apart from it.
-fn app_with_selected_board() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn app_with_selected_board() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 800, "height": 600, "background": "white"})).unwrap();
     app.run("layer.new.artboard", json!({"rect": [2000, 0, 300, 300]})).unwrap();
     app.run("layer.new.artboard", json!({"rect": [900, 0, 750, 1334]})).unwrap();
@@ -22,17 +22,17 @@ fn app_with_selected_board() -> Box<PhotocraftApp> {
     app
 }
 
-fn click(app: &mut PhotocraftApp, x: f64, y: f64) {
+fn click(app: &mut PatronusPhotoApp, x: f64, y: f64) {
     let m = Modifiers::NONE;
     tool_event(app, ToolEvent::Down { x, y, pressure: 1.0 }, m);
     tool_event(app, ToolEvent::Up { x, y }, m);
 }
 
-fn boards(app: &PhotocraftApp) -> Vec<Rect> {
+fn boards(app: &PatronusPhotoApp) -> Vec<Rect> {
     app.session.active().unwrap().doc.artboards().iter().map(|b| b.2.rect).collect()
 }
 
-fn last_step(app: &PhotocraftApp) -> Option<String> {
+fn last_step(app: &PatronusPhotoApp) -> Option<String> {
     app.session.active().unwrap().history.entries().last().cloned()
 }
 
@@ -68,7 +68,7 @@ fn a_click_with_the_mode_on_puts_a_bar_sized_board_at_the_click() {
 
 #[test]
 fn with_no_board_the_click_uses_the_bars_tool_option_size() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 800, "height": 600, "background": "white"})).unwrap();
     app.sync_views();
     app.ui.tool = Tool::Artboard;
@@ -89,7 +89,7 @@ fn another_tool_turns_the_mode_off() {
     assert!(!app.ui.artboard_tool.adding);
 
     app.ui.artboard_tool.adding = true;
-    let press = |app: &mut PhotocraftApp, modifiers: Modifiers| crate::canvas::testing::key(app, egui::Key::V, modifiers);
+    let press = |app: &mut PatronusPhotoApp, modifiers: Modifiers| crate::canvas::testing::key(app, egui::Key::V, modifiers);
     press(&mut app, Modifiers::SHIFT);
     assert_eq!(app.ui.tool, Tool::Move);
     press(&mut app, Modifiers::SHIFT);
@@ -112,7 +112,7 @@ fn the_add_new_artboard_button_toggles_the_mode_and_adds_no_board() {
     let ctx = app.ctx().clone();
     let command: CommandRef = ArtboardCommand::AddNew.into();
     // PLAN: assumed `PartialEq` on `CommandState` to read the published flags.
-    let published = |app: &PhotocraftApp| crate::artboard_tool::command_states(app).into_iter().find(|(c, _)| *c == command).map(|(_, s)| s);
+    let published = |app: &PatronusPhotoApp| crate::artboard_tool::command_states(app).into_iter().find(|(c, _)| *c == command).map(|(_, s)| s);
     assert_eq!(published(&app), Some(CommandState::new().enabled(true).checked(false)));
     assert!(crate::artboard_tool::run_fired(&mut app, &ctx, &command));
     assert!(app.ui.artboard_tool.adding, "the first run turns the mode on");

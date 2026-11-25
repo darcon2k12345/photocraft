@@ -6,11 +6,11 @@
 //! huge_doc_bench time it).
 //!
 //! ```sh
-//! cargo run --release -p photocraft-ui-egui --example large_file_bench -- [--reps 3] [--only psd|psb] [--cache DIR] [--clean] [--json out.json]
+//! cargo run --release -p patronusphoto-ui-egui --example large_file_bench -- [--reps 3] [--only psd|psb] [--cache DIR] [--clean] [--json out.json]
 //! ```
 //!
 //! The fixtures (`craft_psd::fixtures`, about 6.4 GB together) are generated once into
-//! `--cache` (default: `$PHOTOCRAFT_FIXTURE_DIR`, else `fixtures/` in the target directory next
+//! `--cache` (default: `$PATRONUSPHOTO_FIXTURE_DIR`, else `fixtures/` in the target directory next
 //! to this binary) and kept for the next run; `--clean` removes them afterwards. Each row also
 //! records the peak resident memory of its opens. Needs about 30 GB of memory for the PSB.
 
@@ -18,8 +18,8 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use craft_psd::fixtures::{PSB_4GB, PSD_2GB, Streamed};
-use photocraft_engine::Session;
-use photocraft_testkit::perf::{RssSampler, row};
+use patronusphoto_engine::Session;
+use patronusphoto_testkit::perf::{RssSampler, row};
 use serde_json::json;
 
 #[path = "support/bench_import.rs"]
@@ -31,7 +31,7 @@ fn arg(args: &[String], name: &str) -> Option<String> {
 
 /// `<target>/fixtures`: the binary lives in `<target>/release/examples/`.
 fn default_cache() -> PathBuf {
-    if let Some(d) = std::env::var_os("PHOTOCRAFT_FIXTURE_DIR") {
+    if let Some(d) = std::env::var_os("PATRONUSPHOTO_FIXTURE_DIR") {
         return PathBuf::from(d);
     }
     std::env::current_exe().ok().and_then(|e| e.ancestors().nth(3).map(|t| t.join("fixtures"))).unwrap_or_else(std::env::temp_dir)
@@ -124,8 +124,8 @@ fn main() {
     if let Some(out) = arg(&args, "--json") {
         let context =
             json!({"reps": reps, "cache": dir.display().to_string(), "errors": errors, "threads": std::thread::available_parallelism().map(|n| n.get()).ok()});
-        let report = photocraft_testkit::perf::report("large_file_bench", context, rows, Some(&sampler));
-        match photocraft_testkit::perf::write_report(&out, &report) {
+        let report = patronusphoto_testkit::perf::report("large_file_bench", context, rows, Some(&sampler));
+        match patronusphoto_testkit::perf::write_report(&out, &report) {
             Ok(()) => reported = true,
             Err(e) => eprintln!("{e}"),
         }

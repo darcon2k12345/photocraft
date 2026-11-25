@@ -10,11 +10,11 @@ use serde_json::{Value, json};
 
 use super::tests::{app, harness, labels, open_here, right_click};
 use super::{COUNT_MENU, NO_SELECTION_MENU, SELECTION_MENU, available, rows};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// A pixel layer filled red, active, with `select` run first when given.
-fn pixel_layer(select: &[(&str, Value)]) -> Box<PhotocraftApp> {
+fn pixel_layer(select: &[(&str, Value)]) -> Box<PatronusPhotoApp> {
     let mut app = app();
     app.run("layer.new.layer", json!({})).unwrap();
     app.run("edit.fill", json!({"color": "#ff0000"})).unwrap();
@@ -26,7 +26,7 @@ fn pixel_layer(select: &[(&str, Value)]) -> Box<PhotocraftApp> {
 }
 
 /// Right-click the middle of the canvas: the open menu's entries as `ui.inspect` lists them.
-fn right_click_entries(h: &mut Harness<'static, Box<PhotocraftApp>>) -> Vec<Value> {
+fn right_click_entries(h: &mut Harness<'static, Box<PatronusPhotoApp>>) -> Vec<Value> {
     let center = h.state().last_canvas_rect.center();
     right_click(h, center, Modifiers::NONE);
     let inspected = crate::control::inspect(h.state(), &h.ctx);
@@ -160,7 +160,7 @@ fn every_object_selection_row_runs_a_known_command() {
         assert!(open_here(&mut app, Tool::ObjectSelection, [10.0, 10.0]));
         let menu = app.ui.canvas_tool_menu.clone().unwrap();
         for (label, id) in rows(&menu).iter().flatten() {
-            assert!(items.iter().any(|i| i.command.id == *id) || photocraft_engine::commands::find(id).is_some(), "{label}: unknown command {id}");
+            assert!(items.iter().any(|i| i.command.id == *id) || patronusphoto_engine::commands::find(id).is_some(), "{label}: unknown command {id}");
         }
     }
 }

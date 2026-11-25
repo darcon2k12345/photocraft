@@ -68,7 +68,7 @@ fn rgb_source(depth: u32, rgba: [f32; 4]) -> Session {
     let mut s = Session::new();
     s.execute("file.new", json!({"width": 40, "height": 40, "depth": depth, "background": "#ffffff"})).unwrap();
     s.edit("Colour square", |doc, active| {
-        doc.layer_mut(active.unwrap()).unwrap().surface_mut().unwrap().fill_rect(photocraft_geom::Rect::new(10, 10, 30, 30), &rgba);
+        doc.layer_mut(active.unwrap()).unwrap().surface_mut().unwrap().fill_rect(patronusphoto_geom::Rect::new(10, 10, 30, 30), &rgba);
         Ok(())
     })
     .unwrap();
@@ -128,7 +128,7 @@ fn command_density_applies_alpha_before_gray_and_selection_once() {
             let mut s = rgb_source(32, [0.0, 0.0, 0.0, alpha]);
             s.execute("select.rect", json!({"x": 10, "y": 10, "width": 20, "height": 20})).unwrap();
             s.edit("Selection coverage", |doc, _| {
-                doc.selection.as_mut().unwrap().fill_rect(photocraft_geom::Rect::new(10, 10, 30, 30), &[coverage]);
+                doc.selection.as_mut().unwrap().fill_rect(patronusphoto_geom::Rect::new(10, 10, 30, 30), &[coverage]);
                 Ok(())
             })
             .unwrap();
@@ -186,7 +186,7 @@ fn native_gray_keeps_numeric_density_in_its_existing_rgb_view() {
                     s.execute("file.new", json!({"width": 40, "height": 40, "mode": "gray", "depth": depth, "background": "white"})).unwrap();
                     s.edit("Native gray square", |doc, active| {
                         doc.icc_profile = profile.map(|p| p.profile().to_bytes());
-                        doc.layer_mut(active.unwrap()).unwrap().surface_mut().unwrap().fill_rect(photocraft_geom::Rect::new(10, 10, 30, 30), &[value, 1.0]);
+                        doc.layer_mut(active.unwrap()).unwrap().surface_mut().unwrap().fill_rect(patronusphoto_geom::Rect::new(10, 10, 30, 30), &[value, 1.0]);
                         Ok(())
                     })
                     .unwrap();
@@ -204,7 +204,7 @@ fn zero_alpha_and_zero_selection_skip_hidden_colour() {
         for transparent in [true, false] {
             for rgb in [[0.0, 0.0, 1.0], [f32::NAN, f32::INFINITY, f32::NEG_INFINITY]] {
                 let mut s = rgb_source(32, [0.0, 0.0, 0.0, 1.0]);
-                let hole = photocraft_geom::Rect::new(15, 15, 25, 25);
+                let hole = patronusphoto_geom::Rect::new(15, 15, 25, 25);
                 s.edit("Hidden colour", |doc, active| {
                     let alpha = if transparent { 0.0 } else { 1.0 };
                     doc.layer_mut(active.unwrap()).unwrap().surface_mut().unwrap().fill_rect(hole, &[rgb[0], rgb[1], rgb[2], alpha]);
@@ -230,7 +230,7 @@ fn zero_alpha_and_zero_selection_skip_hidden_colour() {
                     .unwrap();
                     // The hole stays inside the sampled area, rather than being
                     // removed by selection bounds before the per-pixel check.
-                    assert_eq!(s.active().unwrap().doc.selection.as_ref().unwrap().content_bounds(), photocraft_geom::Rect::new(10, 10, 30, 30));
+                    assert_eq!(s.active().unwrap().doc.selection.as_ref().unwrap().content_bounds(), patronusphoto_geom::Rect::new(10, 10, 30, 30));
                 }
                 let doc = s.active().unwrap().doc.clone();
                 let history = s.active().unwrap().history.past_len();

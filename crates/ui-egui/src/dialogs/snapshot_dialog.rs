@@ -9,7 +9,7 @@ use craft::ui::patterns::form_dialogs::{DialogFields, Param, ParamDialog, ParamK
 use craft::ui::runtime::env::Label;
 use serde_json::{Map, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::dialogs::params;
 
 /// The command the dialog runs; also the dialog's key.
@@ -23,11 +23,11 @@ pub(crate) fn owns(key: &str) -> bool {
 /// Open the dialog on the active document, suggesting the name the camera button would give.
 /// Not while a Free Transform is open: it owns the document until committed or cancelled, so the
 /// camera button does nothing then either (#6087).
-pub fn open(app: &mut PhotocraftApp) -> Option<DialogId> {
+pub fn open(app: &mut PatronusPhotoApp) -> Option<DialogId> {
     if app.ui.transform.is_some() {
         return None;
     }
-    let name = photocraft_engine::history_cmds::next_snapshot_name(app.session.active()?);
+    let name = patronusphoto_engine::history_cmds::next_snapshot_name(app.session.active()?);
     Some(params::open_param(app, COMMAND, DialogFields::new(), serde_json::Value::Null, move |fields: &mut DialogFields| {
         let sources: Vec<(String, Label)> = vec![
             ("fullDocument".to_string(), Label::from(tl!("Full Document"))),
@@ -44,7 +44,7 @@ pub fn open(app: &mut PhotocraftApp) -> Option<DialogId> {
 
 /// Takes the snapshot. A cleared Name gets the next default name, as the camera button would give
 /// (#6087); agents calling the command with an empty name still get an error.
-pub(crate) fn run(app: &mut PhotocraftApp, _ctx: &egui::Context, result: ParamResult) {
+pub(crate) fn run(app: &mut PatronusPhotoApp, _ctx: &egui::Context, result: ParamResult) {
     let mut p = Map::new();
     if let Some(name) = result.fields.text("name").map(str::trim).filter(|n| !n.is_empty()) {
         p.insert("name".into(), json!(name));
@@ -60,11 +60,11 @@ pub(crate) fn run(app: &mut PhotocraftApp, _ctx: &egui::Context, result: ParamRe
 mod tests {
     use serde_json::json;
 
-    use crate::PhotocraftApp;
+    use crate::PatronusPhotoApp;
     use crate::new_layer_ui::testing::set;
 
-    fn app() -> Box<PhotocraftApp> {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    fn app() -> Box<PatronusPhotoApp> {
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();
         app.run("edit.fill", json!({"color": "#ff0000"})).unwrap();

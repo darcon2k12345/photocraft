@@ -1,7 +1,7 @@
 //! #7671: exported Stroke widths must have the same effect as command execution.
 use craft_psd::{atn, descriptor::Value as D};
-use photocraft_engine::actions_cmds::{Action, ActionList, ActionStep, ActionsFile};
-use photocraft_engine::{Session, atn_cmds};
+use patronusphoto_engine::actions_cmds::{Action, ActionList, ActionStep, ActionsFile};
+use patronusphoto_engine::{Session, atn_cmds};
 use serde_json::{Value, json};
 
 /// Synthetic colours and partial transparency make lost edge pixels observable at every depth.
@@ -11,9 +11,10 @@ fn fixture(depth: u32) -> Session {
     s.edit("procedural fixture", |doc, active| {
         let surface = doc.layer_mut(active.unwrap()).unwrap().surface_mut().unwrap();
         let format = surface.format();
-        let bytes: Vec<_> =
-            (0..432).flat_map(|i| photocraft_raster::from_rgba(&format, [(i % 11) as f32 / 10.0, (i % 7) as f32 / 6.0, (i % 5) as f32 / 4.0, 0.6])).collect();
-        surface.write_region(photocraft_doc::Rect::from_xywh(0, 0, 24, 18), &bytes);
+        let bytes: Vec<_> = (0..432)
+            .flat_map(|i| patronusphoto_raster::from_rgba(&format, [(i % 11) as f32 / 10.0, (i % 7) as f32 / 6.0, (i % 5) as f32 / 4.0, 0.6]))
+            .collect();
+        surface.write_region(patronusphoto_doc::Rect::from_xywh(0, 0, 24, 18), &bytes);
         Ok(())
     })
     .unwrap();
@@ -23,7 +24,7 @@ fn fixture(depth: u32) -> Session {
 
 /// Compare the flattened document, including alpha, rather than only imported JSON.
 fn pixels(s: &Session) -> Vec<[f32; 4]> {
-    photocraft_compose::flatten(&s.active().unwrap().doc).into_px()
+    patronusphoto_compose::flatten(&s.active().unwrap().doc).into_px()
 }
 
 /// Direct execution, native playback and strict binary ATN playback must agree exactly.

@@ -46,7 +46,7 @@ mod native {
             let thread = std::thread::Builder::new()
                 .name("pc-memory-residency".into())
                 .spawn(move || {
-                    let _maintenance = photocraft_raster::spill::background_maintenance();
+                    let _maintenance = patronusphoto_raster::spill::background_maintenance();
                     let mut measured = Instant::now();
                     loop {
                         let (lock, wake) = &*flag;
@@ -57,10 +57,10 @@ mod native {
                         }
                         drop(stopped);
                         if measured.elapsed() >= Duration::from_secs(2) {
-                            photocraft_raster::memory::refresh();
+                            patronusphoto_raster::memory::refresh();
                             measured = Instant::now();
                         }
-                        photocraft_raster::spill::maintain_budget();
+                        patronusphoto_raster::spill::maintain_budget();
                     }
                 })
                 .ok();
@@ -115,7 +115,7 @@ mod native {
 
         #[test]
         fn preferences_use_fixed_scratch_capacity_in_an_isolated_process() {
-            const CHILD: &str = "PHOTOCRAFT_SCRATCH_CAPACITY_TEST_CHILD";
+            const CHILD: &str = "PATRONUSPHOTO_SCRATCH_CAPACITY_TEST_CHILD";
             if std::env::var_os(CHILD).is_none() {
                 let status = std::process::Command::new(std::env::current_exe().unwrap())
                     .args(["--exact", "scratch::native::tests::preferences_use_fixed_scratch_capacity_in_an_isolated_process"])
@@ -128,19 +128,19 @@ mod native {
 
             // If configure uses this query even once, it pauses for lack of room. This catches an
             // override that is missing or is installed after configuring the scratch directory.
-            photocraft_raster::spill::set_volume_space_for_tests(|_| Some((0, 64 << 30)));
+            patronusphoto_raster::spill::set_volume_space_for_tests(|_| Some((0, 64 << 30)));
             super::super::configure(&crate::prefs::Preferences::default());
-            assert!(!photocraft_raster::spill::paused());
+            assert!(!patronusphoto_raster::spill::paused());
             let room = (32_u64 << 30) - (64_u64 << 30) / 20;
-            assert_eq!(photocraft_raster::spill::scratch_capacity(), Some(room - room / 64));
+            assert_eq!(patronusphoto_raster::spill::scratch_capacity(), Some(room - room / 64));
         }
     }
 }
 
 pub(crate) fn configure(prefs: &Preferences) {
     #[cfg(all(test, not(target_arch = "wasm32")))]
-    photocraft_raster::spill::use_test_volume_space();
-    let budget = photocraft_raster::memory::configure(photocraft_raster::memory::Policy {
+    patronusphoto_raster::spill::use_test_volume_space();
+    let budget = patronusphoto_raster::memory::configure(patronusphoto_raster::memory::Policy {
         percent: prefs.performance.memory_usage_percent,
         // The web build's cap applies here too (effective_memory_usage_mb).
         absolute_bytes: u64::from(prefs.performance.effective_memory_usage_mb()).saturating_mul(1 << 20),
@@ -156,14 +156,14 @@ pub(crate) fn configure(prefs: &Preferences) {
         // An unusable or full directory pauses eviction without dropping resident pixels and
         // is retried with backoff; History's byte limit applies meanwhile (sync_scratch_state).
         // The reason is exposed in ui.inspect and the application's status bar.
-        let tiles = if std::env::var_os("PHOTOCRAFT_TILE_BUDGET_MB").is_some() {
+        let tiles = if std::env::var_os("PATRONUSPHOTO_TILE_BUDGET_MB").is_some() {
             prefs.performance.tile_budget_bytes()
         } else {
             usize::try_from(budget.tile_bytes).unwrap_or(usize::MAX)
         };
         let limit = prefs.scratch_disks.size_limit_mb;
-        photocraft_raster::spill::set_size_cap((limit > 0).then(|| u64::from(limit).saturating_mul(1 << 20)));
-        let _ = photocraft_raster::spill::configure(dir.as_deref(), tiles);
+        patronusphoto_raster::spill::set_size_cap((limit > 0).then(|| u64::from(limit).saturating_mul(1 << 20)));
+        let _ = patronusphoto_raster::spill::configure(dir.as_deref(), tiles);
     }
     #[cfg(target_arch = "wasm32")]
     let _ = (prefs, budget);

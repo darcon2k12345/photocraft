@@ -9,7 +9,7 @@ use craft::ui::runtime::env::Label;
 use craft::ui::runtime::requests::PathKind;
 use serde_json::Value;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::dialogs::params;
 use crate::menus::view_cmds::dialogs::label_of;
 
@@ -25,13 +25,13 @@ pub(crate) fn owns(key: &str) -> bool {
 }
 
 /// The folder of the active document, else the working directory.
-pub(crate) fn default_dir(app: &PhotocraftApp) -> String {
+pub(crate) fn default_dir(app: &PatronusPhotoApp) -> String {
     app.session.active().and_then(|d| d.path.as_deref()).and_then(|p| p.rfind(['/', '\\']).map(|i| p[..i].to_string())).unwrap_or_else(|| ".".into())
 }
 
 /// A packaged macOS app does not start in a useful writable working directory. A saved
 /// document keeps its own folder; otherwise prefer the user's Documents folder.
-pub(crate) fn droplet_default_dir(app: &PhotocraftApp) -> String {
+pub(crate) fn droplet_default_dir(app: &PatronusPhotoApp) -> String {
     let dir = default_dir(app);
     if dir != "." {
         return dir;
@@ -46,7 +46,7 @@ pub(crate) fn droplet_default_dir(app: &PhotocraftApp) -> String {
 }
 
 /// The active document's name without its extension.
-pub(crate) fn doc_stem(app: &PhotocraftApp) -> String {
+pub(crate) fn doc_stem(app: &PatronusPhotoApp) -> String {
     app.session.active().map(|d| d.doc.name.rsplit_once('.').map_or(d.doc.name.clone(), |(a, _)| a.to_string())).unwrap_or_else(|| tl!("Untitled").into())
 }
 
@@ -60,7 +60,7 @@ fn names(names: &[String]) -> Vec<(String, Label)> {
     names.iter().map(|name| (name.clone(), Label::from(name.clone()))).collect()
 }
 
-fn open_form(app: &mut PhotocraftApp, key: &'static str, title: &str, rows: Vec<Param>) -> DialogId {
+fn open_form(app: &mut PatronusPhotoApp, key: &'static str, title: &str, rows: Vec<Param>) -> DialogId {
     let title = Label::from(title.to_string());
     params::open_param(app, key, DialogFields::new(), Value::Null, move |fields: &mut DialogFields| {
         ParamDialog::command(key, title.clone(), rows.clone()).values(Bind::bound(fields))
@@ -68,7 +68,7 @@ fn open_form(app: &mut PhotocraftApp, key: &'static str, title: &str, rows: Vec<
 }
 
 /// File › Automate › Contact Sheet II.
-pub(crate) fn open_contact_sheet(app: &mut PhotocraftApp) -> DialogId {
+pub(crate) fn open_contact_sheet(app: &mut PatronusPhotoApp) -> DialogId {
     let rows = vec![
         Param::new("input", tl!("Input"), ParamKind::text(default_dir(app))).browse(PathKind::Folder),
         // Source Images: the folder, then Include Subfolders (on) and, right below it, Group Images by
@@ -89,7 +89,7 @@ pub(crate) fn open_contact_sheet(app: &mut PhotocraftApp) -> DialogId {
         Param::new("autoSpacing", tl!("Auto spacing"), ParamKind::bool(true)),
         Param::new("rotateForBestFit", tl!("Rotate for best fit"), ParamKind::bool(false)),
         Param::new("caption", tl!("Caption"), ParamKind::bool(true)),
-        Param::new("font", tl!("Font"), ParamKind::text(photocraft_text::fonts::DEFAULT_FAMILY)),
+        Param::new("font", tl!("Font"), ParamKind::text(patronusphoto_text::fonts::DEFAULT_FAMILY)),
         Param::new("fontSize", tl!("Font size"), ParamKind::number(Some(1.0), None, 12.0, 1.0, 1)),
         Param::new("flatten", tl!("Flatten"), ParamKind::bool(false)),
     ];
@@ -97,7 +97,7 @@ pub(crate) fn open_contact_sheet(app: &mut PhotocraftApp) -> DialogId {
 }
 
 /// File › Automate › Create Droplet, on the Actions panel's selected action. Refused without one.
-pub(crate) fn open_create_droplet(app: &mut PhotocraftApp) -> Result<DialogId, String> {
+pub(crate) fn open_create_droplet(app: &mut PatronusPhotoApp) -> Result<DialogId, String> {
     let dir = droplet_default_dir(app);
     let Some(action) = crate::actions::selected_action(app) else {
         return Err("record an action in the Actions panel first".into());
@@ -119,9 +119,9 @@ pub(crate) fn open_create_droplet(app: &mut PhotocraftApp) -> Result<DialogId, S
 }
 
 /// File › Scripts › Script Events Manager.
-pub(crate) fn open_script_events(app: &mut PhotocraftApp) -> DialogId {
+pub(crate) fn open_script_events(app: &mut PatronusPhotoApp) -> DialogId {
     let enabled = app.session.prefs().script_events.enabled;
-    let events: Vec<&str> = photocraft_engine::automate_cmds::EVENTS.iter().map(|e| e.0).collect();
+    let events: Vec<&str> = patronusphoto_engine::automate_cmds::EVENTS.iter().map(|e| e.0).collect();
     let rows = vec![
         Param::new("enabled", tl!("Enabled"), ParamKind::bool(enabled)),
         Param::new("event", tl!("Event"), ParamKind::choice(ids(&events), Some("openDocument".into()))),
@@ -132,19 +132,19 @@ pub(crate) fn open_script_events(app: &mut PhotocraftApp) -> DialogId {
 }
 
 /// File › Package.
-pub(crate) fn open_package(app: &mut PhotocraftApp) -> DialogId {
+pub(crate) fn open_package(app: &mut PatronusPhotoApp) -> DialogId {
     let rows = vec![Param::new("dir", tl!("Dir"), ParamKind::text(default_dir(app))).browse(PathKind::Folder)];
     open_form(app, PACKAGE, tl!("Package"), rows)
 }
 
 /// File › Export › Paths to Illustrator.
-pub(crate) fn open_paths_to_file(app: &mut PhotocraftApp) -> DialogId {
+pub(crate) fn open_paths_to_file(app: &mut PatronusPhotoApp) -> DialogId {
     let rows = paths_to_file_rows(app);
     open_form(app, PATHS_TO_FILE, tl!("Export Paths to File"), rows)
 }
 
 /// The Paths to Illustrator form's rows: the file path and the Paths choice.
-pub(crate) fn paths_to_file_rows(app: &PhotocraftApp) -> Vec<Param> {
+pub(crate) fn paths_to_file_rows(app: &PatronusPhotoApp) -> Vec<Param> {
     let (dir, stem) = (default_dir(app), doc_stem(app));
     // Document Bounds comes first; a document without paths offers only it, selected (#13771).
     let mut options = ids(&["documentBounds"]);

@@ -1,7 +1,7 @@
 //! DDS Options: the compression and mip chain File › Save As and Save a Copy ask for before
 //! writing a DirectDraw Surface texture (#1327). Photoshop has no DDS writer of its own (a plug-in
 //! adds one), so this follows the texture tools' usual choices: uncompressed, or BC1/BC2/BC3
-//! (DXT1/DXT3/DXT5), and whether to generate mipmaps (see `photocraft_io::DdsOptions`).
+//! (DXT1/DXT3/DXT5), and whether to generate mipmaps (see `patronusphoto_io::DdsOptions`).
 //!
 //! The save is parked (`format_prompts::ParkedSave`) while the hosted dialog is up and written
 //! once answered, recorded as `file.saveAs` or `file.saveACopy`; `file.save` when File › Save
@@ -13,20 +13,20 @@ use craft::ui::dialog::DialogId;
 use craft::ui::patterns::form_dialogs::{
     DdsCompression as UiDdsCompression, DdsOptions as UiDdsOptions, ExportOptionsKind, FormatOptions, HostedFormatOptions,
 };
-use photocraft_io::{DdsCompression, DdsOptions};
+use patronusphoto_io::{DdsCompression, DdsOptions};
 
 use crate::format_prompts::{self, ParkedFormat, ParkedSave};
-use crate::{ExportSettings, PhotocraftApp};
+use crate::{ExportSettings, PatronusPhotoApp};
 
 /// `true` when `path` names a DDS texture.
 pub fn wants_prompt(path: &str) -> bool {
-    photocraft_engine::file_cmds::extension(path).and_then(|e| photocraft_formats::from_extension(&e)) == Some(photocraft_formats::Format::Dds)
+    patronusphoto_engine::file_cmds::extension(path).and_then(|e| patronusphoto_formats::from_extension(&e)) == Some(patronusphoto_formats::Format::Dds)
 }
 
 /// The DDS options a command or control call asks for (`"ddsCompression"`, `"ddsMipmaps"`),
 /// which skip the prompt.
 pub fn options_param(params: &serde_json::Value, cmd: &str) -> Result<Option<DdsOptions>, String> {
-    photocraft_engine::file_cmds::dds_param(params, cmd).map_err(|e| e.to_string())
+    patronusphoto_engine::file_cmds::dds_param(params, cmd).map_err(|e| e.to_string())
 }
 
 /// The params a save with `options` is recorded with.
@@ -36,12 +36,12 @@ pub fn record(options: DdsOptions, step: &mut serde_json::Value) {
 }
 
 /// Parks the save behind the prompt. A prompt already waiting is never replaced.
-pub fn park(app: &mut PhotocraftApp, path: String, copy: bool, record: &'static str) -> Result<(), String> {
+pub fn park(app: &mut PatronusPhotoApp, path: String, copy: bool, record: &'static str) -> Result<(), String> {
     park_dialog(app, path, copy, record).map(drop)
 }
 
 /// [`park`], returning the id of the dialog it opened: it starts uncompressed without mipmaps.
-pub fn park_dialog(app: &mut PhotocraftApp, path: String, copy: bool, record: &'static str) -> Result<DialogId, String> {
+pub fn park_dialog(app: &mut PatronusPhotoApp, path: String, copy: bool, record: &'static str) -> Result<DialogId, String> {
     let doc = app.active_doc_id()?;
     let dialog = HostedFormatOptions::new(app.ctx(), ExportOptionsKind::Dds).initial(FormatOptions::Dds(UiDdsOptions::default()));
     format_prompts::park(app, ParkedSave { doc, path, copy, record, format: ParkedFormat::Dds }, dialog)
@@ -58,7 +58,7 @@ fn codec_compression(c: UiDdsCompression) -> DdsCompression {
 }
 
 /// OK: writes the parked save with the dialog's options, and journals it.
-pub(crate) fn finish(app: &mut PhotocraftApp, ctx: &egui::Context, save: ParkedSave, options: UiDdsOptions) {
+pub(crate) fn finish(app: &mut PatronusPhotoApp, ctx: &egui::Context, save: ParkedSave, options: UiDdsOptions) {
     let options = DdsOptions { compression: codec_compression(options.compression), mipmaps: options.mipmaps };
     let settings = ExportSettings { dds: options, ..save.settings(app) };
     let mut step = save.step();

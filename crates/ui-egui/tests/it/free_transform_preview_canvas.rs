@@ -9,12 +9,12 @@
 
 use craft::behavior::kurbo::Point;
 use egui::{Modifiers, PointerButton, Pos2};
-use photocraft_geom::Rect;
-use photocraft_ui_egui::PhotocraftApp;
-use photocraft_ui_egui::control::{ControlRequest, handle};
+use patronusphoto_geom::Rect;
+use patronusphoto_ui_egui::PatronusPhotoApp;
+use patronusphoto_ui_egui::control::{ControlRequest, handle};
 use serde_json::{Value, json};
 
-type Harness = egui_kittest::Harness<'static, Box<PhotocraftApp>>;
+type Harness = egui_kittest::Harness<'static, Box<PatronusPhotoApp>>;
 
 /// The red square on the layer, in document pixels: x 100..200, y 100..200 of a 400 × 300 document.
 fn square() -> Rect {
@@ -29,8 +29,8 @@ fn harness(gpu_canvas: bool) -> Option<Harness> {
     let built = std::panic::catch_unwind(move || {
         egui_kittest::Harness::builder().with_size(egui::vec2(900.0, 640.0)).with_pixels_per_point(1.0).with_max_steps(64).wgpu().build_eframe(move |cc| {
             flag.store(true, std::sync::atomic::Ordering::SeqCst);
-            PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-            let mut app = PhotocraftApp::with_context(cc.egui_ctx.clone(), photocraft_engine::Session::new(), Default::default());
+            PatronusPhotoApp::setup_context(&cc.egui_ctx, Default::default());
+            let mut app = PatronusPhotoApp::with_context(cc.egui_ctx.clone(), patronusphoto_engine::Session::new(), Default::default());
             if gpu_canvas && let Some(rs) = cc.wgpu_render_state.as_ref() {
                 app.set_wgpu(rs.clone());
             }
@@ -77,7 +77,7 @@ fn setup(h: &mut Harness) {
 
 /// Screen point (egui points, one physical pixel each here) of document point `(x, y)`.
 fn screen(h: &Harness, x: f64, y: f64) -> Pos2 {
-    photocraft_ui_egui::canvas::active_view(h.state()).expect("an active document view").to_screen(Point::new(x, y))
+    patronusphoto_ui_egui::canvas::active_view(h.state()).expect("an active document view").to_screen(Point::new(x, y))
 }
 
 fn pointer_move(h: &mut Harness, at: Pos2) {
@@ -107,7 +107,7 @@ fn is_white(c: [u8; 3]) -> bool {
 }
 
 fn shows_the_layer_inside_the_box(gpu_canvas: bool) {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut h) = harness(gpu_canvas) else { return };
     setup(&mut h);
     assert!(is_red(rgb_at(&mut h, 150.5, 150.5)), "the layer shows before the transform");
@@ -147,7 +147,7 @@ fn free_transform_shows_the_layer_inside_its_box_on_the_cpu_canvas() {
 /// Escape after a move puts the square back in the frame that cancels: the cancelled preview's moving pixels are not
 /// painted over the restored document where the box had taken them.
 fn cancelling_shows_no_moved_pixels(gpu_canvas: bool) {
-    let _gpu = photocraft_testkit::gpu_lock();
+    let _gpu = patronusphoto_testkit::gpu_lock();
     let Some(mut h) = harness(gpu_canvas) else { return };
     setup(&mut h);
     control(&mut h, "ui.menu.invoke", json!({"id": "edit.freeTransform"}));

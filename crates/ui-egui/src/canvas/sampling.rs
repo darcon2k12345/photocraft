@@ -4,12 +4,12 @@
 use craft::color_ui::ui::{SampleSize, SampleSource};
 use serde_json::json;
 
-use super::PhotocraftApp;
+use super::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// The colour at document point `at` averaged over `size`, from the layers `source` names
 /// (`document.sampleColor`). `None` off the image or over transparency.
-pub fn sample_color(app: &mut PhotocraftApp, at: [f64; 2], size: SampleSize, source: SampleSource) -> Option<[f32; 3]> {
+pub fn sample_color(app: &mut PatronusPhotoApp, at: [f64; 2], size: SampleSize, source: SampleSource) -> Option<[f32; 3]> {
     let [x, y] = at;
     if !(x.is_finite() && y.is_finite()) {
         return None;
@@ -25,17 +25,17 @@ pub fn sample_color(app: &mut PhotocraftApp, at: [f64; 2], size: SampleSize, sou
 
 /// What the Eyedropper picks at document point `at`: the targeted raster mask's value when the mask
 /// source applies, else the colour (grey unless the paint target is pixels).
-pub fn pick(app: &mut PhotocraftApp, at: [f64; 2], size: SampleSize, source: SampleSource) -> Option<[f32; 3]> {
+pub fn pick(app: &mut PatronusPhotoApp, at: [f64; 2], size: SampleSize, source: SampleSource) -> Option<[f32; 3]> {
     if let Some((surface, canvas)) = eyedropper_mask_source(app, source) {
         return sample_layer_mask(surface, canvas, at, size.pixels());
     }
     sample_color(app, at, size, source)
-        .map(|rgb| if super::paint_target(app) == json!("pixels") { rgb } else { [photocraft_color::convert::rgb_to_gray(rgb); 3] })
+        .map(|rgb| if super::paint_target(app) == json!("pixels") { rgb } else { [patronusphoto_color::convert::rgb_to_gray(rgb); 3] })
 }
 
 /// What the Eyedropper tool (and a painting tool's ⌥-click) picks at document point `at`: its options
 /// bar's Sample Size and Sample (#1649).
-pub fn eyedropper_color(app: &mut PhotocraftApp, at: [f64; 2]) -> Option<[f32; 3]> {
+pub fn eyedropper_color(app: &mut PatronusPhotoApp, at: [f64; 2]) -> Option<[f32; 3]> {
     let options = app.ui.tool_options.eyedropper;
     sample_color(app, at, options.size, options.source)
 }
@@ -43,14 +43,14 @@ pub fn eyedropper_color(app: &mut PhotocraftApp, at: [f64; 2]) -> Option<[f32; 3
 /// The active document's composite colour at document point (x, y), averaged over the Eyedropper's
 /// Sample Size as Photoshop's dialog eyedroppers (Curves, Color Picker) do. `None` off the image or
 /// over transparency.
-pub fn composite_color(app: &mut PhotocraftApp, x: f64, y: f64) -> Option<[f32; 3]> {
+pub fn composite_color(app: &mut PatronusPhotoApp, x: f64, y: f64) -> Option<[f32; 3]> {
     let size = app.ui.tool_options.eyedropper.size;
     sample_color(app, [x, y], size, SampleSource::All)
 }
 
 /// Only the Eyedropper's Current Layer and Current & Below modes pick the targeted raster mask.
-fn eyedropper_mask_source(app: &PhotocraftApp, source: SampleSource) -> Option<(&photocraft_raster::Surface, photocraft_geom::Rect)> {
-    use photocraft_engine::{channel_cmds::ChannelTarget, mask_view_cmds};
+fn eyedropper_mask_source(app: &PatronusPhotoApp, source: SampleSource) -> Option<(&patronusphoto_raster::Surface, patronusphoto_geom::Rect)> {
+    use patronusphoto_engine::{channel_cmds::ChannelTarget, mask_view_cmds};
 
     if app.ui.tool != Tool::Eyedropper || app.ui.vector_mask_target || !matches!(source, SampleSource::Current | SampleSource::CurrentAndBelow) {
         return None;
@@ -66,8 +66,8 @@ fn eyedropper_mask_source(app: &PhotocraftApp, source: SampleSource) -> Option<(
 }
 
 /// Read the stored mask channel, including its sparse default, rather than its composited coverage.
-fn sample_layer_mask(surface: &photocraft_raster::Surface, canvas: photocraft_geom::Rect, at: [f64; 2], size: u32) -> Option<[f32; 3]> {
-    let rect = photocraft_engine::cmd::sample_cmds::sample_rect(at[0], at[1], size, canvas)?;
+fn sample_layer_mask(surface: &patronusphoto_raster::Surface, canvas: patronusphoto_geom::Rect, at: [f64; 2], size: u32) -> Option<[f32; 3]> {
+    let rect = patronusphoto_engine::cmd::sample_cmds::sample_rect(at[0], at[1], size, canvas)?;
     let mut sum = 0.0;
     for y in rect.y0..rect.y1 {
         for x in rect.x0..rect.x1 {

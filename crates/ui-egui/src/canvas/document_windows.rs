@@ -8,11 +8,11 @@ use craft::ui::canvas::ToolHost;
 use craft::ui::contract::{ShowContainer as _, SizeLimits};
 use craft::ui::shell::{DocumentWindow, Wrapped};
 use egui::{Rect, Vec2, vec2};
-use photocraft_doc::DocId;
+use patronusphoto_doc::DocId;
 
 use super::canvas_view;
 use super::document_display::CanvasHost;
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::View;
 
 /// The smallest a document window gets: the Zoom Resizes Windows wrap never shrinks it below this.
@@ -28,7 +28,7 @@ fn wants_wrap(preference: bool, before: &View, after: &View) -> bool {
 }
 
 /// Closes the floating window `id`: its own view goes, and its documents return to the docked tabs.
-fn close_window(app: &mut PhotocraftApp, id: u64) {
+fn close_window(app: &mut PatronusPhotoApp, id: u64) {
     app.ui.window_views.remove(&id);
     app.ui.document_windows.close_window(id);
 }
@@ -37,7 +37,7 @@ fn close_window(app: &mut PhotocraftApp, id: u64) {
 /// group (the first one, or a new one), and a closed document leaves every group, the windows it empties going with
 /// it. The framework keeps groups of document ids and has no add of its own, so a new document floats in a
 /// throwaway window and closing that window docks it.
-pub(crate) fn sync_documents(app: &mut PhotocraftApp, ids: &[DocId]) {
+pub(crate) fn sync_documents(app: &mut PatronusPhotoApp, ids: &[DocId]) {
     let windows = &mut app.ui.document_windows;
     for group in windows.docked.iter_mut().chain(windows.floating.iter_mut().map(|(group, _)| group)) {
         group.documents.retain(|id| ids.contains(id));
@@ -57,7 +57,7 @@ pub(crate) fn sync_documents(app: &mut PhotocraftApp, ids: &[DocId]) {
 
 /// The floating document windows, each in its own OS window (or on the fallback layer where there is
 /// none). `ui` is the frame's root `Ui`: `DocumentWindow` is a container shown in a parent.
-pub fn extra_windows(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn extra_windows(app: &mut PatronusPhotoApp, ui: &mut egui::Ui) {
     let windows: Vec<(u64, Rect)> = app.ui.document_windows.floating.iter().map(|(g, rect)| (g.id, *rect)).collect();
     let mut closed = Vec::new();
     for (id, rect) in windows {
@@ -119,7 +119,7 @@ pub fn extra_windows(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 /// While a framework modal is open in the main viewport, the framework drops presses, keys, wheel
 /// and text in this viewport (`drop_under_modal`) and keeps moves and releases, so the canvas is as
 /// inert as the main one's; no layer of its own is needed here.
-pub(super) fn document_window_canvas(app: &mut PhotocraftApp, ui: &mut egui::Ui, window: u64, doc: usize, view: View, focused: bool) -> (View, Rect) {
+pub(super) fn document_window_canvas(app: &mut PatronusPhotoApp, ui: &mut egui::Ui, window: u64, doc: usize, view: View, focused: bool) -> (View, Rect) {
     let mut out = (view.clone(), Rect::NOTHING);
     egui::CentralPanel::default().frame(egui::Frame::NONE.fill(crate::theme::Tokens::get(ui.ctx()).canvas)).show(ui, |ui| {
         let rect = ui.available_rect_before_wrap();

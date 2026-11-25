@@ -13,14 +13,14 @@
 //! which redraws only the damage of each change.
 
 use egui::Color32;
-use photocraft_color::PixelFormat;
-use photocraft_doc::{AlphaChannel, ColorMode, Document};
-use photocraft_engine::channel_cmds::{ChannelView, color_count};
-use photocraft_engine::mask_view_cmds::MaskViewMode;
-use photocraft_geom::Rect;
-use photocraft_raster::{Surface, from_rgba, to_rgba};
+use patronusphoto_color::PixelFormat;
+use patronusphoto_doc::{AlphaChannel, ColorMode, Document};
+use patronusphoto_engine::channel_cmds::{ChannelView, color_count};
+use patronusphoto_engine::mask_view_cmds::MaskViewMode;
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::{Surface, from_rgba, to_rgba};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 struct CompositeSource<'a> {
     /// What printed spot inks go through on their way to the screen.
@@ -63,7 +63,7 @@ impl Default for Look {
 
 impl Look {
     /// The current preferences of `s`.
-    pub fn of(s: &photocraft_engine::Session) -> Self {
+    pub fn of(s: &patronusphoto_engine::Session) -> Self {
         let p = s.prefs();
         Self { in_color: p.interface.show_channels_in_color, mask_rgb: p.layer_mask_overlay.rgb(), mask_opacity: p.layer_mask_overlay.alpha() }
     }
@@ -80,7 +80,7 @@ pub struct Screen {
 
 impl Screen {
     /// How the canvas shows `doc` on `display` (`None`: the main window's).
-    pub fn of(app: &PhotocraftApp, doc: &Document, display: Option<u32>) -> Screen {
+    pub fn of(app: &PatronusPhotoApp, doc: &Document, display: Option<u32>) -> Screen {
         let color = &app.session.color;
         let display = display.or(color.main_display);
         let Ok(d) = color.canvas_display_for(doc, display) else { return Screen::default() };
@@ -90,7 +90,7 @@ impl Screen {
     }
 
     /// A key that changes with [`Screen::of`].
-    pub fn key(app: &PhotocraftApp, doc: &Document, display: Option<u32>) -> u64 {
+    pub fn key(app: &PatronusPhotoApp, doc: &Document, display: Option<u32>) -> u64 {
         let color = &app.session.color;
         color.display_signature_for(doc, display.or(color.main_display))
     }
@@ -100,7 +100,7 @@ impl Screen {
         if self.encode_srgb {
             for p in px.iter_mut() {
                 for v in &mut p[..3] {
-                    *v = photocraft_color::convert::linear_to_srgb(v.clamp(0.0, 1.0));
+                    *v = patronusphoto_color::convert::linear_to_srgb(v.clamp(0.0, 1.0));
                 }
             }
         }
@@ -126,7 +126,7 @@ fn proxy(doc: &Document, r: Rect, factor: u32) -> Option<Document> {
     }
     layers_only.selection = None;
     layers_only.quick_mask = None;
-    Some(photocraft_compose::proxy::proxy_document(&layers_only, factor))
+    Some(patronusphoto_compose::proxy::proxy_document(&layers_only, factor))
 }
 
 /// Composite RGBA (over white, like Photoshop's channel views) at `factor` stride.
@@ -135,7 +135,7 @@ fn composite(doc: &Document, r: Rect, factor: u32) -> Vec<[f32; 4]> {
     let (w, h) = (r.width().div_ceil(factor), r.height().div_ceil(factor));
     if let Some(p) = proxy(doc, r, factor) {
         let mut out = Vec::with_capacity((w * h) as usize);
-        let _ = photocraft_compose::render_bands(&p, Rect::new(0, 0, w as i32, h as i32), 0, |band| -> Result<(), ()> {
+        let _ = patronusphoto_compose::render_bands(&p, Rect::new(0, 0, w as i32, h as i32), 0, |band| -> Result<(), ()> {
             out.extend(band.px.iter().map(|p| {
                 let a = p[3].clamp(0.0, 1.0);
                 [p[0] * a + 1.0 - a, p[1] * a + 1.0 - a, p[2] * a + 1.0 - a, 1.0]
@@ -173,14 +173,14 @@ pub(crate) fn ink_samples(doc: &Document, xs: &[i32], ys: &[i32]) -> Vec<[f32; 4
         return out;
     };
     let fmt = PixelFormat { alpha: false, ..doc.pixel_format() };
-    let rows = photocraft_compose::band_rows_for((x1 - x0 + 1) as u32, 0);
+    let rows = patronusphoto_compose::band_rows_for((x1 - x0 + 1) as u32, 0);
     let mut row = Vec::new();
     let mut i = 0;
     while i < ys.len() {
         let y0 = ys[i];
         let end = i + ys[i..].iter().take_while(|&&y| y < y0.saturating_add(rows)).count();
         let band = Rect::new(x0, y0, x1 + 1, ys[end - 1] + 1);
-        let inks = photocraft_compose::composite_to_surface(doc, band, fmt, Some([1.0; 3]));
+        let inks = patronusphoto_compose::composite_to_surface(doc, band, fmt, Some([1.0; 3]));
         for &y in &ys[i..end] {
             inks.read_region_into(Rect::new(x0, y, x1 + 1, y + 1), &mut row);
             out.extend(xs.iter().map(|&x| {
@@ -206,7 +206,7 @@ fn composite_sampled(doc: &Document, r: Rect, factor: u32) -> Vec<[f32; 4]> {
     let (w, h) = (r.width().div_ceil(factor), r.height().div_ceil(factor));
     let mut out = Vec::with_capacity((w * h) as usize);
     let f = factor as i32;
-    let _ = photocraft_compose::render_bands(doc, r, 0, |band| -> Result<(), ()> {
+    let _ = patronusphoto_compose::render_bands(doc, r, 0, |band| -> Result<(), ()> {
         let first = band.rect.y0 + (r.y0 - band.rect.y0).rem_euclid(f);
         for y in (first..band.rect.y1).step_by(factor as usize) {
             for x in (r.x0..r.x1).step_by(factor as usize) {
@@ -254,20 +254,20 @@ fn composite_at(doc: &Document, r: Rect, factor: u32, inked: &[usize]) -> Vec<[f
 /// Whether `v` prints spot inks of `doc` over its composite, through the [`Screen`].
 fn prints_inks(doc: &Document, v: &ChannelView) -> bool {
     let colors = color_count(doc);
-    v.visible_colors(colors) == colors && (0..doc.channels.len()).any(|i| v.alpha_shown(i) && photocraft_compose::multichannel::is_overprint_spot(doc, i))
+    v.visible_colors(colors) == colors && (0..doc.channels.len()).any(|i| v.alpha_shown(i) && patronusphoto_compose::multichannel::is_overprint_spot(doc, i))
 }
 
 /// Whether a proxy composite picks the full composite's pixels: no layer effects or vector masks
-/// ([`proxy_faithful`](photocraft_compose::proxy::proxy_faithful)), no feathered masks, whose
+/// ([`proxy_faithful`](patronusphoto_compose::proxy::proxy_faithful)), no feathered masks, whose
 /// radius is in document pixels, and no pattern fills, whose tiles keep their size on a proxy
 /// unless a cache of the same fill is shrunk with it. The ink thumbnails use it too.
 pub(crate) fn proxy_matches(doc: &Document) -> bool {
-    use photocraft_doc::{Fill, LayerContent};
+    use patronusphoto_doc::{Fill, LayerContent};
     // A stack, not recursion: groups can nest deeply. Hidden layers (and what they hold) are not
     // composited, so they don't count.
-    let mut stack: Vec<&photocraft_doc::Layer> = doc.layers.iter().filter(|l| l.visible).collect();
+    let mut stack: Vec<&patronusphoto_doc::Layer> = doc.layers.iter().filter(|l| l.visible).collect();
     while let Some(l) = stack.pop() {
-        if photocraft_compose::masks::has_feather(l) {
+        if patronusphoto_compose::masks::has_feather(l) {
             return false;
         }
         if let LayerContent::Fill(fill @ Fill::Pattern { .. }) = &l.content
@@ -279,12 +279,12 @@ pub(crate) fn proxy_matches(doc: &Document) -> bool {
             stack.extend(g.children.iter().filter(|c| c.visible));
         }
     }
-    photocraft_compose::proxy::proxy_faithful(doc)
+    patronusphoto_compose::proxy::proxy_faithful(doc)
 }
 
 /// The channel view of `r` (document pixels, sampled every `factor` px) as premultiplied pixels,
 /// or `None` when the plain composite is all there is to show.
-pub fn render(doc: &Document, v: &ChannelView, r: Rect, factor: u32, look: Look, active: Option<photocraft_doc::LayerId>) -> Option<Vec<Color32>> {
+pub fn render(doc: &Document, v: &ChannelView, r: Rect, factor: u32, look: Look, active: Option<patronusphoto_doc::LayerId>) -> Option<Vec<Color32>> {
     render_with_source(doc, v, r, factor, look, active, CompositeSource { screen: &Screen::default() })
 }
 
@@ -294,7 +294,7 @@ fn render_with_source(
     r: Rect,
     factor: u32,
     look: Look,
-    active: Option<photocraft_doc::LayerId>,
+    active: Option<patronusphoto_doc::LayerId>,
     source: CompositeSource<'_>,
 ) -> Option<Vec<Color32>> {
     if v.is_plain(doc) || r.is_empty() {
@@ -309,11 +309,11 @@ fn render_with_source(
     let feathered_mask = v
         .layer_mask
         .and_then(|view| doc.layer(view.layer))
-        .filter(|layer| layer.mask.as_ref().is_some_and(|mask| mask.enabled && photocraft_compose::masks::feather_sigma(mask.feather) > 0.0))
+        .filter(|layer| layer.mask.as_ref().is_some_and(|mask| mask.enabled && patronusphoto_compose::masks::feather_sigma(mask.feather) > 0.0))
         .and_then(|layer| {
             let mut pixel_mask_layer = layer.clone();
             pixel_mask_layer.vector_mask = None;
-            photocraft_compose::masks::combined_mask(&pixel_mask_layer, doc.bounds())
+            patronusphoto_compose::masks::combined_mask(&pixel_mask_layer, doc.bounds())
         });
     let shown_mask = layer_mask.map(|(m, mode)| (feathered_mask.as_ref().unwrap_or(&m.surface), mode));
     let only_mask = ChannelView { layer_mask: None, ..v.clone() }.is_plain(doc);
@@ -335,14 +335,14 @@ fn render_with_source(
     let mut overlays: Vec<usize> = (0..doc.channels.len()).filter(|i| v.alpha_shown(*i)).collect();
     let gray = |s: &Surface| sample(s, r, factor).into_iter().map(|g| [g, g, g, 1.0]).collect();
     // Spot inks preview with Color Settings › Spot's dot gain, as Photoshop shows them.
-    let gain = photocraft_compose::multichannel::spot_dot_gain();
+    let gain = patronusphoto_compose::multichannel::spot_dot_gain();
     // Visible spot channels of an RGB or CMYK document print over the picture as inks, in panel
     // order, before the alpha channel and Quick Mask tints.
-    let spots: Vec<(photocraft_compose::multichannel::Ink, Vec<f32>)> = if vis > 0 {
-        let spot_ids: Vec<usize> = overlays.iter().copied().filter(|&i| photocraft_compose::multichannel::is_overprint_spot(doc, i)).collect();
+    let spots: Vec<(patronusphoto_compose::multichannel::Ink, Vec<f32>)> = if vis > 0 {
+        let spot_ids: Vec<usize> = overlays.iter().copied().filter(|&i| patronusphoto_compose::multichannel::is_overprint_spot(doc, i)).collect();
         overlays.retain(|i| !spot_ids.contains(i));
         // The ink colours are converted once per render, and only when there are inks to print.
-        let space = (!spot_ids.is_empty()).then(|| photocraft_compose::multichannel::InkSpace::of(doc));
+        let space = (!spot_ids.is_empty()).then(|| patronusphoto_compose::multichannel::InkSpace::of(doc));
         space.iter().flat_map(|space| spot_ids.iter().filter_map(|&i| doc.channels.get(i)).map(|ch| (space.ink(ch), sample(&ch.surface, r, factor)))).collect()
     } else {
         Vec::new()
@@ -384,8 +384,8 @@ fn render_with_source(
         let ink = shows_inks(doc, v);
         let pixels = composite_px(doc, r, factor, ink);
         // The inks show through the document's own CMYK profile, as in its composite.
-        let space = photocraft_compose::cmyk_space(doc);
-        photocraft_color::convert::with_cmyk_space(space.as_ref(), || {
+        let space = patronusphoto_compose::cmyk_space(doc);
+        patronusphoto_color::convert::with_cmyk_space(space.as_ref(), || {
             pixels
                 .iter()
                 .map(|&px| {
@@ -436,7 +436,7 @@ fn render_with_source(
     }
     let overlays: Vec<&AlphaChannel> = overlays.into_iter().filter_map(|i| doc.channels.get(i)).collect();
     // Rubylith: `color` at `opacity` × coverage over the accumulated pixels.
-    let mut tint = |values: Vec<f32>, color: photocraft_color::Color, opacity: f32, coverage: &dyn Fn(f32) -> f32| {
+    let mut tint = |values: Vec<f32>, color: patronusphoto_color::Color, opacity: f32, coverage: &dyn Fn(f32) -> f32| {
         let c = color.to_rgb();
         for (o, val) in out.iter_mut().zip(values) {
             let a = (coverage(val.clamp(0.0, 1.0)) * opacity).clamp(0.0, 1.0);
@@ -455,7 +455,7 @@ fn render_with_source(
             None => (ch.color, ch.opacity),
         };
         if ch.spot.is_some() {
-            tint(sample(&ch.surface, r, factor), color, opacity, &|x| photocraft_compose::multichannel::dot_gain(ch.overlay_coverage(x), gain));
+            tint(sample(&ch.surface, r, factor), color, opacity, &|x| patronusphoto_compose::multichannel::dot_gain(ch.overlay_coverage(x), gain));
         } else {
             tint(sample(&ch.surface, r, factor), color, opacity, &|x| ch.overlay_coverage(x));
         }
@@ -464,7 +464,7 @@ fn render_with_source(
     // Display Options colour and opacity (red at 50 % unless set).
     if !solo_mask && let Some((m, MaskViewMode::Overlay)) = shown_mask {
         let [cr, cg, cb] = mask_rgb;
-        tint(sample(m, r, factor), photocraft_color::Color::rgb(cr, cg, cb), mask_opacity, &|x| 1.0 - x);
+        tint(sample(m, r, factor), patronusphoto_color::Color::rgb(cr, cg, cb), mask_opacity, &|x| 1.0 - x);
     }
     Some(out.into_iter().map(|p| Color32::from_rgba_premultiplied(q(p[0]), q(p[1]), q(p[2]), q(p[3]))).collect())
 }
@@ -504,7 +504,7 @@ fn q(x: f32) -> u8 {
 fn view_key(v: &ChannelView, look: Look) -> u64 {
     let s = serde_json::to_string(&(v, look.mask_rgb, look.mask_opacity)).unwrap_or_default();
     // Spot overlays follow Color Settings › Spot: a new dot gain redraws them.
-    let seed = (look.in_color as u64 + 1) ^ u64::from(photocraft_compose::multichannel::spot_dot_gain().to_bits()) << 8;
+    let seed = (look.in_color as u64 + 1) ^ u64::from(patronusphoto_compose::multichannel::spot_dot_gain().to_bits()) << 8;
     s.bytes().fold(seed, |h, b| h.wrapping_mul(1_099_511_628_211).wrapping_add(b as u64))
 }
 
@@ -512,7 +512,7 @@ fn view_key(v: &ChannelView, look: Look) -> u64 {
 pub(crate) struct Overlay {
     view: ChannelView,
     look: Look,
-    active: Option<photocraft_doc::LayerId>,
+    active: Option<patronusphoto_doc::LayerId>,
     screen: Screen,
     /// Changes with the view, its look and, for printed spot inks, the display transform.
     pub(crate) key: u64,
@@ -521,7 +521,7 @@ pub(crate) struct Overlay {
 impl Overlay {
     /// The view document `idx` shows of `doc` (its committed or previewed composite) on `display` (`None`: the main
     /// window's); `None` while the plain composite shows.
-    pub(crate) fn of(app: &PhotocraftApp, idx: usize, doc: &Document, display: Option<u32>) -> Option<Overlay> {
+    pub(crate) fn of(app: &PatronusPhotoApp, idx: usize, doc: &Document, display: Option<u32>) -> Option<Overlay> {
         let st = app.session.documents().get(idx)?;
         let view = st.channel_view.clone();
         if view.is_plain(&st.doc) {

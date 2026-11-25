@@ -1,8 +1,8 @@
-use photocraft_color::{ColorMode, PixelFormat, SampleType};
-use photocraft_compose::{composite_to_surface, composite_to_surface_with_interrupt};
-use photocraft_doc::{Document, Layer};
-use photocraft_geom::{Rect, Size};
-use photocraft_raster::Interrupt;
+use patronusphoto_color::{ColorMode, PixelFormat, SampleType};
+use patronusphoto_compose::{composite_to_surface, composite_to_surface_with_interrupt};
+use patronusphoto_doc::{Document, Layer};
+use patronusphoto_geom::{Rect, Size};
+use patronusphoto_raster::Interrupt;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[test]

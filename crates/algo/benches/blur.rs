@@ -1,9 +1,9 @@
-//! `cargo bench -p photocraft-algo`
+//! `cargo bench -p patronusphoto-algo`
 use criterion::{Criterion, criterion_group, criterion_main};
-use photocraft_algo::{FilterParams, apply};
-use photocraft_color::PixelFormat;
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use patronusphoto_algo::{FilterParams, apply};
+use patronusphoto_color::PixelFormat;
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::Surface;
 
 fn textured(n: u32) -> Surface {
     let r = Rect::new(0, 0, n as i32, n as i32);

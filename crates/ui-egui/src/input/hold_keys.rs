@@ -12,7 +12,7 @@
 use craft::ui::canvas::MomentaryCommands;
 use craft::ui::runtime::commands::FirePhase;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// Tools on which ⌘-arrows nudge as the Move tool's arrows do: the tools whose ⌘ press the Move
@@ -53,7 +53,7 @@ fn nudges_with_cmd(t: Tool) -> bool {
 /// Photoshop their ⌘ is the Move tool too, so ⌘-arrows move the selected pixels (or the layer)
 /// while the plain arrows move the outline. Not while a Lasso, Polygonal Lasso or Magnetic Lasso
 /// border is open, during Free Transform or while editing text.
-pub fn cmd_nudges(app: &PhotocraftApp) -> bool {
+pub fn cmd_nudges(app: &PatronusPhotoApp) -> bool {
     let t = app.ui.tool;
     let selecting = crate::tool_feedback::is_selection_tool(t);
     app.ui.transform.is_none()
@@ -72,13 +72,13 @@ pub fn erases_while_held(t: Tool) -> bool {
 /// It reads no frame input: a second pass in the same frame drains no fired command and leaves the
 /// flag as the first pass set it. A tool switch while the key is held is cleared by the next
 /// release; [`erases_while_held`] gates the read too.
-pub fn erase_key(app: &mut PhotocraftApp, phase: FirePhase) {
+pub fn erase_key(app: &mut PatronusPhotoApp, phase: FirePhase) {
     app.held_erase = phase != FirePhase::Release && erases_while_held(app.ui.tool);
 }
 
 /// Is the reposition key (the momentary Hand's key, any modifiers) down? Not while editing type,
 /// where Space inserts a space.
-pub fn reposition_held(app: &PhotocraftApp) -> bool {
+pub fn reposition_held(app: &PatronusPhotoApp) -> bool {
     app.ui.text_edit.is_none() && app.canvas_tools.momentary.held() == Some(MomentaryCommands::Hand)
 }
 

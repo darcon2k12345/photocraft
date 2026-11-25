@@ -9,12 +9,12 @@ use crate::canvas::{ToolEvent, testing, tool_event};
 use crate::canvas_tool_menu::GUIDE_CLEAR;
 use crate::state::Tool;
 
-type AppHarness = Harness<'static, Box<PhotocraftApp>>;
+type AppHarness = Harness<'static, Box<PatronusPhotoApp>>;
 
 /// A 200 × 100 document with the Move tool, a vertical guide at 50 and a magenta horizontal one
 /// at 30.
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
     app.sync_views();
     app.ui.tool = Tool::Move;
@@ -23,12 +23,12 @@ fn app() -> Box<PhotocraftApp> {
     app
 }
 
-fn click(app: &mut PhotocraftApp, x: f64, y: f64) {
+fn click(app: &mut PatronusPhotoApp, x: f64, y: f64) {
     tool_event(app, ToolEvent::Down { x, y, pressure: 1.0 }, Modifiers::NONE);
     tool_event(app, ToolEvent::Up { x, y }, Modifiers::NONE);
 }
 
-fn guides(app: &PhotocraftApp) -> (Vec<f64>, Vec<f64>) {
+fn guides(app: &PatronusPhotoApp) -> (Vec<f64>, Vec<f64>) {
     let g = &app.session.active().unwrap().doc.guides;
     (g.vertical.clone(), g.horizontal.clone())
 }
@@ -76,9 +76,9 @@ fn delete_removes_the_selected_guide_and_leaves_the_pixels() {
 }
 
 /// The canvas with its context menu and the hosted dialogs, as a frame runs them.
-fn harness(app: Box<PhotocraftApp>) -> AppHarness {
+fn harness(app: Box<PatronusPhotoApp>) -> AppHarness {
     let mut h = Harness::builder().with_context(app.ctx().clone()).with_size(vec2(1000.0, 700.0)).with_step_dt(1.0 / 60.0).build_ui_state(
-        |ui, app: &mut Box<PhotocraftApp>| {
+        |ui, app: &mut Box<PatronusPhotoApp>| {
             if !ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 return;
             }
@@ -87,7 +87,7 @@ fn harness(app: Box<PhotocraftApp>) -> AppHarness {
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::default());
+    PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::default());
     h.run_steps(4);
     h
 }
@@ -106,7 +106,7 @@ fn guide_on_screen(h: &AppHarness) -> Pos2 {
     testing::to_screen(h.state(), [100.0, 70.0])
 }
 
-fn centred_guide_app() -> Box<PhotocraftApp> {
+fn centred_guide_app() -> Box<PatronusPhotoApp> {
     let mut app = app();
     app.run("view.clearGuides", json!({})).unwrap();
     app.run("view.newGuide", json!({"orientation": "vertical", "position": 100})).unwrap();
@@ -140,7 +140,7 @@ fn open_edit(h: &mut AppHarness) -> DialogId {
 }
 
 /// The fields of the open dialog `id`, as the host lists them.
-fn fields(app: &PhotocraftApp, id: DialogId) -> Value {
+fn fields(app: &PatronusPhotoApp, id: DialogId) -> Value {
     let open = app.framework.dialogs.open_dialogs();
     open.into_iter().find(|d| d.id == id).and_then(|d| d.fields).expect("the New Guide dialog is open")
 }

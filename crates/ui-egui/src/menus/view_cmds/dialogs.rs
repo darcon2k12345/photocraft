@@ -1,5 +1,5 @@
 use super::dispatch::no_params;
-use super::{PhotocraftApp, Value, json};
+use super::{PatronusPhotoApp, Value, json};
 use craft::ui::choice::Checkbox;
 use craft::ui::contract::{Bind, Outcome as _, Props as _, Show as _};
 use craft::ui::dialog::DialogId;
@@ -46,7 +46,7 @@ fn opened(id: DialogId) -> Value {
 }
 
 /// Opens the hosted parameter form of command `id`. `fixed` holds values the command needs that no row edits.
-fn open_form(app: &mut PhotocraftApp, id: &str, title: &str, params: Vec<Param>, fields: DialogFields, fixed: Value) -> DialogId {
+fn open_form(app: &mut PatronusPhotoApp, id: &str, title: &str, params: Vec<Param>, fields: DialogFields, fixed: Value) -> DialogId {
     let title = crate::dialogs::filter_dialog::title_of(title);
     let key = id.to_owned();
     crate::dialogs::params::open_param(app, id, fields, fixed, move |fields: &mut DialogFields| {
@@ -145,9 +145,9 @@ fn export_quality() -> Param {
 
 /// The boards Export Selected Artboards exports: the selected top-level artboards while an artboard is the active
 /// layer, else none (the checkbox is greyed and every board is exported).
-fn selected_artboards(app: &PhotocraftApp) -> Vec<u64> {
+fn selected_artboards(app: &PatronusPhotoApp) -> Vec<u64> {
     let Some(st) = app.session.active() else { return Vec::new() };
-    let is_board = |id: &photocraft_doc::LayerId| st.doc.layers.iter().any(|l| l.id == *id && l.artboard().is_some());
+    let is_board = |id: &patronusphoto_doc::LayerId| st.doc.layers.iter().any(|l| l.id == *id && l.artboard().is_some());
     if !st.active_layer.as_ref().is_some_and(is_board) {
         return Vec::new();
     }
@@ -185,7 +185,7 @@ fn stem(name: &str) -> String {
 
 /// File › Open EXR Parts…: with `{path}` in the parameters the picker is skipped; without, an EXR is picked first. Then
 /// the parts and channel groups that become the layers of one document (a Maya/Arnold render writes one part per AOV).
-fn open_exr_parts_dialog(app: &mut PhotocraftApp, params: &Value) -> Option<Result<Value, String>> {
+fn open_exr_parts_dialog(app: &mut PatronusPhotoApp, params: &Value) -> Option<Result<Value, String>> {
     if let Some(path) = params.get("path").and_then(Value::as_str) {
         return Some(open_exr_parts(app, path));
     }
@@ -193,7 +193,7 @@ fn open_exr_parts_dialog(app: &mut PhotocraftApp, params: &Value) -> Option<Resu
 }
 
 /// Reads the parts of the EXR at `path` and opens their form.
-fn open_exr_parts(app: &mut PhotocraftApp, path: &str) -> Result<Value, String> {
+fn open_exr_parts(app: &mut PatronusPhotoApp, path: &str) -> Result<Value, String> {
     let info = app.run("file.exrParts", json!({"path": path})).map_err(|e| e.to_string())?;
     let entries = info.as_array().cloned().unwrap_or_default();
     let file = path.rsplit(['/', '\\']).next().unwrap_or(path).to_owned();
@@ -231,7 +231,7 @@ fn open_exr_parts(app: &mut PhotocraftApp, path: &str) -> Result<Value, String> 
 
 /// The rows, and the opening values that are not row defaults, of command `id`'s form. `None` when `id` has no form or
 /// its precondition (a document, a layer) is missing; the engine command then reports it.
-pub(super) fn params_for(app: &mut PhotocraftApp, id: &str) -> Option<(Vec<Param>, DialogFields)> {
+pub(super) fn params_for(app: &mut PatronusPhotoApp, id: &str) -> Option<(Vec<Param>, DialogFields)> {
     let doc = app.session.active().map(|d| (d.doc.size.width, d.doc.size.height, d.doc.name.clone()));
     let dir = crate::dialogs::file_forms::default_dir(app);
     let plain = |rows: Vec<Param>| Some((rows, DialogFields::new()));
@@ -248,7 +248,7 @@ pub(super) fn params_for(app: &mut PhotocraftApp, id: &str) -> Option<(Vec<Param
             // The values Fit Image last ran with, else the document's size (#13853). A stored value that isn't a
             // usable size is ignored. The engine keeps them in the preferences, so the rows opt out of the
             // dialog's own remembered values.
-            let kept = app.session.prefs().dialogs.get(photocraft_engine::file_cmds::FIT_IMAGE).cloned().unwrap_or_default();
+            let kept = app.session.prefs().dialogs.get(patronusphoto_engine::file_cmds::FIT_IMAGE).cloned().unwrap_or_default();
             let size = |key: &str| kept.get(key).and_then(Value::as_u64).filter(|v| (1..=300_000).contains(v)).and_then(|v| i64::try_from(v).ok());
             let enlarge = kept.get("dontEnlarge").and_then(Value::as_bool).unwrap_or(false);
             plain(vec![
@@ -316,7 +316,7 @@ pub(super) fn params_for(app: &mut PhotocraftApp, id: &str) -> Option<(Vec<Param
         "layer.new.artboard" => {
             let (w, h, _) = doc?;
             let mut presets = vec![(String::new(), Label::from(tl!("Custom")))];
-            presets.extend(photocraft_engine::artboard_cmds::PRESETS.iter().map(|p| (p.0.to_owned(), Label::from(crate::i18n::t(p.0).to_owned()))));
+            presets.extend(patronusphoto_engine::artboard_cmds::PRESETS.iter().map(|p| (p.0.to_owned(), Label::from(crate::i18n::t(p.0).to_owned()))));
             plain(vec![
                 Param::new("name", tl!("Name"), ParamKind::text("")),
                 choice("preset", tl!("Preset"), presets, ""),
@@ -340,7 +340,7 @@ pub(super) fn params_for(app: &mut PhotocraftApp, id: &str) -> Option<(Vec<Param
                 !chosen.is_empty()
                     && chosen.iter().all(|id| {
                         st.doc.layers.iter().any(|root| root.id == *id)
-                            && st.doc.layer(*id).is_some_and(|layer| layer.visible && matches!(layer.content, photocraft_doc::LayerContent::Adjustment(_)))
+                            && st.doc.layer(*id).is_some_and(|layer| layer.visible && matches!(layer.content, patronusphoto_doc::LayerContent::Adjustment(_)))
                     })
             });
             let scope = if selected_adjustments { "selected" } else { "all" };
@@ -434,7 +434,7 @@ pub(super) fn params_for(app: &mut PhotocraftApp, id: &str) -> Option<(Vec<Param
 }
 
 /// File › File Info…: the document's metadata in Photoshop's order and labels, then its read-only Camera Data.
-fn file_info_form(app: &mut PhotocraftApp) -> Option<(Vec<Param>, DialogFields)> {
+fn file_info_form(app: &mut PatronusPhotoApp) -> Option<(Vec<Param>, DialogFields)> {
     let info = app.session.execute("file.fileInfo", json!({})).ok()?;
     let text = |key: &str| info[key].as_str().unwrap_or_default().to_owned();
     let keywords = info["keywords"].as_array().map(|a| a.iter().filter_map(Value::as_str).collect::<Vec<_>>().join("; ")).unwrap_or_default();
@@ -453,7 +453,7 @@ fn file_info_form(app: &mut PhotocraftApp) -> Option<(Vec<Param>, DialogFields)>
         Param::new("copyright", tl!("Copyright Notice"), ParamKind::text("")).multiline(3),
         Param::new("copyrightUrl", tl!("Copyright Info URL"), ParamKind::text("")),
     ];
-    let camera: Vec<(&'static str, String)> = photocraft_engine::file_cmds::CAMERA_FIELDS
+    let camera: Vec<(&'static str, String)> = patronusphoto_engine::file_cmds::CAMERA_FIELDS
         .iter()
         .filter_map(|(key, label)| info["camera"].get(*key).and_then(Value::as_str).map(|v| (*label, v.to_owned())))
         .collect();
@@ -479,7 +479,7 @@ fn file_info_form(app: &mut PhotocraftApp) -> Option<(Vec<Param>, DialogFields)>
 }
 
 /// File › Automate › Batch…: the selected action and its set, and where the files come from and go.
-fn batch_form(app: &PhotocraftApp, dir: &str) -> Option<(Vec<Param>, DialogFields)> {
+fn batch_form(app: &PatronusPhotoApp, dir: &str) -> Option<(Vec<Param>, DialogFields)> {
     let action = crate::actions::selected_action(app)?;
     let (name, set) = (action.name.clone(), action.set.clone());
     let (names, sets) = crate::actions::action_form_choices(app);
@@ -519,13 +519,13 @@ fn batch_form(app: &PhotocraftApp, dir: &str) -> Option<(Vec<Param>, DialogField
 
 /// The channel workflow forms (see channels_panel.rs for the channel references): Save and Load Selection, Apply
 /// Image and Calculations.
-fn channel_form(app: &PhotocraftApp, id: &str) -> Option<(Vec<Param>, DialogFields)> {
+fn channel_form(app: &PatronusPhotoApp, id: &str) -> Option<(Vec<Param>, DialogFields)> {
     let st = app.session.active()?;
     let d = &st.doc;
     let mode = d.pixel_format().mode;
-    let mut chans: Vec<String> = vec![photocraft_engine::channel_cmds::composite_name(mode).to_string()];
+    let mut chans: Vec<String> = vec![patronusphoto_engine::channel_cmds::composite_name(mode).to_string()];
     if mode.color_channels() > 1 {
-        chans.extend(photocraft_engine::channel_cmds::color_names(mode).iter().map(|n| n.to_string()));
+        chans.extend(patronusphoto_engine::channel_cmds::color_names(mode).iter().map(|n| n.to_string()));
     }
     chans.extend(d.channels.iter().map(|c| c.name.clone()));
     let alphas: Vec<String> = std::iter::once("new".to_string()).chain(d.channels.iter().map(|c| c.name.clone())).collect();
@@ -604,7 +604,7 @@ fn channel_form(app: &PhotocraftApp, id: &str) -> Option<(Vec<Param>, DialogFiel
 }
 
 /// Handle menu commands that need a shell action or a parameter dialog before execution.
-pub(super) fn front(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, params: &Value) -> Option<Result<Value, String>> {
+pub(super) fn front(app: &mut PatronusPhotoApp, ctx: &egui::Context, id: &str, params: &Value) -> Option<Result<Value, String>> {
     if id == "file.closeAll" || id == "file.closeOthers" {
         // Keep the remaining document's view (views are index-aligned with documents).
         let keep = app.session.active_index().and_then(|i| app.ui.views.get(i).cloned());
@@ -638,7 +638,7 @@ pub(super) fn front(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, para
     if !no_params(params) {
         return None;
     }
-    let label = photocraft_engine::commands::find(id).map_or(id, |c| c.label);
+    let label = patronusphoto_engine::commands::find(id).map_or(id, |c| c.label);
     match id {
         "file.openAs" => Some(app.open_dialog_file()),
         "file.openAsSmartObject" => Some(app.open_dialog_as_smart_object()),
@@ -672,7 +672,7 @@ pub(super) fn front(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, para
             let (doc, layer) = (st.doc.id, st.active_layer?);
             Some(app.pick_file_bytes(move |app, name, bytes| {
                 app.with_document(doc, |app| {
-                    let r = photocraft_engine::smart_cmds::replace_contents_bytes(&mut app.session, layer, &name, bytes).map_err(|e| e.to_string());
+                    let r = patronusphoto_engine::smart_cmds::replace_contents_bytes(&mut app.session, layer, &name, bytes).map_err(|e| e.to_string());
                     app.sync_views();
                     r
                 })
@@ -694,7 +694,7 @@ pub(super) fn front(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, para
         "layer.smartObjects.convertToLinked" => {
             let st = app.session.active()?;
             let (doc, layer) = (st.doc.id, st.active_layer?);
-            let (name, _) = match photocraft_engine::smart_cmds::contents_of(&st.doc, layer) {
+            let (name, _) = match patronusphoto_engine::smart_cmds::contents_of(&st.doc, layer) {
                 Ok(c) => c,
                 Err(e) => return Some(Err(e.to_string())),
             };
@@ -750,7 +750,7 @@ pub(super) fn suggested_copy_name(doc_name: &str, has_file: bool, copy_suffix: &
 /// File › Save a Copy: pick a name, encode with the export service, write; the document's path
 /// and saved state are untouched. An action being recorded keeps it as a `file.saveACopy` step
 /// with its path (#4373).
-fn save_a_copy(app: &mut PhotocraftApp) -> Result<Value, String> {
+fn save_a_copy(app: &mut PatronusPhotoApp) -> Result<Value, String> {
     let doc = app.session.active().ok_or("no document")?.doc.clone();
     let has_file = app.session.active().is_some_and(|d| d.path.is_some());
     let suggested = suggested_copy_name(&doc.name, has_file, app.session.prefs().file_handling.copy_suffix());
@@ -783,7 +783,7 @@ fn save_a_copy(app: &mut PhotocraftApp) -> Result<Value, String> {
         }
         let r = write_copy(app, &doc, &path, crate::FormatChoices::default())?;
         let step = json!({"path": path});
-        photocraft_engine::actions_cmds::note_automation_step(&mut app.session, "file.saveACopy", &step);
+        patronusphoto_engine::actions_cmds::note_automation_step(&mut app.session, "file.saveACopy", &step);
         app.session.journal.push(("file.saveACopy".into(), step));
         Ok(r)
     })
@@ -792,7 +792,7 @@ fn save_a_copy(app: &mut PhotocraftApp) -> Result<Value, String> {
 /// Writes `doc` to `path` as a copy (Save a Copy, and its replayed action step): the document's
 /// path and saved state are untouched. `choices` are the Targa, DDS and JPEG answers, when there
 /// are any.
-pub(crate) fn write_copy(app: &mut PhotocraftApp, doc: &photocraft_doc::Document, path: &str, choices: crate::FormatChoices) -> Result<Value, String> {
+pub(crate) fn write_copy(app: &mut PatronusPhotoApp, doc: &patronusphoto_doc::Document, path: &str, choices: crate::FormatChoices) -> Result<Value, String> {
     let settings = choices.apply(app.save_settings());
     crate::app::ensure_memory_to_save(doc, path)?;
     let export = app.services.export.as_ref().ok_or("no exporter configured")?;
@@ -809,11 +809,11 @@ pub(crate) fn write_copy(app: &mut PhotocraftApp, doc: &photocraft_doc::Document
 }
 
 /// Layer › Smart Objects › Export Contents: saves the contents file under its own name by default.
-fn export_contents(app: &mut PhotocraftApp) -> Result<Value, String> {
+fn export_contents(app: &mut PatronusPhotoApp) -> Result<Value, String> {
     let st = app.session.active().ok_or("no document")?;
     let layer = st.active_layer.ok_or("no layer selected")?;
     // The contents as they were when asked, like Save a Copy.
-    let (name, bytes) = photocraft_engine::smart_cmds::contents_of(&st.doc, layer).map_err(|e| e.to_string())?;
+    let (name, bytes) = patronusphoto_engine::smart_cmds::contents_of(&st.doc, layer).map_err(|e| e.to_string())?;
     app.pick_save(&name.clone(), move |app, path| {
         let write = app.services.write.as_mut().ok_or("no writer configured")?;
         write(&path, &bytes)?;

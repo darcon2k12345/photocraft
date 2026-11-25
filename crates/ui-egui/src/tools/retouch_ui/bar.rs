@@ -5,7 +5,7 @@ use craft::ui::runtime::env::Label;
 use craft::ui::text::RangeAlert;
 
 use super::{remove_pending_cancel, remove_pending_commit};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 use crate::tools::option_cells::range_alert;
 
@@ -26,7 +26,7 @@ pub(crate) struct Pending {
 }
 
 /// Shows the options of the retouch and smart-selection tools. False for other tools.
-pub(crate) fn options_bar(ui: &mut egui::Ui, app: &mut PhotocraftApp, tool: Tool) -> bool {
+pub(crate) fn options_bar(ui: &mut egui::Ui, app: &mut PatronusPhotoApp, tool: Tool) -> bool {
     if !tool.is_brushlike() && !matches!(tool, Tool::QuickSelection | Tool::ObjectSelection | Tool::Patch | Tool::ContentAwareMove | Tool::RedEye)
         || matches!(tool, Tool::Brush | Tool::Pencil | Tool::MixerBrush | Tool::Eraser)
     {
@@ -58,7 +58,7 @@ pub(crate) fn options_bar(ui: &mut egui::Ui, app: &mut PhotocraftApp, tool: Tool
 
 /// The commit and cancel buttons `tool`'s bar shows now: Remove with strokes waiting, Content-Aware
 /// Move with its transform box up.
-pub(crate) fn pending(app: &PhotocraftApp, tool: Tool) -> Option<Pending> {
+pub(crate) fn pending(app: &PatronusPhotoApp, tool: Tool) -> Option<Pending> {
     match tool {
         Tool::Remove if !app.remove_pending.is_empty() => Some(Pending { commit: tl!("Apply the removal").into(), cancel: tl!("Cancel").into() }),
         Tool::ContentAwareMove if crate::cam_transform::active(app) => {
@@ -69,7 +69,7 @@ pub(crate) fn pending(app: &PhotocraftApp, tool: Tool) -> Option<Pending> {
 }
 
 /// Runs the answer of [`pending`]'s buttons.
-pub(crate) fn answer(app: &mut PhotocraftApp, tool: Tool, committed: bool, cancelled: bool) {
+pub(crate) fn answer(app: &mut PatronusPhotoApp, tool: Tool, committed: bool, cancelled: bool) {
     match (tool, committed, cancelled) {
         (Tool::Remove, true, _) => {
             remove_pending_commit(app);

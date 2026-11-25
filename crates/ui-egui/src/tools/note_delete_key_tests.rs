@@ -8,7 +8,7 @@ use super::*;
 use crate::lifecycle_tests::app_harness;
 
 /// The whole app with a second layer and one note, the Note tool on and the note selected.
-fn harness() -> Harness<'static, Box<PhotocraftApp>> {
+fn harness() -> Harness<'static, Box<PatronusPhotoApp>> {
     let (mut h, _transport) = app_harness(crate::Services::default(), 1);
     let app = h.state_mut();
     app.run("layer.new.layer", json!({"name": "Ink"})).unwrap();
@@ -19,22 +19,22 @@ fn harness() -> Harness<'static, Box<PhotocraftApp>> {
     h
 }
 
-fn layers(app: &PhotocraftApp) -> usize {
+fn layers(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().doc.layers.len()
 }
 
-fn notes(app: &PhotocraftApp) -> usize {
+fn notes(app: &PatronusPhotoApp) -> usize {
     app.session.active().unwrap().doc.notes.len()
 }
 
-fn prompt(app: &PhotocraftApp) -> Option<egui::Id> {
+fn prompt(app: &PatronusPhotoApp) -> Option<egui::Id> {
     crate::dialogs::alerts::prompt_tagged::<NoteQuestion>(app)
 }
 
 /// The app on its own context, driven by the canvas test driver: a key reaches the canvas through the window host, and
 /// the Delete the Note tool claimed is run by the key route in the pass after its claim.
-fn driven() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn driven() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 80, "height": 60})).unwrap();
     app.run("layer.new.layer", json!({"name": "Ink"})).unwrap();
     app.run("notes.add", json!({"x": 10, "y": 12, "text": "fix this"})).unwrap();

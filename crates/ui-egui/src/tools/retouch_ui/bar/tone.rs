@@ -6,10 +6,10 @@ use craft::ui::contract::{Bind, Entry, Show as _};
 use craft::ui::display::Divider;
 use craft::ui::primitives::IconSpec;
 use craft::ui::text::RangeAlert;
-use photocraft_color::BlendMode;
+use patronusphoto_color::BlendMode;
 
 use super::heal::{check, choose, string_entries};
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::option_cells::number;
 use crate::state::Tool;
 
@@ -30,7 +30,7 @@ fn smudge_modes() -> Vec<Entry<BlendMode>> {
 }
 
 /// The options of Dodge and Burn.
-pub(super) fn dodge_burn(ui: &mut egui::Ui, app: &mut PhotocraftApp) -> Option<RangeAlert> {
+pub(super) fn dodge_burn(ui: &mut egui::Ui, app: &mut PatronusPhotoApp) -> Option<RangeAlert> {
     let o = &mut app.ui.tool_options;
     let ranges = string_entries(&[("shadows", tl!("Shadows")), ("midtones", tl!("Midtones")), ("highlights", tl!("Highlights"))]);
     choose(ui, tl!("Range"), &mut o.tone_range, &ranges, true, Some(tl!("Painting Mode")));
@@ -42,7 +42,7 @@ pub(super) fn dodge_burn(ui: &mut egui::Ui, app: &mut PhotocraftApp) -> Option<R
 }
 
 /// The options of Sponge.
-pub(super) fn sponge(ui: &mut egui::Ui, app: &mut PhotocraftApp) -> Option<RangeAlert> {
+pub(super) fn sponge(ui: &mut egui::Ui, app: &mut PatronusPhotoApp) -> Option<RangeAlert> {
     let o = &mut app.ui.tool_options;
     let modes = string_entries(&[("desaturate", tl!("Desaturate")), ("saturate", tl!("Saturate"))]);
     choose(ui, tl!("Mode"), &mut o.sponge_mode, &modes, true, None);
@@ -52,7 +52,7 @@ pub(super) fn sponge(ui: &mut egui::Ui, app: &mut PhotocraftApp) -> Option<Range
 }
 
 /// The options of Blur, Sharpen and Smudge.
-pub(super) fn blur_sharpen_smudge(ui: &mut egui::Ui, app: &mut PhotocraftApp, tool: Tool) -> Option<RangeAlert> {
+pub(super) fn blur_sharpen_smudge(ui: &mut egui::Ui, app: &mut PatronusPhotoApp, tool: Tool) -> Option<RangeAlert> {
     let o = &mut app.ui.tool_options;
     if tool == Tool::Smudge {
         choose(ui, tl!("Mode"), &mut o.smudge_mode, &smudge_modes(), true, Some(tl!("Painting Mode")));
@@ -72,7 +72,7 @@ pub(super) fn blur_sharpen_smudge(ui: &mut egui::Ui, app: &mut PhotocraftApp, to
 }
 
 /// The options of Color Replacement.
-pub(super) fn color_replacement(ui: &mut egui::Ui, app: &mut PhotocraftApp) -> Option<RangeAlert> {
+pub(super) fn color_replacement(ui: &mut egui::Ui, app: &mut PatronusPhotoApp) -> Option<RangeAlert> {
     let o = &mut app.ui.tool_options;
     let modes = string_entries(&[("hue", tl!("Hue")), ("saturation", tl!("Saturation")), ("color", tl!("Color")), ("luminosity", tl!("Luminosity"))]);
     choose(ui, tl!("Mode"), &mut o.cr_mode, &modes, true, Some(tl!("Painting Mode")));

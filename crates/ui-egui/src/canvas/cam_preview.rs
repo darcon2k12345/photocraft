@@ -1,6 +1,6 @@
 //! Content-Aware Move drags and its Transform On Drop box shown with the result: once the pointer
 //! (or the box) rests for a moment, the move is computed as a background job
-//! ([`photocraft_engine::retouch_cmds::content_aware_move_preview`]: a smaller sampling window than
+//! ([`patronusphoto_engine::retouch_cmds::content_aware_move_preview`]: a smaller sampling window than
 //! the command) and the canvas shows the document with it. A selection too large to solve at once
 //! shows a coarse result first (solved scaled down), then the exact one, computed as a second job.
 //! Any change of the offset, scale or rotation cancels the jobs and starts the wait again, so the
@@ -12,12 +12,12 @@ use std::sync::mpsc::{Receiver, TryRecvError};
 
 use craft::imaging::ui::live_preview::{LivePreview, PreviewKey, PreviewLane, PreviewSession, settings_hash};
 use craft::ui::canvas::PixelRect;
-use photocraft_doc::Document;
-use photocraft_engine::jobs::JobCtx;
-use photocraft_engine::retouch_cmds::ContentAwarePreview;
+use patronusphoto_doc::Document;
+use patronusphoto_engine::jobs::JobCtx;
+use patronusphoto_engine::retouch_cmds::ContentAwarePreview;
 use serde_json::Value;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// How long (s) the move must stay unchanged before a preview is computed.
@@ -26,7 +26,7 @@ const SETTLE_S: f64 = 0.15;
 struct Running {
     key: PreviewKey,
     ctx: JobCtx,
-    rx: Receiver<photocraft_engine::Result<Document>>,
+    rx: Receiver<patronusphoto_engine::Result<Document>>,
     /// Test-only notification sent after this worker publishes its real result.
     #[cfg(test)]
     finished: Receiver<()>,
@@ -70,7 +70,7 @@ impl Drop for CamPreview {
 
 /// `paint.contentAwareMove`'s params for what the pointer or the box has now; `None` without a
 /// move to preview.
-fn wanted(app: &mut PhotocraftApp) -> Option<Value> {
+fn wanted(app: &mut PatronusPhotoApp) -> Option<Value> {
     if app.ui.tool != Tool::ContentAwareMove || cfg!(target_arch = "wasm32") {
         return None;
     }
@@ -94,7 +94,7 @@ fn wanted(app: &mut PhotocraftApp) -> Option<Value> {
 
 /// The document to show for the move on document `idx`: with the move applied, once its preview
 /// has been computed for the current offset and transform. The move settles on the pass's time.
-pub(crate) fn display_doc(app: &mut PhotocraftApp, idx: usize) -> Option<(Arc<Document>, u64)> {
+pub(crate) fn display_doc(app: &mut PatronusPhotoApp, idx: usize) -> Option<(Arc<Document>, u64)> {
     if app.session.active_index() != Some(idx) {
         return None;
     }
@@ -103,7 +103,7 @@ pub(crate) fn display_doc(app: &mut PhotocraftApp, idx: usize) -> Option<(Arc<Do
 }
 
 /// One pass at `now` (ms): the keys take seconds, the clock of [`LivePreview`].
-fn step(app: &mut PhotocraftApp, now: f64) -> Option<(Arc<Document>, u64)> {
+fn step(app: &mut PatronusPhotoApp, now: f64) -> Option<(Arc<Document>, u64)> {
     let now_s = now / 1000.0;
     let Some(params) = wanted(app) else {
         app.cam_preview = None;
@@ -138,7 +138,7 @@ fn step(app: &mut PhotocraftApp, now: f64) -> Option<(Arc<Document>, u64)> {
                 match (result, r) {
                     (Ok(d), Some(r)) => {
                         // Duotone documents display through their inks.
-                        let d = photocraft_engine::mode_cmds::display_document(&d).unwrap_or(d);
+                        let d = patronusphoto_engine::mode_cmds::display_document(&d).unwrap_or(d);
                         // A coarse result shows under its stage key while the exact one follows.
                         let shown_key = if r.refine.is_some() { r.key.stage(1) } else { r.key };
                         p.shown = Some((shown_key, Arc::new(d)));
@@ -176,8 +176,8 @@ fn step(app: &mut PhotocraftApp, now: f64) -> Option<(Arc<Document>, u64)> {
 }
 
 /// Compute the preview of `params` on a worker thread.
-fn start(app: &PhotocraftApp, params: &Value, key: PreviewKey) -> Option<Running> {
-    let job = photocraft_engine::retouch_cmds::content_aware_move_preview(&app.session, params).ok()?;
+fn start(app: &PatronusPhotoApp, params: &Value, key: PreviewKey) -> Option<Running> {
+    let job = patronusphoto_engine::retouch_cmds::content_aware_move_preview(&app.session, params).ok()?;
     spawn(job, key, false)
 }
 
@@ -209,7 +209,7 @@ fn spawn(job: ContentAwarePreview, key: PreviewKey, refining: bool) -> Option<Ru
 }
 
 /// Whether the canvas shows a preview.
-pub(crate) fn showing(app: &PhotocraftApp) -> bool {
+pub(crate) fn showing(app: &PatronusPhotoApp) -> bool {
     app.cam_preview.as_ref().is_some_and(|p| p.shows(p.key))
 }
 
@@ -224,7 +224,7 @@ mod tests {
 
     /// The time of the app's last pass, in ms: the canvas pass of a tool event shows the move it made, so that pass
     /// keys the move at its own time.
-    fn pass_ms(app: &PhotocraftApp) -> f64 {
+    fn pass_ms(app: &PatronusPhotoApp) -> f64 {
         app.ctx().input(|i| i.time) * 1000.0
     }
 
@@ -234,7 +234,7 @@ mod tests {
 
     #[test]
     fn the_drag_previews_the_move_after_it_rests_and_never_touches_the_document() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 100, "height": 60})).unwrap();
         app.run("paint.pencil", json!({"points": [[16, 30], [28, 30]], "size": 4, "color": "#0000ff"})).unwrap();
         app.run("select.lasso", json!({"points": [[6, 14], [38, 14], [38, 46], [6, 46]]})).unwrap();
@@ -271,7 +271,7 @@ mod tests {
 
     #[test]
     fn the_transform_on_drop_box_previews_the_dropped_patch() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 100, "height": 60})).unwrap();
         app.run("paint.pencil", json!({"points": [[16, 30], [28, 30]], "size": 4, "color": "#0000ff"})).unwrap();
         app.run("select.lasso", json!({"points": [[6, 14], [38, 14], [38, 46], [6, 46]]})).unwrap();
@@ -294,7 +294,7 @@ mod tests {
     /// `step` path consume it. Coverage instrumentation can make a solve much slower than a
     /// fixed polling loop; the watchdog bounds a stuck worker without setting its expected speed. Returns the first
     /// shown result whose key is not `skip` (a raw key; 0 takes any).
-    fn wait_for(app: &mut PhotocraftApp, now: &mut f64, skip: u64) -> Option<(Arc<Document>, u64)> {
+    fn wait_for(app: &mut PatronusPhotoApp, now: &mut f64, skip: u64) -> Option<(Arc<Document>, u64)> {
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(300);
         loop {
             let shown = step(app, *now);
@@ -318,7 +318,7 @@ mod tests {
 
     #[test]
     fn a_large_selection_shows_a_coarse_result_then_the_exact_one() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         // The selection is just past the engine's full-resolution preview budget (256 x 256 pixels), the one condition
         // for the coarse stage; the solve's cost grows with the selection and the canvas, so both stay as small as the
         // move to x 250..507 allows (#15652).
@@ -355,7 +355,7 @@ mod tests {
 
     #[test]
     fn a_failed_preview_is_not_retried() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 100, "height": 60})).unwrap();
         app.run("select.rect", json!({"x": 6, "y": 14, "width": 32, "height": 32})).unwrap();
         app.run("layer.lockLayers", json!({"pixels": true})).unwrap();

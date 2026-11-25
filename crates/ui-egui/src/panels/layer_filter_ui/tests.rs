@@ -1,13 +1,13 @@
-//! The Layers panel filter over PhotoCraft's layers: what the app adds to `listed` (the fill rule,
+//! The Layers panel filter over Patronus Photo's layers: what the app adds to `listed` (the fill rule,
 //! missing links) and the control channel's reading of the criteria (`patched`).
 
 use craft::layers::ui::filter::{EffectKind, FilterBy, FilterKind, LayerAttribute, LayerFilter, SmartKind};
-use photocraft_color::BlendMode;
-use photocraft_doc::{Document, LabelColor, Layer};
-use photocraft_engine::Session;
+use patronusphoto_color::BlendMode;
+use patronusphoto_doc::{Document, LabelColor, Layer};
+use patronusphoto_engine::Session;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::panels::layers_tree::ui_label;
 
 /// `doc`'s layers, top to bottom, groups before their contents.
@@ -25,7 +25,7 @@ fn top_down(doc: &Document) -> Vec<&Layer> {
 
 /// The names the Layers panel lists under `app`'s filter, top to bottom: every layer while the
 /// filter is off, else those `PhotoLayers::listed` keeps.
-pub(super) fn listed_app(app: &PhotocraftApp) -> Vec<String> {
+pub(super) fn listed_app(app: &PatronusPhotoApp) -> Vec<String> {
     use craft::layers::ui::tree::LayerTree;
     let filter = app.ui.layer_filter.clone();
     let st = app.session.active().unwrap();
@@ -37,7 +37,7 @@ pub(super) fn listed_app(app: &PhotocraftApp) -> Vec<String> {
 pub(super) fn listed(doc: &Document, f: &LayerFilter) -> Vec<String> {
     let mut s = Session::new();
     s.add_document(doc.clone(), None);
-    let mut app = PhotocraftApp::new(s, crate::Services::default());
+    let mut app = PatronusPhotoApp::new(s, crate::Services::default());
     app.ui.layer_filter = f.clone();
     listed_app(&app)
 }
@@ -132,7 +132,7 @@ fn patched_reads_the_protocol_and_refuses_bad_values() {
 fn art_file() -> (tempfile::TempDir, std::path::PathBuf) {
     let directory = tempfile::tempdir().unwrap();
     let file = directory.path().join("art.png");
-    let mut s = photocraft_engine::Session::new();
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 8, "height": 8, "background": "#ff0000"})).unwrap();
     s.execute("file.saveACopy", json!({"path": file.to_string_lossy(), "layers": false})).unwrap();
     (directory, file)
@@ -140,8 +140,8 @@ fn art_file() -> (tempfile::TempDir, std::path::PathBuf) {
 
 /// "Linked art" (linked to `file`) above "Embedded art" (a copy of `file`), "Plain" and
 /// "Background".
-fn smart_session(file: &std::path::Path) -> photocraft_engine::Session {
-    let mut s = photocraft_engine::Session::new();
+fn smart_session(file: &std::path::Path) -> patronusphoto_engine::Session {
+    let mut s = patronusphoto_engine::Session::new();
     s.execute("file.new", json!({"width": 32, "height": 32})).unwrap();
     s.execute("layer.new.layer", json!({"name": "Plain"})).unwrap();
     for (command, name) in [("file.placeEmbedded", "Embedded art"), ("file.placeLinked", "Linked art")] {
@@ -155,8 +155,8 @@ fn smart_session(file: &std::path::Path) -> photocraft_engine::Session {
 #[test]
 fn the_smart_object_filter_lists_linked_missing_and_embedded_smart_objects() {
     let (_directory, file) = art_file();
-    let mut app = PhotocraftApp::new(smart_session(&file), crate::Services::default());
-    let by_smart = |app: &mut PhotocraftApp, smart: &[SmartKind]| {
+    let mut app = PatronusPhotoApp::new(smart_session(&file), crate::Services::default());
+    let by_smart = |app: &mut PatronusPhotoApp, smart: &[SmartKind]| {
         app.ui.layer_filter = filter(FilterBy::SmartObject, |f| f.smart = smart.to_vec());
         listed_app(app)
     };

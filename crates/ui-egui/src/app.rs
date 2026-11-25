@@ -1,6 +1,6 @@
 use super::services::{ExportSettings, FormatChoices, SAVE_OPTIONS_OPEN, SaveKind, Services, plain_raster, saved_revision_after_write};
 use super::{
-    DocId, Document, HashMap, PhotocraftApp, Session, UiState, Value, actions, canvas, delete_layer_prompt, discard_ui, file_open, gpu_canvas, gpu_status,
+    DocId, Document, HashMap, PatronusPhotoApp, Session, UiState, Value, actions, canvas, delete_layer_prompt, discard_ui, file_open, gpu_canvas, gpu_status,
     histogram_panel, i18n, jobs_ui, json, kys_import, last_brush, layers_panel_ui, mask_thumbs_ui, mask_trash_prompt, monitor_status, native_menu, notices,
     open_prompt, paint_mouse, panel_docking, panels, prefs_ui, preset_files_ui, screen_picker, shortcuts, smart_svg_ui, state, stroke_trace, stylus, theme,
     tool_memory, transform_tool, type_tool, type_transform, updates_ui, vector_ui, view_cmds, work_area,
@@ -24,7 +24,7 @@ mod view;
 pub(crate) use targets::adjustment_layer_active;
 pub(crate) use thumbs::layer_thumb_frame;
 
-impl PhotocraftApp {
+impl PatronusPhotoApp {
     /// Creates the application state without a window: it makes the one context it runs on,
     /// installs the framework on it ([`Self::setup_context`], the default theme) and keeps it. The
     /// desktop and web apps build theirs with [`Self::with_context`].
@@ -233,7 +233,7 @@ impl PhotocraftApp {
             live_tokens: theme::live::LiveTokens::from_env(),
         };
         #[cfg(all(test, not(target_arch = "wasm32")))]
-        photocraft_raster::spill::use_test_volume_space();
+        patronusphoto_raster::spill::use_test_volume_space();
         // Saved preferences are in place before the first frame; recovery starts in upkeep.
         prefs_ui::load(&mut app);
         // The workspace set reads the loaded preferences (and moves the earlier saves into it).
@@ -246,7 +246,7 @@ impl PhotocraftApp {
         // After the saved preferences, which say whether the set was already offered.
         kys_import::offer(&mut app);
         // File › Scripts › Script Events Manager: "Start Application".
-        photocraft_engine::automate_cmds::fire_event(&mut app.session, "startApplication");
+        patronusphoto_engine::automate_cmds::fire_event(&mut app.session, "startApplication");
         Box::new(app)
     }
 
@@ -257,7 +257,7 @@ impl PhotocraftApp {
     }
 }
 
-impl eframe::App for PhotocraftApp {
+impl eframe::App for PatronusPhotoApp {
     fn on_exit(&mut self) {
         if let Err(err) = tool_memory::save_on_exit(self) {
             log::warn!("Preferences: could not save the final tool state: {err}");
@@ -303,11 +303,11 @@ impl eframe::App for PhotocraftApp {
             self.framework.test_body = Some(body);
             return;
         }
-        photocraft_compose::discard_unreadable_pixel_caches();
-        if let Err(error) = photocraft_raster::spill::check_integrity() {
+        patronusphoto_compose::discard_unreadable_pixel_caches();
+        if let Err(error) = patronusphoto_raster::spill::check_integrity() {
             self.ui.status = error;
             self.ui.status_error = true;
-        } else if let Some(error) = photocraft_raster::spill::last_error() {
+        } else if let Some(error) = patronusphoto_raster::spill::last_error() {
             self.ui.status = error;
             self.ui.status_error = true;
         }
@@ -317,7 +317,7 @@ impl eframe::App for PhotocraftApp {
 
 /// The boxed app is what the test harness holds: the 85 KiB app lives in one heap allocation, not in
 /// every frame between the test and the harness's first pass.
-impl eframe::App for Box<PhotocraftApp> {
+impl eframe::App for Box<PatronusPhotoApp> {
     fn on_exit(&mut self) {
         (**self).on_exit();
     }

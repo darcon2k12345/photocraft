@@ -1,5 +1,5 @@
 [package]
-name = "photocraft-ui-egui"
+name = "patronusphoto-ui-egui"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,7 +9,7 @@ workspace = true
 
 [features]
 # craft's component derives gate their story-suite registrations on a crate's own `suite` feature
-# (storytold/craft-libs#2363); without one they need craft's test kit in every build. PhotoCraft runs
+# (storytold/craft-libs#2363); without one they need craft's test kit in every build. Patronus Photo runs
 # no craft story suite, so this stays off.
 suite = ["craft/suite"]
 
@@ -19,29 +19,29 @@ craft-print = { workspace = true }
 craft = { workspace = true, features = ["ui", "layers", "color-ui", "draw", "imaging", "window", "keymap", "automation", "theme-store", "print", "menu", "timeline", "text", "text-font-picker", "font-manager", "quit", "cms"] }
 # Interface translations over the embedded craft-i18n catalogs (`build.rs`, `src/i18n.rs`).
 craft-i18n = { workspace = true }
-photocraft-geom = { workspace = true }
-photocraft-color = { workspace = true }
-photocraft-raster = { workspace = true }
-photocraft-doc = { workspace = true }
-photocraft-compose = { workspace = true }
-photocraft-gpu = { workspace = true }
-photocraft-engine = { workspace = true }
-photocraft-io = { workspace = true }
-photocraft-plugins = { workspace = true }
-photocraft-algo = { workspace = true }
-photocraft-text = { workspace = true }
-photocraft-vector = { workspace = true }
+patronusphoto-geom = { workspace = true }
+patronusphoto-color = { workspace = true }
+patronusphoto-raster = { workspace = true }
+patronusphoto-doc = { workspace = true }
+patronusphoto-compose = { workspace = true }
+patronusphoto-gpu = { workspace = true }
+patronusphoto-engine = { workspace = true }
+patronusphoto-io = { workspace = true }
+patronusphoto-plugins = { workspace = true }
+patronusphoto-algo = { workspace = true }
+patronusphoto-text = { workspace = true }
+patronusphoto-vector = { workspace = true }
 # Only MAX_BRUSH_SIZE: `ui.set brushSize` validates against the Brush Settings range up front.
-photocraft-paint = { workspace = true }
+patronusphoto-paint = { workspace = true }
 # Reading files to open them (bounded reads, a clear error for files larger than memory).
-photocraft-format = { workspace = true }
-# Decoding the brand mark's PNG (`brand.rs`); already linked through photocraft-io.
-photocraft-codecs = { workspace = true }
-photocraft-formats = { workspace = true }
+patronusphoto-format = { workspace = true }
+# Decoding the brand mark's PNG (`brand.rs`); already linked through patronusphoto-io.
+patronusphoto-codecs = { workspace = true }
+patronusphoto-formats = { workspace = true }
 # Reading embedded thumbnail resources (1036/1033) for recent files in Home screen.
 craft-psd = { workspace = true }
 # `serde`: the dialog state the control channel and the saved memories read holds `egui::Id`s. Asked for
-# here so this crate builds on its own (`cargo test -p photocraft-ui-egui`) and in the browser build.
+# here so this crate builds on its own (`cargo test -p patronusphoto-ui-egui`) and in the browser build.
 egui = { workspace = true, features = ["serde"] }
 egui_extras = { version = "0.37", default-features = false, features = ["svg"] }
 eframe = { workspace = true, features = ["wgpu", "accesskit", "clipboard"] }
@@ -69,15 +69,15 @@ sys-locale = "=0.3.2"
 winsafe = { version = "=0.0.29", default-features = false, features = ["kernel", "dxgi", "advapi"] }
 
 [dev-dependencies]
-photocraft-io = { workspace = true, features = ["testgen"] }
+patronusphoto-io = { workspace = true, features = ["testgen"] }
 # egui's own default fonts in tests, so contexts made with `Context::default()` (no
 # install_fonts) can lay out text.
 egui = { workspace = true, features = ["default_fonts", "monochrome_emoji_fonts"] }
 # Synthetic raw files for the open-time Camera Raw dialog tests.
-photocraft-raw = { workspace = true, features = ["testgen"] }
+patronusphoto-raw = { workspace = true, features = ["testgen"] }
 egui_kittest = { workspace = true, features = ["wgpu", "snapshot", "eframe"] }
 # Benchmark helpers for the `--json` benches `cargo xtask perf` runs (in-process RSS, percentiles).
-photocraft-testkit = { workspace = true }
+patronusphoto-testkit = { workspace = true }
 # examples/perf_scenarios.rs (a 500-brush .abr for the #210 import row) and large_file_bench.rs
 # (the generated 2 GB PSD and 4.4 GB PSB of P20, `fixtures`).
 craft-psd = { workspace = true, features = ["testgen"] }

@@ -1,7 +1,7 @@
 use super::*;
 
 fn roots(name: &str) -> (PathBuf, PathBuf, AuthorizedWorkspace) {
-    let base = std::env::temp_dir().join(format!("photocraft-workspace-{}-{name}", std::process::id()));
+    let base = std::env::temp_dir().join(format!("patronusphoto-workspace-{}-{name}", std::process::id()));
     let inside = base.join("inside");
     let outside = base.join("outside");
     let _ = std::fs::remove_dir_all(&base);
@@ -67,8 +67,9 @@ fn read_growth_is_rejected_at_the_observed_length() {
 #[test]
 fn open_pcraft_loads_a_directory_below_the_read_root() {
     let (inside, _, workspace) = roots("pcraft-dir");
-    let doc = photocraft_doc::Document::new("Native", photocraft_doc::Size::new(16, 12), photocraft_doc::ColorMode::Rgb, photocraft_doc::SampleType::U8);
-    photocraft_format::PcraftWriter::new().save_dir(&doc, &inside.join("native.pcraft"), &photocraft_format::SaveOptions::default()).unwrap();
+    let doc =
+        patronusphoto_doc::Document::new("Native", patronusphoto_doc::Size::new(16, 12), patronusphoto_doc::ColorMode::Rgb, patronusphoto_doc::SampleType::U8);
+    patronusphoto_format::PcraftWriter::new().save_dir(&doc, &inside.join("native.pcraft"), &patronusphoto_format::SaveOptions::default()).unwrap();
     let loaded = workspace.open_pcraft("native.pcraft").unwrap().expect("the directory form loads");
     assert_eq!(loaded.name, doc.name);
     assert_eq!((loaded.size.width, loaded.size.height), (16, 12));
@@ -77,9 +78,10 @@ fn open_pcraft_loads_a_directory_below_the_read_root() {
 #[test]
 fn open_pcraft_reports_zip_files_and_missing_paths_clearly() {
     let (inside, _, workspace) = roots("pcraft-errors");
-    let doc = photocraft_doc::Document::new("Zipped", photocraft_doc::Size::new(4, 4), photocraft_doc::ColorMode::Rgb, photocraft_doc::SampleType::U8);
+    let doc =
+        patronusphoto_doc::Document::new("Zipped", patronusphoto_doc::Size::new(4, 4), patronusphoto_doc::ColorMode::Rgb, patronusphoto_doc::SampleType::U8);
     let zip = inside.join("zipped.pcraft");
-    photocraft_format::PcraftWriter::new().save_path(&doc, &zip, &photocraft_format::SaveOptions::default()).unwrap();
+    patronusphoto_format::PcraftWriter::new().save_path(&doc, &zip, &patronusphoto_format::SaveOptions::default()).unwrap();
     assert!(zip.is_file());
     assert!(workspace.open_pcraft("zipped.pcraft").unwrap().is_none(), "the zip form falls back to the bytes path");
     let error = workspace.open_pcraft("missing.pcraft").unwrap_err().to_string();
@@ -152,10 +154,10 @@ fn write_stream_seeks_back_and_keeps_the_original_on_failure() {
     assert_eq!(std::fs::read(inside.join("notes.txt")).unwrap(), b"keep");
 }
 
-/// #14355: files PhotoCraft can read but never writes (notes, data, rich text, read-only image
-/// formats such as XPM or DICOM) are not "a kind PhotoCraft writes", by name or by their bytes (#9439).
+/// #14355: files Patronus Photo can read but never writes (notes, data, rich text, read-only image
+/// formats such as XPM or DICOM) are not "a kind Patronus Photo writes", by name or by their bytes (#9439).
 #[test]
-fn write_refuses_to_replace_files_photocraft_reads_but_does_not_write() {
+fn write_refuses_to_replace_files_patronusphoto_reads_but_does_not_write() {
     let (inside, _, workspace) = roots("read-only-kinds");
     let files: [(&str, &[u8]); 7] = [
         ("notes.md", b"# keep"),
@@ -258,7 +260,7 @@ fn write_keeps_the_replaced_files_extended_attributes() {
     #[cfg(target_os = "macos")]
     const TAG: &str = "com.apple.metadata:_kMDItemUserTags";
     #[cfg(not(target_os = "macos"))]
-    const TAG: &str = "user.photocraft.test";
+    const TAG: &str = "user.patronusphoto.test";
 
     let (inside, _, workspace) = roots("xattr");
     let path = inside.join("doc.psd");
@@ -725,13 +727,13 @@ fn filesystem_command_paths_and_profiles_fail_closed() {
     assert!(authorize_engine_step("file.open", &serde_json::json!({})).is_err());
     assert!(authorize_engine_step("actions.play", &serde_json::json!({})).is_ok());
     // An allowed command can't reach a denied one by running it on its own behalf.
-    let mut session = photocraft_engine::Session::new();
+    let mut session = patronusphoto_engine::Session::new();
     session.execute("file.new", serde_json::json!({"width": 4, "height": 4})).unwrap();
     session.authorize = Some(authorize_desktop_engine_step);
     let params = serde_json::json!({"to": "grayscale"});
     assert!(authorize_desktop_engine_command("file.automate.conditionalModeChange", &params).is_ok());
     assert!(session.execute("file.automate.conditionalModeChange", params).is_err());
-    assert_eq!(session.active().unwrap().doc.mode, photocraft_engine::doc::ColorMode::Rgb);
+    assert_eq!(session.active().unwrap().doc.mode, patronusphoto_engine::doc::ColorMode::Rgb);
     assert!(authorize_desktop_engine_step("file.saveACopy", &serde_json::json!({})).is_err());
 }
 
@@ -855,19 +857,19 @@ fn automation_rejects_ambient_path_commands_and_preferences() {
 #[test]
 fn registry_filesystem_path_params_are_classified() {
     let probe = serde_json::json!({
-        "path": "/outside/photocraft-probe",
-        "file": "/outside/photocraft-probe.icc",
-        "mapPath": "/outside/photocraft-probe.png",
-        "profile": "/outside/photocraft-probe.icc",
-        "workingRgb": "/outside/photocraft-probe.icc",
-        "workingCmyk": "/outside/photocraft-probe.icc",
-        "workingGray": "/outside/photocraft-probe.icc",
-        "input": "/outside/photocraft-input",
-        "output": "/outside/photocraft-output",
-        "paths": ["/outside/photocraft-probe.psd"],
+        "path": "/outside/patronusphoto-probe",
+        "file": "/outside/patronusphoto-probe.icc",
+        "mapPath": "/outside/patronusphoto-probe.png",
+        "profile": "/outside/patronusphoto-probe.icc",
+        "workingRgb": "/outside/patronusphoto-probe.icc",
+        "workingCmyk": "/outside/patronusphoto-probe.icc",
+        "workingGray": "/outside/patronusphoto-probe.icc",
+        "input": "/outside/patronusphoto-input",
+        "output": "/outside/patronusphoto-output",
+        "paths": ["/outside/patronusphoto-probe.psd"],
     });
     let preference_probe = serde_json::json!({"path": ".scriptEvents", "value": {}});
-    let unclassified: Vec<_> = photocraft_engine::command_specs()
+    let unclassified: Vec<_> = patronusphoto_engine::command_specs()
         .iter()
         .filter(|spec| documents_filesystem_path_params(spec.id, spec.params))
         .filter(|spec| {
@@ -903,7 +905,7 @@ fn svg_smart_handoff_is_memory_only_and_linked_sources_stay_denied() {
     let mut headless = crate::Headless::new();
     headless.command_run("file.new", serde_json::json!({"width": 16, "height": 16})).unwrap();
     let svg = r#"<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><rect width="4" height="4" fill="red"/></svg>"#;
-    let inserted = photocraft_engine::file_cmds::place_bytes(
+    let inserted = patronusphoto_engine::file_cmds::place_bytes(
         &mut headless.session,
         "Artwork.svg",
         svg.as_bytes().to_vec(),
@@ -929,9 +931,9 @@ fn svg_smart_handoff_is_memory_only_and_linked_sources_stay_denied() {
         assert!(headless.command_run(id, ambient).is_err(), "{id}");
     }
     let doc = Arc::make_mut(headless.session.active_mut().unwrap().doc_mut());
-    let id = photocraft_doc::LayerId(layer.as_u64().unwrap());
-    let photocraft_doc::LayerContent::Smart(sm) = &mut doc.layer_mut(id).unwrap().content else { panic!("SVG smart object") };
-    sm.source = photocraft_doc::SmartSource::Linked { path: "/outside/source.svg".into() };
+    let id = patronusphoto_doc::LayerId(layer.as_u64().unwrap());
+    let patronusphoto_doc::LayerContent::Smart(sm) = &mut doc.layer_mut(id).unwrap().content else { panic!("SVG smart object") };
+    sm.source = patronusphoto_doc::SmartSource::Linked { path: "/outside/source.svg".into() };
     let before = headless.session.active().unwrap().doc.clone();
     assert!(headless.command_run("layer.smartObjects.exportSvg", serde_json::json!({"layer": layer})).is_err());
     assert!(headless.command_run("layer.smartObjects.updateSvg", params).is_err());
@@ -949,7 +951,7 @@ fn svg_update_cannot_replay_desktop_lut_file_in_any_shared_instance() {
         let mut headless = crate::Headless::new();
         headless.command_run("file.new", serde_json::json!({"width": 16, "height": 16})).unwrap();
         let svg = r#"<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><rect width="4" height="4" fill="red"/></svg>"#;
-        let pasted = photocraft_engine::file_cmds::place_bytes(
+        let pasted = patronusphoto_engine::file_cmds::place_bytes(
             &mut headless.session,
             "Artwork.svg",
             svg.as_bytes().to_vec(),
@@ -957,7 +959,7 @@ fn svg_update_cannot_replay_desktop_lut_file_in_any_shared_instance() {
             &serde_json::json!({"smartObject":true}),
         )
         .unwrap();
-        let target = photocraft_doc::LayerId(pasted["layer"].as_u64().unwrap());
+        let target = patronusphoto_doc::LayerId(pasted["layer"].as_u64().unwrap());
         let filtered = if shared_only {
             let doc = Arc::make_mut(headless.session.active_mut().unwrap().doc_mut());
             let duplicate = doc.layer(target).unwrap().duplicate();
@@ -973,7 +975,9 @@ fn svg_update_cannot_replay_desktop_lut_file_in_any_shared_instance() {
         let authorization = headless.session.authorize.take();
         headless.session.execute("image.adjustments.colorLookup", serde_json::json!({"file":lut.to_string_lossy()})).unwrap();
         headless.session.authorize = authorization;
-        let photocraft_doc::LayerContent::Smart(sm) = &headless.session.active().unwrap().doc.layer(filtered).unwrap().content else { panic!("smart object") };
+        let patronusphoto_doc::LayerContent::Smart(sm) = &headless.session.active().unwrap().doc.layer(filtered).unwrap().content else {
+            panic!("smart object")
+        };
         assert_eq!(sm.smart_filters.last().unwrap().params["file"], lut.to_string_lossy().as_ref());
         let handoff = headless.command_run("layer.smartObjects.exportSvg", serde_json::json!({"layer":target.0})).unwrap();
         let params = serde_json::json!({"document":handoff["document"],"layer":target.0,"contentsId":handoff["contentsId"],"fingerprint":handoff["fingerprint"],"svg":svg.replace("red","blue")});
@@ -985,7 +989,7 @@ fn svg_update_cannot_replay_desktop_lut_file_in_any_shared_instance() {
         assert_eq!(headless.session.active().unwrap().revision, revision);
         // A hidden stored filter is not executed, so its unused filename grants no access.
         let doc = Arc::make_mut(headless.session.active_mut().unwrap().doc_mut());
-        let photocraft_doc::LayerContent::Smart(sm) = &mut doc.layer_mut(filtered).unwrap().content else { panic!("smart object") };
+        let patronusphoto_doc::LayerContent::Smart(sm) = &mut doc.layer_mut(filtered).unwrap().content else { panic!("smart object") };
         sm.smart_filters.last_mut().unwrap().visible = false;
         assert_eq!(headless.command_run("layer.smartObjects.updateSvg", params).unwrap()["updated"], true);
     }
@@ -998,7 +1002,7 @@ fn svg_update_keeps_inline_and_builtin_smart_filters_working() {
         let mut headless = crate::Headless::new();
         headless.command_run("file.new", serde_json::json!({"width":16,"height":16})).unwrap();
         let svg = r#"<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><rect width="4" height="4" fill="red"/></svg>"#;
-        let pasted = photocraft_engine::file_cmds::place_bytes(
+        let pasted = patronusphoto_engine::file_cmds::place_bytes(
             &mut headless.session,
             "Artwork.svg",
             svg.as_bytes().to_vec(),
@@ -1006,12 +1010,12 @@ fn svg_update_keeps_inline_and_builtin_smart_filters_working() {
             &serde_json::json!({"smartObject":true}),
         )
         .unwrap();
-        let id = photocraft_doc::LayerId(pasted["layer"].as_u64().unwrap());
+        let id = patronusphoto_doc::LayerId(pasted["layer"].as_u64().unwrap());
         headless.command_run("image.adjustments.colorLookup", filter_params).unwrap();
         let handoff = headless.command_run("layer.smartObjects.exportSvg", serde_json::json!({"layer":id.0})).unwrap();
         let result = headless.command_run("layer.smartObjects.updateSvg",serde_json::json!({"document":handoff["document"],"layer":id.0,"contentsId":handoff["contentsId"],"fingerprint":handoff["fingerprint"],"svg":svg.replace("red","blue")})).unwrap();
         assert_eq!(result["updated"], true);
-        let photocraft_doc::LayerContent::Smart(sm) = &headless.session.active().unwrap().doc.layer(id).unwrap().content else { panic!("smart object") };
+        let patronusphoto_doc::LayerContent::Smart(sm) = &headless.session.active().unwrap().doc.layer(id).unwrap().content else { panic!("smart object") };
         assert_eq!(sm.smart_filters.len(), 1);
         assert!(!sm.cache.as_ref().unwrap().content_bounds().is_empty());
     }
@@ -1521,8 +1525,9 @@ fn hardlink_inside_a_root_reads_the_target_but_write_over_replaces_the_link() {
 fn directory_pcraft_uses_ordered_roots_without_falling_back_after_selection() {
     let (library, work, _) = roots("pcraft-ordered");
     let save = |root: &Path, name: &str| {
-        let doc = photocraft_doc::Document::new(name, photocraft_doc::Size::new(4, 4), photocraft_doc::ColorMode::Rgb, photocraft_doc::SampleType::U8);
-        photocraft_format::PcraftWriter::new().save_dir(&doc, &root.join("native.pcraft"), &photocraft_format::SaveOptions::default()).unwrap();
+        let doc =
+            patronusphoto_doc::Document::new(name, patronusphoto_doc::Size::new(4, 4), patronusphoto_doc::ColorMode::Rgb, patronusphoto_doc::SampleType::U8);
+        patronusphoto_format::PcraftWriter::new().save_dir(&doc, &root.join("native.pcraft"), &patronusphoto_format::SaveOptions::default()).unwrap();
     };
     save(&work, "Later");
     let workspace = AuthorizedWorkspace::with_read_roots([library.as_path(), work.as_path()], Some(&work)).unwrap();

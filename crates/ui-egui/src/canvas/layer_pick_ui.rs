@@ -12,7 +12,7 @@ use craft::keymap::Mods;
 use craft::ui::contract::Entry; // PLAN: assumed path of the framework `Entry`
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::state::Tool;
 
 /// The id prefix of a layer row: `layer.select.<layer id>`.
@@ -29,7 +29,7 @@ pub fn is_gesture(tool: Tool, mods: Mods) -> bool {
 }
 
 /// The layers at document point (x, y), topmost first, including text between glyphs.
-pub fn layers_at(app: &mut PhotocraftApp, x: f64, y: f64) -> Vec<(u64, String)> {
+pub fn layers_at(app: &mut PatronusPhotoApp, x: f64, y: f64) -> Vec<(u64, String)> {
     if !(x.is_finite() && y.is_finite()) {
         return Vec::new();
     }
@@ -46,7 +46,7 @@ pub fn entries(layers: &[(u64, String)], active: Option<u64>) -> Vec<Entry<Strin
 }
 
 /// Choose a layer from the menu: select it (one `layer.select`) and close the menu.
-pub fn choose(app: &mut PhotocraftApp, layer: u64) {
+pub fn choose(app: &mut PatronusPhotoApp, layer: u64) {
     app.ui.canvas_tool_menu = None;
     if let Err(e) = app.run("layer.select", json!({"layer": layer, "mode": "replace"})) {
         app.ui.status = e;
@@ -64,8 +64,8 @@ mod tests {
 
     /// 200 × 200: a white Background, "Red" (a square in the middle), and "Hidden" (all over,
     /// hidden). Returns the app and the (background, red, hidden) ids.
-    fn app() -> (Box<PhotocraftApp>, u64, u64, u64) {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    fn app() -> (Box<PatronusPhotoApp>, u64, u64, u64) {
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 200, "height": 200})).unwrap();
         let bg = app.session.active().unwrap().active_layer.unwrap().0;
         app.run("layer.new.layer", json!({"name": "Red"})).unwrap();
@@ -80,7 +80,7 @@ mod tests {
         (app, bg, red, hidden)
     }
 
-    fn layer_ids(app: &PhotocraftApp) -> Option<Vec<u64>> {
+    fn layer_ids(app: &PatronusPhotoApp) -> Option<Vec<u64>> {
         match app.ui.canvas_tool_menu.as_ref().map(|m| &m.kind) {
             Some(MenuKind::Layers { layers }) => Some(layers.iter().map(|l| l.0).collect()),
             _ => None,
@@ -100,7 +100,7 @@ mod tests {
     #[test]
     fn nothing_there_or_bad_input_opens_nothing() {
         let (mut a, _, _, _) = app();
-        let open = |app: &mut PhotocraftApp, x: f64, y: f64| crate::canvas_tool_menu::open_at(app, Tool::Move, Mods::NONE, pos2(0.0, 0.0), [x, y], None);
+        let open = |app: &mut PatronusPhotoApp, x: f64, y: f64| crate::canvas_tool_menu::open_at(app, Tool::Move, Mods::NONE, pos2(0.0, 0.0), [x, y], None);
         for (x, y) in [(-5.0, 10.0), (500.0, 500.0), (f64::NAN, 1.0), (1.0, f64::INFINITY), (1e300, -1e300)] {
             assert!(layers_at(&mut a, x, y).is_empty(), "({x}, {y})");
         }
@@ -115,7 +115,7 @@ mod tests {
             a.ui.canvas_tool_menu = None;
         }
         // A transparent document: nothing to list.
-        let mut b = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut b = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         assert!(!open(&mut b, 1.0, 1.0), "no document");
         b.run("file.new", json!({"width": 20, "height": 20, "background": "transparent"})).unwrap();
         assert!(!open(&mut b, 1.0, 1.0));
@@ -124,11 +124,11 @@ mod tests {
         assert!(!a.ui.status.is_empty());
     }
 
-    fn harness(a: Box<PhotocraftApp>) -> Harness<'static, Box<PhotocraftApp>> {
+    fn harness(a: Box<PatronusPhotoApp>) -> Harness<'static, Box<PatronusPhotoApp>> {
         let mut a = a;
         a.sync_views();
         let mut h = Harness::builder().with_context(a.ctx().clone()).with_size(vec2(1000.0, 700.0)).build_ui_state(
-            |ui, app: &mut Box<PhotocraftApp>| {
+            |ui, app: &mut Box<PatronusPhotoApp>| {
                 let ctx = ui.ctx().clone();
                 if !ctx.fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                     return;
@@ -137,12 +137,12 @@ mod tests {
             },
             a,
         );
-        PhotocraftApp::setup_context(&h.ctx, crate::theme::AppTheme::default());
+        PatronusPhotoApp::setup_context(&h.ctx, crate::theme::AppTheme::default());
         h.run_steps(4);
         h
     }
 
-    fn right_click(h: &mut Harness<'static, Box<PhotocraftApp>>, p: Pos2, modifiers: Modifiers) {
+    fn right_click(h: &mut Harness<'static, Box<PatronusPhotoApp>>, p: Pos2, modifiers: Modifiers) {
         h.event(egui::Event::ModifiersChanged(modifiers));
         h.event(egui::Event::PointerMoved(p));
         h.run_steps(1);

@@ -2,8 +2,8 @@
 use super::*;
 use crate::canvas::{ToolEvent, testing, tool_event};
 
-fn app() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width":600,"height":400})).unwrap();
     app.sync_views();
     app.ui.extras.snap = false;
@@ -11,15 +11,15 @@ fn app() -> Box<PhotocraftApp> {
     app
 }
 
-fn escape(app: &mut PhotocraftApp) {
+fn escape(app: &mut PatronusPhotoApp) {
     testing::key(app, egui::Key::Escape, egui::Modifiers::NONE);
 }
 
-fn entries(app: &PhotocraftApp) -> Vec<String> {
+fn entries(app: &PatronusPhotoApp) -> Vec<String> {
     app.session.active().unwrap().history.entries()
 }
 
-fn frames(app: &PhotocraftApp) -> Vec<[f64; 6]> {
+fn frames(app: &PatronusPhotoApp) -> Vec<[f64; 6]> {
     let st = app.session.active().unwrap();
     st.doc.walk().into_iter().filter_map(|(_, _, l)| l.frame.as_ref().map(|f| f.transform.m)).collect()
 }

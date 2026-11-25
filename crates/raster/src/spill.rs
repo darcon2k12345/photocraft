@@ -1174,7 +1174,7 @@ pub fn settle() {
 
 fn log_error(msg: &str) {
     #[cfg(not(target_arch = "wasm32"))]
-    eprintln!("photocraft: {msg}");
+    eprintln!("patronusphoto: {msg}");
     #[cfg(target_arch = "wasm32")]
     let _ = msg;
 }
@@ -1195,7 +1195,7 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn free_space_keeps_a_trailing_dot_folder() {
-        let base = std::fs::canonicalize(std::env::temp_dir()).unwrap().join(format!("photocraft-dot-{}", std::process::id()));
+        let base = std::fs::canonicalize(std::env::temp_dir()).unwrap().join(format!("patronusphoto-dot-{}", std::process::id()));
         let dir = base.join("x.");
         if std::fs::create_dir_all(&dir).is_err() {
             let _ = std::fs::remove_dir_all(&base);
@@ -1237,7 +1237,7 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn free_space_reads_a_folder_past_max_path() {
-        let base = std::fs::canonicalize(std::env::temp_dir()).unwrap().join(format!("photocraft-long-{}", std::process::id()));
+        let base = std::fs::canonicalize(std::env::temp_dir()).unwrap().join(format!("patronusphoto-long-{}", std::process::id()));
         let mut deep = base.clone();
         while deep.as_os_str().len() <= 300 {
             deep.push("a".repeat(40));
@@ -1255,7 +1255,7 @@ mod tests {
     #[test]
     fn free_space_reads_a_non_utf8_folder() {
         use std::os::windows::ffi::OsStringExt;
-        let mut wide: Vec<u16> = format!("photocraft-nonutf8-{}-", std::process::id()).encode_utf16().collect();
+        let mut wide: Vec<u16> = format!("patronusphoto-nonutf8-{}-", std::process::id()).encode_utf16().collect();
         wide.push(0xD800);
         let dir = std::env::temp_dir().join(std::ffi::OsString::from_wide(&wide));
         if std::fs::create_dir_all(&dir).is_err() {
@@ -1310,7 +1310,7 @@ mod tests {
     #[cfg(any(unix, windows))]
     #[test]
     fn free_space_of_a_missing_directory_is_unknown() {
-        let missing = std::env::temp_dir().join(format!("photocraft-missing-{}", std::process::id()));
+        let missing = std::env::temp_dir().join(format!("patronusphoto-missing-{}", std::process::id()));
         assert_eq!(free_space(&missing), None);
     }
 
@@ -1326,7 +1326,7 @@ mod tests {
     static CAPPED_GATE: (Mutex<bool>, Condvar) = (Mutex::new(false), Condvar::new());
 
     fn hold_capped(dir: &Path) {
-        if dir.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.starts_with("photocraft-capped-")) {
+        if dir.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.starts_with("patronusphoto-capped-")) {
             let mut open = CAPPED_GATE.0.lock().unwrap_or_else(PoisonError::into_inner);
             while !*open {
                 open = CAPPED_GATE.1.wait(open).unwrap_or_else(PoisonError::into_inner);
@@ -1337,13 +1337,13 @@ mod tests {
     #[test]
     fn query_threads_stay_capped_and_single_flight() {
         set_query_hook_for_tests(Some(hold_capped));
-        let base = std::env::temp_dir().join(format!("photocraft-capped-{}", std::process::id()));
+        let base = std::env::temp_dir().join(format!("patronusphoto-capped-{}", std::process::id()));
         let first = start_query(&base, false).unwrap();
         let again = start_query(&base, false).unwrap();
         assert!(Arc::ptr_eq(&first.0, &again.0) && first.1 == again.1, "the same question must not start a second thread");
         let mut started = 1;
         for i in 0..2 * MAX_QUERIES {
-            if start_query(&base.join(format!("photocraft-capped-{i}")), false).is_some() {
+            if start_query(&base.join(format!("patronusphoto-capped-{i}")), false).is_some() {
                 started += 1;
             }
         }
@@ -1399,7 +1399,7 @@ mod tests {
 
     #[test]
     fn failed_read_retains_backing_and_blocks_commit_until_repaired() {
-        let dir = std::env::temp_dir().join(format!("photocraft-read-failure-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("patronusphoto-read-failure-{}", std::process::id()));
         let file = Arc::new(ScratchFile::create(&dir).unwrap());
         let mut tile = crate::Tile { cell: Cell::new(vec![73; 1024]) };
         let generation = read_error_generation();

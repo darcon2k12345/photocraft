@@ -11,12 +11,12 @@
 
 use craft_psd::descriptor::{Descriptor, Id, UnicodeString, Value as D};
 use craft_psd::text::envelope;
-use photocraft_color::{Color, ColorMode};
-use photocraft_doc::TextLayer;
-use photocraft_doc::text::{
+use patronusphoto_color::{Color, ColorMode};
+use patronusphoto_doc::TextLayer;
+use patronusphoto_doc::text::{
     AntiAlias, Caps, CharStyle, FontBaseline, Kerning, Orientation, ParagraphRun, ParagraphStyle, TextAlign, TextRun, TextShape, TextWarp,
 };
-use photocraft_geom::{Affine, Point};
+use patronusphoto_geom::{Affine, Point};
 
 use crate::engine_data::{self as ed, Value as E};
 use crate::fonts::guess_from_postscript;
@@ -208,7 +208,7 @@ mod nonfinite_tests {
     /// #5645: `FontBaseline` (1 superscript, 2 subscript) is read and written back.
     #[test]
     fn font_baseline_round_trips() {
-        use photocraft_doc::text::FontBaseline;
+        use patronusphoto_doc::text::FontBaseline;
         let d = parse(b"<< /FontBaseline 2 >>").unwrap();
         assert_eq!(char_style(&[], &d, &[], 1.0).baseline, FontBaseline::Subscript);
         let d = parse(b"<< /FontBaseline 1 >>").unwrap();
@@ -220,7 +220,8 @@ mod nonfinite_tests {
 
     #[test]
     fn area_path_that_is_not_finite_saves_as_point_text() {
-        let path = photocraft_doc::vector::Path::new(vec![photocraft_doc::vector::Subpath::polygon(&[(0.0, 0.0), (f64::NAN, 0.0), (10.0, f64::INFINITY)])]);
+        let path =
+            patronusphoto_doc::vector::Path::new(vec![patronusphoto_doc::vector::Subpath::polygon(&[(0.0, 0.0), (f64::NAN, 0.0), (10.0, f64::INFINITY)])]);
         let layer = TextLayer {
             text: "x".into(),
             runs: vec![TextRun { len: 1, style: CharStyle { size_pt: 12.0, ..Default::default() } }],

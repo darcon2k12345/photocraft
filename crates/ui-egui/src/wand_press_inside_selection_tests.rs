@@ -3,17 +3,17 @@
 //! Add mode and Shift keep today's behaviour.
 
 use egui::Modifiers;
-use photocraft_geom::Rect;
+use patronusphoto_geom::Rect;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::{ToolEvent, tool_event};
 use crate::state::Tool;
 
 /// A 500 x 400 document with an opaque red block at 100,100–300,250 on its own layer, selected
 /// with the wand.
-fn selected() -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn selected() -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 500, "height": 400})).unwrap();
     app.sync_views();
     app.run("layer.new.layer", json!({})).unwrap();
@@ -27,28 +27,28 @@ fn selected() -> Box<PhotocraftApp> {
     app
 }
 
-fn click(app: &mut PhotocraftApp, p: [f64; 2], mods: Modifiers) {
+fn click(app: &mut PatronusPhotoApp, p: [f64; 2], mods: Modifiers) {
     tool_event(app, ToolEvent::Down { x: p[0], y: p[1], pressure: 1.0 }, mods);
     tool_event(app, ToolEvent::Up { x: p[0], y: p[1] }, mods);
 }
 
-fn drag(app: &mut PhotocraftApp, from: [f64; 2], to: [f64; 2], mods: Modifiers) {
+fn drag(app: &mut PatronusPhotoApp, from: [f64; 2], to: [f64; 2], mods: Modifiers) {
     tool_event(app, ToolEvent::Down { x: from[0], y: from[1], pressure: 1.0 }, mods);
     tool_event(app, ToolEvent::Move { x: (from[0] + to[0]) / 2.0, y: (from[1] + to[1]) / 2.0, pressure: 1.0 }, mods);
     tool_event(app, ToolEvent::Move { x: to[0], y: to[1], pressure: 1.0 }, mods);
     tool_event(app, ToolEvent::Up { x: to[0], y: to[1] }, mods);
 }
 
-fn selection(app: &PhotocraftApp) -> Option<Rect> {
+fn selection(app: &PatronusPhotoApp) -> Option<Rect> {
     let st = app.session.active()?;
     st.doc.selection.as_ref().map(|s| s.content_bounds()).filter(|b| !b.is_empty())
 }
 
-fn last_step(app: &PhotocraftApp) -> Option<String> {
+fn last_step(app: &PatronusPhotoApp) -> Option<String> {
     app.session.active()?.history.entries().last().map(ToString::to_string)
 }
 
-fn alpha_at(app: &PhotocraftApp, x: i32, y: i32) -> f32 {
+fn alpha_at(app: &PatronusPhotoApp, x: i32, y: i32) -> f32 {
     let st = app.session.active().unwrap();
     st.doc.layer(st.active_layer.unwrap()).unwrap().surface().unwrap().pixel(x, y)[3]
 }

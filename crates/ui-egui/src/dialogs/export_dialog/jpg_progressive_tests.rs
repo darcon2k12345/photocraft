@@ -4,8 +4,8 @@ use super::*;
 
 /// A 32 x 24 document of solid colour blocks, so JPEG error stays small away from the edges.
 fn blocks_doc() -> Document {
-    use photocraft_doc::{Color, ColorMode, SampleType, Size};
-    use photocraft_geom::Rect;
+    use patronusphoto_doc::{Color, ColorMode, SampleType, Size};
+    use patronusphoto_geom::Rect;
     let mut doc = Document::with_background("blocks", Size::new(32, 24), ColorMode::Rgb, SampleType::U8, Color::WHITE);
     let surf = doc.layers[0].surface_mut().unwrap();
     surf.fill_rect(Rect::new(0, 0, 16, 16), &[1.0, 0.0, 0.0, 1.0]);
@@ -16,8 +16,8 @@ fn blocks_doc() -> Document {
 
 fn export_jpg(doc: &Document, quality: u32) -> Vec<u8> {
     let f = json!({"format": "jpg", "quality": quality, "scale": 100, "embedProfile": false}).as_object().unwrap().clone();
-    let out = super::export_document(doc, &f, None, &photocraft_engine::color_cmds::document_profile(doc)).unwrap();
-    photocraft_io::export(&out, "x.jpg", &settings(&f).io_options()).unwrap().bytes
+    let out = super::export_document(doc, &f, None, &patronusphoto_engine::color_cmds::document_profile(doc)).unwrap();
+    patronusphoto_io::export(&out, "x.jpg", &settings(&f).io_options()).unwrap().bytes
 }
 
 /// The main frame's marker and component sampling factors, skipping whole segments.
@@ -59,8 +59,9 @@ fn progressive_export_decodes_back_to_the_source() {
     // Every pixel within 2 levels at the dialog default. Quality 20 quantises saturated flat
     // colours and their edges coarsely, so there only the block centres are held to the colour.
     for (quality, tolerance) in [(85, 2), (20, 64)] {
-        let decoded =
-            photocraft_codecs::decode(&export_jpg(&doc, quality)).unwrap().convert(photocraft_codecs::ChannelLayout::Rgb, photocraft_codecs::SampleType::U8);
+        let decoded = patronusphoto_codecs::decode(&export_jpg(&doc, quality))
+            .unwrap()
+            .convert(patronusphoto_codecs::ChannelLayout::Rgb, patronusphoto_codecs::SampleType::U8);
         assert_eq!(decoded.dimensions(), (32, 24));
         for (i, px) in decoded.data().as_chunks::<3>().0.iter().enumerate() {
             let (x, y) = (i % 32, i / 32);

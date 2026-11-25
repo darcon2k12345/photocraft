@@ -13,7 +13,7 @@ use craft::keymap::Mods;
 use craft::ui::canvas::ToolPointer;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 
 /// ⌘ + ⌥ + ⌃ held together, as the window host reports the keys.
 fn chord(mods: Mods) -> bool {
@@ -27,13 +27,13 @@ pub fn is_gesture(mods: egui::Modifiers) -> bool {
 
 /// Whether the press is a quick pick: the chord is held and a document is open. The tool preflight asks this to
 /// take the press before any tool or stand-in does.
-pub fn takes(app: &PhotocraftApp, mods: Mods) -> bool {
+pub fn takes(app: &PatronusPhotoApp, mods: Mods) -> bool {
     chord(mods) && app.session.active().is_some()
 }
 
 /// Picks the layer under `doc` for a press with the chord held; true when the press was a pick (the preflight then
 /// answers `ToolAction::Done`). A failed pick leaves the layer and shows the error in the status bar.
-pub fn press(app: &mut PhotocraftApp, pointer: &ToolPointer, doc: Point) -> bool {
+pub fn press(app: &mut PatronusPhotoApp, pointer: &ToolPointer, doc: Point) -> bool {
     if !takes(app, pointer.mods) {
         return false;
     }
@@ -47,7 +47,7 @@ pub fn press(app: &mut PhotocraftApp, pointer: &ToolPointer, doc: Point) -> bool
 #[cfg(test)]
 mod tests {
     use egui::Modifiers;
-    use photocraft_geom::Rect;
+    use patronusphoto_geom::Rect;
     use serde_json::json;
 
     use super::*;
@@ -57,8 +57,8 @@ mod tests {
     const PICK: Modifiers = Modifiers { alt: true, ctrl: true, shift: false, mac_cmd: true, command: true };
 
     /// A 64×64 document with A painted at (8..24)² and B at (40..56)²; B is active.
-    fn app() -> (Box<PhotocraftApp>, photocraft_doc::LayerId) {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    fn app() -> (Box<PatronusPhotoApp>, patronusphoto_doc::LayerId) {
+        let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), crate::Services::default());
         testing::on_a_mac(&app);
         app.session.execute("file.new", json!({"width": 64, "height": 64})).unwrap();
         app.sync_views();

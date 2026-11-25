@@ -26,15 +26,15 @@ use craft::ui::canvas::RasterSource;
 use craft::ui::dialog::{DialogId, HostedWorkspace};
 use craft::ui::runtime::memory::SaveKey;
 use craft::ui::runtime::pending::Job as PendingJob;
-use photocraft_doc::{Document, LayerId};
-use photocraft_engine::jobs::JobCtx;
-use photocraft_engine::select_mask_edits::{self, MAX_EDIT_POINTS, MAX_EDITS};
-use photocraft_engine::smartselect_cmds::{MAX_STROKE_POINTS, MAX_STROKES};
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use patronusphoto_doc::{Document, LayerId};
+use patronusphoto_engine::jobs::JobCtx;
+use patronusphoto_engine::select_mask_edits::{self, MAX_EDIT_POINTS, MAX_EDITS};
+use patronusphoto_engine::smartselect_cmds::{MAX_STROKE_POINTS, MAX_STROKES};
+use patronusphoto_geom::Rect;
+use patronusphoto_raster::Surface;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PatronusPhotoApp;
 use crate::canvas::display_image;
 use crate::dialogs::shared_picture::SharedPicture;
 use crate::outline::SurfaceMask;
@@ -43,7 +43,7 @@ use crate::outline::SurfaceMask;
 const PROXY_SIDE: usize = 1600;
 const CMD: &str = crate::select_mask_view::COMMAND;
 /// Where Remember Settings keeps the settings (the framework's SAVED tier).
-const REMEMBERED: SaveKey = SaveKey::new("photocraft.select.refineEdge.workspace");
+const REMEMBERED: SaveKey = SaveKey::new("patronusphoto.select.refineEdge.workspace");
 
 type Hosted = HostedWorkspace<SelectMaskWorkspace>;
 
@@ -153,7 +153,7 @@ pub(crate) struct PcSelectMaskSource {
     target_mask: bool,
     /// Document pixels per reduced-copy pixel without High Quality Preview.
     k: u32,
-    display: Option<Arc<photocraft_engine::display_color::CanvasDisplay>>,
+    display: Option<Arc<patronusphoto_engine::display_color::CanvasDisplay>>,
     image: Arc<SharedPicture>,
     shared: Arc<Shared>,
 }
@@ -164,13 +164,13 @@ impl PcSelectMaskSource {
         revision: u64,
         layer: Option<LayerId>,
         target_mask: bool,
-        display: Option<Arc<photocraft_engine::display_color::CanvasDisplay>>,
+        display: Option<Arc<patronusphoto_engine::display_color::CanvasDisplay>>,
     ) -> Self {
         let size = [doc.size.width, doc.size.height];
         let k = u32::try_from((size[0].max(size[1]) as usize).div_ceil(PROXY_SIDE).max(1)).unwrap_or(u32::MAX);
         let pixels = PixelSize::new(size[0], size[1]);
         let image = SharedPicture::new(pixels);
-        image.replace(display_image(display.as_deref(), &photocraft_compose::flatten(&doc)), 1);
+        image.replace(display_image(display.as_deref(), &patronusphoto_compose::flatten(&doc)), 1);
         let shared = Arc::new(Shared {
             view: SharedPicture::new(pixels),
             ants: SharedMask::new(k),
@@ -183,7 +183,7 @@ impl PcSelectMaskSource {
     }
 
     /// The source over the active document as it is now.
-    fn of_active(app: &PhotocraftApp, layer: Option<LayerId>, target_mask: bool) -> Option<Self> {
+    fn of_active(app: &PatronusPhotoApp, layer: Option<LayerId>, target_mask: bool) -> Option<Self> {
         let st = app.session.active()?;
         let display = crate::canvas::canvas_display(app, &st.doc, None).0;
         Some(Self::new(Arc::clone(&st.doc), st.revision, layer, target_mask, display))
@@ -241,7 +241,7 @@ impl SelectMaskSource for PcSelectMaskSource {
                     // Only the Marching Ants view keeps the refined selection; switching to it runs a new preview.
                     shared.ants.set(selection.filter(|_| ants_wanted), size, k);
                     *lock(&shared.cache) = Some(done.cache);
-                    shared.view.replace(display_image(display.as_deref(), &photocraft_compose::flatten(&done.shown)), k);
+                    shared.view.replace(display_image(display.as_deref(), &patronusphoto_compose::flatten(&done.shown)), k);
                     *lock(&shared.error) = None;
                     Ok(PreviewDone::new(started.elapsed()))
                 }
@@ -292,7 +292,7 @@ fn command_params(cmd: &SelectMaskCommand, target_mask: bool) -> Value {
 
 /// The facts of the open workspace for the control surface (merged with the workspace's own fields; a refused OK's
 /// message is the workspace's own, shown through `ok_failed`).
-pub(crate) fn describe(app: &PhotocraftApp) -> Option<Value> {
+pub(crate) fn describe(app: &PatronusPhotoApp) -> Option<Value> {
     let shared = &source(app)?.shared;
     Some(json!({
         "proxyScale": shared.ants.reduction(),
@@ -303,17 +303,17 @@ pub(crate) fn describe(app: &PhotocraftApp) -> Option<Value> {
 }
 
 /// The source of the open workspace: the app keeps its own handle beside the dialog's.
-pub(crate) fn source(app: &PhotocraftApp) -> Option<&PcSelectMaskSource> {
+pub(crate) fn source(app: &PatronusPhotoApp) -> Option<&PcSelectMaskSource> {
     app.select_mask_target.as_ref().map(|(.., source)| &**source)
 }
 
 /// Opens the workspace on the selection (or the active layer's mask).
-pub fn open(app: &mut PhotocraftApp) -> Result<DialogId, String> {
+pub fn open(app: &mut PatronusPhotoApp) -> Result<DialogId, String> {
     // Opening again would drop the open workspace's work: edit it with `ui`, or cancel it.
     if app.framework.dialogs.is_open::<Hosted>() {
         return Err("Select and Mask is already open".into());
     }
-    if let Some(Err(why)) = photocraft_engine::commands::find(CMD).map(|c| (c.enabled)(&app.session)) {
+    if let Some(Err(why)) = patronusphoto_engine::commands::find(CMD).map(|c| (c.enabled)(&app.session)) {
         return Err(format!("Select and Mask needs a selection or a layer mask ({why})"));
     }
     // A targeted layer mask is what is refined (Photoshop opens on it from the mask's thumbnail).
@@ -343,7 +343,7 @@ pub fn open(app: &mut PhotocraftApp) -> Result<DialogId, String> {
 /// Why the open workspace's work no longer applies: the active layer is not the one it was opened on (another layer
 /// selected by a shortcut or the control channel). `select.refineEdge` works on the active layer, so its edits must
 /// not run there. A document switch is `distort_ui::drop_foreign`'s.
-pub(crate) fn stale(app: &PhotocraftApp) -> Option<&'static str> {
+pub(crate) fn stale(app: &PatronusPhotoApp) -> Option<&'static str> {
     let (_, document, opened_on, _) = app.select_mask_target.as_ref()?;
     let st = app.session.active().filter(|st| st.doc.id == *document)?;
     let layer = st.active_layer.filter(|id| st.doc.layer(*id).is_some());
@@ -352,7 +352,7 @@ pub(crate) fn stale(app: &PhotocraftApp) -> Option<&'static str> {
 
 /// One pass of the app's side of the workspace (a `TAKERS` entry): closes a stale workspace, answers what the
 /// workspace reported (the colour picker), follows the document's revision, and runs a held OK.
-pub(crate) fn take(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(crate) fn take(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     let Some(id) = app.select_mask_target.as_ref().map(|t| t.0) else { return };
     if !app.framework.dialogs.is_open::<Hosted>() {
         // Finished: OK ran its command when it was held, so the result carries nothing more to do.
@@ -385,7 +385,7 @@ pub(crate) fn take(app: &mut PhotocraftApp, ctx: &egui::Context) {
 
 /// The document changed under the workspace: a fresh source, so the preview runs again and nothing of the old
 /// pixels is shown or reused (`set_source` moves the revision the preview is keyed on).
-fn follow_revision(app: &mut PhotocraftApp, id: DialogId) {
+fn follow_revision(app: &mut PatronusPhotoApp, id: DialogId) {
     let Some((document, layer, target_mask, seen)) = source(app).map(|s| (s.doc.id, s.layer, s.target_mask, s.revision)) else { return };
     let Some(revision) = app.session.active().filter(|st| st.doc.id == document).map(|st| st.revision) else { return };
     if revision == seen {
@@ -402,7 +402,7 @@ fn follow_revision(app: &mut PhotocraftApp, id: DialogId) {
 
 /// OK: runs `select.refineEdge`. A failure leaves the workspace open with the error in its panel, so nothing painted
 /// is lost.
-fn run_held_ok(app: &mut PhotocraftApp, id: DialogId) {
+fn run_held_ok(app: &mut PatronusPhotoApp, id: DialogId) {
     let Some(done) = app.framework.dialogs.get_mut_by_id::<Hosted>(id).and_then(Hosted::take_ok) else { return };
     let target_mask = source(app).is_some_and(|s| s.target_mask);
     let answer = app.run(CMD, command_params(&done.command, target_mask));
@@ -458,7 +458,7 @@ fn selected_pixels(selection: Option<&Surface>, area: Rect) -> usize {
         if default_selected {
             count = count.saturating_sub(pixels);
         }
-        let values = photocraft_algo::selection::mask_from_surface(Some(surface), tile_area);
+        let values = patronusphoto_algo::selection::mask_from_surface(Some(surface), tile_area);
         count = count.saturating_add(values.iter().filter(|v| **v >= 0.5).count());
     }
     count
@@ -526,7 +526,7 @@ fn compute(job: Job, cancel: &Cancel) -> Result<Computed, String> {
         let base = select_mask_edits::apply(&doc, layer, from, &rest);
         base_cache = BaseCache { k, revision: job.revision, edits: job.edits.clone(), base: base.clone() };
         // Nothing selected is an empty selection, not "use the layer mask".
-        doc.selection = Some(base.unwrap_or_else(|| Surface::new(photocraft_color::PixelFormat::GRAY8)));
+        doc.selection = Some(base.unwrap_or_else(|| Surface::new(patronusphoto_color::PixelFormat::GRAY8)));
         if let Some(o) = params.as_object_mut() {
             o.remove("target");
         }

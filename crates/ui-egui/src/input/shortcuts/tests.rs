@@ -9,7 +9,7 @@ use crate::shortcut_dispatch::tests::{app_harness, tap};
 /// falls back on the last tool it still picks, not on its group's first.
 #[test]
 fn a_tool_key_passes_over_a_remapped_tool_to_the_last_one_it_picks() {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("prefs.set", json!({"path": "shortcuts.tools.select.polygonLasso", "value": "F6"})).unwrap();
     app.ui.remember_group_tool(Tool::MagneticLasso);
     app.ui.remember_group_tool(Tool::PolygonLasso);
@@ -19,13 +19,13 @@ fn a_tool_key_passes_over_a_remapped_tool_to_the_last_one_it_picks() {
 }
 
 /// The Pen's unfinished points: the draft in `ui.pen`, as the tool host keeps it.
-fn pen_knots(app: &PhotocraftApp) -> usize {
+fn pen_knots(app: &PatronusPhotoApp) -> usize {
     app.ui.pen.as_ref().map_or(0, |pen| pen.draft.knots.len())
 }
 
 /// A document with the Pen tool selected and its points placed by clicks at `points`.
-fn pen_app(points: &[[f64; 2]]) -> Box<PhotocraftApp> {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+fn pen_app(points: &[[f64; 2]]) -> Box<PatronusPhotoApp> {
+    let mut app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 200, "height": 200})).unwrap();
     app.ui.tool = Tool::Pen;
     for at in points {
@@ -70,7 +70,7 @@ fn pen_custom_undo_binding_and_menu_retract_pending_points() {
     testing::key(&mut app, Key::Y, Modifiers::COMMAND | Modifiers::SHIFT);
     assert_eq!(pen_knots(&app), 1);
     assert!(crate::menus::is_enabled(&app, "edit.undo"));
-    let undo_label = |app: &PhotocraftApp| crate::menus::menu_rows(app).into_iter().find(|row| row.command.id == "edit.undo").unwrap().label;
+    let undo_label = |app: &PatronusPhotoApp| crate::menus::menu_rows(app).into_iter().find(|row| row.command.id == "edit.undo").unwrap().label;
     assert_ne!(undo_label(&app), "Undo Reset Actions");
     let ctx = testing::ctx(&app);
     crate::menus::invoke(&mut app, &ctx, "edit.undo", json!({})).unwrap();
@@ -83,7 +83,7 @@ fn pen_custom_undo_binding_and_menu_retract_pending_points() {
 /// cycle (T-M12).
 #[test]
 fn the_catalog_builds() {
-    let app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    let app = PatronusPhotoApp::new(patronusphoto_engine::Session::new(), Default::default());
     let rows = crate::shortcut_dispatch::command_rows(&app);
     AppCatalog::new(rows.clone(), 0).unwrap_or_else(|e| panic!("the catalog refuses a row: {e:?}"));
     for t in Tool::ALL {

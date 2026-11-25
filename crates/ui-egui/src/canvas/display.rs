@@ -1,12 +1,12 @@
 use super::strokes::live_stroke;
-use super::{Document, PhotocraftApp};
-use photocraft_doc::LayerContent;
+use super::{Document, PatronusPhotoApp};
+use patronusphoto_doc::LayerContent;
 
 /// The gradient a tool proposes this pass, shown over the document before it is committed: the layer it fills and the
 /// fill (`gradient_ui::live_overlay::show`'s answer).
-pub(crate) type LiveProposal<'a> = Option<&'a (photocraft_doc::LayerId, photocraft_doc::Fill)>;
+pub(crate) type LiveProposal<'a> = Option<&'a (patronusphoto_doc::LayerId, patronusphoto_doc::Fill)>;
 
-fn buffer_to_image(buf: &photocraft_compose::Buffer) -> egui::ColorImage {
+fn buffer_to_image(buf: &patronusphoto_compose::Buffer) -> egui::ColorImage {
     // `buf.to_rgba8()` then `color_image`, fused: one parallel pass, no intermediate image.
     let q = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
     let mut pixels = vec![egui::Color32::TRANSPARENT; buf.px.len()];
@@ -28,7 +28,7 @@ fn buffer_to_image(buf: &photocraft_compose::Buffer) -> egui::ColorImage {
 /// `img` as an egui image: `ColorImage::from_rgba_unmultiplied`, in parallel off wasm. egui's own
 /// conversion runs on one thread and took 37 ms of a 24 MP canvas or preview update, three times
 /// the quantize before it.
-fn color_image(img: &photocraft_raster::Rgba8Image) -> egui::ColorImage {
+fn color_image(img: &patronusphoto_raster::Rgba8Image) -> egui::ColorImage {
     let size = [img.width as usize, img.height as usize];
     let src = img.pixels.as_chunks::<4>().0;
     let mut pixels = vec![egui::Color32::TRANSPARENT; src.len()];
@@ -49,7 +49,7 @@ fn color_image(img: &photocraft_raster::Rgba8Image) -> egui::ColorImage {
 
 /// A composite as monitor pixels: document profile → monitor profile (nothing to do in the
 /// common sRGB-on-sRGB case).
-pub(crate) fn display_image(display: Option<&photocraft_engine::display_color::CanvasDisplay>, buf: &photocraft_compose::Buffer) -> egui::ColorImage {
+pub(crate) fn display_image(display: Option<&patronusphoto_engine::display_color::CanvasDisplay>, buf: &patronusphoto_compose::Buffer) -> egui::ColorImage {
     match display {
         Some(d) if !d.is_identity() => color_image(&d.to_rgba8(buf)),
         _ => buffer_to_image(buf),
@@ -60,10 +60,10 @@ pub(crate) fn display_image(display: Option<&photocraft_engine::display_color::C
 /// with it (folded into the canvas caches' preview keys, so a monitor or profile change
 /// re-renders).
 pub(crate) fn canvas_display(
-    app: &PhotocraftApp,
+    app: &PatronusPhotoApp,
     doc: &Document,
     display: Option<u32>,
-) -> (Option<std::sync::Arc<photocraft_engine::display_color::CanvasDisplay>>, u64) {
+) -> (Option<std::sync::Arc<patronusphoto_engine::display_color::CanvasDisplay>>, u64) {
     match app.session.color.canvas_display_for(doc, display.or(app.session.color.main_display)) {
         Ok(d) => {
             let k = d.key ^ ink_preview_key(doc);
@@ -77,8 +77,8 @@ pub(crate) fn canvas_display(
 /// Spot (the dot gain the compositor adds). Folded into the display key, so changing the
 /// setting redraws open Multichannel documents; other modes don't print inks.
 pub(super) fn ink_preview_key(doc: &Document) -> u64 {
-    if doc.mode == photocraft_color::ColorMode::Multichannel {
-        u64::from(photocraft_compose::multichannel::spot_dot_gain().to_bits()).wrapping_mul(0x9e37_79b9_7f4a_7c15) | 1 << 62
+    if doc.mode == patronusphoto_color::ColorMode::Multichannel {
+        u64::from(patronusphoto_compose::multichannel::spot_dot_gain().to_bits()).wrapping_mul(0x9e37_79b9_7f4a_7c15) | 1 << 62
     } else {
         0
     }
@@ -87,13 +87,13 @@ pub(super) fn ink_preview_key(doc: &Document) -> u64 {
 /// [`canvas_display`]'s key for the GPU canvas texture: what the texture stores, the same on
 /// every display (the display LUT holds the monitor profile), with the ink preview (Multichannel
 /// documents fill it from the CPU compositor, which adds the Spot dot gain).
-pub(super) fn texture_key(display: Option<&photocraft_engine::display_color::CanvasDisplay>, doc: &Document) -> u64 {
+pub(super) fn texture_key(display: Option<&patronusphoto_engine::display_color::CanvasDisplay>, doc: &Document) -> u64 {
     display.map_or(0, |d| d.texture_key) ^ ink_preview_key(doc)
 }
 
 /// `app.canvases` key: CPU canvas textures are per document and display (they hold monitor
 /// values); the GPU canvas state uses [`GPU_OUTPUT`].
-pub(crate) fn cache_key(doc: photocraft_doc::DocId, display: Option<u32>) -> (photocraft_doc::DocId, u32) {
+pub(crate) fn cache_key(doc: patronusphoto_doc::DocId, display: Option<u32>) -> (patronusphoto_doc::DocId, u32) {
     (doc, display.unwrap_or(0))
 }
 
@@ -102,12 +102,12 @@ pub(crate) const GPU_OUTPUT: u32 = u32::MAX;
 
 /// The document to render: the committed one, or a clone with the live adjustment preview applied. It shows no
 /// proposed gradient: only a canvas picture does ([`display_doc_live`]).
-pub(crate) fn display_doc(app: &mut PhotocraftApp, idx: usize) -> (std::sync::Arc<Document>, u64) {
+pub(crate) fn display_doc(app: &mut PatronusPhotoApp, idx: usize) -> (std::sync::Arc<Document>, u64) {
     display_doc_live(app, idx, None)
 }
 
 /// [`display_doc`] with the gradient `live` a tool proposes this pass. Nothing is kept for the next pass.
-pub(crate) fn display_doc_live(app: &mut PhotocraftApp, idx: usize, live: LiveProposal<'_>) -> (std::sync::Arc<Document>, u64) {
+pub(crate) fn display_doc_live(app: &mut PatronusPhotoApp, idx: usize, live: LiveProposal<'_>) -> (std::sync::Arc<Document>, u64) {
     if let Some(shown) = crate::frame_tool::display_doc(app, idx) {
         return shown;
     }
@@ -181,7 +181,7 @@ pub(crate) fn display_doc_live(app: &mut PhotocraftApp, idx: usize, live: LivePr
     if let (Some(t), Some(pv)) = (&app.ui.transform, &app.transform_preview)
         && app.session.active_index() == Some(idx)
         && pv.doc.id == st.doc.id
-        && st.doc.layer(photocraft_doc::LayerId(t.layer)).is_some()
+        && st.doc.layer(patronusphoto_doc::LayerId(t.layer)).is_some()
     {
         return (pv.doc.clone(), crate::transform_tool::preview_key(pv.session));
     }
@@ -199,8 +199,8 @@ pub(crate) fn display_doc_live(app: &mut PhotocraftApp, idx: usize, live: LivePr
     {
         let key = crate::adjust_preview::live_key(app, &snapshot, revision, layer, &params);
         let shown = memo_display(app, &snapshot, key, || {
-            let kind = photocraft_engine::commands::adjustment_kind(a);
-            let preview = photocraft_engine::adjust_params::from_params(kind, &params, Some(a), snapshot.mode).unwrap_or_else(|_| a.clone());
+            let kind = patronusphoto_engine::commands::adjustment_kind(a);
+            let preview = patronusphoto_engine::adjust_params::from_params(kind, &params, Some(a), snapshot.mode).unwrap_or_else(|_| a.clone());
             let mut doc = (*snapshot).clone();
             if let Some(lm) = doc.layer_mut(layer) {
                 lm.content = LayerContent::Adjustment(preview);
@@ -212,7 +212,7 @@ pub(crate) fn display_doc_live(app: &mut PhotocraftApp, idx: usize, live: LivePr
         }
     }
     // Duotone documents display through their inks.
-    if let Some(shown) = memo_display(app, &snapshot, 1 << 41, || photocraft_engine::mode_cmds::display_document(&snapshot)) {
+    if let Some(shown) = memo_display(app, &snapshot, 1 << 41, || patronusphoto_engine::mode_cmds::display_document(&snapshot)) {
         return (shown, 1 << 41);
     }
     (snapshot, 0)
@@ -221,7 +221,7 @@ pub(crate) fn display_doc_live(app: &mut PhotocraftApp, idx: usize, live: LivePr
 /// `display_doc`'s live-adjust and Duotone documents, built once per document snapshot and key
 /// rather than on each of its 3–4 calls a frame (#4527): each build clones the whole document.
 fn memo_display(
-    app: &mut PhotocraftApp,
+    app: &mut PatronusPhotoApp,
     snapshot: &std::sync::Arc<Document>,
     key: u64,
     build: impl FnOnce() -> Option<Document>,
@@ -250,7 +250,7 @@ const DISPLAY_LUT: usize = 33;
 /// `doc`'s colour management: document → monitor profile and View › Proof Colors / Gamut
 /// Warning (the 32-bit preview is applied by the canvas shader, see [`hdr_preview`]). Returns the canvas `display` mode (0 none — the identity, e.g. sRGB on
 /// an sRGB monitor —, 1 LUT, 2 LUT + gamut warning, 3 matrix/shaper).
-pub(super) fn sync_display_lut(app: &mut PhotocraftApp, doc: &photocraft_doc::Document, key: u64, display: Option<u32>) -> u8 {
+pub(super) fn sync_display_lut(app: &mut PatronusPhotoApp, doc: &patronusphoto_doc::Document, key: u64, display: Option<u32>) -> u8 {
     let Some(gpu) = app.gpu.clone() else { return 0 };
     let output = display.unwrap_or(0);
     // Rebuild only when anything feeding the LUT changes.
@@ -289,6 +289,6 @@ pub(super) fn sync_display_lut(app: &mut PhotocraftApp, doc: &photocraft_doc::Do
 }
 
 /// View › 32-bit Preview Options for the GPU canvas shader: (exposure, gamma) when active.
-pub(super) fn hdr_preview(app: &PhotocraftApp, doc: &photocraft_doc::Document) -> Option<[f32; 2]> {
+pub(super) fn hdr_preview(app: &PatronusPhotoApp, doc: &patronusphoto_doc::Document) -> Option<[f32; 2]> {
     app.session.color.hdr_preview(doc).map(|h| [h.exposure, h.gamma])
 }

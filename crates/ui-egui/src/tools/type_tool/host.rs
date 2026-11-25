@@ -4,22 +4,22 @@ use std::ops::Range;
 
 use craft::behavior::kurbo::Point;
 use craft::text::ui::editor::{CaretLine, EditKind, HostLine, HostRun, StyleKey, TextEditorHost, TextSelection};
-use photocraft_doc::LayerId;
-use photocraft_text::warp::{Placement, Warp};
+use patronusphoto_doc::LayerId;
+use patronusphoto_text::warp::{Placement, Warp};
 
 use super::editing::{kern_pair, step_char_metric, toggle_char_style, toggle_hyphenate};
 use super::layout::{doc_point, hit_at, is_vertical, layout, path_warp};
-use super::{Affine, Arc, PhotocraftApp, TextLayout, byte_of, insertion_style, text_layer};
+use super::{Affine, Arc, PatronusPhotoApp, TextLayout, byte_of, insertion_style, text_layer};
 
 /// A type layer's text, layout and formatting for one editing session. Geometry is in document units.
 pub(crate) struct LayerHost<'a> {
-    app: &'a mut PhotocraftApp,
+    app: &'a mut PatronusPhotoApp,
     layer: LayerId,
 }
 
 impl<'a> LayerHost<'a> {
     /// The host of `layer` in the active document.
-    pub(crate) fn new(app: &'a mut PhotocraftApp, layer: LayerId) -> Self {
+    pub(crate) fn new(app: &'a mut PatronusPhotoApp, layer: LayerId) -> Self {
         Self { app, layer }
     }
 
@@ -194,12 +194,12 @@ impl TextEditorHost for LayerHost<'_> {
         let Some((l, _, text)) = layout(self.app, self.layer) else { return offset };
         // The position along the line stays that of the start offset over every step.
         let x = l.caret(byte_of(&text, offset)).0;
-        (0..lines.unsigned_abs()).fold(offset, |at, _| photocraft_text::line_step(&l, &text, at, x, lines.signum()))
+        (0..lines.unsigned_abs()).fold(offset, |at, _| patronusphoto_text::line_step(&l, &text, at, x, lines.signum()))
     }
 
     fn line_edge(&mut self, offset: usize, end: bool) -> usize {
         let Some((l, _, text)) = layout(self.app, self.layer) else { return offset };
-        photocraft_text::line_edge(&l, &text, offset, end)
+        patronusphoto_text::line_edge(&l, &text, offset, end)
     }
 
     fn vertical(&self) -> bool {
@@ -227,7 +227,7 @@ impl TextEditorHost for LayerHost<'_> {
 
 /// Typed `s` over the session's selection, as the editor's typing does: the caret ends after the new text.
 #[cfg(test)]
-pub(crate) fn type_text(app: &mut PhotocraftApp, s: &str) {
+pub(crate) fn type_text(app: &mut PatronusPhotoApp, s: &str) {
     let Some((layer, caret)) = app.ui.text_edit.as_ref().map(|ed| (LayerId(ed.layer), ed.caret.min(ed.anchor))) else { return };
     let range = super::selected_range(app).map_or(caret..caret, |[a, b]| a..b);
     if range.is_empty() && s.is_empty() {

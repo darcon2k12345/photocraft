@@ -1,17 +1,17 @@
 use craft::font_manager::picker::{FontFilters, FontPickerSettings, FontPreviewSize};
 use craft::text::ui::character::FontPickerSource;
 use craft::ui::contract::Bind;
-use photocraft_engine::prefs::FontPreview;
+use patronusphoto_engine::prefs::FontPreview;
 
-use super::{Arc, PhotocraftApp, PoisonError, json};
+use super::{Arc, PatronusPhotoApp, PoisonError, json};
 
 /// Font families: the catalog's (bundled and installed) and those the host serves
-/// (`photocraft_text::served`, fetched when picked). Cached until the catalog or the served list changes.
+/// (`patronusphoto_text::served`, fetched when picked). Cached until the catalog or the served list changes.
 pub fn families() -> Arc<Vec<String>> {
     type Cached = Option<((u64, u64), Arc<Vec<String>>)>;
     static FAMILIES: std::sync::Mutex<Cached> = std::sync::Mutex::new(None);
-    let catalog = photocraft_text::fonts::catalog();
-    let key = (catalog.generation(), photocraft_text::served::generation());
+    let catalog = patronusphoto_text::fonts::catalog();
+    let key = (catalog.generation(), patronusphoto_text::served::generation());
     let mut cached = FAMILIES.lock().unwrap_or_else(PoisonError::into_inner);
     if let Some((k, v)) = cached.as_ref()
         && *k == key
@@ -19,7 +19,7 @@ pub fn families() -> Arc<Vec<String>> {
         return v.clone();
     }
     let mut v: Vec<String> = catalog.families().to_vec();
-    for f in photocraft_text::served::families() {
+    for f in patronusphoto_text::served::families() {
         if !v.contains(&f) {
             v.push(f);
         }
@@ -34,7 +34,7 @@ pub fn families() -> Arc<Vec<String>> {
 /// "Regular" when it has none. The picker's style rows list the same faces.
 pub fn styles(family: &str) -> Vec<String> {
     let mut names: Vec<String> = Vec::new();
-    for face in photocraft_text::fonts::catalog().styles(family) {
+    for face in patronusphoto_text::fonts::catalog().styles(family) {
         if !names.contains(&face.style) {
             names.push(face.style);
         }
@@ -43,10 +43,10 @@ pub fn styles(family: &str) -> Vec<String> {
 }
 
 /// PSD text can identify a face only by its PostScript name. Show its real subfamily too.
-pub(crate) fn selected_style(style: &photocraft_doc::text::CharStyle) -> String {
+pub(crate) fn selected_style(style: &patronusphoto_doc::text::CharStyle) -> String {
     // Drawn every frame: while the font scan runs, the stored style name stands in.
     if let Some(ps) = &style.postscript_name
-        && let Some(engine) = photocraft_text::try_shared()
+        && let Some(engine) = patronusphoto_text::try_shared()
     {
         let faces = engine.lock().unwrap_or_else(|e| e.into_inner()).fonts.faces(&style.font_family);
         if let Some(face) = faces.into_iter().find(|f| f.postscript_name.as_ref() == Some(ps)) {
@@ -66,13 +66,13 @@ pub fn style_label(style: &str) -> String {
 /// Starts scanning the installed fonts on a background thread (desktop start-up), so choosing
 /// the Type tool doesn't stall the UI while they are read (#3021). Does nothing on the web.
 pub fn warm_fonts() {
-    photocraft_text::warm_shared();
+    patronusphoto_text::warm_shared();
 }
 
 /// The text the font menu's preview sets: the selected characters while typing, else the type
 /// target's whole text, on one line and at most 60 characters. `None` without a type target or
 /// with blank text (the preview then shows its sample).
-pub(super) fn preview_text(app: &PhotocraftApp) -> Option<String> {
+pub(super) fn preview_text(app: &PatronusPhotoApp) -> Option<String> {
     let (layer, range) = defaults::target(app)?;
     let text = &crate::type_tool::text_layer(&app.session.active()?.doc, crate::type_tool::LayerId(layer))?.text;
     use crate::type_tool::defaults;
@@ -103,11 +103,11 @@ pub(crate) struct FontSourceState {
 
 /// The state for one pass's pickers: settings from the prefs and `UiState.recent_fonts`, the filters from
 /// `UiState.font_filters`, the preview text and the served families the catalog lacks.
-pub(crate) fn font_state(app: &PhotocraftApp) -> FontSourceState {
+pub(crate) fn font_state(app: &PatronusPhotoApp) -> FontSourceState {
     let prefs = app.session.prefs();
     // `FontPickerSettings` is non-exhaustive: start from its default and set every field.
     let mut settings = FontPickerSettings::default();
-    settings.favorites = photocraft_engine::font_library_cmds::favorite_fonts(&app.session);
+    settings.favorites = patronusphoto_engine::font_library_cmds::favorite_fonts(&app.session);
     settings.recent = app.ui.recent_fonts.clone();
     settings.recent_limit = (prefs.type_.recent_fonts as usize).min(MAX_RECENT_FONTS);
     settings.preview = match prefs.type_.font_preview {
@@ -119,15 +119,15 @@ pub(crate) fn font_state(app: &PhotocraftApp) -> FontSourceState {
         FontPreview::Huge => FontPreviewSize::Huge,
     };
     settings.names_in_english = prefs.type_.show_font_names_in_english;
-    let catalog = photocraft_text::fonts::catalog();
-    let served = photocraft_text::served::families().into_iter().filter(|f| catalog.family(f).is_none()).collect();
+    let catalog = patronusphoto_text::fonts::catalog();
+    let served = patronusphoto_text::served::families().into_iter().filter(|f| catalog.family(f).is_none()).collect();
     FontSourceState { before: settings.clone(), settings, filters: app.ui.font_filters.clone(), preview_text: preview_text(app), served }
 }
 
 impl FontSourceState {
     /// The picker's source over this state.
     pub(crate) fn source(&mut self) -> FontPickerSource<'_> {
-        let catalog = photocraft_text::fonts::catalog();
+        let catalog = patronusphoto_text::fonts::catalog();
         let mut source = FontPickerSource::new(catalog, Bind::bound(&mut self.settings), Bind::bound(&mut self.filters)).served(&self.served);
         if let Some(text) = self.preview_text.as_deref() {
             source = source.preview_text(text);
@@ -138,7 +138,7 @@ impl FontSourceState {
 
 /// Stores what the pass's pickers changed: a changed star as `type.font.favorite {family, on}` (favourites stay
 /// engine prefs), the recent list (capped by the preference at once) and the filters.
-pub(crate) fn finish_font_state(app: &mut PhotocraftApp, state: FontSourceState) {
+pub(crate) fn finish_font_state(app: &mut PatronusPhotoApp, state: FontSourceState) {
     let FontSourceState { settings, before, filters, .. } = state;
     let stars = before
         .favorites

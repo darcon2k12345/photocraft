@@ -17,12 +17,12 @@ use craft::ui::patterns::form_dialogs::{
 };
 use craft::ui::patterns::presets::{GroupPath, NamedPresetEvent, PresetLibrary};
 use craft::ui::runtime::requests::PathKind;
-use photocraft_doc::{ColorMode, Document, LayerId};
+use patronusphoto_doc::{ColorMode, Document, LayerId};
 use serde_json::{Map, Value, json};
 
-use photocraft_engine::export_preset_cmds::{DEFAULT_RESAMPLE, export_resample};
+use patronusphoto_engine::export_preset_cmds::{DEFAULT_RESAMPLE, export_resample};
 
-use crate::{ExportSettings, PhotocraftApp};
+use crate::{ExportSettings, PatronusPhotoApp};
 
 const FORMATS: [(&str, &str); 7] = [("png", "PNG"), ("jpg", "JPG"), ("webp", "WebP"), ("tif", "TIFF"), ("tga", "TGA"), ("ico", "ICO"), ("jxl", "JPEG XL")];
 
@@ -31,7 +31,7 @@ pub(crate) const COMMAND: &str = "file.export.exportAs";
 
 /// Where the dialog keeps the settings it was last used with (the SAVED tier): it opens with them
 /// and `ExportAsResult::remember` writes them after a successful export.
-const REMEMBER: SaveKey = SaveKey::new("photocraft.file.export.exportAs");
+const REMEMBER: SaveKey = SaveKey::new("patronusphoto.file.export.exportAs");
 
 /// The dialog's own settings: the form of the recorded step (#7207), of a saved export preset and of
 /// the pipeline's input below. [`options_of`] and [`settings_from`] convert it to and from the
@@ -241,7 +241,7 @@ const RESAMPLE_CHOICES: [Resample; 7] = [
 
 /// The saved export presets as the dialog's library: the engine's list in its order, each preset's
 /// settings read with [`options_of`].
-fn preset_library(app: &PhotocraftApp) -> PresetLibrary<ExportOptions> {
+fn preset_library(app: &PatronusPhotoApp) -> PresetLibrary<ExportOptions> {
     let mut library = PresetLibrary::new();
     for preset in &app.session.presets.export_presets {
         if let Ok(Value::Object(settings)) = serde_json::to_value(&preset.settings) {
@@ -258,7 +258,7 @@ fn stem_of(name: &str) -> String {
 }
 
 /// File › Export › Export As…
-pub fn open(app: &mut PhotocraftApp) -> Result<DialogId, String> {
+pub fn open(app: &mut PatronusPhotoApp) -> Result<DialogId, String> {
     let st = app.session.active().ok_or("no document")?;
     let (stem, size) = (stem_of(&st.doc.name), st.doc.size);
     open_sized(app, stem, None, PixelSize::new(size.width, size.height), Vec::new())
@@ -267,7 +267,7 @@ pub fn open(app: &mut PhotocraftApp) -> Result<DialogId, String> {
 /// The dialog fitted to a `source`-sized document or layer. Fitting the document first would
 /// replace a remembered pixel size the document can't take with the percent, even when the layer
 /// can take it.
-fn open_sized(app: &mut PhotocraftApp, stem: String, title: Option<String>, source: PixelSize, layers: Vec<LayerId>) -> Result<DialogId, String> {
+fn open_sized(app: &mut PatronusPhotoApp, stem: String, title: Option<String>, source: PixelSize, layers: Vec<LayerId>) -> Result<DialogId, String> {
     let prefs = app.session.prefs().export.clone();
     let mut options = ExportOptions::default();
     options.quality = u8::try_from(prefs.jpeg_quality.clamp(1, 100)).unwrap_or(85);
@@ -310,9 +310,9 @@ fn open_sized(app: &mut PhotocraftApp, stem: String, title: Option<String>, sour
 }
 
 /// Layer › Export As…: the same dialog for just the active layer (trimmed to its pixels).
-pub fn open_layer(app: &mut PhotocraftApp, layer: LayerId) -> Result<DialogId, String> {
+pub fn open_layer(app: &mut PatronusPhotoApp, layer: LayerId) -> Result<DialogId, String> {
     let st = app.session.active().ok_or("no document")?;
-    let ldoc = photocraft_engine::layer_menu_cmds::layer_document(&st.doc, layer).map_err(|e| e.to_string())?;
+    let ldoc = patronusphoto_engine::layer_menu_cmds::layer_document(&st.doc, layer).map_err(|e| e.to_string())?;
     // The size fields follow the layer's trimmed size, so the dialog shows and edits the size
     // the layer exports at.
     let template = "Export As: {name}";
@@ -324,7 +324,7 @@ pub fn open_layer(app: &mut PhotocraftApp, layer: LayerId) -> Result<DialogId, S
 /// file per layer with its settings (#3629). The dialog opens on the first layer with pixels and
 /// its preview shows that layer: an empty, adjustment or off-canvas layer no longer stops it
 /// (#14806), while any other failure (an unknown id) is the answer.
-pub fn open_layers(app: &mut PhotocraftApp, layers: &[LayerId]) -> Result<DialogId, String> {
+pub fn open_layers(app: &mut PatronusPhotoApp, layers: &[LayerId]) -> Result<DialogId, String> {
     match layers {
         [] => return Err("no selected layers".into()),
         [one] => return open_layer(app, *one),
@@ -349,9 +349,9 @@ const NO_VALID_ASSET: &str = "No valid asset to export. Please resolve any warni
 fn exportable_layers(doc: &Document, ids: &[LayerId]) -> Result<Vec<Document>, String> {
     let mut docs = Vec::new();
     for id in ids {
-        match photocraft_engine::layer_menu_cmds::layer_document(doc, *id) {
+        match patronusphoto_engine::layer_menu_cmds::layer_document(doc, *id) {
             Ok(d) => docs.push(d),
-            Err(e) if photocraft_engine::layer_menu_cmds::is_empty_layer(&e) => {}
+            Err(e) if patronusphoto_engine::layer_menu_cmds::is_empty_layer(&e) => {}
             Err(e) => return Err(e.to_string()),
         }
     }
@@ -367,7 +367,7 @@ mod layer_empty_skip_tests;
 mod layer_folder_export_tests;
 
 /// Layer › Quick Export as PNG.
-pub fn quick_export_layer_png(app: &mut PhotocraftApp, layer: LayerId) -> Result<Value, String> {
+pub fn quick_export_layer_png(app: &mut PatronusPhotoApp, layer: LayerId) -> Result<Value, String> {
     let mut f = Map::new();
     f.insert("format".into(), json!("png"));
     f.insert("transparency".into(), json!(true));
@@ -378,7 +378,7 @@ pub fn quick_export_layer_png(app: &mut PhotocraftApp, layer: LayerId) -> Result
 
 /// Export each selected layer separately, with one destination prompt for the batch.
 /// The chosen path names the first file; subsequent files have numbered sibling names.
-pub fn quick_export_selected_layers_png(app: &mut PhotocraftApp) -> Result<Value, String> {
+pub fn quick_export_selected_layers_png(app: &mut PatronusPhotoApp) -> Result<Value, String> {
     let st = app.session.active().ok_or("no document")?;
     let layers = st.selected_layers();
     if layers.len() == 1 {
@@ -469,20 +469,20 @@ fn batch_paths(path: &str, docs: &[Document]) -> Vec<String> {
 /// The document a dialog exports: the whole image, or one layer (`__layer`).
 fn source_document_from(doc: Arc<Document>, f: &Map<String, Value>) -> Result<Arc<Document>, String> {
     match f.get("__layer").and_then(Value::as_u64) {
-        Some(id) => photocraft_engine::layer_menu_cmds::layer_document(&doc, photocraft_doc::LayerId(id)).map(Arc::new).map_err(|e| e.to_string()),
+        Some(id) => patronusphoto_engine::layer_menu_cmds::layer_document(&doc, patronusphoto_doc::LayerId(id)).map(Arc::new).map_err(|e| e.to_string()),
         None => Ok(doc),
     }
 }
 
-fn source_document(app: &PhotocraftApp, f: &Map<String, Value>) -> Result<Arc<Document>, String> {
+fn source_document(app: &PatronusPhotoApp, f: &Map<String, Value>) -> Result<Arc<Document>, String> {
     source_document_from(app.session.active().ok_or("no document")?.doc.clone(), f)
 }
 
-fn effective_source_profile(app: &PhotocraftApp, doc: &Document) -> Arc<Profile> {
+fn effective_source_profile(app: &PatronusPhotoApp, doc: &Document) -> Arc<Profile> {
     doc.icc_profile
         .as_ref()
-        .and_then(|bytes| photocraft_engine::color_cmds::profile_from_bytes(bytes).ok())
-        .filter(|profile| profile.color_space == photocraft_engine::color_cmds::mode_space(doc.mode))
+        .and_then(|bytes| patronusphoto_engine::color_cmds::profile_from_bytes(bytes).ok())
+        .filter(|profile| profile.color_space == patronusphoto_engine::color_cmds::mode_space(doc.mode))
         .unwrap_or_else(|| app.session.color.working(doc.mode))
 }
 
@@ -519,7 +519,7 @@ fn export_document(doc: &Document, f: &Map<String, Value>, max_side: Option<u32>
     if srgb {
         copy.icc_profile = Some(source_profile.to_bytes());
     }
-    let mut session = photocraft_engine::Session::new();
+    let mut session = patronusphoto_engine::Session::new();
     session.add_document(copy, None);
     if srgb && (doc.mode != ColorMode::Rgb || !source_profile.same_bytes(craft::cms::Builtin::Srgb.profile())) {
         session.execute("edit.convertToProfile", json!({"profile": "srgb", "intent": "perceptual"})).map_err(|e| e.to_string())?;
@@ -596,8 +596,8 @@ fn lossless(f: &Map<String, Value>) -> bool {
 
 /// TGA bits per pixel: `"24"` or `"32"`; `"auto"` (the default) is 32 with an alpha channel or
 /// transparency, else 24, as Export As wrote before it offered the choice.
-fn tga_bits(f: &Map<String, Value>) -> Option<photocraft_io::TgaBits> {
-    s(f, "tgaBits").parse().ok().and_then(photocraft_io::TgaBits::from_bits)
+fn tga_bits(f: &Map<String, Value>) -> Option<patronusphoto_io::TgaBits> {
+    s(f, "tgaBits").parse().ok().and_then(patronusphoto_io::TgaBits::from_bits)
 }
 
 fn settings(f: &Map<String, Value>) -> ExportSettings {
@@ -607,7 +607,7 @@ fn settings(f: &Map<String, Value>) -> ExportSettings {
     ExportSettings {
         jpeg_quality: (fmt == "jpg").then_some(quality),
         // Photoshop's 1-7 Export As presets measured 4:2:0 at 1-4 and 4:4:4 at 5-7.
-        // An exact mapping to 1-100 is unestablished; reuse PhotoCraft's Save for Web cutoff.
+        // An exact mapping to 1-100 is unestablished; reuse Patronus Photo's Save for Web cutoff.
         jpeg_chroma_subsampling: fmt == "jpg" && quality <= 50,
         webp_lossless: fmt != "webp" || lossless(f),
         webp_quality: (fmt == "webp" && !lossless(f)).then_some(quality),
@@ -619,7 +619,7 @@ fn settings(f: &Map<String, Value>) -> ExportSettings {
         embed_metadata: metadata != "none",
         // Export As's JPGs are progressive (SOF2) in the reference application, measured at its
         // default quality; the scan layout is one setting for the whole dialog.
-        jpeg_format: photocraft_codecs::JpegFormat::Progressive,
+        jpeg_format: patronusphoto_codecs::JpegFormat::Progressive,
         ..Default::default()
     }
 }
@@ -643,7 +643,7 @@ fn scaled_estimate(bytes: usize, doc: &Document, proxy: &Document, f: &Map<Strin
 }
 
 /// Estimated size (bytes) from the already prepared proxy encode, scaled by pixel count.
-fn estimate(app: &PhotocraftApp, doc: &Document, proxy: &Document, f: &Map<String, Value>) -> Option<u64> {
+fn estimate(app: &PatronusPhotoApp, doc: &Document, proxy: &Document, f: &Map<String, Value>) -> Option<u64> {
     let export = app.services.export.as_ref()?;
     let (bytes, _) = export(proxy, &format!("estimate.{}", s_fmt(f)), &settings(f)).ok()?;
     Some(scaled_estimate(bytes.len(), doc, proxy, f))
@@ -657,11 +657,11 @@ struct PreviewPixels {
 }
 
 fn preview_pixels(proxy: &Document, estimate: Option<u64>) -> PreviewPixels {
-    let img = photocraft_compose::thumbnail(proxy, 360);
+    let img = patronusphoto_compose::thumbnail(proxy, 360);
     PreviewPixels { estimate, width: img.width as usize, height: img.height as usize, rgba: img.pixels }
 }
 
-fn preview_sync(app: &PhotocraftApp, doc: &Document, f: &Map<String, Value>, source_profile: &Profile) -> Result<PreviewPixels, String> {
+fn preview_sync(app: &PatronusPhotoApp, doc: &Document, f: &Map<String, Value>, source_profile: &Profile) -> Result<PreviewPixels, String> {
     let proxy = preview_proxy(doc, f, source_profile)?;
     Ok(preview_pixels(&proxy, estimate(app, doc, &proxy, f)))
 }
@@ -727,7 +727,7 @@ fn poll_or_start_preview(
 /// The native exporter uses this same IO encoder. Keep the entire estimate off the UI thread.
 #[cfg(not(target_arch = "wasm32"))]
 fn estimate_native(doc: &Document, proxy: &Document, f: &Map<String, Value>) -> Option<u64> {
-    let bytes = photocraft_io::export(proxy, &format!("estimate.{}", s_fmt(f)), &settings(f).io_options()).ok()?.bytes;
+    let bytes = patronusphoto_io::export(proxy, &format!("estimate.{}", s_fmt(f)), &settings(f).io_options()).ok()?.bytes;
     Some(scaled_estimate(bytes.len(), doc, proxy, f))
 }
 
@@ -748,7 +748,7 @@ fn exact_estimate(doc: &Document, f: &Map<String, Value>, source_profile: &Profi
         return None;
     }
     let full = export_document(doc, f, None, source_profile).ok()?;
-    let bytes = photocraft_io::export(&full, &format!("estimate.{}", s_fmt(f)), &settings(f).io_options()).ok()?.bytes;
+    let bytes = patronusphoto_io::export(&full, &format!("estimate.{}", s_fmt(f)), &settings(f).io_options()).ok()?.bytes;
     u64::try_from(bytes.len()).ok()
 }
 
@@ -809,7 +809,7 @@ fn poll_or_start_exact_estimate(
 /// The dialog's driver, a `dialogs::TAKERS` row: answers the preview and save requests the dialog
 /// filed, stores its preset edits, and exports when it finishes with a path. Each request is taken
 /// once, so a second pass in a frame answers none of them again.
-pub(crate) fn take(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(crate) fn take(app: &mut PatronusPhotoApp, ctx: &egui::Context) {
     let Some(mut open) = app.export_open.take() else { return };
     if drive(app, ctx, &mut open) {
         app.export_open = Some(open);
@@ -817,7 +817,7 @@ pub(crate) fn take(app: &mut PhotocraftApp, ctx: &egui::Context) {
 }
 
 /// Runs one step of [`take`] on `open`; `false` once the dialog is closed.
-fn drive(app: &mut PhotocraftApp, ctx: &egui::Context, open: &mut ExportOpen) -> bool {
+fn drive(app: &mut PatronusPhotoApp, ctx: &egui::Context, open: &mut ExportOpen) -> bool {
     match app.framework.dialogs.take::<HostedExportAs>() {
         Some(DialogResult::Ok(result)) => {
             if let Err(error) = finish(app, ctx, open, result) {
@@ -849,7 +849,7 @@ fn drive(app: &mut PhotocraftApp, ctx: &egui::Context, open: &mut ExportOpen) ->
     if let Some(request) = pick {
         let key = request.key.clone();
         let suggested = request.file_name.clone().unwrap_or_default();
-        let answer = move |app: &mut PhotocraftApp, path: String| -> Result<Value, String> {
+        let answer = move |app: &mut PatronusPhotoApp, path: String| -> Result<Value, String> {
             if let Some(open) = app.export_open.as_mut() {
                 open.picking = false;
             }
@@ -896,7 +896,7 @@ fn drive(app: &mut PhotocraftApp, ctx: &egui::Context, open: &mut ExportOpen) ->
 
 /// The documents a Layer › Export As of several `layers` writes, one per layer with pixels (#14806); empty for one
 /// layer or the whole document.
-fn layer_documents(app: &PhotocraftApp, layers: &[LayerId]) -> Vec<Document> {
+fn layer_documents(app: &PatronusPhotoApp, layers: &[LayerId]) -> Vec<Document> {
     if layers.len() < 2 {
         return Vec::new();
     }
@@ -905,14 +905,14 @@ fn layer_documents(app: &PhotocraftApp, layers: &[LayerId]) -> Vec<Document> {
 
 /// The working profile an untagged active document is previewed under; `None` for a tagged one,
 /// whose own profile decides. Tagged documents skip the profile lookup on every frame.
-fn working_profile_hash(app: &PhotocraftApp) -> Option<String> {
+fn working_profile_hash(app: &PatronusPhotoApp) -> Option<String> {
     let doc = &app.session.active()?.doc;
     doc.icc_profile.is_none().then(|| app.session.color.working(doc.mode).content_hash().to_string())
 }
 
 /// One preset edit of the dialog, stored through the engine's commands. `created` holds the values
 /// of the presets the dialog made this pass.
-fn store_preset(app: &mut PhotocraftApp, source: PixelSize, event: NamedPresetEvent<String>, created: &[(String, ExportOptions)]) {
+fn store_preset(app: &mut PatronusPhotoApp, source: PixelSize, event: NamedPresetEvent<String>, created: &[(String, ExportOptions)]) {
     let (id, params) = match event {
         NamedPresetEvent::Create { name, .. } => {
             let Some((_, options)) = created.iter().find(|(made, _)| *made == name) else { return };
@@ -929,7 +929,7 @@ fn store_preset(app: &mut PhotocraftApp, source: PixelSize, event: NamedPresetEv
 }
 
 /// The work for a new preview request: the document and profile it is made from, captured now.
-fn start_preview(app: &PhotocraftApp, open: &ExportOpen, request: PreviewRequest<ExportOptions>) -> Option<PreviewWork> {
+fn start_preview(app: &PatronusPhotoApp, open: &ExportOpen, request: PreviewRequest<ExportOptions>) -> Option<PreviewWork> {
     let st = app.session.active()?;
     let doc = st.doc.clone();
     let mut settings = settings_from(&request.options, open.source);
@@ -946,7 +946,7 @@ fn start_preview(app: &PhotocraftApp, open: &ExportOpen, request: PreviewRequest
 
 /// Gives the dialog the preview of the work in progress when it is ready, then the exact size
 /// estimate when that is. The work ends when the last of them is given.
-fn answer_preview(app: &mut PhotocraftApp, ctx: &egui::Context, open: &mut ExportOpen) {
+fn answer_preview(app: &mut PatronusPhotoApp, ctx: &egui::Context, open: &mut ExportOpen) {
     let Some(mut work) = open.work.take() else { return };
     let mut give = None;
     if work.answered.is_none() {
@@ -990,7 +990,7 @@ fn answer_preview(app: &mut PhotocraftApp, ctx: &egui::Context, open: &mut Expor
 }
 
 /// The preview of `work` made on this thread, for a document small enough not to stall the frame.
-fn sync_preview(app: &PhotocraftApp, work: &PreviewWork) -> Result<PreviewPixels, String> {
+fn sync_preview(app: &PatronusPhotoApp, work: &PreviewWork) -> Result<PreviewPixels, String> {
     let source = source_document_from(work.doc.clone(), &work.settings).unwrap_or_else(|_| work.doc.clone());
     preview_sync(app, &source, &work.settings, &work.profile)
 }
@@ -1022,7 +1022,7 @@ fn preview_of(ctx: &egui::Context, open: &mut ExportOpen, work: &PreviewWork, re
 /// What the dialog's Export does once its path is known: writes the document at each Scale All
 /// size, or one file per layer, then remembers the settings for the next open. A failed export
 /// leaves them as they were.
-fn finish(app: &mut PhotocraftApp, ctx: &egui::Context, open: &ExportOpen, result: ExportAsResult) -> Result<Value, String> {
+fn finish(app: &mut PatronusPhotoApp, ctx: &egui::Context, open: &ExportOpen, result: ExportAsResult) -> Result<Value, String> {
     let path = result.path.to_string_lossy().into_owned();
     let mut f = settings_from(&result.options, open.source);
     let rows = result.options.scale_rows();
@@ -1042,7 +1042,7 @@ fn finish(app: &mut PhotocraftApp, ctx: &egui::Context, open: &ExportOpen, resul
 /// Exports the dialog's source (the document, or the layer `__layer`) to `path` with the settings
 /// `f`. A whole-document export is kept by an action being recorded, with its destination and
 /// settings (#7207); a layer's isn't, since its layer is this document's.
-fn export_to(app: &mut PhotocraftApp, f: &Map<String, Value>, path: &str) -> Result<Value, String> {
+fn export_to(app: &mut PatronusPhotoApp, f: &Map<String, Value>, path: &str) -> Result<Value, String> {
     let doc = source_document(app, f)?;
     let source_profile = effective_source_profile(app, &doc);
     let r = write_export(app, &doc, f, path, &source_profile)?;
@@ -1050,7 +1050,7 @@ fn export_to(app: &mut PhotocraftApp, f: &Map<String, Value>, path: &str) -> Res
         let mut step = settings_of(f);
         step.insert("path".into(), json!(path));
         let step = Value::Object(step);
-        photocraft_engine::actions_cmds::note_automation_step(&mut app.session, COMMAND, &step);
+        patronusphoto_engine::actions_cmds::note_automation_step(&mut app.session, COMMAND, &step);
         app.session.journal.push((COMMAND.into(), step));
     }
     Ok(r)
@@ -1058,7 +1058,7 @@ fn export_to(app: &mut PhotocraftApp, f: &Map<String, Value>, path: &str) -> Res
 
 /// Asks where to save, then [`export_to`]s: Quick Export as PNG's way of exporting without the dialog.
 /// A layer's name may hold characters a file name can't (#14810): `a/b:c*?` suggests `a_b_c__`.
-fn pick_and_export(app: &mut PhotocraftApp, f: Map<String, Value>) -> Result<Value, String> {
+fn pick_and_export(app: &mut PatronusPhotoApp, f: Map<String, Value>) -> Result<Value, String> {
     let doc = source_document(app, &f)?;
     let stem = if f.contains_key("__layer") { layer_export_name(&stem_of(&doc.name)) } else { stem_of(&doc.name) };
     let suggested = format!("{stem}.{}", s_fmt(&f));
@@ -1102,7 +1102,7 @@ fn batch_file_names(stem: &str, ext: &str, rows: &[ScaleRow]) -> Result<Vec<Stri
 /// row's multiple of the export size. Only a folder was chosen, so nothing already there is replaced:
 /// any entry at a target path (a file, or a link the writer would follow) stops the whole batch before
 /// the first write.
-fn export_sizes(app: &mut PhotocraftApp, f: &Map<String, Value>, rows: &[ScaleRow], dir: &str) -> Result<Value, String> {
+fn export_sizes(app: &mut PatronusPhotoApp, f: &Map<String, Value>, rows: &[ScaleRow], dir: &str) -> Result<Value, String> {
     let doc = source_document(app, f)?;
     let source_profile = effective_source_profile(app, &doc);
     let stem = stem_of(&doc.name);
@@ -1134,7 +1134,7 @@ fn export_sizes(app: &mut PhotocraftApp, f: &Map<String, Value>, rows: &[ScaleRo
 }
 
 /// Exports `doc` to `path` with the dialog settings `f` (Export As, and its replayed action step).
-fn write_export(app: &mut PhotocraftApp, doc: &Document, f: &Map<String, Value>, path: &str, source_profile: &Profile) -> Result<Value, String> {
+fn write_export(app: &mut PatronusPhotoApp, doc: &Document, f: &Map<String, Value>, path: &str, source_profile: &Profile) -> Result<Value, String> {
     let out = export_document(doc, f, None, source_profile)?;
     crate::app::ensure_memory_to_save(&out, path)?;
     let export = app.services.export.as_ref().ok_or("no exporter configured")?;
@@ -1152,7 +1152,7 @@ fn write_export(app: &mut PhotocraftApp, doc: &Document, f: &Map<String, Value>,
 
 /// Replays a recorded Export As step (#7207): the active document exported to the recorded `path`
 /// with the recorded settings, without the dialog. The remembered dialog settings are untouched.
-pub(crate) fn replay(app: &mut PhotocraftApp, params: &Value) -> Result<Value, String> {
+pub(crate) fn replay(app: &mut PatronusPhotoApp, params: &Value) -> Result<Value, String> {
     let path = params.get("path").and_then(Value::as_str).filter(|p| !p.is_empty()).ok_or("Export As needs a `path`")?;
     let f = params.as_object().map(settings_of).unwrap_or_default();
     if let Some(format) = f.get("format").filter(|v| !valid_setting("format", v)) {
@@ -1173,7 +1173,7 @@ pub(crate) fn replay(app: &mut PhotocraftApp, params: &Value) -> Result<Value, S
 /// asked for, and each layer is written there as `<layer name>.<ext>`, replacing a file of that
 /// name (#14808). One file is written at `path`; the web downloads each file, the first under
 /// `path` and the others named as Quick Export names a selection's files.
-fn export_layers(app: &mut PhotocraftApp, f: &Map<String, Value>, ids: &[LayerId], path: &str) -> Result<Value, String> {
+fn export_layers(app: &mut PatronusPhotoApp, f: &Map<String, Value>, ids: &[LayerId], path: &str) -> Result<Value, String> {
     let st = app.session.active().ok_or("no document")?;
     let source_profile = effective_source_profile(app, &st.doc);
     if ids.is_empty() {
@@ -1203,7 +1203,7 @@ fn export_layers(app: &mut PhotocraftApp, f: &Map<String, Value>, ids: &[LayerId
 
 /// One layer's file of a Layer › Export As: rendered with the dialog's settings and written.
 fn write_layer_file(
-    app: &mut PhotocraftApp,
+    app: &mut PatronusPhotoApp,
     doc: &Document,
     f: &Map<String, Value>,
     settings: &ExportSettings,
@@ -1272,7 +1272,7 @@ fn replace_link(path: &std::path::Path) -> Result<(), String> {
 /// File › Export › Quick Export as PNG: the format, quality, metadata, colour space and location
 /// from File › Export › Export Preferences (engine `file.export.quickExport`). On the web (no
 /// file system) it falls back to a PNG download through the export service.
-pub fn quick_export_png(app: &mut PhotocraftApp) -> Result<Value, String> {
+pub fn quick_export_png(app: &mut PatronusPhotoApp) -> Result<Value, String> {
     if !cfg!(target_arch = "wasm32") {
         let prefs = app.session.prefs().export.clone();
         let fmt = serde_json::to_value(prefs.quick_export_format).ok().and_then(|v| v.as_str().map(str::to_string)).unwrap_or_else(|| "png".into());
@@ -1281,7 +1281,7 @@ pub fn quick_export_png(app: &mut PhotocraftApp) -> Result<Value, String> {
         // Same Folder writes beside the document's file without asking, except when that would
         // replace the file itself (a document opened from photo.png): then the save dialog asks,
         // so replacing it is the user's choice (#6599).
-        if same && saved && !photocraft_engine::web_cmds::quick_export_target_is_own_file(&app.session) {
+        if same && saved && !patronusphoto_engine::web_cmds::quick_export_target_is_own_file(&app.session) {
             return quick_export(app, json!({}));
         }
         let st = app.session.active().ok_or("no document")?;
@@ -1300,7 +1300,7 @@ pub fn quick_export_png(app: &mut PhotocraftApp) -> Result<Value, String> {
 }
 
 /// Runs Quick Export with `p` (an explicit `path`, or none for the document's folder).
-fn quick_export(app: &mut PhotocraftApp, p: Value) -> Result<Value, String> {
+fn quick_export(app: &mut PatronusPhotoApp, p: Value) -> Result<Value, String> {
     let r = app.run("file.export.quickExport", p)?;
     let template = "Exported {path}";
     app.ui.status = crate::i18n::fmt(tl!(template), &[("path", r["path"].as_str().unwrap_or_default())]);
@@ -1322,7 +1322,7 @@ mod layer_name_sanitise_tests;
 #[cfg(all(test, unix))]
 mod batch_name_tests {
     use super::*;
-    use photocraft_doc::{ColorMode, SampleType, Size};
+    use patronusphoto_doc::{ColorMode, SampleType, Size};
 
     #[test]
     fn a_planted_symlink_makes_a_batch_name_taken() {
